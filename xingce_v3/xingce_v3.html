@@ -551,6 +551,17 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .knowledge-move-item-path{font-size:11px;color:#888;line-height:1.6;margin-top:4px}
 .knowledge-move-item-current{display:inline-flex;align-items:center;gap:4px;margin-top:6px;font-size:11px;color:#e67e22;background:#fff7e6;border:1px solid #ffd591;border-radius:999px;padding:1px 8px}
 .knowledge-move-empty{padding:20px 12px;color:#999;font-size:12px;text-align:center}
+.knowledge-node-dialog-subtitle{font-size:12px;color:#666;line-height:1.7;margin-bottom:12px}
+.knowledge-tree-row{display:flex;align-items:center;gap:8px;min-width:0;flex:1}
+.knowledge-tree-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
+.knowledge-tree-toggle{width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;border:none;background:transparent;color:#999;border-radius:4px;cursor:pointer;flex-shrink:0}
+.knowledge-tree-toggle:hover{background:#f5f5f5;color:#555}
+.knowledge-tree-toggle.placeholder{cursor:default;opacity:.25}
+.knowledge-tree-node.is-active .knowledge-tree-title{font-weight:700}
+.knowledge-tree-node.is-branch{font-weight:600}
+.knowledge-tree-count{font-size:11px;color:#999;min-width:18px;text-align:right;flex-shrink:0}
+.knowledge-tree-count.is-empty{visibility:hidden}
+.knowledge-tree-children{display:flex;flex-direction:column}
 .toast-stack{position:fixed;top:18px;right:18px;display:flex;flex-direction:column;gap:10px;z-index:1400;pointer-events:none}
 .toast{min-width:220px;max-width:360px;background:#fff;border:1px solid #e8e8e8;border-left:4px solid #e74c3c;border-radius:10px;box-shadow:0 16px 40px rgba(0,0,0,.14);padding:10px 12px;font-size:12px;line-height:1.6;color:#444;opacity:0;transform:translateY(-6px);transition:.2s}
 .toast.show{opacity:1;transform:translateY(0)}
@@ -820,6 +831,26 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
   </div>
 </div>
 
+<div class="modal-mask" id="knowledgeNodeModal">
+  <div class="modal" style="width:640px;max-width:96vw">
+    <button class="modal-close" onclick="closeKnowledgeNodeModal()">✕</button>
+    <h2 id="knowledgeNodeModalTitle">知识点操作</h2>
+    <div id="knowledgeNodeModalSubtitle" class="knowledge-node-dialog-subtitle"></div>
+    <div id="knowledgeNodeTitleGroup" class="form-group">
+      <label id="knowledgeNodeTitleLabel">节点名称</label>
+      <input id="knowledgeNodeTitleInput" type="text" placeholder="输入知识点名称" onkeydown="handleKnowledgeNodeTitleKeydown(event)">
+    </div>
+    <div id="knowledgeNodeTargetGroup" style="display:none">
+      <input id="knowledgeNodeTargetSearch" class="knowledge-move-search" type="text" placeholder="搜索目标知识点名称或路径..." oninput="renderKnowledgeNodeTargetOptions()">
+      <div id="knowledgeNodeTargetList" class="knowledge-move-list"></div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-secondary" onclick="closeKnowledgeNodeModal()">取消</button>
+      <button class="btn btn-primary" onclick="submitKnowledgeNodeModal()">确认</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== 导入弹窗 ===== -->
 <div class="modal-mask" id="importModal">
   <div class="modal">
@@ -1047,6 +1078,7 @@ const KEY_TODAY_DONE  = 'xc_today_done';
 const KEY_HISTORY   = 'xc_history';
 const KEY_TYPE_RULES = 'xc_type_rules';
 const KEY_CLOUD_META = 'xc_cloud_meta';
+const KEY_KNOWLEDGE_EXPANDED = 'xc_knowledge_expanded';
 
 // 默认题型识别规则（按优先级排序）
 const DEFAULT_TYPE_RULES = [
@@ -1089,6 +1121,9 @@ let pendingKnowledgeMoveErrorId = null;
 let pendingKnowledgeMoveTargetId = null;
 let draggingKnowledgeNodeId = null;
 let draggingErrorId = null;
+let knowledgeExpanded = new Set();
+let knowledgeExpandedLoaded = false;
+let knowledgeNodeModalState = { mode: '', nodeId: null, parentId: null, targetId: null, fallbackTitle: '' };
 
 // 错因分组定义（每个 reason 含简介 desc）
 const REASON_GROUPS = [
@@ -1339,6 +1374,14 @@ async function loadKnowledgeState() {
   catch(e) { knowledgeTree = null; }
   try { knowledgeNotes = JSON.parse(await DB.get(KEY_KNOWLEDGE_NOTES) || '{}') || {}; }
   catch(e) { knowledgeNotes = {}; }
+  try {
+    const rawExpanded = await DB.get(KEY_KNOWLEDGE_EXPANDED);
+    knowledgeExpanded = new Set(JSON.parse(rawExpanded || '[]') || []);
+    knowledgeExpandedLoaded = !!rawExpanded;
+  } catch(e) {
+    knowledgeExpanded = new Set();
+    knowledgeExpandedLoaded = false;
+  }
 }
 function saveNotesByType() {
   DB.set(KEY_NOTES_BY_TYPE, JSON.stringify(notesByType));
@@ -1350,6 +1393,9 @@ function saveKnowledgeState() {
   DB.set(KEY_KNOWLEDGE_TREE, JSON.stringify(knowledgeTree));
   DB.set(KEY_KNOWLEDGE_NOTES, JSON.stringify(knowledgeNotes));
   scheduleCloudSave();
+}
+function saveKnowledgeExpanded() {
+  DB.set(KEY_KNOWLEDGE_EXPANDED, JSON.stringify(Array.from(knowledgeExpanded)));
 }
 let cloudUser = null;
 let cloudSaveTimer = null;
@@ -2218,21 +2264,18 @@ function renderSidebarKnowledgeTreeV2(nodes, depth) {
     const count = countErrorsForKnowledgeNode(node.id, true);
     const cls = depth === 0 ? 'nav-item nav-type-header' : depth === 1 ? 'nav-item nav-subtype' : 'nav-item nav-sub2';
     const extraStyle = depth > 2 ? `padding-left:${60 + ((depth - 2) * 18)}px` : '';
-    const marker = node.children && node.children.length ? '▾' : '•';
-    const actions = `<span class="knowledge-node-actions">
-        <button class="note-action-btn" title="新建下级" onclick="event.stopPropagation();selectedKnowledgeNodeId='${node.id}';addKnowledgeLeafUnderSelected()">＋</button>
-        <button class="note-action-btn" title="重命名" onclick="event.stopPropagation();renameKnowledgeNode('${node.id}')">✎</button>
-        ${depth > 0 ? `<button class="note-action-btn" title="移动" onclick="event.stopPropagation();moveKnowledgeNode('${node.id}')">⇄</button>` : ''}
-        ${depth > 0 ? `<button class="note-action-btn" title="删除" onclick="event.stopPropagation();deleteKnowledgeNode('${node.id}')">🗑</button>` : ''}
-      </span>`;
-    let html = `<div class="${cls} ${active ? 'active' : ''}" style="${extraStyle}" data-knowledge-node-id="${node.id}" draggable="true" ondragstart="startKnowledgeNodeDrag('${node.id}', event)" ondragend="endKnowledgeNodeDrag()" ondragover="allowKnowledgeDrop(event, '${node.id}')" ondragleave="leaveKnowledgeDrop(event)" ondrop="handleKnowledgeDrop('${node.id}', event)" onclick="selectKnowledgeNodeFromSidebar('${node.id}')">
-      <span style="display:flex;align-items:center;gap:6px;min-width:0;flex:1">
-        <span class="nav-arrow" style="transform:none;color:${node.children && node.children.length ? '#bbb' : '#d0d0d0'}">${marker}</span>
-        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(node.title)}</span>
+    const hasChildren = !!(node.children && node.children.length);
+    const expanded = hasChildren && isKnowledgeExpanded(node);
+    const marker = hasChildren ? (expanded ? '▾' : '▸') : '•';
+    const countClass = count > 0 ? 'knowledge-tree-count' : 'knowledge-tree-count is-empty';
+    let html = `<div class="${cls} knowledge-tree-node ${active ? 'active is-active' : ''} ${hasChildren ? 'is-branch' : ''}" style="${extraStyle}" data-knowledge-node-id="${node.id}" draggable="true" ondragstart="startKnowledgeNodeDrag('${node.id}', event)" ondragend="endKnowledgeNodeDrag()" ondragover="allowKnowledgeDrop(event, '${node.id}')" ondragleave="leaveKnowledgeDrop(event)" ondrop="handleKnowledgeDrop('${node.id}', event)" onclick="selectKnowledgeNodeFromSidebar('${node.id}')">
+      <span class="knowledge-tree-row">
+        <button type="button" class="knowledge-tree-toggle${hasChildren ? '' : ' placeholder'}" onclick="toggleKnowledgeExpanded('${node.id}', event)" aria-label="${hasChildren ? '切换展开' : '无下级'}">${marker}</button>
+        <span class="knowledge-tree-title">${escapeHtml(node.title)}</span>
       </span>
-      <span class="nav-count">${count}</span>${actions}</div>`;
-    if (node.children && node.children.length) {
-      html += renderSidebarKnowledgeTreeV2(node.children, depth + 1);
+      <span class="${countClass}">${count}</span></div>`;
+    if (hasChildren && expanded) {
+      html += `<div class="knowledge-tree-children">${renderSidebarKnowledgeTreeV2(node.children, depth + 1)}</div>`;
     }
     return html;
   }).join('');
@@ -3877,6 +3920,7 @@ function ensureKnowledgeState(opts) {
   getKnowledgeRootNodes();
   knowledgeNotes = knowledgeNotes && typeof knowledgeNotes === 'object' ? knowledgeNotes : {};
   normalizeKnowledgeNodes(getKnowledgeRootNodes(), 1);
+  ensureKnowledgeExpandedDefaults();
   let changed = false;
   errors.forEach(item => {
     if (ensureKnowledgeBindingForError(item)) changed = true;
@@ -3904,6 +3948,32 @@ function findKnowledgeBranchForModal(createIfMissing) {
   const root = getKnowledgeRootNodes().find(node => node.title === path.rootTitle);
   const sub = root && (root.children || []).find(node => node.title === path.subTitle);
   return sub && (sub.children || []).find(node => node.title === path.sub2Title);
+}
+function ensureKnowledgeExpandedDefaults() {
+  if (knowledgeExpandedLoaded) return;
+  getKnowledgeRootNodes().forEach(node => knowledgeExpanded.add(node.id));
+  knowledgeExpandedLoaded = true;
+}
+function expandKnowledgePath(nodeId) {
+  let current = getKnowledgeNodeById(nodeId);
+  while (current) {
+    knowledgeExpanded.add(current.id);
+    current = findKnowledgeParent(current.id);
+  }
+  saveKnowledgeExpanded();
+}
+function isKnowledgeExpanded(node) {
+  if (!node || !node.children || !node.children.length) return false;
+  return knowledgeExpanded.has(node.id);
+}
+function toggleKnowledgeExpanded(nodeId, event) {
+  if (event) event.stopPropagation();
+  const node = getKnowledgeNodeById(nodeId);
+  if (!node || !node.children || !node.children.length) return;
+  if (knowledgeExpanded.has(node.id)) knowledgeExpanded.delete(node.id);
+  else knowledgeExpanded.add(node.id);
+  saveKnowledgeExpanded();
+  renderSidebar();
 }
 function syncKnowledgePickerHint(selectedLeafId) {
   const hint = document.getElementById('editKnowledgeHint');
@@ -3945,17 +4015,11 @@ function createKnowledgeLeafFromModal() {
     document.getElementById('editSubtype')?.value.trim() || '',
     document.getElementById('editSubSubtype')?.value.trim() || ''
   );
-  const title = prompt('输入新的知识点名称', fallback);
-  if (title === null) return;
-  const leaf = ensureKnowledgeChild(branch.children, normalizeKnowledgeTitle(title, fallback), 4, true);
-  if (!leaf.contentMd) {
-    leaf.contentMd = `# ${leaf.title}\n\n`;
-    leaf.updatedAt = new Date().toISOString();
-  }
-  ensureKnowledgeNoteRecord(leaf);
-  selectedKnowledgeNodeId = leaf.id;
-  refreshKnowledgePicker(leaf.id);
-  saveKnowledgeState();
+  openKnowledgeNodeModal('create-child', {
+    parentId: branch.id,
+    fallbackTitle: fallback,
+    afterSubmit: node => refreshKnowledgePicker(node.id)
+  });
 }
 function resolveKnowledgeNodeIdForSave(type, subtype, subSubtype) {
   const select = document.getElementById('editKnowledgeLeaf');
@@ -3976,6 +4040,7 @@ function setCurrentKnowledgeNode(nodeId, opts) {
   const options = opts || {};
   if (!nodeId) return;
   const resolvedId = resolveKnowledgeDisplayNodeId(nodeId);
+  expandKnowledgePath(resolvedId);
   selectedKnowledgeNodeId = resolvedId;
   knowledgeNodeFilter = options.applyFilter === false ? knowledgeNodeFilter : resolvedId;
   typeFilter = null;
@@ -4014,19 +4079,7 @@ function addKnowledgeLeafUnderSelected() {
   const current = getKnowledgeNodeById(selectedKnowledgeNodeId);
   const parent = current || findKnowledgeBranchForModal(true);
   const fallback = parent && parent.title ? `${parent.title}补充` : '新知识点';
-  const title = prompt('输入新的下级知识点名称', fallback);
-  if (title === null) return;
-  const child = ensureKnowledgeChild(parent.children, normalizeKnowledgeTitle(title, fallback), (parent.level || 1) + 1, true);
-  if (!child.contentMd) {
-    child.contentMd = `# ${child.title}\n\n`;
-    child.updatedAt = new Date().toISOString();
-  }
-  parent.isLeaf = false;
-  ensureKnowledgeNoteRecord(child);
-  selectedKnowledgeNodeId = child.id;
-  saveKnowledgeState();
-  renderNotesByType();
-  renderNotesPanelRight();
+  openKnowledgeNodeModal('create-child', { parentId: parent.id, fallbackTitle: fallback });
 }
 function getKnowledgePathOptions(leafOnly, excludeNodeId) {
   const options = [];
@@ -4066,26 +4119,162 @@ function isKnowledgeDescendant(nodeId, targetId) {
   if (!node) return false;
   return getKnowledgeDescendantNodeIds(node).includes(targetId);
 }
-function renameKnowledgeNode(nodeId) {
-  const node = getKnowledgeNodeById(nodeId);
-  if (!node) return;
-  const nextTitle = prompt('输入新的节点名称', node.title);
-  if (nextTitle === null) return;
-  const title = normalizeKnowledgeTitle(nextTitle, node.title);
-  if (title === node.title) return;
-  const parent = findKnowledgeParent(node.id);
-  const siblings = parent ? (parent.children || []) : getKnowledgeRootNodes();
-  if (siblings.some(item => item.id !== node.id && item.title === title)) {
+function getKnowledgeNodeModalTargetOptions(nodeId) {
+  return getKnowledgePathOptions(false, nodeId).filter(item => !isKnowledgeDescendant(nodeId, item.id));
+}
+function openKnowledgeNodeModal(mode, opts) {
+  ensureKnowledgeState();
+  knowledgeNodeModalState = Object.assign({
+    mode,
+    nodeId: null,
+    parentId: null,
+    targetId: null,
+    fallbackTitle: '',
+    afterSubmit: null
+  }, opts || {});
+  const titleEl = document.getElementById('knowledgeNodeModalTitle');
+  const subtitleEl = document.getElementById('knowledgeNodeModalSubtitle');
+  const titleGroup = document.getElementById('knowledgeNodeTitleGroup');
+  const titleLabel = document.getElementById('knowledgeNodeTitleLabel');
+  const titleInput = document.getElementById('knowledgeNodeTitleInput');
+  const targetGroup = document.getElementById('knowledgeNodeTargetGroup');
+  const searchInput = document.getElementById('knowledgeNodeTargetSearch');
+  if (!titleEl || !subtitleEl || !titleGroup || !titleLabel || !titleInput || !targetGroup || !searchInput) return;
+
+  const node = knowledgeNodeModalState.nodeId ? getKnowledgeNodeById(knowledgeNodeModalState.nodeId) : null;
+  const parent = knowledgeNodeModalState.parentId ? getKnowledgeNodeById(knowledgeNodeModalState.parentId) : null;
+
+  if (mode === 'rename') {
+    if (!node) return;
+    titleEl.textContent = '重命名知识点';
+    subtitleEl.textContent = `当前节点：${collapseKnowledgePathTitles(getKnowledgePathTitles(node.id)).join(' > ')}`;
+    titleLabel.textContent = '新的节点名称';
+    titleInput.value = node ? node.title : '';
+    titleGroup.style.display = '';
+    targetGroup.style.display = 'none';
+  } else if (mode === 'move') {
+    if (!node) return;
+    titleEl.textContent = '移动知识点';
+    subtitleEl.textContent = `当前节点：${collapseKnowledgePathTitles(getKnowledgePathTitles(node.id)).join(' > ')}。请选择新的父节点。`;
+    titleGroup.style.display = 'none';
+    targetGroup.style.display = '';
+    searchInput.value = '';
+    knowledgeNodeModalState.targetId = null;
+    renderKnowledgeNodeTargetOptions();
+  } else {
+    if (!parent) return;
+    titleEl.textContent = '新建下级知识点';
+    subtitleEl.textContent = `父节点：${collapseKnowledgePathTitles(getKnowledgePathTitles(parent.id)).join(' > ')}`;
+    titleLabel.textContent = '知识点名称';
+    titleInput.value = knowledgeNodeModalState.fallbackTitle || '';
+    titleGroup.style.display = '';
+    targetGroup.style.display = 'none';
+  }
+
+  openModal('knowledgeNodeModal');
+  setTimeout(() => {
+    if (mode === 'move') searchInput.focus();
+    else titleInput.focus();
+    if (mode !== 'move') titleInput.select();
+  }, 10);
+}
+function closeKnowledgeNodeModal() {
+  knowledgeNodeModalState = { mode: '', nodeId: null, parentId: null, targetId: null, fallbackTitle: '' };
+  closeModal('knowledgeNodeModal');
+}
+function handleKnowledgeNodeTitleKeydown(event) {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    submitKnowledgeNodeModal();
+  }
+}
+function renderKnowledgeNodeTargetOptions() {
+  const list = document.getElementById('knowledgeNodeTargetList');
+  const searchInput = document.getElementById('knowledgeNodeTargetSearch');
+  if (!list || !searchInput || knowledgeNodeModalState.mode !== 'move') return;
+  const keyword = searchInput.value.trim().toLowerCase();
+  const filtered = getKnowledgeNodeModalTargetOptions(knowledgeNodeModalState.nodeId).filter(item => {
+    if (!keyword) return true;
+    return item.label.toLowerCase().includes(keyword) || item.node.title.toLowerCase().includes(keyword);
+  });
+  if (!filtered.length) {
+    list.innerHTML = '<div class="knowledge-move-empty">没有匹配的目标知识点</div>';
+    return;
+  }
+  list.innerHTML = filtered.map(item => {
+    const active = knowledgeNodeModalState.targetId === item.id ? ' active' : '';
+    return `<div class="knowledge-move-item${active}" onclick="selectKnowledgeNodeModalTarget('${item.id}')">
+      <div class="knowledge-move-item-title">${escapeHtml(item.node.title)}</div>
+      <div class="knowledge-move-item-path">${escapeHtml(item.label)}</div>
+    </div>`;
+  }).join('');
+}
+function selectKnowledgeNodeModalTarget(nodeId) {
+  knowledgeNodeModalState.targetId = nodeId;
+  renderKnowledgeNodeTargetOptions();
+}
+function submitKnowledgeNodeModal() {
+  const state = knowledgeNodeModalState || {};
+  if (state.mode === 'rename') {
+    const node = getKnowledgeNodeById(state.nodeId);
+    if (!node) return;
+    const nextTitle = document.getElementById('knowledgeNodeTitleInput')?.value || '';
+    const title = normalizeKnowledgeTitle(nextTitle, node.title);
+    if (title === node.title) {
+      closeKnowledgeNodeModal();
+      return;
+    }
+    const parent = findKnowledgeParent(node.id);
+    const siblings = parent ? (parent.children || []) : getKnowledgeRootNodes();
+    if (siblings.some(item => item.id !== node.id && item.title === title)) {
+      showToast('同级下已存在同名节点', 'error');
+      return;
+    }
+    node.title = title;
+    node.updatedAt = new Date().toISOString();
+    saveKnowledgeState();
+    closeKnowledgeNodeModal();
+    showToast('节点已重命名', 'success');
+    renderSidebar();
+    renderNotesByType();
+    renderNotesPanelRight();
+    return;
+  }
+  if (state.mode === 'move') {
+    if (!state.targetId) {
+      showToast('请选择目标父节点', 'warning');
+      return;
+    }
+    const moved = moveKnowledgeNodeToTarget(state.nodeId, state.targetId, { silent: false });
+    if (moved) closeKnowledgeNodeModal();
+    return;
+  }
+  const parent = getKnowledgeNodeById(state.parentId);
+  if (!parent) return;
+  const rawTitle = document.getElementById('knowledgeNodeTitleInput')?.value || '';
+  const title = normalizeKnowledgeTitle(rawTitle, state.fallbackTitle || '新知识点');
+  if ((parent.children || []).some(item => item.title === title)) {
     showToast('同级下已存在同名节点', 'error');
     return;
   }
-  node.title = title;
-  node.updatedAt = new Date().toISOString();
+  const child = ensureKnowledgeChild(parent.children, title, (parent.level || 1) + 1, true);
+  if (!child.contentMd) {
+    child.contentMd = `# ${child.title}\n\n`;
+    child.updatedAt = new Date().toISOString();
+  }
+  parent.isLeaf = false;
+  ensureKnowledgeNoteRecord(child);
+  expandKnowledgePath(parent.id);
   saveKnowledgeState();
-  showToast('节点已重命名', 'success');
-  renderSidebar();
-  renderNotesByType();
-  renderNotesPanelRight();
+  closeKnowledgeNodeModal();
+  if (typeof state.afterSubmit === 'function') state.afterSubmit(child);
+  setCurrentKnowledgeNode(child.id, { switchTab: false });
+  showToast(`已新建知识点：${child.title}`, 'success');
+}
+function renameKnowledgeNode(nodeId) {
+  const node = getKnowledgeNodeById(nodeId);
+  if (!node) return;
+  openKnowledgeNodeModal('rename', { nodeId: node.id });
 }
 function moveKnowledgeNodeToTarget(nodeId, targetId, opts) {
   const node = getKnowledgeNodeById(nodeId);
@@ -4116,6 +4305,7 @@ function moveKnowledgeNodeToTarget(nodeId, targetId, opts) {
   target.children.push(node);
   oldParent.isLeaf = oldList.length === 0;
   target.isLeaf = false;
+  expandKnowledgePath(target.id);
   saveKnowledgeState();
   if (!opts || !opts.silent) showToast(`节点已移动到：${collapseKnowledgePathTitles(getKnowledgePathTitles(target.id)).join(' > ')}`, 'success');
   setCurrentKnowledgeNode(node.id, { switchTab: false });
@@ -4124,20 +4314,11 @@ function moveKnowledgeNodeToTarget(nodeId, targetId, opts) {
 function moveKnowledgeNode(nodeId) {
   const node = getKnowledgeNodeById(nodeId);
   if (!node) return;
-  const options = getKnowledgePathOptions(false, nodeId).filter(item => !isKnowledgeDescendant(nodeId, item.id));
-  if (!options.length) {
+  if (!getKnowledgeNodeModalTargetOptions(nodeId).length) {
     showToast('暂无可移动到的目标节点', 'warning');
     return;
   }
-  const text = options.map((item, idx) => `${idx + 1}. ${item.label}`).join('\n');
-  const answer = prompt(`输入编号选择新的父节点：\n\n${text}`, '1');
-  if (answer === null) return;
-  const target = options[Number(answer) - 1];
-  if (!target) {
-    showToast('选择无效', 'error');
-    return;
-  }
-  moveKnowledgeNodeToTarget(node.id, target.id);
+  openKnowledgeNodeModal('move', { nodeId: node.id });
 }
 function deleteKnowledgeNode(nodeId) {
   const node = getKnowledgeNodeById(nodeId);
@@ -4161,6 +4342,8 @@ function deleteKnowledgeNode(nodeId) {
   siblings.splice(idx, 1, ...(node.children || []));
   parent.isLeaf = siblings.length === 0;
   delete knowledgeNotes[node.id];
+  knowledgeExpanded.delete(node.id);
+  saveKnowledgeExpanded();
   if (selectedKnowledgeNodeId === node.id) selectedKnowledgeNodeId = parent.id;
   saveData();
   saveKnowledgeState();
