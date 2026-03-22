@@ -78,6 +78,18 @@ def init_db() -> None:
               updated_at TEXT NOT NULL,
               FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             );
+
+            CREATE TABLE IF NOT EXISTS user_origin_status (
+              user_id TEXT NOT NULL,
+              origin TEXT NOT NULL,
+              last_local_change_at TEXT NOT NULL DEFAULT '',
+              last_loaded_at TEXT NOT NULL DEFAULT '',
+              last_saved_at TEXT NOT NULL DEFAULT '',
+              last_backup_updated_at TEXT NOT NULL DEFAULT '',
+              updated_at TEXT NOT NULL,
+              PRIMARY KEY (user_id, origin),
+              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
             """
         )
 
@@ -171,6 +183,13 @@ class BackupPayload(BaseModel):
     knowledgeNotes: dict[str, Any] = Field(default_factory=dict)
 
 
+class OriginStatusPayload(BaseModel):
+    localChangedAt: Optional[str] = None
+    lastLoadedAt: Optional[str] = None
+    lastSavedAt: Optional[str] = None
+    lastBackupUpdatedAt: Optional[str] = None
+
+
 app = FastAPI(title="xingce_v3_lab")
 app.add_middleware(
     CORSMiddleware,
@@ -196,6 +215,61 @@ def require_user(token: Optional[str]) -> dict[str, Any]:
     if not user:
         raise HTTPException(status_code=401, detail="unauthorized")
     return user
+
+
+def upsert_origin_status(user_id: str, origin: str, **fields: str) -> None:
+    origin = normalize_origin(origin or "")
+    if not origin:
+        return
+
+    allowed = {
+        "last_local_change_at",
+        "last_loaded_at",
+        "last_saved_at",
+        "last_backup_updated_at",
+    }
+    payload = {key: value for key, value in fields.items() if key in allowed and value is not None}
+    now = utcnow().isoformat()
+    columns = ["user_id", "origin", "updated_at", *payload.keys()]
+    values = [user_id, origin, now, *payload.values()]
+    updates = ["updated_at = excluded.updated_at", *[f"{key} = excluded.{key}" for key in payload.keys()]]
+
+    with get_conn() as conn:
+        conn.execute(
+            f"""
+            INSERT INTO user_origin_status({", ".join(columns)})
+            VALUES ({", ".join("?" for _ in columns)})
+            ON CONFLICT(user_id, origin) DO UPDATE SET
+              {", ".join(updates)}
+            """,
+            values,
+        )
+        conn.commit()
+
+
+def list_origin_statuses(user_id: str) -> list[dict[str, Any]]:
+    with get_conn() as conn:
+        rows = conn.execute(
+            """
+            SELECT origin, last_local_change_at, last_loaded_at, last_saved_at,
+                   last_backup_updated_at, updated_at
+            FROM user_origin_status
+            WHERE user_id = ?
+            ORDER BY updated_at DESC, origin ASC
+            """,
+            (user_id,),
+        ).fetchall()
+    return [
+        {
+            "origin": row["origin"],
+            "lastLocalChangeAt": row["last_local_change_at"],
+            "lastLoadedAt": row["last_loaded_at"],
+            "lastSavedAt": row["last_saved_at"],
+            "lastBackupUpdatedAt": row["last_backup_updated_at"],
+            "updatedAt": row["updated_at"],
+        }
+        for row in rows
+    ]
 
 
 @app.get("/health")
@@ -289,25 +363,33 @@ def me(xingce_session: Optional[str] = Cookie(default=None)) -> dict[str, Any]:
 
 
 @app.get("/api/backup")
-def get_backup(xingce_session: Optional[str] = Cookie(default=None)) -> dict[str, Any]:
+def get_backup(request: Request, xingce_session: Optional[str] = Cookie(default=None)) -> dict[str, Any]:
     user = require_user(xingce_session)
+    current_origin = infer_request_origin(request)
     with get_conn() as conn:
         row = conn.execute(
             "SELECT payload_json, updated_at FROM user_backups WHERE user_id = ?",
             (user["id"],),
         ).fetchone()
     if not row:
-        return {"exists": False}
+        return {
+            "exists": False,
+            "currentOrigin": current_origin,
+            "origins": list_origin_statuses(user["id"]),
+        }
     return {
         "exists": True,
+        "currentOrigin": current_origin,
         "updatedAt": row["updated_at"],
         "backup": json.loads(row["payload_json"]),
+        "origins": list_origin_statuses(user["id"]),
     }
 
 
 @app.put("/api/backup")
-def put_backup(payload: BackupPayload, xingce_session: Optional[str] = Cookie(default=None)) -> dict[str, Any]:
+def put_backup(payload: BackupPayload, request: Request, xingce_session: Optional[str] = Cookie(default=None)) -> dict[str, Any]:
     user = require_user(xingce_session)
+    current_origin = infer_request_origin(request)
     updated_at = utcnow().isoformat()
     body = payload.dict()
     if not body.get("exportTime"):
@@ -326,7 +408,43 @@ def put_backup(payload: BackupPayload, xingce_session: Optional[str] = Cookie(de
         )
         conn.commit()
 
-    return {"ok": True, "updatedAt": updated_at}
+    upsert_origin_status(
+        user["id"],
+        current_origin,
+        last_local_change_at=updated_at,
+        last_saved_at=updated_at,
+        last_backup_updated_at=updated_at,
+    )
+
+    return {
+        "ok": True,
+        "updatedAt": updated_at,
+        "currentOrigin": current_origin,
+        "origins": list_origin_statuses(user["id"]),
+    }
+
+
+@app.post("/api/origin-status")
+def put_origin_status(
+    payload: OriginStatusPayload,
+    request: Request,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    user = require_user(xingce_session)
+    current_origin = infer_request_origin(request)
+    upsert_origin_status(
+        user["id"],
+        current_origin,
+        last_local_change_at=payload.localChangedAt,
+        last_loaded_at=payload.lastLoadedAt,
+        last_saved_at=payload.lastSavedAt,
+        last_backup_updated_at=payload.lastBackupUpdatedAt,
+    )
+    return {
+        "ok": True,
+        "currentOrigin": current_origin,
+        "origins": list_origin_statuses(user["id"]),
+    }
 
 
 @app.get("/api/debug/users")

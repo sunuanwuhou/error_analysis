@@ -51,6 +51,16 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .top-bar h1{font-size:15px;font-weight:700;color:#2c3e50;white-space:nowrap}
 .toolbar-spacer{margin-left:auto}
 .cloud-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cloud-meta{display:flex;flex-direction:column;gap:2px;align-items:flex-end;min-width:180px}
+.cloud-status-line{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.cloud-status-badge{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;background:#f5f5f5;color:#666;font-size:11px;border:1px solid #e5e7eb}
+.cloud-status-badge.synced{background:#f0fdf4;color:#166534;border-color:#bbf7d0}
+.cloud-status-badge.dirty{background:#fff7ed;color:#c2410c;border-color:#fed7aa}
+.cloud-status-badge.saving{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}
+.cloud-status-badge.error{background:#fef2f2;color:#b91c1c;border-color:#fecaca}
+.cloud-status-hint{font-size:11px;color:#888;line-height:1.4;text-align:right}
+.cloud-origin-list{font-size:11px;color:#666;line-height:1.45;text-align:right;max-width:520px}
+.cloud-origin-list .cloud-origin-alert{color:#c2410c;font-weight:600}
 .more-menu{position:relative}
 .more-menu-panel{display:none;position:absolute;top:calc(100% + 8px);left:0;background:#fff;border:1px solid #e8e8e8;border-radius:10px;box-shadow:0 14px 32px rgba(0,0,0,.12);padding:8px;min-width:180px;z-index:120}
 .more-menu.open .more-menu-panel{display:flex;flex-direction:column;gap:6px}
@@ -535,6 +545,10 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .knowledge-workspace-kicker{font-size:11px;color:#999;font-weight:700;letter-spacing:.4px;text-transform:uppercase}
 .knowledge-workspace-title{font-size:18px;font-weight:700;color:#2c3e50;line-height:1.3;word-break:break-word}
 .knowledge-workspace-path{font-size:12px;color:#888;line-height:1.6;word-break:break-word}
+.knowledge-outline-bar{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.knowledge-outline-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid #f0d7c2;border-radius:999px;background:#fffaf3;color:#9a3412;font-size:12px;cursor:pointer}
+.knowledge-outline-pill:hover{background:#fff2df;border-color:#fdba74}
+.knowledge-outline-empty{margin-top:6px;font-size:12px;color:#a16207}
 .knowledge-workspace-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 .knowledge-children-bar{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
 .knowledge-node-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #e5e7eb;border-radius:999px;background:#fff;cursor:pointer;font-size:12px;color:#475569}
@@ -593,8 +607,22 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 /* ===== 右侧面板笔记标题条目 ===== */
 .note-heading-item{padding:3px 8px 3px 18px;font-size:11px;color:#888;cursor:pointer;transition:.15s;line-height:1.6;border-left:2px solid transparent;margin-left:6px}
 .note-heading-item:hover{color:#e74c3c;background:#fff2f0;border-left-color:#e74c3c}
+.note-heading-item.active{color:#e74c3c;background:#fff2f0;border-left-color:#e74c3c;font-weight:600}
 .note-heading-h2{padding-left:24px}
 .note-heading-h3{padding-left:32px;font-size:10.5px}
+.note-md-heading{position:relative;scroll-margin-top:18px}
+.note-md-heading:hover .note-md-anchor{opacity:1}
+.note-md-anchor{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;margin-right:6px;border-radius:999px;color:#e74c3c;text-decoration:none;font-size:11px;opacity:0;transition:.15s;background:#fff2f0;vertical-align:middle}
+.note-md-anchor:hover{background:#ffe3df}
+.note-toc{margin:0 0 14px;padding:10px 12px;border:1px solid #f0e2cf;border-radius:10px;background:#fffaf3}
+.note-toc-title{font-size:11px;font-weight:700;color:#b45309;letter-spacing:.4px;text-transform:uppercase;margin-bottom:8px}
+.note-toc-list{display:flex;flex-direction:column;gap:4px}
+.note-toc-item{padding:4px 8px;border-radius:6px;color:#7c5a2f;cursor:pointer;font-size:12px;line-height:1.5}
+.note-toc-item:hover{background:#fff2df;color:#c2410c}
+.note-toc-item.lv2{padding-left:18px}
+.note-toc-item.lv3{padding-left:28px}
+.note-toc-item.lv4{padding-left:38px}
+.note-toc-inline{margin:10px 14px 0}
 /* ===== @media print ===== */
 @media print{
   body{background:#fff!important;overflow:visible!important}
@@ -662,7 +690,14 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
     </div>
     <span class="toolbar-spacer"></span>
     <div class="cloud-controls">
-      <span id="cloudUserBadge" style="font-size:12px;color:#666">Cloud: offline</span>
+      <div class="cloud-meta">
+        <div class="cloud-status-line">
+          <span id="cloudUserBadge" style="font-size:12px;color:#666">Cloud: offline</span>
+          <span id="cloudSyncBadge" class="cloud-status-badge">idle</span>
+        </div>
+        <div id="cloudSyncHint" class="cloud-status-hint">Local cache is per origin.</div>
+        <div id="cloudOriginStatus" class="cloud-origin-list"></div>
+      </div>
       <button class="btn btn-secondary" onclick="loadCloudBackup()">Cloud Load</button>
       <button class="btn btn-secondary" onclick="saveCloudBackup()">Cloud Save</button>
       <button class="btn btn-secondary" id="cloudLogoutBtn" onclick="logoutCloud()">Logout</button>
@@ -1415,6 +1450,11 @@ let cloudUser = null;
 let cloudSaveTimer = null;
 let cloudBusy = false;
 let pendingCloudSave = false;
+let cloudSyncState = 'idle';
+let cloudSyncMessage = '';
+let cloudSyncUpdatedAt = '';
+let cloudOriginStatuses = [];
+let cloudOriginStatusTimer = null;
 let cloudMeta = getDefaultCloudMeta();
 function getFullBackupPayload() {
   return {
@@ -1435,7 +1475,8 @@ function getDefaultCloudMeta() {
     restoreDecisions: {},
     lastSeenBackupAt: '',
     lastLoadedAt: '',
-    lastSavedAt: ''
+    lastSavedAt: '',
+    lastLocalChangeAt: ''
   };
 }
 function saveCloudMeta() {
@@ -1443,6 +1484,84 @@ function saveCloudMeta() {
 }
 function getCloudOriginKey() {
   return window.location.origin || 'unknown';
+}
+function formatCloudTime(value) {
+  if (!value) return '';
+  const dt = new Date(value);
+  if (Number.isNaN(dt.getTime())) return '';
+  const mm = String(dt.getMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getDate()).padStart(2, '0');
+  const hh = String(dt.getHours()).padStart(2, '0');
+  const mi = String(dt.getMinutes()).padStart(2, '0');
+  const ss = String(dt.getSeconds()).padStart(2, '0');
+  return `${mm}-${dd} ${hh}:${mi}:${ss}`;
+}
+function toCloudTimeMs(value) {
+  if (!value) return 0;
+  const ms = new Date(value).getTime();
+  return Number.isNaN(ms) ? 0 : ms;
+}
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+function getOriginDisplayTime(item) {
+  if (!item) return '';
+  return item.lastLocalChangeAt || item.lastSavedAt || item.lastLoadedAt || item.lastBackupUpdatedAt || item.updatedAt || '';
+}
+function mergeCurrentOriginStatus() {
+  const origin = getCloudOriginKey();
+  const current = (cloudOriginStatuses || []).find(item => item.origin === origin) || { origin };
+  return {
+    ...current,
+    lastLocalChangeAt: cloudMeta.lastLocalChangeAt || current.lastLocalChangeAt || '',
+    lastLoadedAt: cloudMeta.lastLoadedAt || current.lastLoadedAt || '',
+    lastSavedAt: cloudMeta.lastSavedAt || current.lastSavedAt || '',
+    lastBackupUpdatedAt: cloudMeta.lastSeenBackupAt || current.lastBackupUpdatedAt || ''
+  };
+}
+function updateCloudOriginStatuses(items) {
+  cloudOriginStatuses = Array.isArray(items) ? items : [];
+}
+async function pushOriginStatus(update) {
+  if (!cloudUser) return;
+  try {
+    const res = await fetch('/api/origin-status', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(update || {})
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) updateCloudOriginStatuses(data.origins);
+  } catch (e) {
+    console.warn('origin status sync skipped:', e);
+  } finally {
+    renderCloudUi();
+  }
+}
+function scheduleOriginStatusSync(update) {
+  if (!cloudUser) return;
+  clearTimeout(cloudOriginStatusTimer);
+  cloudOriginStatusTimer = setTimeout(() => {
+    pushOriginStatus(update);
+  }, 350);
+}
+function markLocalChange() {
+  if (!cloudMeta || typeof cloudMeta !== 'object') cloudMeta = getDefaultCloudMeta();
+  cloudMeta.lastLocalChangeAt = new Date().toISOString();
+  saveCloudMeta();
+  scheduleOriginStatusSync({ localChangedAt: cloudMeta.lastLocalChangeAt });
+}
+function setCloudSyncState(state, message, at) {
+  cloudSyncState = state || 'idle';
+  cloudSyncMessage = message || '';
+  if (at) cloudSyncUpdatedAt = at;
+  renderCloudUi();
 }
 function hasLocalWorkspaceData() {
   return Boolean(
@@ -1464,19 +1583,32 @@ function rememberCloudDecision(updatedAt, action) {
       at: new Date().toISOString()
     };
   }
-  if (action === 'loaded') cloudMeta.lastLoadedAt = new Date().toISOString();
-  if (action === 'saved') cloudMeta.lastSavedAt = new Date().toISOString();
+  if (action === 'loaded') {
+    cloudMeta.lastLoadedAt = updatedAt || new Date().toISOString();
+    cloudMeta.lastLocalChangeAt = updatedAt || cloudMeta.lastLocalChangeAt || '';
+  }
+  if (action === 'saved') {
+    cloudMeta.lastSavedAt = updatedAt || new Date().toISOString();
+    cloudMeta.lastLocalChangeAt = updatedAt || cloudMeta.lastLocalChangeAt || '';
+  }
   saveCloudMeta();
 }
 async function fetchCloudBackupData() {
   const res = await fetch('/api/backup', { credentials: 'include' });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.detail || data.error || 'load failed');
+  updateCloudOriginStatuses(data.origins);
   return data;
 }
 function applyCloudBackup(data, updatedAt, opts) {
   _applyFullBackup(data, 'restore');
   rememberCloudDecision(updatedAt || data.exportTime || '', 'loaded');
+  scheduleOriginStatusSync({
+    localChangedAt: updatedAt || data.exportTime || '',
+    lastLoadedAt: updatedAt || data.exportTime || '',
+    lastBackupUpdatedAt: updatedAt || data.exportTime || ''
+  });
+  setCloudSyncState('synced', 'Cloud backup loaded into this entry', updatedAt || data.exportTime || '');
   if (!opts || !opts.silent) showToast('Cloud backup loaded', 'success');
 }
 async function maybeRestoreCloudBackup() {
@@ -1497,6 +1629,7 @@ async function maybeRestoreCloudBackup() {
     const ok = confirm('检测到该账号已有云端备份。是否恢复到当前入口？\n\n选择“取消”会保留当前入口本地数据，你仍可稍后点击 Cloud Load 手动恢复。');
     if (!ok) {
       rememberCloudDecision(updatedAt, 'kept_local');
+      setCloudSyncState('dirty', 'Keeping local entry data; cloud backup not loaded', updatedAt);
       showToast('已保留当前入口本地数据，可随时点击 Cloud Load 恢复云端', 'warning');
       return;
     }
@@ -1510,8 +1643,11 @@ async function maybeRestoreCloudBackup() {
 }
 function renderCloudUi() {
   const badge = document.getElementById('cloudUserBadge');
+  const syncBadge = document.getElementById('cloudSyncBadge');
+  const syncHint = document.getElementById('cloudSyncHint');
+  const originStatus = document.getElementById('cloudOriginStatus');
   const logoutBtn = document.getElementById('cloudLogoutBtn');
-  if (!badge || !logoutBtn) return;
+  if (!badge || !logoutBtn || !syncBadge || !syncHint || !originStatus) return;
   if (cloudUser) {
     badge.textContent = 'Cloud: ' + cloudUser.username;
     logoutBtn.style.display = '';
@@ -1519,6 +1655,44 @@ function renderCloudUi() {
     badge.textContent = 'Cloud: offline';
     logoutBtn.style.display = '';
   }
+  syncBadge.className = `cloud-status-badge ${cloudSyncState}`;
+  syncBadge.textContent = ({
+    idle: 'idle',
+    dirty: 'local changed',
+    saving: 'syncing',
+    synced: 'synced',
+    error: 'sync failed'
+  })[cloudSyncState] || cloudSyncState;
+  const currentOrigin = mergeCurrentOriginStatus();
+  const originText = currentOrigin.origin || getCloudOriginKey();
+  const timeText = formatCloudTime(cloudSyncUpdatedAt || cloudMeta.lastSavedAt || cloudMeta.lastLoadedAt || '');
+  const cloudUpdatedText = formatCloudTime(cloudMeta.lastSeenBackupAt || currentOrigin.lastBackupUpdatedAt || '');
+  const localUpdatedText = formatCloudTime(currentOrigin.lastLocalChangeAt || currentOrigin.lastSavedAt || currentOrigin.lastLoadedAt || '');
+  syncHint.textContent = [
+    `账号: ${cloudUser ? cloudUser.username : 'offline'}`,
+    `当前域名: ${originText}`,
+    cloudSyncMessage || '',
+    timeText ? `Last event: ${timeText}` : '',
+    localUpdatedText ? `当前最后修改: ${localUpdatedText}` : '',
+    cloudUpdatedText ? `云端备份: ${cloudUpdatedText}` : '',
+    'Local cache is per origin.'
+  ].filter(Boolean).join(' | ');
+  const currentMs = toCloudTimeMs(getOriginDisplayTime(currentOrigin));
+  const newerOrigins = (cloudOriginStatuses || []).filter(item => item.origin !== originText).filter(item => currentMs && currentMs > toCloudTimeMs(getOriginDisplayTime(item)));
+  const lines = [];
+  if (newerOrigins.length) lines.push(`<div class="cloud-origin-alert">当前域名修改时间更新，已晚于其他 ${newerOrigins.length} 个入口</div>`);
+  const mergedItems = [currentOrigin].concat((cloudOriginStatuses || []).filter(item => item.origin !== originText));
+  mergedItems.forEach(item => {
+    const label = item.origin === originText ? '当前' : '其他';
+    const localText = formatCloudTime(item.lastLocalChangeAt || item.lastSavedAt || item.lastLoadedAt || '');
+    const cloudText = formatCloudTime(item.lastBackupUpdatedAt || '');
+    const suffix = [
+      localText ? `本地: ${localText}` : '',
+      cloudText ? `云端: ${cloudText}` : ''
+    ].filter(Boolean).join(' | ');
+    lines.push(`<div>${escapeHtml(label)} ${escapeHtml(item.origin)}${suffix ? ` | ${escapeHtml(suffix)}` : ''}</div>`);
+  });
+  originStatus.innerHTML = lines.join('');
 }
 async function refreshCloudSession() {
   try {
@@ -1533,7 +1707,9 @@ async function refreshCloudSession() {
     window.location.replace('/login');
     return;
   }
+  setCloudSyncState('idle', 'Logged in. Waiting for local/cloud actions.', '');
   await maybeRestoreCloudBackup();
+  renderCloudUi();
   if (pendingCloudSave) {
     pendingCloudSave = false;
     scheduleCloudSave();
@@ -1555,6 +1731,7 @@ async function loadCloudBackup(opts) {
   }
   if (cloudBusy) return;
   cloudBusy = true;
+  setCloudSyncState('saving', 'Loading cloud backup', '');
   try {
     const data = await fetchCloudBackupData();
     if (!data.exists || !data.backup) {
@@ -1569,6 +1746,7 @@ async function loadCloudBackup(opts) {
     }
     applyCloudBackup(data.backup, updatedAt, opts);
   } catch (e) {
+    setCloudSyncState('error', e.message || 'Cloud load failed', '');
     if (!opts.silent) showToast(e.message || 'Cloud load failed', 'error');
   } finally {
     cloudBusy = false;
@@ -1582,6 +1760,7 @@ async function saveCloudBackup(opts) {
   }
   if (cloudBusy) return;
   cloudBusy = true;
+  setCloudSyncState('saving', 'Saving local changes to cloud', '');
   try {
     const res = await fetch('/api/backup', {
       method: 'PUT',
@@ -1591,20 +1770,26 @@ async function saveCloudBackup(opts) {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.detail || data.error || 'save failed');
+    updateCloudOriginStatuses(data.origins);
     rememberCloudDecision(data.updatedAt || '', 'saved');
+    setCloudSyncState('synced', 'Local changes saved to cloud', data.updatedAt || '');
     if (!opts.silent) showToast('Cloud backup saved', 'success');
   } catch (e) {
+    setCloudSyncState('error', e.message || 'Cloud save failed', '');
     if (!opts.silent) showToast(e.message || 'Cloud save failed', 'error');
   } finally {
     cloudBusy = false;
   }
 }
 function scheduleCloudSave() {
+  markLocalChange();
   if (!cloudUser) {
     pendingCloudSave = true;
+    setCloudSyncState('dirty', 'Local changes pending until login', '');
     return;
   }
   clearTimeout(cloudSaveTimer);
+  setCloudSyncState('dirty', 'Waiting 1.2s before auto-save', '');
   cloudSaveTimer = setTimeout(() => {
     saveCloudBackup({ silent: true });
   }, 1200);
@@ -1782,11 +1967,47 @@ function getInitialData() {
 // ============================================================
 // Markdown 渲染
 // ============================================================
-function renderMd(raw) {
+function makeStableDomId(prefix, seed) {
+  const text = String(seed || '');
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) {
+    hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
+  }
+  return `${prefix}-${Math.abs(hash)}`;
+}
+function getLegacyNoteAnchorPrefix(type) {
+  return makeStableDomId('legacy-note', type || 'default');
+}
+function getKnowledgeNoteAnchorPrefix(nodeId) {
+  return makeStableDomId('knowledge-note', nodeId || 'default');
+}
+function getNoteHeadingAnchorId(anchorPrefix, headingIndex) {
+  return `${anchorPrefix}-h-${headingIndex}`;
+}
+function encodeInlineValue(value) {
+  return encodeURIComponent(String(value || ''));
+}
+function scrollToRenderedAnchor(anchorId, opts) {
+  const target = document.getElementById(anchorId);
+  if (!target) return false;
+  target.scrollIntoView({ behavior: (opts && opts.behavior) || 'smooth', block: 'start' });
+  target.style.background = '#fff3cd';
+  setTimeout(() => { target.style.background = ''; }, 1800);
+  return true;
+}
+function jumpToRenderedAnchor(anchorId) {
+  scrollToRenderedAnchor(anchorId, { behavior: 'smooth' });
+}
+function jumpToNoteHeadingByEncoded(encodedType, headingIdx) {
+  jumpToNoteHeading(decodeURIComponent(encodedType), headingIdx);
+}
+function renderMd(raw, opts) {
   if (!raw||!raw.trim()) return '';
   const lines = raw.split('\n');
   const out = [];
   let i = 0;
+  let headingIndex = 0;
+  const anchorPrefix = opts && opts.anchorPrefix ? opts.anchorPrefix : '';
   while (i < lines.length) {
     const line = lines[i];
     // 代码块
@@ -1811,7 +2032,16 @@ function renderMd(raw) {
     }
     // 标题
     const hm = line.match(/^(#{1,4}) (.*)/);
-    if (hm) { const lv=Math.min(hm[1].length+1,4); out.push(`<h${lv}>${mdInline(hm[2])}</h${lv}>`); i++; continue; }
+    if (hm) {
+      const lv=Math.min(hm[1].length+1,4);
+      const anchorId = anchorPrefix ? getNoteHeadingAnchorId(anchorPrefix, headingIndex) : '';
+      const anchorHtml = anchorId ? `<a class="note-md-anchor" href="javascript:void(0)" onclick="jumpToRenderedAnchor('${anchorId}')" title="Jump to heading">#</a>` : '';
+      const attr = anchorId ? ` id="${anchorId}" data-heading-index="${headingIndex}"` : '';
+      out.push(`<h${lv} class="note-md-heading"${attr} onclick="${anchorId ? `jumpToRenderedAnchor('${anchorId}')` : ''}" style="${anchorId ? 'cursor:pointer' : ''}">${anchorHtml}${mdInline(hm[2])}</h${lv}>`);
+      headingIndex++;
+      i++;
+      continue;
+    }
     // 列表（连续收集成 ul）
     if (/^[-•] /.test(line)) {
       const items = [];
@@ -5118,6 +5348,7 @@ function renderKnowledgeNotesView() {
         <div class="note-split-preview" style="width:100%">
           <div class="note-split-label">📂 ${escapeHtml(currentNode.title)}</div>
           <div class="note-preview-scroll notes-content" id="noteSplitPreview" style="padding:18px 20px">
+            <div class="note-toc"><div class="note-toc-title">Outline</div><div class="note-toc-list"><div class="note-toc-item">Current node is a folder. Select a leaf node to view Markdown headings.</div></div></div>
             <p style="margin:0 0 12px;color:#666;line-height:1.8">当前节点是目录节点，不直接编辑 Markdown。关联错题会固定显示在右侧。</p>
             ${childItems ? `<div style="display:flex;gap:8px;flex-wrap:wrap">${childItems}</div>` : '<div style="color:#bbb;font-size:12px">暂无下级知识点</div>'}
           </div>
@@ -5127,8 +5358,10 @@ function renderKnowledgeNotesView() {
     return;
   }
   const note = knowledgeNotes[selectedKnowledgeNodeId] || { title: currentNode.title, content: '' };
+  const noteAnchorPrefix = getKnowledgeNoteAnchorPrefix(currentNode.id);
+  const tocHtml = renderNoteToc(note.content || '', noteAnchorPrefix);
   const previewHtml = note.content
-    ? renderMd(note.content)
+    ? renderMd(note.content, { anchorPrefix: noteAnchorPrefix })
     : '<div style="color:#ccc;font-size:13px;font-style:italic;padding:20px;text-align:center">暂无笔记，点击右上角「✏ 编辑」开始记录</div>';
   let bodyHtml;
   if (noteEditing) {
@@ -5148,7 +5381,7 @@ function renderKnowledgeNotesView() {
         </div>
         <div class="note-split-preview">
           <div class="note-split-label">👁 预览</div>
-          <div class="note-preview-scroll notes-content" id="noteSplitPreview">${previewHtml}</div>
+          <div class="note-preview-scroll notes-content" id="noteSplitPreview">${tocHtml}${previewHtml}</div>
         </div>
       </div>`;
   } else {
@@ -5158,7 +5391,7 @@ function renderKnowledgeNotesView() {
           <div class="note-split-label">📌 ${escapeHtml(currentNode.title)}
             <button onclick="noteEditing=true;renderNotesByType()" style="float:right;background:#e74c3c;color:#fff;border:none;border-radius:4px;padding:2px 10px;cursor:pointer;font-size:12px">✏ 编辑</button>
           </div>
-          <div class="note-preview-scroll notes-content" id="noteSplitPreview">${previewHtml}</div>
+          <div class="note-preview-scroll notes-content" id="noteSplitPreview">${tocHtml}${previewHtml}</div>
         </div>
       </div>`;
   }
@@ -5186,14 +5419,24 @@ function renderKnowledgeNotesViewV2() {
     </button>`;
   }).join('');
   const noteContent = currentNode.contentMd || '';
+  const noteAnchorPrefix = getKnowledgeNoteAnchorPrefix(currentNode.id);
+  const noteHeadings = extractMdHeadings(noteContent);
+  const tocHtml = renderInlineHeadingPanel(noteHeadings, noteAnchorPrefix);
+  const headerOutlineHtml = noteHeadings.length
+    ? `<div class="knowledge-outline-bar">${noteHeadings.map(item => {
+        const anchorId = getNoteHeadingAnchorId(noteAnchorPrefix, item.headingIndex);
+        return `<button class="knowledge-outline-pill" onclick="jumpToRenderedAnchor('${anchorId}')">${'#'.repeat(item.level)} ${escapeHtml(item.text)}</button>`;
+      }).join('')}</div>`
+    : `<div class="knowledge-outline-empty">Outline: no headings found</div>`;
   const previewHtml = noteContent
-    ? renderMd(noteContent)
+    ? renderMd(noteContent, { anchorPrefix: noteAnchorPrefix })
     : '<div style="color:#c0c4cc;font-size:13px;font-style:italic;padding:18px 0">当前节点还没有笔记，直接在这里记录规则、易错点和行动建议。</div>';
   const workspaceBar = `<div class="knowledge-workspace-bar">
     <div class="knowledge-workspace-meta">
       <div class="knowledge-workspace-kicker">知识点笔记</div>
       <div class="knowledge-workspace-title">${escapeHtml(currentNode.title)}</div>
       <div class="knowledge-workspace-path">${escapeHtml(pathText)} · 直属错题 ${directCount} 题 · 含下级 ${linkedCount} 题</div>
+      ${headerOutlineHtml}
     </div>
     <div class="knowledge-workspace-actions">
       <button class="btn btn-secondary btn-sm" onclick="renameKnowledgeNode('${currentNode.id}')">重命名</button>
@@ -5222,7 +5465,7 @@ function renderKnowledgeNotesViewV2() {
         </div>
         <div class="note-split-preview">
           <div class="note-split-label">预览</div>
-          <div class="note-preview-scroll notes-content" id="noteSplitPreview">${previewHtml}</div>
+          <div class="note-preview-scroll notes-content" id="noteSplitPreview">${tocHtml}${previewHtml}</div>
         </div>
       </div>`;
   } else {
@@ -5230,7 +5473,7 @@ function renderKnowledgeNotesViewV2() {
       <div class="note-split-area">
         <div class="note-split-preview" style="width:100%">
           <div class="note-split-label">当前笔记</div>
-          <div class="note-preview-scroll notes-content" id="noteSplitPreview">${summaryHtml}${previewHtml}</div>
+          <div class="note-preview-scroll notes-content" id="noteSplitPreview">${summaryHtml}${tocHtml}${previewHtml}</div>
         </div>
       </div>`;
   }
@@ -5250,7 +5493,10 @@ function renderKnowledgeNotesViewV2() {
   updateKnowledgeWorkspaceChrome(currentNode, linkedCount);
 }
 function renderNotesByType() {
-  notesViewMode = 'knowledge';
+  if (notesViewMode === 'legacy') {
+    renderLegacyNotesView();
+    return;
+  }
   renderKnowledgeNotesViewV2();
 }
 
@@ -5285,9 +5531,12 @@ function renderLegacyNotesView() {
 
   // 当前题型的笔记内容
   const currentContent = (notesByType[selectedNoteType] && notesByType[selectedNoteType].content) || '';
+  const noteAnchorPrefix = getLegacyNoteAnchorPrefix(selectedNoteType);
+  const noteHeadings = extractMdHeadings(currentContent);
+  const tocHtml = renderInlineHeadingPanel(noteHeadings, noteAnchorPrefix);
 
   const previewHtml = currentContent
-    ? renderMd(currentContent)
+    ? renderMd(currentContent, { anchorPrefix: noteAnchorPrefix })
     : '<div style="color:#ccc;font-size:13px;font-style:italic;padding:20px;text-align:center">暂无笔记，点击右上角「✏ 编辑」开始记录</div>';
 
   let bodyHtml;
@@ -5322,7 +5571,7 @@ function renderLegacyNotesView() {
         </div>
         <div class="note-split-preview">
           <div class="note-split-label">👁 预览</div>
-          <div class="note-preview-scroll notes-content" id="noteSplitPreview">${previewHtml}</div>
+          <div class="note-preview-scroll notes-content" id="noteSplitPreview">${tocHtml}${previewHtml}</div>
         </div>
       </div>`;
   } else {
@@ -5333,7 +5582,7 @@ function renderLegacyNotesView() {
           <div class="note-split-label">👁 预览
             <button onclick="noteEditing=true;renderNotesByType()" style="float:right;background:#e74c3c;color:#fff;border:none;border-radius:4px;padding:2px 10px;cursor:pointer;font-size:12px">✏ 编辑</button>
           </div>
-          <div class="note-preview-scroll notes-content" id="noteSplitPreview">${previewHtml}</div>
+          <div class="note-preview-scroll notes-content" id="noteSplitPreview">${tocHtml}${previewHtml}</div>
         </div>
       </div>`;
   }
@@ -5405,8 +5654,12 @@ function liveNotePreview() {
   const ta = document.getElementById('noteTypeTextarea');
   const preview = document.getElementById('noteSplitPreview');
   if (ta && preview) {
+    const anchorPrefix = notesViewMode === 'knowledge'
+      ? getKnowledgeNoteAnchorPrefix(selectedKnowledgeNodeId)
+      : getLegacyNoteAnchorPrefix(selectedNoteType);
+    const tocHtml = renderNoteToc(ta.value, anchorPrefix);
     preview.innerHTML = ta.value
-      ? renderMd(ta.value)
+      ? `${tocHtml}${renderMd(ta.value, { anchorPrefix })}`
       : '<span style="color:#ccc;font-size:12px;font-style:italic">输入 Markdown 后在此预览…</span>';
   }
   // 旧版全局笔记弹窗预览（如仍有此元素）
@@ -5450,12 +5703,151 @@ function saveNoteTypeContent() {
 // ============================================================
 function extractMdHeadings(content) {
   const headings = [];
-  const lines = (content || '').split('\n');
+  const lines = String(content || '').replace(/\r/g, '').split('\n');
+  let headingIndex = 0;
   for (const line of lines) {
-    const m = line.match(/^(#{1,3})\s+(.+)/);
-    if (m) headings.push({ level: m[1].length, text: m[2].trim() });
+    const m = line.match(/^\s*(#{1,4})\s+(.+)/);
+    if (m) {
+      headings.push({ level: m[1].length, text: m[2].trim(), headingIndex });
+      headingIndex++;
+    }
   }
   return headings;
+}
+function renderNoteToc(content, anchorPrefix) {
+  const raw = (content || '').trim();
+  if (!anchorPrefix) return '';
+  if (!raw) {
+    return `<div class="note-toc"><div class="note-toc-title">Outline</div><div class="note-toc-list"><div class="note-toc-item">This note is empty.</div></div></div>`;
+  }
+  const headings = extractMdHeadings(content).filter(item => item.level >= 1 && item.level <= 4);
+  if (!headings.length) {
+    return `<div class="note-toc"><div class="note-toc-title">Outline</div><div class="note-toc-list"><div class="note-toc-item">No headings found. Use "# Title" or "## Subtitle".</div></div></div>`;
+  }
+  const items = headings.map(item => {
+    const anchorId = getNoteHeadingAnchorId(anchorPrefix, item.headingIndex);
+    return `<div class="note-toc-item lv${Math.min(item.level, 4)}" onclick="jumpToRenderedAnchor('${anchorId}')">${escapeHtml(item.text)}</div>`;
+  }).join('');
+  return `<div class="note-toc"><div class="note-toc-title">Outline</div><div class="note-toc-list">${items}</div></div>`;
+}
+function renderNoteTocFromHeadings(headings, anchorPrefix) {
+  if (!anchorPrefix) return '';
+  const list = Array.isArray(headings) ? headings : [];
+  if (!list.length) {
+    return `<div class="note-toc"><div class="note-toc-title">Outline</div><div class="note-toc-list"><div class="note-toc-item">No headings found. Use "# Title" or "## Subtitle".</div></div></div>`;
+  }
+  const items = list.map(item => {
+    const anchorId = getNoteHeadingAnchorId(anchorPrefix, item.headingIndex);
+    return `<div class="note-toc-item lv${Math.min(item.level, 4)}" onclick="jumpToRenderedAnchor('${anchorId}')">${escapeHtml(item.text)}</div>`;
+  }).join('');
+  return `<div class="note-toc"><div class="note-toc-title">Outline (${list.length})</div><div class="note-toc-list">${items}</div></div>`;
+}
+function renderInlineHeadingPanel(headings, anchorPrefix) {
+  const list = Array.isArray(headings) ? headings : [];
+  if (!anchorPrefix) return '';
+  if (!list.length) {
+    return `<div style="margin:0 0 14px;padding:10px 12px;border:1px solid #f0e2cf;border-radius:10px;background:#fffaf3;color:#7c5a2f;font-size:12px;line-height:1.7"><strong>Outline</strong><br>No headings found.</div>`;
+  }
+  const items = list.map(item => {
+    const anchorId = getNoteHeadingAnchorId(anchorPrefix, item.headingIndex);
+    const pad = 8 + Math.max(0, item.level - 1) * 14;
+    return `<div onclick="jumpToRenderedAnchor('${anchorId}')" style="padding:4px 8px 4px ${pad}px;border-radius:6px;cursor:pointer;color:#7c5a2f">${escapeHtml(item.text)}</div>`;
+  }).join('');
+  return `<div style="margin:0 0 14px;padding:10px 12px;border:1px solid #f0e2cf;border-radius:10px;background:#fffaf3;color:#7c5a2f;font-size:12px;line-height:1.7"><strong>Outline (${list.length})</strong>${items}</div>`;
+}
+
+function resolveCurrentErrorScope() {
+  if (knowledgeNodeFilter) {
+    const node = getKnowledgeNodeById(knowledgeNodeFilter);
+    const nodeIds = node ? getKnowledgeDescendantNodeIds(node) : [knowledgeNodeFilter];
+    return {
+      label: node ? `Knowledge "${node.title}"` : 'Current knowledge scope',
+      predicate: e => nodeIds.includes(e.noteNodeId)
+    };
+  }
+  if (typeFilter) {
+    if (typeFilter.level === 'type') {
+      return {
+        label: `Type "${typeFilter.value}"`,
+        predicate: e => e.type === typeFilter.value
+      };
+    }
+    if (typeFilter.level === 'subtype') {
+      return {
+        label: `Module "${typeFilter.type} / ${typeFilter.value}"`,
+        predicate: e => e.type === typeFilter.type && e.subtype === typeFilter.value
+      };
+    }
+    return {
+      label: `Module "${typeFilter.type} / ${typeFilter.subtype} / ${typeFilter.value}"`,
+      predicate: e => e.type === typeFilter.type && e.subtype === typeFilter.subtype && e.subSubtype === typeFilter.value
+    };
+  }
+  if (notesViewMode === 'knowledge' && selectedKnowledgeNodeId) {
+    const node = getKnowledgeNodeById(selectedKnowledgeNodeId);
+    const nodeIds = node ? getKnowledgeDescendantNodeIds(node) : [selectedKnowledgeNodeId];
+    return {
+      label: node ? `Knowledge "${node.title}"` : 'Current knowledge scope',
+      predicate: e => nodeIds.includes(e.noteNodeId)
+    };
+  }
+  if (notesViewMode === 'legacy' && selectedNoteType) {
+    return {
+      label: `Type "${selectedNoteType}"`,
+      predicate: e => e.type === selectedNoteType
+    };
+  }
+  if (statusFilter !== 'all' || reasonFilter || searchKw || dateFrom || dateTo) {
+    const ids = new Set(getFiltered().map(item => item.id));
+    return {
+      label: 'Current filtered result',
+      predicate: e => ids.has(e.id)
+    };
+  }
+  return null;
+}
+
+function clearCurrentModuleErrors() {
+  const scope = resolveCurrentErrorScope();
+  if (!scope) {
+    showToast('Open a module or apply a filter before clearing', 'warning');
+    return;
+  }
+  const matched = errors.filter(scope.predicate);
+  if (!matched.length) {
+    showToast(`No questions found in ${scope.label}`, 'warning');
+    return;
+  }
+  if (!confirm(`Delete ${matched.length} question(s) from ${scope.label}? This cannot be undone.`)) return;
+  const ids = new Set(matched.map(item => item.id));
+  errors = errors.filter(item => !ids.has(item.id));
+  ids.forEach(id => revealed.delete(id));
+  saveData();
+  saveReveal();
+  syncNotesWithErrors();
+  renderSidebar();
+  renderAll();
+  renderNotesByType();
+  renderNotesPanelRight();
+  showToast(`${matched.length} question(s) deleted from ${scope.label}`, 'success');
+}
+
+function clearAllErrorsData() {
+  if (!errors.length) {
+    showToast('There are no questions to delete', 'warning');
+    return;
+  }
+  if (!confirm(`Delete all ${errors.length} question(s)? This cannot be undone.`)) return;
+  errors = [];
+  revealed = new Set();
+  saveData();
+  saveReveal();
+  syncNotesWithErrors();
+  renderSidebar();
+  renderAll();
+  renderNotesByType();
+  renderNotesPanelRight();
+  showToast('All questions cleared', 'success');
 }
 
 function renderRelatedErrorOptions(options) {
@@ -5555,10 +5947,11 @@ function renderLegacyNotesPanelRight() {
     let subItemsHtml = '';
     if (mdHeadings.length > 0) {
       // 笔记有 Markdown 标题：显示标题列表，点击跳到笔记对应位置
-      subItemsHtml = mdHeadings.map((h, idx) => {
+      subItemsHtml = mdHeadings.map((h) => {
         const cls = h.level === 2 ? ' note-heading-h2' : h.level === 3 ? ' note-heading-h3' : '';
         const indent = '　'.repeat(Math.max(0, h.level - 1));
-        return `<div class="note-heading-item${cls}" onclick="jumpToNoteHeading('${escapeHtml(t)}',${idx},'subtype')">${indent}${escapeHtml(h.text)}</div>`;
+        const anchorId = getNoteHeadingAnchorId(getLegacyNoteAnchorPrefix(t), h.headingIndex);
+        return `<div class="note-heading-item${cls}" data-anchor-id="${anchorId}" onclick="jumpToNoteHeadingByEncoded('${encodeInlineValue(t)}',${h.headingIndex})">${indent}${escapeHtml(h.text)}</div>`;
       }).join('');
     } else {
       // 无 Markdown 标题：降级为从错题中提取子类型
@@ -5590,16 +5983,11 @@ function jumpToNoteHeading(type, headingIdx) {
   renderNotesByType();
   renderSidebar();
   setTimeout(function() {
-    const preview = document.getElementById('noteSplitPreview');
-    if (!preview) return;
-    const headers = preview.querySelectorAll('h1,h2,h3,h4,h5,h6');
-    if (headers[headingIdx]) {
-      headers[headingIdx].scrollIntoView({ behavior: 'smooth', block: 'start' });
-      const el = headers[headingIdx];
-      el.style.transition = 'background .3s';
-      el.style.background = '#fff3cd';
-      setTimeout(function() { el.style.background = ''; }, 1800);
-    }
+    const anchorId = getNoteHeadingAnchorId(getLegacyNoteAnchorPrefix(type), headingIdx);
+    scrollToRenderedAnchor(anchorId, { behavior: 'smooth' });
+    document.querySelectorAll('.note-heading-item').forEach(el => el.classList.remove('active'));
+    const activeItem = document.querySelector(`.note-heading-item[data-anchor-id="${anchorId}"]`);
+    if (activeItem) activeItem.classList.add('active');
   }, 80);
 }
 
@@ -5768,6 +6156,8 @@ function deleteError(id){
 
   syncNotesWithErrors();
   renderNotesByType();
+  renderNotesPanelRight();
+  showToast(`Question #${id} deleted`, 'success');
 }
 
 // 修改添加错题时的联动
