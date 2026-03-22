@@ -14,6 +14,7 @@ from typing import Any, Optional
 from fastapi import Cookie, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 
@@ -178,6 +179,7 @@ app.add_middleware(
     allow_headers=["*"],
     allow_credentials=True,
 )
+app.mount("/assets", StaticFiles(directory=str(BASE_DIR / "xingce_v3")), name="assets")
 
 
 @app.on_event("startup")

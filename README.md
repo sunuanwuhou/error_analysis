@@ -48,7 +48,7 @@ Instead it stores one full backup JSON per user:
 - dir tree
 - global note
 - knowledge tree
-- knowledge leaf notes
+- knowledge-node Markdown content
 
 That matches the existing xingce front-end model and keeps the migration small.
 
@@ -128,4 +128,6 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start-tunnel.ps1
 - Current sync model is full-backup sync, not per-record merge.
 - This is intentional: it lets the original workbench keep working with minimal change.
 - Operational experience is recorded in `docs/ops-notes.md`.
-- Stage progress and current implementation order are recorded in `docs/roadmap.md`.
+- Stage progress and current implementation order are recorded in docs/roadmap.md.
+- Frontend module split preparation is recorded in docs/frontend-split-plan.md.
+
