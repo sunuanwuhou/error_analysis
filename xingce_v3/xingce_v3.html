@@ -111,7 +111,7 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 
 /* ===== 中间笔记区域 ===== */
 .notes-area{flex:1;overflow:hidden;display:flex;flex-direction:column}
-.notes-header{padding:10px 16px;border-bottom:1px solid #e8e8e8;background:#fff;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.notes-header{display:none}
 .notes-header h2{font-size:16px;margin:0;color:#2c3e50}
 .notes-header .btn{font-size:12px;padding:6px 12px}
 .notes-content{flex:1;overflow:hidden;background:#fff;display:flex;flex-direction:column}
@@ -515,6 +515,16 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .knowledge-workspace-title{font-size:18px;font-weight:700;color:#2c3e50;line-height:1.3;word-break:break-word}
 .knowledge-workspace-path{font-size:12px;color:#888;line-height:1.6;word-break:break-word}
 .knowledge-workspace-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.knowledge-move-search{width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none;margin-bottom:10px}
+.knowledge-move-search:focus{border-color:#e74c3c;box-shadow:0 0 0 2px rgba(231,76,60,.1)}
+.knowledge-move-list{display:flex;flex-direction:column;gap:8px;max-height:340px;overflow:auto}
+.knowledge-move-item{border:1px solid #e8e8e8;border-radius:8px;padding:10px 12px;cursor:pointer;transition:.15s;background:#fff}
+.knowledge-move-item:hover{border-color:#f5c2bd;background:#fffaf9}
+.knowledge-move-item.active{border-color:#e74c3c;background:#fff2f0;box-shadow:0 0 0 1px rgba(231,76,60,.08)}
+.knowledge-move-item-title{font-size:13px;font-weight:600;color:#2c3e50}
+.knowledge-move-item-path{font-size:11px;color:#888;line-height:1.6;margin-top:4px}
+.knowledge-move-item-current{display:inline-flex;align-items:center;gap:4px;margin-top:6px;font-size:11px;color:#e67e22;background:#fff7e6;border:1px solid #ffd591;border-radius:999px;padding:1px 8px}
+.knowledge-move-empty{padding:20px 12px;color:#999;font-size:12px;text-align:center}
 /* ===== 笔记分栏编辑器 ===== */
 .note-split-area{flex:1;display:flex;overflow:hidden;min-height:0}
 .note-split-editor{flex:1;display:flex;flex-direction:column;padding:10px 12px;border-right:1px solid #f0f0f0;min-width:0;overflow:hidden}
@@ -743,6 +753,23 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
     <div class="modal-btns">
       <button class="btn btn-secondary" onclick="closeModal('addModal')">取消</button>
       <button class="btn btn-primary" onclick="saveError()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-mask" id="knowledgeMoveModal">
+  <div class="modal" style="width:640px;max-width:96vw">
+    <button class="modal-close" onclick="closeKnowledgeMoveModal()">✕</button>
+    <h2>改挂载知识点</h2>
+    <div style="font-size:12px;color:#666;line-height:1.7;margin-bottom:12px">
+      <div id="knowledgeMoveCurrent" style="margin-bottom:6px">当前知识点：未关联</div>
+      <div>选择新的叶子知识点后，题目会立即切换到对应笔记和错题视图。</div>
+    </div>
+    <input id="knowledgeMoveSearch" class="knowledge-move-search" type="text" placeholder="搜索知识点名称或路径..." oninput="renderKnowledgeMoveOptions()">
+    <div id="knowledgeMoveList" class="knowledge-move-list"></div>
+    <div class="modal-btns">
+      <button class="btn btn-secondary" onclick="closeKnowledgeMoveModal()">取消</button>
+      <button class="btn btn-primary" onclick="applyKnowledgeMove()">确认挂载</button>
     </div>
   </div>
 </div>
@@ -1011,6 +1038,8 @@ let knowledgeTree = null;
 let knowledgeNotes = {};
 let selectedKnowledgeNodeId = null;
 let knowledgeNodeFilter = null;
+let pendingKnowledgeMoveErrorId = null;
+let pendingKnowledgeMoveTargetId = null;
 
 // 错因分组定义（每个 reason 含简介 desc）
 const REASON_GROUPS = [
@@ -3877,19 +3906,77 @@ function moveKnowledgeNode(nodeId) {
 function moveErrorToKnowledgeNode(errorId, preferredNodeId) {
   const errorItem = errors.find(item => item.id === errorId);
   if (!errorItem) return;
-  let target = null;
-  if (preferredNodeId) {
-    const node = getKnowledgeNodeById(preferredNodeId);
-    if (node && node.isLeaf) target = { id: node.id, label: collapseKnowledgePathTitles(getKnowledgePathTitles(node.id)).join(' > '), node };
+  pendingKnowledgeMoveErrorId = errorId;
+  pendingKnowledgeMoveTargetId = preferredNodeId || errorItem.noteNodeId || null;
+  const currentText = errorItem.noteNodeId
+    ? collapseKnowledgePathTitles(getKnowledgePathTitles(errorItem.noteNodeId)).join(' > ')
+    : '未关联知识点';
+  const currentEl = document.getElementById('knowledgeMoveCurrent');
+  if (currentEl) currentEl.textContent = `当前知识点：${currentText}`;
+  const search = document.getElementById('knowledgeMoveSearch');
+  if (search) search.value = '';
+  renderKnowledgeMoveOptions();
+  openModal('knowledgeMoveModal');
+}
+function closeKnowledgeMoveModal() {
+  pendingKnowledgeMoveErrorId = null;
+  pendingKnowledgeMoveTargetId = null;
+  closeModal('knowledgeMoveModal');
+}
+function renderKnowledgeMoveOptions() {
+  const list = document.getElementById('knowledgeMoveList');
+  if (!list) return;
+  const search = (document.getElementById('knowledgeMoveSearch')?.value || '').trim().toLowerCase();
+  const options = getKnowledgePathOptions(true, null).filter(item => {
+    if (!search) return true;
+    return item.label.toLowerCase().includes(search) || item.node.title.toLowerCase().includes(search);
+  });
+  if (!options.length) {
+    list.innerHTML = '<div class="knowledge-move-empty">没有匹配的知识点</div>';
+    return;
   }
-  if (!target) {
-    target = chooseKnowledgeNodeByPrompt(true, null);
+  list.innerHTML = options.map(item => `
+    <div class="knowledge-move-item ${item.id === pendingKnowledgeMoveTargetId ? 'active' : ''}" onclick="selectKnowledgeMoveTarget('${item.id}')">
+      <div class="knowledge-move-item-title">${escapeHtml(item.node.title)}</div>
+      <div class="knowledge-move-item-path">${escapeHtml(item.label)}</div>
+      ${item.id === getErrorKnowledgeNodeId(pendingKnowledgeMoveErrorId) ? '<div class="knowledge-move-item-current">当前挂载</div>' : ''}
+    </div>
+  `).join('');
+}
+function selectKnowledgeMoveTarget(nodeId) {
+  pendingKnowledgeMoveTargetId = nodeId;
+  renderKnowledgeMoveOptions();
+}
+function getErrorKnowledgeNodeId(errorId) {
+  const errorItem = errors.find(item => item.id === errorId);
+  return errorItem ? (errorItem.noteNodeId || null) : null;
+}
+function applyKnowledgeMove() {
+  const errorItem = errors.find(item => item.id === pendingKnowledgeMoveErrorId);
+  if (!errorItem) {
+    closeKnowledgeMoveModal();
+    return;
   }
-  if (!target) return;
-  errorItem.noteNodeId = target.id;
+  if (!pendingKnowledgeMoveTargetId) {
+    alert('请选择目标知识点');
+    return;
+  }
+  const targetNode = getKnowledgeNodeById(pendingKnowledgeMoveTargetId);
+  if (!targetNode || !targetNode.isLeaf) {
+    alert('目标知识点无效');
+    return;
+  }
+  const previousNodeId = errorItem.noteNodeId || null;
+  errorItem.noteNodeId = targetNode.id;
   saveData();
   saveKnowledgeState();
-  setCurrentKnowledgeNode(target.id, { switchTab: false });
+  closeKnowledgeMoveModal();
+  setCurrentKnowledgeNode(targetNode.id, { switchTab: false });
+  if (previousNodeId && knowledgeNodeFilter === previousNodeId && previousNodeId !== targetNode.id) {
+    alert(`已改挂载到：${collapseKnowledgePathTitles(getKnowledgePathTitles(targetNode.id)).join(' > ')}\n该题已移出原知识点视图。`);
+    return;
+  }
+  alert(`已改挂载到：${collapseKnowledgePathTitles(getKnowledgePathTitles(targetNode.id)).join(' > ')}`);
 }
 function openKnowledgeForError(errorId) {
   const errorItem = errors.find(item => item.id === errorId);
