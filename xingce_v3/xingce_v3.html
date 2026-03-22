@@ -498,12 +498,18 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .notes-panel-right{width:540px;min-width:540px;background:#fff;border-left:1px solid #e8e8e8;display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
 .notes-panel-right-header{padding:10px 14px;border-bottom:1px solid #e8e8e8;background:#fafafa;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .notes-panel-right-header h3{font-size:14px;font-weight:700;color:#2c3e50;margin:0}
-.notes-panel-right-body{flex:1;overflow-y:auto;padding:10px}
+.notes-panel-right-body{flex:1;overflow-y:auto;padding:8px 10px 12px}
 .notes-panel-right-body::-webkit-scrollbar{width:5px}
 .notes-panel-right-body::-webkit-scrollbar-thumb{background:#ddd;border-radius:3px}
-.notes-panel-right .error-card{border:1px solid #f0f0f0;border-radius:10px;padding:12px;margin-bottom:10px}
-.notes-panel-right .error-card .card-question{font-size:13px;line-height:1.7}
-.notes-panel-right .error-card .card-actions{margin-top:10px}
+.notes-panel-right .error-card{border:1px solid #eceff3;border-radius:12px;padding:10px 11px;margin-bottom:8px;background:#fff;box-shadow:0 2px 10px rgba(15,23,42,.04)}
+.notes-panel-right .error-card .card-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.notes-panel-right .error-card .card-question{font-size:12px;line-height:1.7;color:#2d3436;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.notes-panel-right .error-card .card-actions{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
+.notes-panel-right .error-card .btn-sm{padding:4px 8px;font-size:11px}
+.related-errors-summary{padding:6px 2px 8px;color:#7f8c8d;font-size:11px;line-height:1.7}
+.related-error-path{margin-top:6px;font-size:11px;color:#97a0af;line-height:1.55}
+.related-error-path strong{color:#7b8794;font-weight:600}
+.related-error-actions{margin-top:8px}
 .note-panel-item{margin-bottom:1px}
 .note-panel-item-header{display:flex;align-items:center;gap:5px;padding:5px 7px;border-radius:5px;cursor:pointer;transition:.15s;font-size:12px;color:#555;user-select:none}
 .note-panel-item-header:hover{background:#fafafa;color:#333}
@@ -1827,7 +1833,7 @@ function updateSidebar() {
 // ============================================================
 function startQuiz() {
   quizQueue = getDueList();
-  if (!quizQueue.length) { alert('今日暂无需要复习的题目 🎉'); return; }
+  if (!quizQueue.length) { showToast('今日暂无需要复习的题目', 'warning'); return; }
   quizIdx = 0; quizAnswers = []; quizSkipped = new Set();
   document.getElementById('quizTitleText').textContent = '📝 今日复习';
   openModal('quizModal');
@@ -1836,7 +1842,7 @@ function startQuiz() {
 
 function startFullPractice() {
   const all = errors.filter(e => e.status !== 'mastered');
-  if (!all.length) { alert('暂无错题（已全部掌握）🎉'); return; }
+  if (!all.length) { showToast('暂无错题，当前都已掌握', 'warning'); return; }
   // 打开章节筛选弹窗
   const typeMap = {};
   all.forEach(e=>{
@@ -1874,7 +1880,7 @@ function startFullPracticeFiltered() {
   document.querySelectorAll('.cf-sub:checked').forEach(cb=>{
     selected.add(cb.getAttribute('data-type')+'::::'+(cb.getAttribute('data-sub')||'未分类'));
   });
-  if(!selected.size){alert('请至少选择一个章节');return;}
+  if(!selected.size){showToast('请至少选择一个章节', 'warning');return;}
   quizQueue = errors.filter(e=>{
     if(e.status==='mastered') return false;
     const key=e.type+'::::'+(e.subtype||'未分类');
@@ -1883,7 +1889,7 @@ function startFullPracticeFiltered() {
     const tc=(a.type||'').localeCompare(b.type||'','zh');
     return tc!==0?tc:(a.subtype||'').localeCompare(b.subtype||'','zh');
   });
-  if(!quizQueue.length){alert('所选章节暂无错题');return;}
+  if(!quizQueue.length){showToast('所选章节暂无错题', 'warning');return;}
   quizIdx=0; quizAnswers=[]; quizSkipped=new Set();
   closeModal('chapterFilterModal');
   document.getElementById('quizTitleText').textContent='📚 全量练习';
@@ -2550,7 +2556,7 @@ function deleteError(id){
   syncNotesWithErrors(); // 同步笔记与错题
 }
 function clearAllData(){
-  if(!errors.length){alert('没有数据');return;}
+  if(!errors.length){showToast('当前没有可清空的数据', 'warning');return;}
   if(!confirm(`确认清空全部 ${errors.length} 条？`))return;
   errors=[];revealed=new Set();
   saveData();saveReveal();
@@ -2653,23 +2659,23 @@ function mergeImport(data){
 }
 function doImport(){
   const raw=document.getElementById('importText').value.trim();
-  if(!raw){alert('请粘贴 JSON 内容');return;}
+  if(!raw){showToast('请先粘贴 JSON 内容', 'warning');return;}
   const parsed=tryParseJson(raw);
-  if(!parsed){alert('JSON 格式错误，请检查内容');return;}
+  if(!parsed){showToast('JSON 格式错误，请检查内容', 'error');return;}
   // 兼容含 errors 字段的对象格式和直接数组格式
   let data;
   if(Array.isArray(parsed)){ data=parsed; }
   else if(parsed.errors&&Array.isArray(parsed.errors)){ data=parsed.errors; }
-  else{ alert('应为数组或含 errors 字段的对象');return; }
+  else{ showToast('应为数组或含 errors 字段的对象', 'error');return; }
   if(importMode==='replace'){
     if(!confirm(`清空现有 ${errors.length} 条，替换为 ${data.length} 条？`))return;
     errors=data.map((e,i)=>({id:i+1,addDate:e.addDate||today(),quiz:e.quiz||null,status:e.status||'focus',...e}));
     saveData();closeModal('importModal');renderSidebar();renderAll();
-    alert(`已替换，共 ${errors.length} 条`);
+    showToast(`已替换，共 ${errors.length} 条`, 'success');
   }else{
     const{added,updated}=mergeImport(data);
     saveData();closeModal('importModal');renderSidebar();renderAll();
-    alert(`导入完成：更新 ${updated} 条，新增 ${added} 条`);
+    showToast(`导入完成：更新 ${updated} 条，新增 ${added} 条`, 'success');
   }
   syncNotesWithErrors(); // 同步笔记与错题
 }
@@ -2685,7 +2691,7 @@ function openClaudeHelper(){
 }
 function genClaudeTemplate(){
   const raw=document.getElementById('rawQuestion').value.trim();
-  if(!raw){alert('请先粘贴题目');return;}
+  if(!raw){showToast('请先粘贴题目', 'warning');return;}
   const tmpl=`请分析以下行测错题，返回 JSON 数组格式（直接粘回错题系统导入）。
 
 【错题内容】
@@ -2744,18 +2750,18 @@ function copyTemplate(){
 }
 function importFromClaude(){
   const raw=document.getElementById('claudeResult').value.trim();
-  if(!raw){alert('请先粘贴 JSON');return;}
+  if(!raw){showToast('请先粘贴 JSON', 'warning');return;}
   // 安全化：确保 analysis 等字段的换行和引号不破坏 JSON
   const safeRaw = raw.replace(/"analysis"\s*:\s*"((?:(?!"})[^"]|\\")*)"/g, (_, s) => {
     return `"analysis":"${s.replace(/\r?\n/g,'\\n').replace(/\\"/g,'\\\\"')}"`;
   });
   const data=tryParseJson(safeRaw);
-  if(!data){alert('JSON 解析失败，请确认内容是完整的 JSON 数组');return;}
-  if(!Array.isArray(data)){alert('应为数组格式 [...]');return;}
+  if(!data){showToast('JSON 解析失败，请确认内容是完整的 JSON 数组', 'error');return;}
+  if(!Array.isArray(data)){showToast('应为数组格式 [...]', 'error');return;}
   const{added,updated}=mergeImport(data);
   saveData();document.getElementById('claudeResult').value='';
   closeModal('claudeModal');renderSidebar();renderAll();
-  alert(`导入完成：新增 ${added} 题，更新 ${updated} 题`);
+  showToast(`导入完成：新增 ${added} 题，更新 ${updated} 题`, 'success');
 }
 
 // ============================================================
@@ -3120,7 +3126,7 @@ function saveTypeRules() {
   }).filter(r => r && r.keywords.length);
   _saveTypeRules(newRules);
   closeModal('typeRulesModal');
-  alert('规则已保存（共 ' + newRules.length + ' 条）');
+  showToast('规则已保存（共 ' + newRules.length + ' 条）', 'success');
 }
 function resetTypeRules() {
   if (!confirm('恢复默认规则？当前自定义规则将被清除')) return;
@@ -3209,9 +3215,9 @@ function doExport() {
     // 打印 PDF
     const selectedTypes = new Set();
     document.querySelectorAll('.export-mod-cb:checked').forEach(cb => selectedTypes.add(cb.dataset.type));
-    if (!selectedTypes.size) { alert('请至少选择一个模块'); return; }
+    if (!selectedTypes.size) { showToast('请至少选择一个模块', 'warning'); return; }
     const list = getFiltered().filter(e => selectedTypes.has(e.type));
-    if (!list.length) { alert('所选模块暂无错题'); return; }
+    if (!list.length) { showToast('所选模块暂无错题', 'warning'); return; }
     doPrintExport(list, contentMode);
     closeModal('exportModal');
   }
@@ -3493,7 +3499,7 @@ function dirAddItem(level) {
     document.getElementById('dirAddSub').value='';
     _dirSelSub=v; saveDirTree(); renderDirCols();
   } else {
-    if (!_dirSelSub) { alert('请先选择子类型'); return; }
+    if (!_dirSelSub) { showToast('请先选择子类型', 'warning'); return; }
     const v = document.getElementById('dirAddSub2').value.trim();
     if (!v) return;
     if (!_dirTree[_dirSelType][_dirSelSub]) _dirTree[_dirSelType][_dirSelSub]=[];
@@ -3866,7 +3872,7 @@ function getKnowledgePathOptions(leafOnly, excludeNodeId) {
 function chooseKnowledgeNodeByPrompt(leafOnly, excludeNodeId) {
   const options = getKnowledgePathOptions(leafOnly, excludeNodeId);
   if (!options.length) {
-    alert(leafOnly ? '暂无可选知识点叶子' : '暂无可选知识点节点');
+    showToast(leafOnly ? '暂无可选知识点叶子' : '暂无可选知识点节点', 'warning');
     return null;
   }
   const text = options.map((item, idx) => `${idx + 1}. ${item.label}`).join('\n');
@@ -3874,7 +3880,7 @@ function chooseKnowledgeNodeByPrompt(leafOnly, excludeNodeId) {
   if (answer === null) return null;
   const picked = options[Number(answer) - 1];
   if (!picked) {
-    alert('选择无效');
+    showToast('选择无效', 'error');
     return null;
   }
   return picked;
@@ -3894,7 +3900,7 @@ function renameKnowledgeNode(nodeId) {
   const parent = findKnowledgeParent(node.id);
   const siblings = parent ? (parent.children || []) : getKnowledgeRootNodes();
   if (siblings.some(item => item.id !== node.id && item.title === title && !!item.isLeaf === !!node.isLeaf)) {
-    alert('同级下已存在同名节点');
+    showToast('同级下已存在同名节点', 'error');
     return;
   }
   node.title = title;
@@ -3912,7 +3918,7 @@ function moveKnowledgeNode(nodeId) {
   if (!node) return;
   const options = getKnowledgePathOptions(false, nodeId).filter(item => !isKnowledgeDescendant(nodeId, item.id));
   if (!options.length) {
-    alert('暂无可移动到的目标节点');
+    showToast('暂无可移动到的目标节点', 'warning');
     return;
   }
   const text = options.map((item, idx) => `${idx + 1}. ${item.label}`).join('\n');
@@ -3920,12 +3926,12 @@ function moveKnowledgeNode(nodeId) {
   if (answer === null) return;
   const target = options[Number(answer) - 1];
   if (!target) {
-    alert('选择无效');
+    showToast('选择无效', 'error');
     return;
   }
   target.node.children = target.node.children || [];
   if (target.node.children.some(item => item.id !== node.id && item.title === node.title && !!item.isLeaf === !!node.isLeaf)) {
-    alert('目标节点下已存在同名节点');
+    showToast('目标节点下已存在同名节点', 'error');
     return;
   }
   const oldParent = findKnowledgeParent(node.id);
@@ -4216,7 +4222,7 @@ function updateBatchBar() {
   }
 }
 function executeBatch(action) {
-  if (!batchSelected.size) { alert('请先勾选题目'); return; }
+  if (!batchSelected.size) { showToast('请先勾选题目', 'warning'); return; }
   if (action === 'delete') {
     if (!confirm('确认删除选中的 ' + batchSelected.size + ' 题？')) return;
     errors = errors.filter(e => !batchSelected.has(e.id));
@@ -4407,7 +4413,7 @@ function safeDeleteNoteChapter(type, subtype, subSubtype) {
   const check = canDeleteNoteChapter(type, subtype, subSubtype);
 
   if (!check.canDelete) {
-    alert(check.message);
+    showToast(check.message, 'warning');
     return false;
   }
 
@@ -4450,7 +4456,7 @@ function clearNotes() {
     };
     saveKnowledgeState();
     renderNotesByType();
-    alert('当前知识点笔记已清空');
+    showToast('当前知识点笔记已清空', 'success');
     return;
   }
 
@@ -4458,7 +4464,7 @@ function clearNotes() {
   notesByType = {};
   saveNotesByType();
   renderNotesByType();
-  alert('旧题型笔记已清空');
+  showToast('旧题型笔记已清空', 'success');
 }
 
 // 过滤笔记Tab中的错题列表
@@ -4891,16 +4897,16 @@ function renderKnowledgeNotesPanelRight() {
     body.innerHTML = `<div style="padding:14px 12px;color:#888;font-size:12px;line-height:1.7">${escapeHtml(pathText)}<br>当前节点下暂无满足筛选条件的错题。</div>`;
     return;
   }
-  body.innerHTML = `<div style="padding:10px 10px 6px;color:#888;font-size:12px;line-height:1.6">${escapeHtml(pathText)}<br>关联错题 ${related.length} 题</div>` + related.map(e => {
+  body.innerHTML = `<div class="related-errors-summary"><strong>${escapeHtml(pathText)}</strong><br>当前节点下共 ${related.length} 道关联错题</div>` + related.map(e => {
     const notePath = collapseKnowledgePathTitles(getKnowledgePathTitles(e.noteNodeId)).join(' > ');
-    return `<div class="error-card" style="padding:10px 10px 12px">
+    return `<div class="error-card related-error-card">
       <div class="card-top">
         <span class="status-tag ${escapeHtml(e.status || 'focus')}">${escapeHtml((e.status === 'review' ? '待复习' : e.status === 'mastered' ? '已掌握' : '重点复习'))}</span>
         <span class="card-num">#${e.id}</span>
       </div>
-      <div class="card-question" style="font-size:12px;line-height:1.6">${hl((e.question || '图片题').slice(0, 120), searchKw)}</div>
-      <div style="font-size:11px;color:#999;line-height:1.6">${escapeHtml(notePath)}</div>
-      <div class="card-actions" style="margin-top:8px">
+      <div class="card-question">${hl((e.question || '图片题').slice(0, 120), searchKw)}</div>
+      <div class="related-error-path"><strong>知识点</strong> ${escapeHtml(notePath)}</div>
+      <div class="card-actions related-error-actions">
         <button class="btn btn-secondary btn-sm" onclick="openKnowledgeForError(${e.id})">定位笔记</button>
         <button class="btn btn-secondary btn-sm" onclick="moveErrorToKnowledgeNode(${e.id}, '${e.noteNodeId || ''}')">改挂载</button>
         <button class="btn btn-secondary btn-sm" onclick="openEditModal(${e.id})">编辑</button>
@@ -5076,9 +5082,9 @@ function saveError(){
   const srcOrigin   = document.getElementById('editSrcOrigin').value.trim();
   const noteNodeId  = resolveKnowledgeNodeIdForSave(type, subtype, subSubtype);
 
-  if(!question && !editImgBase64){ alert('题目不能为空'); return; }
-  if(!subtype){ alert('子类型不能为空'); document.getElementById('editSubtype').focus(); return; }
-  if(!answer){ alert('正确答案不能为空'); document.getElementById('editAnswer').focus(); return; }
+  if(!question && !editImgBase64){ showToast('题目不能为空', 'warning'); return; }
+  if(!subtype){ showToast('子类型不能为空', 'warning'); document.getElementById('editSubtype').focus(); return; }
+  if(!answer){ showToast('正确答案不能为空', 'warning'); document.getElementById('editAnswer').focus(); return; }
 
   const id = editingId; // JS 变量，openAddModal/openEditModal 时设置
 
