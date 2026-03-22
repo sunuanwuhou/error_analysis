@@ -485,12 +485,15 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .iq-actions{display:flex;gap:8px;align-items:center}
 
 /* ===== 右侧笔记面板（始终可见）===== */
-.notes-panel-right{width:300px;min-width:300px;background:#fff;border-left:1px solid #e8e8e8;display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+.notes-panel-right{width:540px;min-width:540px;background:#fff;border-left:1px solid #e8e8e8;display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
 .notes-panel-right-header{padding:10px 14px;border-bottom:1px solid #e8e8e8;background:#fafafa;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .notes-panel-right-header h3{font-size:14px;font-weight:700;color:#2c3e50;margin:0}
-.notes-panel-right-body{flex:1;overflow-y:auto;padding:8px}
+.notes-panel-right-body{flex:1;overflow-y:auto;padding:10px}
 .notes-panel-right-body::-webkit-scrollbar{width:5px}
 .notes-panel-right-body::-webkit-scrollbar-thumb{background:#ddd;border-radius:3px}
+.notes-panel-right .error-card{border:1px solid #f0f0f0;border-radius:10px;padding:12px;margin-bottom:10px}
+.notes-panel-right .error-card .card-question{font-size:13px;line-height:1.7}
+.notes-panel-right .error-card .card-actions{margin-top:10px}
 .note-panel-item{margin-bottom:1px}
 .note-panel-item-header{display:flex;align-items:center;gap:5px;padding:5px 7px;border-radius:5px;cursor:pointer;transition:.15s;font-size:12px;color:#555;user-select:none}
 .note-panel-item-header:hover{background:#fafafa;color:#333}
@@ -4525,20 +4528,18 @@ function renderKnowledgeNotesView() {
   const childItems = (currentNode.children || []).map(child => {
     const displayChild = getKnowledgeDisplayNode(child);
     if (!displayChild) return '';
-    const count = countErrorsForKnowledgeNode(displayChild.id, true);
-    return `<button class="btn btn-secondary btn-sm" onclick="selectKnowledgeNodeFromSidebar('${displayChild.id}')">${escapeHtml(displayChild.title)} · ${count}题</button>`;
+    return `<button class="btn btn-secondary btn-sm" onclick="selectKnowledgeNodeFromSidebar('${displayChild.id}')">${escapeHtml(displayChild.title)}</button>`;
   }).join('');
   const workspaceBar = `<div class="knowledge-workspace-bar">
     <div class="knowledge-workspace-meta">
       <div class="knowledge-workspace-kicker">${currentNode.isLeaf ? 'Knowledge Note' : 'Knowledge Folder'}</div>
       <div class="knowledge-workspace-title">${escapeHtml(currentNode.title)}</div>
-      <div class="knowledge-workspace-path">${escapeHtml(pathText)}<br>${currentNode.isLeaf ? `当前关联错题：${linkedCount} 题` : `聚合错题：${linkedCount} 题`}</div>
+      <div class="knowledge-workspace-path">${escapeHtml(pathText)}</div>
     </div>
     <div class="knowledge-workspace-actions">
       <button class="btn btn-secondary btn-sm" onclick="renameKnowledgeNode('${currentNode.id}')">重命名</button>
       ${findKnowledgeParent(currentNode.id) ? `<button class="btn btn-secondary btn-sm" onclick="moveKnowledgeNode('${currentNode.id}')">移动</button>` : ''}
       <button class="btn btn-secondary btn-sm" onclick="addKnowledgeLeafUnderSelected()">+ 新建知识点</button>
-      <button class="btn btn-secondary btn-sm" onclick="filterByKnowledgeNode('${currentNode.id}')">查看关联错题</button>
       ${currentNode.isLeaf ? `<button class="btn btn-primary btn-sm" onclick="noteEditing=${noteEditing ? 'false' : 'true'};renderNotesByType()">${noteEditing ? '完成编辑' : '编辑笔记'}</button>` : ''}
     </div>
   </div>`;
@@ -4548,7 +4549,7 @@ function renderKnowledgeNotesView() {
         <div class="note-split-preview" style="width:100%">
           <div class="note-split-label">📂 ${escapeHtml(currentNode.title)}</div>
           <div class="note-preview-scroll notes-content" id="noteSplitPreview" style="padding:18px 20px">
-            <p style="margin:0 0 12px;color:#666;line-height:1.8">当前节点是目录节点，不直接编辑 Markdown。右侧会展示它以及后代叶子下的关联错题。</p>
+            <p style="margin:0 0 12px;color:#666;line-height:1.8">当前节点是目录节点，不直接编辑 Markdown。关联错题会固定显示在右侧。</p>
             ${childItems ? `<div style="display:flex;gap:8px;flex-wrap:wrap">${childItems}</div>` : '<div style="color:#bbb;font-size:12px">暂无下级知识点</div>'}
           </div>
         </div>
@@ -4574,9 +4575,7 @@ function renderKnowledgeNotesView() {
             <button class="btn btn-secondary btn-sm" onclick="addKnowledgeLeafUnderSelected()">+ 新建同层节点</button>
             <button class="btn btn-secondary btn-sm" onclick="renameKnowledgeNode('${selectedKnowledgeNodeId}')">重命名</button>
             ${findKnowledgeParent(selectedKnowledgeNodeId) ? `<button class="btn btn-secondary btn-sm" onclick="moveKnowledgeNode('${selectedKnowledgeNodeId}')">移动</button>` : ''}
-            <button class="btn btn-secondary btn-sm" onclick="filterByKnowledgeNode('${selectedKnowledgeNodeId}')">📎 查看关联错题</button>
           </div>
-          <div style="padding:0 14px 12px;color:#888;font-size:12px;line-height:1.6">${escapeHtml(pathText)}<br>当前关联错题：${linkedCount} 题</div>
         </div>
         <div class="note-split-preview">
           <div class="note-split-label">👁 预览</div>
@@ -4589,12 +4588,6 @@ function renderKnowledgeNotesView() {
         <div class="note-split-preview" style="width:100%">
           <div class="note-split-label">📌 ${escapeHtml(currentNode.title)}
             <button onclick="noteEditing=true;renderNotesByType()" style="float:right;background:#e74c3c;color:#fff;border:none;border-radius:4px;padding:2px 10px;cursor:pointer;font-size:12px">✏ 编辑</button>
-          </div>
-          <div style="padding:10px 14px 0;color:#888;font-size:12px;line-height:1.6">${escapeHtml(pathText)}<br>当前关联错题：${linkedCount} 题
-            <span style="display:inline-flex;gap:8px;margin-left:8px">
-              <button class="btn btn-secondary btn-sm" onclick="addKnowledgeLeafUnderSelected()">+ 新建同层节点</button>
-              <button class="btn btn-secondary btn-sm" onclick="filterByKnowledgeNode('${selectedKnowledgeNodeId}')">📎 查看关联错题</button>
-            </span>
           </div>
           <div class="note-preview-scroll notes-content" id="noteSplitPreview">${previewHtml}</div>
         </div>
