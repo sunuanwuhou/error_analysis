@@ -1039,6 +1039,7 @@ const KEY_TODAY_DATE  = 'xc_today_date';
 const KEY_TODAY_DONE  = 'xc_today_done';
 const KEY_HISTORY   = 'xc_history';
 const KEY_TYPE_RULES = 'xc_type_rules';
+const KEY_CLOUD_META = 'xc_cloud_meta';
 
 // 默认题型识别规则（按优先级排序）
 const DEFAULT_TYPE_RULES = [
@@ -1287,6 +1288,8 @@ async function loadData() {
   try { _dirTree   = JSON.parse(await DB.get(KEY_DIR_TREE))   || null; } catch(e) { _dirTree   = null; }
   // 加载 history 缓存
   try { _history = JSON.parse(await DB.get(KEY_HISTORY)||'[]'); } catch(e) { _history = []; }
+  try { cloudMeta = { ...getDefaultCloudMeta(), ...(JSON.parse(await DB.get(KEY_CLOUD_META)||'{}') || {}) }; }
+  catch(e) { cloudMeta = getDefaultCloudMeta(); }
   await loadNotesByType();
   await loadKnowledgeState();
 }
@@ -1342,6 +1345,7 @@ let cloudUser = null;
 let cloudSaveTimer = null;
 let cloudBusy = false;
 let pendingCloudSave = false;
+let cloudMeta = getDefaultCloudMeta();
 function getFullBackupPayload() {
   return {
     xc_version: 2,
@@ -1355,6 +1359,84 @@ function getFullBackupPayload() {
     knowledgeTree: knowledgeTree,
     knowledgeNotes: knowledgeNotes
   };
+}
+function getDefaultCloudMeta() {
+  return {
+    restoreDecisions: {},
+    lastSeenBackupAt: '',
+    lastLoadedAt: '',
+    lastSavedAt: ''
+  };
+}
+function saveCloudMeta() {
+  DB.set(KEY_CLOUD_META, JSON.stringify(cloudMeta || getDefaultCloudMeta()));
+}
+function getCloudOriginKey() {
+  return window.location.origin || 'unknown';
+}
+function hasLocalWorkspaceData() {
+  return Boolean(
+    (errors && errors.length) ||
+    Object.keys(notesByType || {}).length ||
+    Object.keys(knowledgeNotes || {}).length ||
+    (globalNote || '').trim()
+  );
+}
+function rememberCloudDecision(updatedAt, action) {
+  if (!cloudMeta || typeof cloudMeta !== 'object') cloudMeta = getDefaultCloudMeta();
+  const originKey = getCloudOriginKey();
+  cloudMeta.restoreDecisions = cloudMeta.restoreDecisions || {};
+  if (updatedAt) {
+    cloudMeta.lastSeenBackupAt = updatedAt;
+    cloudMeta.restoreDecisions[originKey] = {
+      updatedAt,
+      action,
+      at: new Date().toISOString()
+    };
+  }
+  if (action === 'loaded') cloudMeta.lastLoadedAt = new Date().toISOString();
+  if (action === 'saved') cloudMeta.lastSavedAt = new Date().toISOString();
+  saveCloudMeta();
+}
+async function fetchCloudBackupData() {
+  const res = await fetch('/api/backup', { credentials: 'include' });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || data.error || 'load failed');
+  return data;
+}
+function applyCloudBackup(data, updatedAt, opts) {
+  _applyFullBackup(data, 'restore');
+  rememberCloudDecision(updatedAt || data.exportTime || '', 'loaded');
+  if (!opts || !opts.silent) showToast('Cloud backup loaded', 'success');
+}
+async function maybeRestoreCloudBackup() {
+  if (!cloudUser || cloudBusy) return;
+  cloudBusy = true;
+  try {
+    const data = await fetchCloudBackupData();
+    if (!data.exists || !data.backup) return;
+    const updatedAt = data.updatedAt || data.backup.exportTime || '';
+    const originKey = getCloudOriginKey();
+    const existingDecision = cloudMeta.restoreDecisions && cloudMeta.restoreDecisions[originKey];
+    if (!hasLocalWorkspaceData()) {
+      applyCloudBackup(data.backup, updatedAt, { silent: true });
+      showToast('当前入口已自动恢复云端备份', 'success');
+      return;
+    }
+    if (existingDecision && existingDecision.updatedAt === updatedAt) return;
+    const ok = confirm('检测到该账号已有云端备份。是否恢复到当前入口？\n\n选择“取消”会保留当前入口本地数据，你仍可稍后点击 Cloud Load 手动恢复。');
+    if (!ok) {
+      rememberCloudDecision(updatedAt, 'kept_local');
+      showToast('已保留当前入口本地数据，可随时点击 Cloud Load 恢复云端', 'warning');
+      return;
+    }
+    applyCloudBackup(data.backup, updatedAt, { silent: true });
+    showToast('已恢复云端备份到当前入口', 'success');
+  } catch (e) {
+    console.warn('cloud restore skipped:', e);
+  } finally {
+    cloudBusy = false;
+  }
 }
 function renderCloudUi() {
   const badge = document.getElementById('cloudUserBadge');
@@ -1381,6 +1463,7 @@ async function refreshCloudSession() {
     window.location.replace('/login');
     return;
   }
+  await maybeRestoreCloudBackup();
   if (pendingCloudSave) {
     pendingCloudSave = false;
     scheduleCloudSave();
@@ -1403,20 +1486,18 @@ async function loadCloudBackup(opts) {
   if (cloudBusy) return;
   cloudBusy = true;
   try {
-    const res = await fetch('/api/backup', { credentials: 'include' });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.detail || data.error || 'load failed');
+    const data = await fetchCloudBackupData();
     if (!data.exists || !data.backup) {
       if (!opts.silent) showToast('Cloud backup is empty', 'warning');
       return;
     }
+    const updatedAt = data.updatedAt || data.backup.exportTime || '';
     const hasLocalData = (errors && errors.length) || Object.keys(notesByType || {}).length || Object.keys(knowledgeNotes || {}).length;
     if (opts.askBeforeRestore && hasLocalData) {
       const ok = confirm('Cloud backup found. Restore it to current device?');
       if (!ok) return;
     }
-    _applyFullBackup(data.backup, 'restore');
-    if (!opts.silent) showToast('Cloud backup loaded', 'success');
+    applyCloudBackup(data.backup, updatedAt, opts);
   } catch (e) {
     if (!opts.silent) showToast(e.message || 'Cloud load failed', 'error');
   } finally {
@@ -1440,6 +1521,7 @@ async function saveCloudBackup(opts) {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.detail || data.error || 'save failed');
+    rememberCloudDecision(data.updatedAt || '', 'saved');
     if (!opts.silent) showToast('Cloud backup saved', 'success');
   } catch (e) {
     if (!opts.silent) showToast(e.message || 'Cloud save failed', 'error');
