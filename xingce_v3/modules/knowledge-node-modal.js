@@ -6,6 +6,35 @@
     renderNotesPanelRight();
   }
 
+  function getKnowledgePathOptions(leafOnly, excludeNodeId) {
+    var options = [];
+    function walk(nodes, trail) {
+      (nodes || []).forEach(function (node) {
+        var currentTrail = collapseKnowledgePathTitles(trail.concat(node.title));
+        var pathLabel = currentTrail.join(" > ");
+        if ((!leafOnly || node.isLeaf) && node.id !== excludeNodeId) {
+          options.push({ id: node.id, label: pathLabel, node: node });
+        }
+        if (node.children && node.children.length) {
+          walk(node.children, currentTrail);
+        }
+      });
+    }
+    walk(getKnowledgeRootNodes(), []);
+    return options;
+  }
+
+  function getKnowledgeNodeModalTargetOptions(nodeId) {
+    return getKnowledgePathOptions(false, nodeId).filter(function (item) {
+      return !isKnowledgeDescendant(nodeId, item.id);
+    });
+  }
+
+  function chooseKnowledgeNodeByPrompt() {
+    showToast("编号选择已退到兼容层，当前统一使用弹层搜索和拖拽。", "info");
+    return null;
+  }
+
   function addKnowledgeLeafUnderSelected() {
     ensureKnowledgeState();
     var current = getKnowledgeNodeById(selectedKnowledgeNodeId);
@@ -428,6 +457,9 @@
   }
 
   window.openKnowledgeNodeModal = openKnowledgeNodeModal;
+  window.getKnowledgePathOptions = getKnowledgePathOptions;
+  window.getKnowledgeNodeModalTargetOptions = getKnowledgeNodeModalTargetOptions;
+  window.chooseKnowledgeNodeByPrompt = chooseKnowledgeNodeByPrompt;
   window.addKnowledgeLeafUnderSelected = addKnowledgeLeafUnderSelected;
   window.closeKnowledgeNodeModal = closeKnowledgeNodeModal;
   window.handleKnowledgeNodeTitleKeydown = handleKnowledgeNodeTitleKeydown;

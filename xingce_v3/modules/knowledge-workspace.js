@@ -27,6 +27,43 @@
     });
   }
 
+  function liveNotePreview() {
+    var ta = document.getElementById("noteTypeTextarea");
+    var preview = document.getElementById("noteSplitPreview");
+    if (ta && preview) {
+      preview.innerHTML = ta.value
+        ? renderMd(ta.value)
+        : '<span style="color:#ccc;font-size:12px;font-style:italic">输入 Markdown 后在此预览…</span>';
+    }
+    var gta = document.getElementById("globalNoteTA");
+    var gpv = document.getElementById("noteEditPreview");
+    if (gta && gpv) {
+      gpv.innerHTML = renderMd(gta.value) || '<span style="color:#ccc;font-size:12px;font-style:italic">右侧实时预览</span>';
+    }
+  }
+
+  function saveNoteTypeContent() {
+    var ta = document.getElementById("noteTypeTextarea");
+    if (!ta) return;
+    if (notesViewMode === "knowledge") {
+      ensureKnowledgeState();
+      if (!selectedKnowledgeNodeId) return;
+      var node = getKnowledgeNodeById(selectedKnowledgeNodeId);
+      if (!node) return;
+      node.contentMd = ta.value;
+      node.updatedAt = new Date().toISOString();
+      saveKnowledgeState();
+      return;
+    }
+    if (!selectedNoteType) return;
+    if (!notesByType[selectedNoteType]) {
+      notesByType[selectedNoteType] = { content: "", updatedAt: "" };
+    }
+    notesByType[selectedNoteType].content = ta.value;
+    notesByType[selectedNoteType].updatedAt = new Date().toISOString();
+    saveNotesByType();
+  }
+
   function renderKnowledgeNotesViewV2() {
     ensureKnowledgeState();
     var content = document.getElementById("notesContent");
@@ -102,6 +139,8 @@
   }
 
   window.renderKnowledgeNotesViewV2 = renderKnowledgeNotesViewV2;
+  window.liveNotePreview = liveNotePreview;
+  window.saveNoteTypeContent = saveNoteTypeContent;
   window.renderNotesByType = function () {
     notesViewMode = "knowledge";
     renderKnowledgeNotesViewV2();

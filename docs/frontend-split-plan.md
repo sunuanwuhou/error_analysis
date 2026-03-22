@@ -67,6 +67,8 @@ Move `xingce_v3.html` away from a single giant page without changing the current
   - node drag/drop and error drag/drop reassignment
   - node move/delete/rename action handlers
 - legacy note-mode switching is now forced back to the knowledge-tree workspace from external modules
+- workspace save/preview helpers now also come from external modules
+- modal target-option building is now overridden from the external knowledge-node module
 - the main HTML still keeps compatibility functions, but the active three-panel path is now overridden from external modules
 
 ## Safety Rules
