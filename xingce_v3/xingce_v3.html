@@ -562,6 +562,16 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .knowledge-tree-count{font-size:11px;color:#999;min-width:18px;text-align:right;flex-shrink:0}
 .knowledge-tree-count.is-empty{visibility:hidden}
 .knowledge-tree-children{display:flex;flex-direction:column}
+.related-error-detail{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.related-error-question{font-size:13px;line-height:1.75;color:#2f3542;white-space:pre-wrap;word-break:break-word}
+.related-error-image{width:100%;max-height:260px;object-fit:contain;border:1px solid #ececec;border-radius:10px;background:#fff}
+.related-error-options{display:flex;flex-direction:column;gap:6px}
+.related-error-option{padding:8px 10px;border:1px solid #ececec;border-radius:8px;background:#fafafa;font-size:12px;line-height:1.7;color:#444;white-space:pre-wrap;word-break:break-word}
+.related-error-meta-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.related-error-meta{padding:8px 10px;border-radius:8px;background:#f8f9fb;border:1px solid #eceff4;font-size:12px;line-height:1.65;color:#555}
+.related-error-meta strong{display:block;font-size:11px;color:#8b94a3;margin-bottom:2px}
+.related-error-analysis{padding:10px 12px;border-left:3px solid #4e8ef7;background:#f6f8ff;border-radius:8px;font-size:12px;line-height:1.75;color:#3d4a5a;white-space:pre-wrap;word-break:break-word}
+.related-error-actions{margin-top:12px}
 .toast-stack{position:fixed;top:18px;right:18px;display:flex;flex-direction:column;gap:10px;z-index:1400;pointer-events:none}
 .toast{min-width:220px;max-width:360px;background:#fff;border:1px solid #e8e8e8;border-left:4px solid #e74c3c;border-radius:10px;box-shadow:0 16px 40px rgba(0,0,0,.14);padding:10px 12px;font-size:12px;line-height:1.6;color:#444;opacity:0;transform:translateY(-6px);transition:.2s}
 .toast.show{opacity:1;transform:translateY(0)}
@@ -5445,6 +5455,18 @@ function extractMdHeadings(content) {
   return headings;
 }
 
+function renderRelatedErrorOptions(options) {
+  const raw = (options || '').trim();
+  if (!raw) return '';
+  const parts = raw.split(/\s*\|\s*/).map(item => item.trim()).filter(Boolean);
+  if (!parts.length) return '';
+  return `<div class="related-error-options">${parts.map(item => `<div class="related-error-option">${escapeHtml(item)}</div>`).join('')}</div>`;
+}
+function renderRelatedErrorMeta(label, value) {
+  const text = (value || '').trim();
+  if (!text) return '';
+  return `<div class="related-error-meta"><strong>${escapeHtml(label)}</strong>${escapeHtml(text)}</div>`;
+}
 function renderKnowledgeNotesPanelRight() {
   ensureKnowledgeState();
   const body = document.getElementById('notesPanelRightBody');
@@ -5474,18 +5496,37 @@ function renderKnowledgeNotesPanelRight() {
     : `当前节点及下级共 ${related.length} 道关联错题`;
   body.innerHTML = `<div class="related-errors-summary"><strong>${escapeHtml(pathText)}</strong><br>${summaryText}</div>` + related.map(e => {
     const notePath = collapseKnowledgePathTitles(getKnowledgePathTitles(e.noteNodeId)).join(' > ');
+    const questionText = (e.question || '').trim();
+    const questionHtml = questionText
+      ? `<div class="related-error-question">${hl(questionText, searchKw)}</div>`
+      : '<div class="related-error-question">图片题</div>';
+    const questionImg = e.imgData ? `<img class="related-error-image" src="${e.imgData}" alt="题目图片">` : '';
+    const analysisImg = e.analysisImgData ? `<img class="related-error-image" src="${e.analysisImgData}" alt="解析图片">` : '';
+    const optionsHtml = renderRelatedErrorOptions(e.options);
+    const metaHtml = [
+      renderRelatedErrorMeta('正确答案', e.answer),
+      renderRelatedErrorMeta('我的答案', e.myAnswer),
+      renderRelatedErrorMeta('根本主因', e.rootReason),
+      renderRelatedErrorMeta('直接原因', e.errorReason)
+    ].filter(Boolean).join('');
+    const analysisHtml = e.analysis ? `<div class="related-error-analysis">${escapeHtml(e.analysis)}</div>` : '';
     return `<div class="error-card related-error-card" draggable="true" ondragstart="startErrorDrag(${e.id}, event)" ondragend="endErrorDrag()">
       <div class="card-top">
         <span class="status-tag ${escapeHtml(e.status || 'focus')}">${escapeHtml((e.status === 'review' ? '待复习' : e.status === 'mastered' ? '已掌握' : '重点复习'))}</span>
         <span class="card-num">#${e.id}</span>
       </div>
-      <div class="card-question">${hl((e.question || '图片题').slice(0, 120), searchKw)}</div>
       <div class="related-error-path"><strong>知识点</strong> ${escapeHtml(notePath)}</div>
+      <div class="related-error-detail">
+        ${questionHtml}
+        ${questionImg}
+        ${optionsHtml}
+        ${metaHtml ? `<div class="related-error-meta-grid">${metaHtml}</div>` : ''}
+        ${analysisHtml}
+        ${analysisImg}
+      </div>
       <div class="card-actions related-error-actions">
-        <button class="btn btn-secondary btn-sm" onclick="openKnowledgeForError(${e.id})">定位笔记</button>
         <button class="btn btn-secondary btn-sm" onclick="moveErrorToKnowledgeNode(${e.id}, '${e.noteNodeId || ''}')">改挂载</button>
         <button class="btn btn-secondary btn-sm" onclick="openEditModal(${e.id})">编辑</button>
-        <button class="btn btn-secondary btn-sm" onclick="jumpToErrorInList(${e.id})">在列表中看</button>
       </div>
     </div>`;
   }).join('');

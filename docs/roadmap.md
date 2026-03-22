@@ -1,4 +1,4 @@
-# xingce_v3_lab Roadmap
+﻿# xingce_v3_lab Roadmap
 
 ## Current Goal
 
@@ -51,14 +51,17 @@ This project is no longer on the Excel/OCR-first path.
    - direct errors
    - descendants-included errors
 2. Remove remaining active old compatibility UI paths from the main experience.
-3. Continue reducing “prototype/admin” feel without changing core behavior.
+3. Continue reducing 鈥減rototype/admin鈥?feel without changing core behavior.
 
 ## Still Open
 
 ### P0
 
-- add explicit `直属 / 含下级` switch to the right panel
+- add explicit right-panel relation mode switching
 - align header counts with the selected relation mode
+- make the right panel self-sufficient for reading
+  - full question details stay in the right panel
+  - remove jump-to-note / jump-to-list as primary actions
 
 ### P1
 
@@ -73,14 +76,14 @@ This project is no longer on the Excel/OCR-first path.
 
 ## Acceptance Standard
 
-The current stage is only “done” when:
+The current stage is only 鈥渄one鈥?when:
 
 1. left tree is readable at a glance
 2. current node can always be edited directly in the center
 3. right panel clearly tells whether it shows direct errors or descendants
-4. node operations no longer rely on prompt-driven flows
-5. users do not need to understand the internal data model to use the UI
-
+4. right panel can show a full related error without forced navigation
+5. node operations no longer rely on prompt-driven flows
+6. users do not need to understand the internal data model to use the UI
 ## Current Baseline
 
 - latest baseline commit when this roadmap was refreshed: `d407f5d`
