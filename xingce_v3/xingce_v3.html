@@ -652,6 +652,9 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
       <div class="more-menu-panel" id="moreMenuPanel">
         <button class="btn btn-secondary" onclick="closeMoreMenu();openImportModal()">⬆ 导入</button>
         <button class="btn btn-secondary" onclick="closeMoreMenu();openExportModal()">⬇ 导出</button>
+        <button class="btn btn-secondary" onclick="closeMoreMenu();clearCurrentModuleErrors()">🧹 清空当前模块</button>
+        <button class="btn btn-secondary" onclick="closeMoreMenu();clearAllErrorsData()">🗑 清空全部题目</button>
+        <button class="btn btn-secondary" onclick="closeMoreMenu();resetAllStudyData()">♻ 重置全部学习数据</button>
         <button class="btn btn-secondary" onclick="closeMoreMenu();openDashboard()">📊 统计</button>
         <button class="btn btn-secondary" onclick="closeMoreMenu();openModal('claudeModal')">🤖 Claude</button>
         <button class="btn btn-secondary" onclick="closeMoreMenu();printList()">🖨 打印</button>
@@ -5903,5 +5906,6 @@ function fallbackCopy(text) {
 <script src="/assets/modules/knowledge-workbench.js"></script>
 <script src="/assets/modules/knowledge-workspace.js"></script>
 <script src="/assets/modules/knowledge-node-modal.js"></script>
+<script src="/assets/modules/data-management.js"></script>
 </body>
 </html>
