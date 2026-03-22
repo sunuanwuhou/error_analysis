@@ -9,6 +9,64 @@
     }).join("");
   }
 
+  function getCurrentKnowledgeNode() {
+    return getKnowledgeNodeById(selectedKnowledgeNodeId);
+  }
+
+  function setCurrentKnowledgeNode(nodeId, opts) {
+    var options = opts || {};
+    if (!nodeId) return;
+    var resolvedId = resolveKnowledgeDisplayNodeId(nodeId);
+    expandKnowledgePath(resolvedId);
+    selectedKnowledgeNodeId = resolvedId;
+    knowledgeNodeFilter = options.applyFilter === false ? knowledgeNodeFilter : resolvedId;
+    typeFilter = null;
+    noteEditing = false;
+    if (options.switchTab !== false) {
+      switchTab("notes");
+    } else {
+      renderSidebar();
+      renderAll();
+      renderNotesByType();
+      renderNotesPanelRight();
+    }
+  }
+
+  function selectKnowledgeLeaf(nodeId) {
+    if (!nodeId) return;
+    saveNoteTypeContent();
+    notesViewMode = "knowledge";
+    setCurrentKnowledgeNode(nodeId, { switchTab: false });
+  }
+
+  function selectNoteType(type) {
+    saveNoteTypeContent();
+    selectedNoteType = type;
+    showToast("旧题型笔记已退到兼容层，当前统一使用知识树笔记。", "info");
+    notesViewMode = "knowledge";
+    renderNotesByType();
+  }
+
+  function openKnowledgeForError(errorId) {
+    var errorItem = errors.find(function (item) { return item.id === errorId; });
+    if (!errorItem || !errorItem.noteNodeId) {
+      showToast("当前题目还没有关联知识点", "warning");
+      return;
+    }
+    setCurrentKnowledgeNode(errorItem.noteNodeId, { switchTab: true });
+  }
+
+  function jumpToErrorInList(errorId) {
+    switchTab("errors");
+    revealed.add(errorId);
+    saveReveal();
+    renderAll();
+    setTimeout(function () {
+      var el = document.getElementById("card-" + errorId);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 50);
+  }
+
   function renderKnowledgeWorkspaceHint(currentNode) {
     var childItems = renderKnowledgeChildPills(currentNode);
     return (childItems ? "<div class=\"knowledge-children-bar\">" + childItems + "</div>" : "") +
@@ -139,6 +197,12 @@
   }
 
   window.renderKnowledgeNotesViewV2 = renderKnowledgeNotesViewV2;
+  window.getCurrentKnowledgeNode = getCurrentKnowledgeNode;
+  window.setCurrentKnowledgeNode = setCurrentKnowledgeNode;
+  window.selectKnowledgeLeaf = selectKnowledgeLeaf;
+  window.selectNoteType = selectNoteType;
+  window.openKnowledgeForError = openKnowledgeForError;
+  window.jumpToErrorInList = jumpToErrorInList;
   window.liveNotePreview = liveNotePreview;
   window.saveNoteTypeContent = saveNoteTypeContent;
   window.renderNotesByType = function () {
