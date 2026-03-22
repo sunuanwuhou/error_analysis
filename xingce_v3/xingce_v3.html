@@ -49,6 +49,12 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .main-area{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
 .top-bar{background:#fff;border-bottom:1px solid #e8e8e8;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0}
 .top-bar h1{font-size:15px;font-weight:700;color:#2c3e50;white-space:nowrap}
+.toolbar-spacer{margin-left:auto}
+.cloud-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.more-menu{position:relative}
+.more-menu-panel{display:none;position:absolute;top:calc(100% + 8px);left:0;background:#fff;border:1px solid #e8e8e8;border-radius:10px;box-shadow:0 14px 32px rgba(0,0,0,.12);padding:8px;min-width:180px;z-index:120}
+.more-menu.open .more-menu-panel{display:flex;flex-direction:column;gap:6px}
+.more-menu-panel .btn{justify-content:flex-start;text-align:left;width:100%}
 .search-box{flex:1;min-width:150px;position:relative}
 .search-box input{width:100%;padding:6px 10px 6px 28px;border:1px solid #ddd;border-radius:16px;font-size:13px;outline:none;transition:.2s}
 .search-box input:focus{border-color:#e74c3c;box-shadow:0 0 0 2px rgba(231,76,60,.1)}
@@ -174,6 +180,8 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .note-action-btn:hover{background:#f0f0f0;border-color:#ccc}
 .note-action-btn[title="添加子节点"]{background:#e3f2fd;color:#1976d2;border-color:#90caf9}
 .note-action-btn[title="添加子节点"]:hover{background:#bbdefb}
+.knowledge-node-actions{display:flex;gap:4px;margin-left:6px;opacity:0;pointer-events:none;transition:.15s}
+.nav-type-header:hover .knowledge-node-actions,.nav-type-header.active .knowledge-node-actions,.nav-subtype:hover .knowledge-node-actions,.nav-subtype.active .knowledge-node-actions,.nav-sub2:hover .knowledge-node-actions,.nav-sub2.active .knowledge-node-actions{opacity:1;pointer-events:auto}
 .note-save-btn{padding:4px 14px;background:#f59e0b;color:#fff;border:none;border-radius:5px;font-size:12px;cursor:pointer;font-weight:600}
 .note-save-btn:hover{background:#d97706}
 .note-header-actions{padding:10px;border-bottom:1px solid #f0f0f0;background:#fafafa;display:flex;gap:10px}
@@ -530,6 +538,12 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .knowledge-move-item-path{font-size:11px;color:#888;line-height:1.6;margin-top:4px}
 .knowledge-move-item-current{display:inline-flex;align-items:center;gap:4px;margin-top:6px;font-size:11px;color:#e67e22;background:#fff7e6;border:1px solid #ffd591;border-radius:999px;padding:1px 8px}
 .knowledge-move-empty{padding:20px 12px;color:#999;font-size:12px;text-align:center}
+.toast-stack{position:fixed;top:18px;right:18px;display:flex;flex-direction:column;gap:10px;z-index:1400;pointer-events:none}
+.toast{min-width:220px;max-width:360px;background:#fff;border:1px solid #e8e8e8;border-left:4px solid #e74c3c;border-radius:10px;box-shadow:0 16px 40px rgba(0,0,0,.14);padding:10px 12px;font-size:12px;line-height:1.6;color:#444;opacity:0;transform:translateY(-6px);transition:.2s}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.success{border-left-color:#52c41a}
+.toast.warning{border-left-color:#faad14}
+.toast.error{border-left-color:#e74c3c}
 /* ===== 笔记分栏编辑器 ===== */
 .note-split-area{flex:1;display:flex;overflow:hidden;min-height:0}
 .note-split-editor{flex:1;display:flex;flex-direction:column;padding:10px 12px;border-right:1px solid #f0f0f0;min-width:0;overflow:hidden}
@@ -599,16 +613,26 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
       <button class="btn btn-secondary" id="viewModeNotes" onclick="switchTab('notes')">学习笔记</button>
     </div>
     <button class="btn btn-primary" onclick="openAddModal()">＋ 添加</button>
-    <button class="btn btn-secondary" onclick="openImportModal()">⬆ 导入</button>
-    <button class="btn btn-secondary" onclick="openExportModal()">⬇ 导出</button>
-    <button class="btn btn-secondary" onclick="openDashboard()">📊 统计</button>
-    <button class="btn btn-secondary" onclick="openModal('claudeModal')">🤖 Claude</button>
-    <button class="btn btn-secondary" onclick="printList()">🖨 打印</button>
-    <span id="cloudUserBadge" style="margin-left:auto;font-size:12px;color:#666">Cloud: offline</span>
-    <button class="btn btn-secondary" onclick="loadCloudBackup()">Cloud Load</button>
-    <button class="btn btn-secondary" onclick="saveCloudBackup()">Cloud Save</button>
-    <button class="btn btn-secondary" id="cloudLogoutBtn" onclick="logoutCloud()">Logout</button>
+    <div class="more-menu" id="moreMenu">
+      <button class="btn btn-secondary" onclick="toggleMoreMenu(event)">更多</button>
+      <div class="more-menu-panel" id="moreMenuPanel">
+        <button class="btn btn-secondary" onclick="closeMoreMenu();openImportModal()">⬆ 导入</button>
+        <button class="btn btn-secondary" onclick="closeMoreMenu();openExportModal()">⬇ 导出</button>
+        <button class="btn btn-secondary" onclick="closeMoreMenu();openDashboard()">📊 统计</button>
+        <button class="btn btn-secondary" onclick="closeMoreMenu();openModal('claudeModal')">🤖 Claude</button>
+        <button class="btn btn-secondary" onclick="closeMoreMenu();printList()">🖨 打印</button>
+      </div>
+    </div>
+    <span class="toolbar-spacer"></span>
+    <div class="cloud-controls">
+      <span id="cloudUserBadge" style="font-size:12px;color:#666">Cloud: offline</span>
+      <button class="btn btn-secondary" onclick="loadCloudBackup()">Cloud Load</button>
+      <button class="btn btn-secondary" onclick="saveCloudBackup()">Cloud Save</button>
+      <button class="btn btn-secondary" id="cloudLogoutBtn" onclick="logoutCloud()">Logout</button>
+    </div>
   </div>
+
+  <div class="toast-stack" id="toastStack"></div>
 
   <!-- Tab切换栏 -->
   <div class="tab-header">
@@ -1377,7 +1401,7 @@ async function loadCloudBackup(opts) {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.detail || data.error || 'load failed');
     if (!data.exists || !data.backup) {
-      if (!opts.silent) alert('Cloud backup is empty');
+      if (!opts.silent) showToast('Cloud backup is empty', 'warning');
       return;
     }
     const hasLocalData = (errors && errors.length) || Object.keys(notesByType || {}).length || Object.keys(knowledgeNotes || {}).length;
@@ -1386,9 +1410,9 @@ async function loadCloudBackup(opts) {
       if (!ok) return;
     }
     _applyFullBackup(data.backup, 'restore');
-    if (!opts.silent) alert('Cloud backup loaded');
+    if (!opts.silent) showToast('Cloud backup loaded', 'success');
   } catch (e) {
-    if (!opts.silent) alert(e.message || 'Cloud load failed');
+    if (!opts.silent) showToast(e.message || 'Cloud load failed', 'error');
   } finally {
     cloudBusy = false;
   }
@@ -1410,9 +1434,9 @@ async function saveCloudBackup(opts) {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.detail || data.error || 'save failed');
-    if (!opts.silent) alert('Cloud backup saved');
+    if (!opts.silent) showToast('Cloud backup saved', 'success');
   } catch (e) {
-    if (!opts.silent) alert(e.message || 'Cloud save failed');
+    if (!opts.silent) showToast(e.message || 'Cloud save failed', 'error');
   } finally {
     cloudBusy = false;
   }
@@ -2056,7 +2080,7 @@ function saveQuizResults() {
   closeModal('quizModal');
   renderSidebar();
   renderAll();
-  alert('记录已保存！');
+  showToast('记录已保存', 'success');
 }
 
 // ============================================================
@@ -2074,7 +2098,7 @@ function renderSidebarKnowledgeTree(nodes, depth) {
     const cls = depth === 0 ? 'nav-type-header' : depth === 1 ? 'nav-subtype' : 'nav-sub2';
     const extraStyle = depth > 2 ? `padding-left:${60 + ((depth - 2) * 18)}px` : '';
     const marker = displayNode.isLeaf ? '•' : '▸';
-    const actions = `<span style="display:flex;gap:4px;margin-left:6px">
+    const actions = `<span class="knowledge-node-actions">
         <button class="note-action-btn" title="重命名" onclick="event.stopPropagation();renameKnowledgeNode('${displayNode.id}')">✎</button>
         ${depth > 0 ? `<button class="note-action-btn" title="移动" onclick="event.stopPropagation();moveKnowledgeNode('${displayNode.id}')">⇄</button>` : ''}
       </span>`;
@@ -3878,6 +3902,7 @@ function renameKnowledgeNode(nodeId) {
     knowledgeNotes[node.id].title = title;
   }
   saveKnowledgeState();
+  showToast('节点已重命名', 'success');
   renderSidebar();
   renderNotesByType();
   renderNotesPanelRight();
@@ -3910,6 +3935,7 @@ function moveKnowledgeNode(nodeId) {
   oldList.splice(idx, 1);
   target.node.children.push(node);
   saveKnowledgeState();
+  showToast('节点已移动', 'success');
   setCurrentKnowledgeNode(node.id, { switchTab: false });
 }
 function moveErrorToKnowledgeNode(errorId, preferredNodeId) {
@@ -3967,12 +3993,12 @@ function applyKnowledgeMove() {
     return;
   }
   if (!pendingKnowledgeMoveTargetId) {
-    alert('请选择目标知识点');
+    showToast('请选择目标知识点', 'warning');
     return;
   }
   const targetNode = getKnowledgeNodeById(pendingKnowledgeMoveTargetId);
   if (!targetNode || !targetNode.isLeaf) {
-    alert('目标知识点无效');
+    showToast('目标知识点无效', 'error');
     return;
   }
   const previousNodeId = errorItem.noteNodeId || null;
@@ -3982,15 +4008,15 @@ function applyKnowledgeMove() {
   closeKnowledgeMoveModal();
   setCurrentKnowledgeNode(targetNode.id, { switchTab: false });
   if (previousNodeId && knowledgeNodeFilter === previousNodeId && previousNodeId !== targetNode.id) {
-    alert(`已改挂载到：${collapseKnowledgePathTitles(getKnowledgePathTitles(targetNode.id)).join(' > ')}\n该题已移出原知识点视图。`);
+    showToast(`已改挂载到：${collapseKnowledgePathTitles(getKnowledgePathTitles(targetNode.id)).join(' > ')}，该题已移出原知识点视图。`, 'success');
     return;
   }
-  alert(`已改挂载到：${collapseKnowledgePathTitles(getKnowledgePathTitles(targetNode.id)).join(' > ')}`);
+  showToast(`已改挂载到：${collapseKnowledgePathTitles(getKnowledgePathTitles(targetNode.id)).join(' > ')}`, 'success');
 }
 function openKnowledgeForError(errorId) {
   const errorItem = errors.find(item => item.id === errorId);
   if (!errorItem || !errorItem.noteNodeId) {
-    alert('当前题目还没有关联知识点');
+    showToast('当前题目还没有关联知识点', 'warning');
     return;
   }
   setCurrentKnowledgeNode(errorItem.noteNodeId, { switchTab: true });
@@ -4215,6 +4241,33 @@ document.querySelectorAll('.modal-mask').forEach(mask=>{
   mask.addEventListener('click',function(e){
     if(e.target===this&&this.id!=='quizModal') closeModal(this.id);
   });
+});
+function showToast(message, type) {
+  const stack = document.getElementById('toastStack');
+  if (!stack) return;
+  const toast = document.createElement('div');
+  toast.className = `toast ${type || 'success'}`;
+  toast.textContent = message;
+  stack.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add('show'));
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 220);
+  }, 2200);
+}
+function closeMoreMenu() {
+  const menu = document.getElementById('moreMenu');
+  if (menu) menu.classList.remove('open');
+}
+function toggleMoreMenu(event) {
+  event.stopPropagation();
+  const menu = document.getElementById('moreMenu');
+  if (!menu) return;
+  menu.classList.toggle('open');
+}
+document.addEventListener('click', event => {
+  const menu = document.getElementById('moreMenu');
+  if (menu && !menu.contains(event.target)) closeMoreMenu();
 });
 
 // ============================================================
@@ -5056,10 +5109,10 @@ function saveError(){
       if (!stillUsed) delete notesByType[oldType];
       saveNotesByType();
     }
-    alert('修改成功');
+    showToast('修改成功', 'success');
   }else{
     errors.push({id:newId(),addDate:today(),...data});
-    alert('添加成功');
+    showToast('添加成功', 'success');
   }
   saveData();closeModal('addModal');renderSidebar();renderAll();
   // 同步笔记结构（自动补充子类型标题）
