@@ -1,0 +1,23 @@
+services:
+  app:
+    build:
+      context: .
+    container_name: xingce_v3_app
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./runtime:/app/runtime
+    restart: unless-stopped
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: xingce_v3_tunnel
+    depends_on:
+      - app
+    command: tunnel --no-autoupdate --url http://app:8000 --logfile /runtime/cloudflared.log
+    volumes:
+      - ./runtime:/runtime
+    restart: unless-stopped
+    profiles:
+      - tunnel

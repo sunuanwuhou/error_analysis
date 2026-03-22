@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>xingce Login</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: #1f2937;
+      background:
+        radial-gradient(circle at top left, rgba(255, 228, 214, 0.9), transparent 34%),
+        linear-gradient(135deg, #f7f1eb 0%, #eef3f8 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .shell {
+      width: min(980px, 100%);
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      border-radius: 28px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: 0 24px 70px rgba(15, 23, 42, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(14px);
+    }
+    .hero {
+      padding: 42px 38px;
+      background:
+        linear-gradient(180deg, rgba(190, 30, 45, 0.06), rgba(190, 30, 45, 0)),
+        linear-gradient(135deg, #fcfaf8 0%, #f6ebe3 100%);
+      border-right: 1px solid rgba(190, 30, 45, 0.08);
+    }
+    .hero h1 {
+      margin: 0 0 14px;
+      font-size: 34px;
+      line-height: 1.15;
+      color: #7a1d16;
+    }
+    .hero p {
+      margin: 0 0 18px;
+      font-size: 14px;
+      line-height: 1.8;
+      color: #5b6472;
+    }
+    .points {
+      display: grid;
+      gap: 10px;
+      margin-top: 28px;
+    }
+    .point {
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(190, 30, 45, 0.08);
+      font-size: 13px;
+      line-height: 1.7;
+      color: #4b5563;
+    }
+    .form-wrap {
+      padding: 42px 34px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 18px;
+    }
+    .card-title {
+      margin: 0;
+      font-size: 24px;
+      color: #111827;
+    }
+    .sub {
+      margin: 4px 0 0;
+      font-size: 13px;
+      color: #6b7280;
+      line-height: 1.7;
+    }
+    .origin-box {
+      border-radius: 16px;
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      padding: 14px 16px;
+    }
+    .origin-stack {
+      display: grid;
+      gap: 12px;
+    }
+    .origin-label {
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 6px;
+    }
+    .origin-value {
+      word-break: break-all;
+      font-size: 14px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .origin-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      justify-content: space-between;
+    }
+    .origin-copy {
+      border: 1px solid #d1d5db;
+      background: #fff;
+      color: #374151;
+      border-radius: 10px;
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .origin-copy:hover {
+      background: #f9fafb;
+    }
+    .origin-muted {
+      font-size: 12px;
+      color: #9ca3af;
+    }
+    .form-group {
+      display: grid;
+      gap: 8px;
+    }
+    .form-group label {
+      font-size: 13px;
+      color: #374151;
+      font-weight: 600;
+    }
+    .form-group input {
+      width: 100%;
+      border-radius: 14px;
+      border: 1px solid #d1d5db;
+      background: #fff;
+      padding: 13px 14px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color .18s ease, box-shadow .18s ease;
+    }
+    .form-group input:focus {
+      border-color: #be1e2d;
+      box-shadow: 0 0 0 4px rgba(190, 30, 45, 0.08);
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    .btn {
+      flex: 1;
+      border: none;
+      border-radius: 14px;
+      padding: 13px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform .16s ease, opacity .16s ease;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn-primary {
+      background: linear-gradient(135deg, #be1e2d 0%, #8f171f 100%);
+      color: #fff;
+    }
+    .btn-secondary {
+      background: #fff;
+      color: #374151;
+      border: 1px solid #d1d5db;
+    }
+    .hint {
+      min-height: 20px;
+      font-size: 12px;
+      color: #b91c1c;
+    }
+    .ok {
+      color: #047857;
+    }
+    @media (max-width: 820px) {
+      .shell { grid-template-columns: 1fr; }
+      .hero { border-right: none; border-bottom: 1px solid rgba(190, 30, 45, 0.08); }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <h1>xingce 云端工作台</h1>
+      <p>先登录，再进入录题工作台。题目、笔记、图片和分析结果都按用户隔离，并同步到云端备份。</p>
+      <div class="points">
+        <div class="point">登录后才能录入错题，避免本机数据和他人数据混在一起。</div>
+        <div class="point">当前登录入口会自动兼容本地地址和 Cloudflare 外网地址，不需要手动改配置。</div>
+        <div class="point">这版只做“手动录入 + 整包同步”，不做 Excel 解析，先把录题闭环跑稳。</div>
+      </div>
+    </section>
+
+    <section class="form-wrap">
+      <div>
+        <h2 class="card-title">登录 / 注册</h2>
+        <p class="sub">同一个账号在不同设备登录后，可以直接恢复你自己的工作台数据。</p>
+      </div>
+
+      <div class="origin-box">
+        <div class="origin-stack">
+          <div>
+            <div class="origin-label">当前访问地址</div>
+            <div class="origin-row">
+              <div class="origin-value" id="originValue"></div>
+              <button class="origin-copy" id="copyOriginBtn" type="button">复制</button>
+            </div>
+          </div>
+          <div>
+            <div class="origin-label">当前外网地址</div>
+            <div class="origin-row">
+              <div class="origin-value" id="tunnelValue">未检测到外网地址</div>
+              <button class="origin-copy" id="copyTunnelBtn" type="button">复制</button>
+            </div>
+            <div class="origin-muted" id="tunnelHint">启动 Cloudflare Tunnel 后，这里会显示 trycloudflare.com 域名。</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="username">用户名</label>
+        <input id="username" type="text" placeholder="至少 2 个字符">
+      </div>
+
+      <div class="form-group">
+        <label for="password">密码</label>
+        <input id="password" type="password" placeholder="至少 6 个字符">
+      </div>
+
+      <div id="hint" class="hint"></div>
+
+      <div class="actions">
+        <button class="btn btn-secondary" id="registerBtn" type="button">注册</button>
+        <button class="btn btn-primary" id="loginBtn" type="button">登录并进入</button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const originEl = document.getElementById('originValue');
+    const hintEl = document.getElementById('hint');
+    const tunnelEl = document.getElementById('tunnelValue');
+    const tunnelHintEl = document.getElementById('tunnelHint');
+    const usernameEl = document.getElementById('username');
+    const passwordEl = document.getElementById('password');
+    const loginBtn = document.getElementById('loginBtn');
+    const registerBtn = document.getElementById('registerBtn');
+    const copyOriginBtn = document.getElementById('copyOriginBtn');
+    const copyTunnelBtn = document.getElementById('copyTunnelBtn');
+
+    originEl.textContent = window.location.origin;
+
+    async function copyText(text, button) {
+      if (!text) return;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        }
+        const prev = button.textContent;
+        button.textContent = '已复制';
+        setTimeout(() => { button.textContent = prev; }, 1200);
+      } catch (_) {}
+    }
+
+    async function loadPublicEntry() {
+      try {
+        const res = await fetch('/api/public-entry', { credentials: 'include' });
+        const data = await res.json();
+        if (data.origin) {
+          originEl.textContent = data.origin;
+        }
+        if (data.tunnelUrl) {
+          tunnelEl.textContent = data.tunnelUrl;
+          tunnelHintEl.textContent = '当前 Quick Tunnel 外网入口。重启 tunnel 后域名会变化。';
+        } else {
+          tunnelEl.textContent = '未检测到外网地址';
+          tunnelHintEl.textContent = '启动 Cloudflare Tunnel 后，这里会显示 trycloudflare.com 域名。';
+        }
+      } catch (_) {
+        tunnelEl.textContent = '外网地址读取失败';
+      }
+    }
+
+    async function checkSession() {
+      try {
+        const res = await fetch('/api/me', { credentials: 'include' });
+        const data = await res.json();
+        if (data && data.authenticated) {
+          window.location.replace('/');
+        }
+      } catch (_) {}
+    }
+
+    function setHint(message, ok) {
+      hintEl.textContent = message || '';
+      hintEl.className = ok ? 'hint ok' : 'hint';
+    }
+
+    async function submitAuth(action) {
+      const username = (usernameEl.value || '').trim();
+      const password = passwordEl.value || '';
+      if (username.length < 2 || password.length < 6) {
+        setHint('用户名至少 2 位，密码至少 6 位');
+        return;
+      }
+
+      loginBtn.disabled = true;
+      registerBtn.disabled = true;
+      setHint(action === 'login' ? '正在登录...' : '正在注册...', true);
+
+      try {
+        const res = await fetch('/api/auth/' + action, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.detail || data.error || '请求失败');
+        }
+        setHint(action === 'login' ? '登录成功，正在进入工作台...' : '注册成功，正在进入工作台...', true);
+        window.location.replace('/');
+      } catch (error) {
+        setHint(error.message || '请求失败');
+      } finally {
+        loginBtn.disabled = false;
+        registerBtn.disabled = false;
+      }
+    }
+
+    loginBtn.addEventListener('click', () => submitAuth('login'));
+    registerBtn.addEventListener('click', () => submitAuth('register'));
+    copyOriginBtn.addEventListener('click', () => copyText(originEl.textContent, copyOriginBtn));
+    copyTunnelBtn.addEventListener('click', () => {
+      if (!tunnelEl.textContent || tunnelEl.textContent.indexOf('http') !== 0) return;
+      copyText(tunnelEl.textContent, copyTunnelBtn);
+    });
+    passwordEl.addEventListener('keydown', event => {
+      if (event.key === 'Enter') submitAuth('login');
+    });
+
+    checkSession();
+    loadPublicEntry();
+  </script>
+</body>
+</html>
