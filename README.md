@@ -54,22 +54,30 @@ That matches the existing xingce front-end model and keeps the migration small.
 
 ## Knowledge Tree Extension
 
-The current workbench now keeps two note models in parallel:
+The current workbench keeps the knowledge tree as the main study structure.
 
-- `knowledgeTree + knowledgeNotes`
-  - the new primary model
-  - each leaf node has its own Markdown note
-  - each error stores `noteNodeId`
-- `notesByType`
-  - legacy type-based notes
-  - kept for backward compatibility
+- `knowledgeTree`
+  - the primary structure
+  - each node itself can store `contentMd`
+  - nodes can still have children
+- `errors[].noteNodeId`
+  - each error binds to one knowledge node
+- `notesByType + knowledgeNotes`
+  - kept only as compatibility data for now
+  - no longer the main UI model
 
 When entering an error:
 
 1. The original `type / subtype / subSubtype` flow stays unchanged.
-2. You can bind the error to a leaf node in the knowledge tree.
-3. If no leaf exists yet, the modal can create one on the spot.
-4. If nothing is selected, the system creates a default leaf automatically.
+2. You can bind the error to an existing knowledge node.
+3. If the node does not exist yet, the modal can create one on the spot.
+4. If nothing is selected, the system creates a default node automatically.
+
+When using the workbench:
+
+1. The left panel is the knowledge navigation tree.
+2. The center panel is the current knowledge node workspace.
+3. The right panel shows related errors for the current knowledge node.
 
 ## Run With Docker
 
@@ -120,3 +128,4 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start-tunnel.ps1
 - Current sync model is full-backup sync, not per-record merge.
 - This is intentional: it lets the original workbench keep working with minimal change.
 - Operational experience is recorded in `docs/ops-notes.md`.
+- Stage progress and current implementation order are recorded in `docs/roadmap.md`.
