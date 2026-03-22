@@ -106,4 +106,17 @@
     notesViewMode = "knowledge";
     renderKnowledgeNotesViewV2();
   };
+  window.setNotesViewMode = function (mode) {
+    if (mode !== "knowledge") {
+      showToast("旧题型笔记已退到兼容层，当前统一使用知识树笔记。", "info");
+    }
+    notesViewMode = "knowledge";
+    noteEditing = false;
+    renderKnowledgeNotesViewV2();
+    renderNotesPanelRight();
+  };
+  window.renderLegacyNotesView = function () {
+    notesViewMode = "knowledge";
+    renderKnowledgeNotesViewV2();
+  };
 })();

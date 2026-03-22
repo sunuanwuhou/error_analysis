@@ -6,6 +6,18 @@
     renderNotesPanelRight();
   }
 
+  function addKnowledgeLeafUnderSelected() {
+    ensureKnowledgeState();
+    var current = getKnowledgeNodeById(selectedKnowledgeNodeId);
+    var parent = current || findKnowledgeBranchForModal(true);
+    if (!parent) {
+      showToast("请先选择一个知识点节点", "warning");
+      return;
+    }
+    var fallback = parent && parent.title ? (parent.title + "补充") : "新知识点";
+    openKnowledgeNodeModal("create-child", { parentId: parent.id, fallbackTitle: fallback });
+  }
+
   function openKnowledgeNodeModal(mode, opts) {
     ensureKnowledgeState();
     knowledgeNodeModalState = Object.assign({
@@ -416,6 +428,7 @@
   }
 
   window.openKnowledgeNodeModal = openKnowledgeNodeModal;
+  window.addKnowledgeLeafUnderSelected = addKnowledgeLeafUnderSelected;
   window.closeKnowledgeNodeModal = closeKnowledgeNodeModal;
   window.handleKnowledgeNodeTitleKeydown = handleKnowledgeNodeTitleKeydown;
   window.renderKnowledgeNodeTargetOptions = renderKnowledgeNodeTargetOptions;
