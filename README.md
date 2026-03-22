@@ -127,6 +127,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start-tunnel.ps1
 - Current auth is simple username/password with SQLite-backed sessions.
 - Current sync model is full-backup sync, not per-record merge.
 - This is intentional: it lets the original workbench keep working with minimal change.
+- `localhost` and the public tunnel domain use separate browser-local caches; use `Cloud Save` then `Cloud Load` when switching entries.
+- If running with Docker, front-end code changes under `app/` or `xingce_v3/` require `docker compose up --build -d app`.
 - Operational experience is recorded in `docs/ops-notes.md`.
 - Stage progress and current implementation order are recorded in docs/roadmap.md.
 - Frontend module split preparation is recorded in docs/frontend-split-plan.md.

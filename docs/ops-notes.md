@@ -74,3 +74,67 @@ Current implementation rule:
 - login page shows current origin
 - login page also shows the latest detected `trycloudflare.com` URL from the shared tunnel log
 - both values must be copyable
+
+## Local Vs Cloud Rule
+
+This project has two separate data layers:
+
+1. browser-local cache by origin
+2. per-user cloud full backup
+
+Important behavior:
+
+- `http://localhost:8000` and the public tunnel domain do not share one browser-local cache
+- both entries only share the same cloud backup for the same logged-in user
+- local edits are written to IndexedDB first
+- cloud save is debounced and happens after local writes
+- another origin should not be assumed to reflect the latest edits until `Cloud Load` runs there
+
+Practical rule:
+
+1. finish editing on one entry
+2. click `Cloud Save`
+3. switch to the other entry
+4. click `Cloud Load`
+
+Do not treat local and public entry as one live-synced workspace.
+
+## Docker Frontend Rule
+
+When running through Docker, front-end code edits are not live-mounted into the container.
+
+Current compose file only mounts:
+
+- `./data`
+- `./runtime`
+
+That means changes under:
+
+- `app/`
+- `xingce_v3/`
+
+require rebuilding the app container:
+
+```bash
+docker compose up --build -d app
+```
+
+Do not debug UI behavior in Docker until the container has been rebuilt after code edits.
+
+## Frontend Debug Rule
+
+For UI bugs, do not default to repeated rendering tweaks before verifying the runtime path.
+
+Required order:
+
+1. confirm which entry the user is on: `localhost` or public domain
+2. confirm which process serves the page: local uvicorn or Docker container
+3. confirm the served HTML actually contains the expected code
+4. confirm the target data exists in the current user backup and current node
+5. only then change rendering logic
+
+For note-heading / outline issues specifically:
+
+- first verify the target note content in storage
+- then verify the exact render function used by the current note view
+- avoid broad speculative UI edits before checking the live execution path
