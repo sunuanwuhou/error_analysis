@@ -138,3 +138,30 @@ For note-heading / outline issues specifically:
 - first verify the target note content in storage
 - then verify the exact render function used by the current note view
 - avoid broad speculative UI edits before checking the live execution path
+
+## Knowledge Context Rule
+
+When entering a wrong question from the knowledge-note workspace, the current knowledge node must be visible to the user.
+
+Do not rely only on an implicit leaf auto-selection.
+
+Practical rule:
+
+1. if the current node is a leaf, preselect it in the modal picker
+2. if the current node is not a leaf, still show its full path in the modal hint
+3. save should fall back to the current workspace node when no leaf is explicitly selected
+
+Otherwise the user will think the node context was not carried into the entry flow.
+
+## Windows Encoding Rule
+
+This repo is edited on Windows and some terminal output can display UTF-8 Chinese text as mojibake.
+
+Practical rule:
+
+1. prefer `apply_patch` for Chinese text edits
+2. do not trust PowerShell console rendering as proof that file content is wrong
+3. verify actual file content by reading it back in UTF-8-aware paths before making large replacements
+4. avoid broad regex replacements around Chinese literals unless the target block is tightly scoped
+
+This matters because console corruption can mislead UI debugging and accidentally damage unrelated labels.

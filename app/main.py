@@ -4,9 +4,12 @@ import base64
 import hashlib
 import hmac
 import json
+import os
 import re
 import secrets
 import sqlite3
+import urllib.error
+import urllib.request
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Optional
@@ -27,6 +30,16 @@ RUNTIME_DIR = BASE_DIR / "runtime"
 TUNNEL_LOG_PATH = RUNTIME_DIR / "cloudflared.log"
 SESSION_COOKIE = "xingce_session"
 SESSION_TTL_DAYS = 30
+MINIMAX_API_URL = "https://api.minimaxi.com/v1/text/chatcompletion_v2"
+DEFAULT_MINIMAX_MODEL = "MiniMax-M2.5"
+ALLOWED_ENTRY_TYPES = {
+    "言语理解与表达",
+    "数量关系",
+    "判断推理",
+    "资料分析",
+    "常识判断",
+    "其他",
+}
 
 
 def utcnow() -> datetime:
@@ -190,6 +203,21 @@ class OriginStatusPayload(BaseModel):
     lastBackupUpdatedAt: Optional[str] = None
 
 
+class AnalyzeEntryPayload(BaseModel):
+    type: str = ""
+    subtype: str = ""
+    subSubtype: str = ""
+    question: str = ""
+    options: str = ""
+    answer: str = ""
+    myAnswer: str = ""
+    rootReason: str = ""
+    errorReason: str = ""
+    analysis: str = ""
+    availableSubtypes: list[str] = Field(default_factory=list)
+    availableSubSubtypes: list[str] = Field(default_factory=list)
+
+
 app = FastAPI(title="xingce_v3_lab")
 app.add_middleware(
     CORSMiddleware,
@@ -270,6 +298,168 @@ def list_origin_statuses(user_id: str) -> list[dict[str, Any]]:
         }
         for row in rows
     ]
+
+
+def extract_json_object(text: str) -> dict[str, Any]:
+    cleaned = (text or "").strip()
+    if cleaned.startswith("```"):
+        cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
+        cleaned = re.sub(r"\s*```$", "", cleaned)
+    try:
+        parsed = json.loads(cleaned)
+        if isinstance(parsed, dict):
+            return parsed
+    except json.JSONDecodeError:
+        pass
+
+    match = re.search(r"\{[\s\S]*\}", cleaned)
+    if not match:
+        raise ValueError("model did not return JSON object")
+    parsed = json.loads(match.group(0))
+    if not isinstance(parsed, dict):
+        raise ValueError("model did not return JSON object")
+    return parsed
+
+
+def get_minimax_settings() -> tuple[str, str]:
+    api_key = os.getenv("MINIMAX_API_KEY", "").strip()
+    model = os.getenv("MINIMAX_MODEL", "").strip() or DEFAULT_MINIMAX_MODEL
+    if not api_key:
+        raise HTTPException(status_code=503, detail="MINIMAX_API_KEY not configured")
+    return api_key, model
+
+
+def clean_short_text(value: Any, limit: int) -> str:
+    text = str(value or "").strip()
+    text = re.sub(r"\s+", " ", text)
+    return text[:limit]
+
+
+def clean_multiline_text(value: Any, limit: int) -> str:
+    text = str(value or "").strip()
+    text = re.sub(r"\r\n?", "\n", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text[:limit]
+
+
+def validate_analyze_result(parsed: dict[str, Any], payload: AnalyzeEntryPayload) -> dict[str, Any]:
+    entry_type = clean_short_text(parsed.get("type") or payload.type or "其他", 20)
+    if entry_type not in ALLOWED_ENTRY_TYPES:
+        entry_type = payload.type if payload.type in ALLOWED_ENTRY_TYPES else "其他"
+
+    subtype = clean_short_text(parsed.get("subtype") or payload.subtype, 30)
+    sub_subtype = clean_short_text(parsed.get("subSubtype") or payload.subSubtype, 30)
+    root_reason = clean_short_text(parsed.get("rootReason") or payload.rootReason, 20)
+    error_reason = clean_short_text(parsed.get("errorReason") or payload.errorReason, 8)
+    analysis = clean_multiline_text(parsed.get("analysis") or payload.analysis, 300)
+
+    candidates = []
+    for item in parsed.get("knowledgeCandidates") or []:
+        text = clean_short_text(item, 80)
+        if text and text not in candidates:
+            candidates.append(text)
+        if len(candidates) >= 3:
+            break
+
+    return {
+        "type": entry_type,
+        "subtype": subtype,
+        "subSubtype": sub_subtype,
+        "rootReason": root_reason,
+        "errorReason": error_reason,
+        "analysis": analysis,
+        "knowledgeCandidates": candidates,
+    }
+
+
+def build_ai_messages(payload: AnalyzeEntryPayload) -> list[dict[str, str]]:
+    system_prompt = (
+        "你是公务员行测错题录入助手。"
+        "你必须只返回一个 JSON 对象。"
+        "不要返回 markdown，不要返回解释，不要返回代码块，不要返回 JSON 之外的任何字符。"
+        "字段固定为 type, subtype, subSubtype, rootReason, errorReason, analysis, knowledgeCandidates。"
+        "knowledgeCandidates 必须是字符串数组，最多 3 项。"
+        "type 只能从以下值中选一个：言语理解与表达、数量关系、判断推理、资料分析、常识判断、其他。"
+        "subtype 和 subSubtype 要尽量简洁，适合直接回填表单。"
+        "rootReason 必须提炼成深层能力短板，本质化表达，控制在 20 个字以内。"
+        "errorReason 必须提炼成这次失误的表象原因，控制在 8 个字以内。"
+        "rootReason 和 errorReason 都不要写空话、套话、过程复述。"
+        "analysis 控制在 120 字以内，直接写可回填到错题解析。"
+        "如果信息不足，也要给出最稳妥的短答案，但仍然只能返回 JSON 对象。"
+    )
+    user_prompt = {
+        "entry": {
+            "type": payload.type,
+            "subtype": payload.subtype,
+            "subSubtype": payload.subSubtype,
+            "question": payload.question,
+            "options": payload.options,
+            "answer": payload.answer,
+            "myAnswer": payload.myAnswer,
+            "rootReason": payload.rootReason,
+            "errorReason": payload.errorReason,
+            "analysis": payload.analysis,
+        },
+        "context": {
+            "availableSubtypes": payload.availableSubtypes[:30],
+            "availableSubSubtypes": payload.availableSubSubtypes[:30],
+        },
+        "output_example": {
+            "type": "判断推理",
+            "subtype": "逻辑判断",
+            "subSubtype": "条件推理",
+            "rootReason": "条件推理规则不稳，无法稳定写出条件链",
+            "errorReason": "把逆命题当成可推出结论",
+            "analysis": "先整理条件链，再只验证原命题与逆否命题，排除主客体混淆。",
+            "knowledgeCandidates": ["判断推理 > 逻辑判断 > 条件推理"]
+        }
+    }
+    return [
+        {"role": "system", "name": "MiniMax AI", "content": system_prompt},
+        {"role": "user", "name": "用户", "content": json.dumps(user_prompt, ensure_ascii=False)},
+    ]
+
+
+def call_minimax_analyze_entry(payload: AnalyzeEntryPayload) -> dict[str, Any]:
+    api_key, model = get_minimax_settings()
+    body = {
+        "model": model,
+        "messages": build_ai_messages(payload),
+        "temperature": 0.2,
+        "top_p": 0.95,
+        "max_completion_tokens": 1200,
+    }
+    request = urllib.request.Request(
+        MINIMAX_API_URL,
+        data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            raw = response.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise HTTPException(status_code=502, detail=f"minimax request failed: {detail}") from exc
+    except urllib.error.URLError as exc:
+        raise HTTPException(status_code=502, detail=f"minimax unavailable: {exc.reason}") from exc
+
+    data = json.loads(raw)
+    base_resp = data.get("base_resp") or {}
+    if base_resp.get("status_code") not in (None, 0):
+        raise HTTPException(status_code=502, detail=base_resp.get("status_msg") or "minimax error")
+
+    content = (
+        ((data.get("choices") or [{}])[0].get("message") or {}).get("content")
+        or ""
+    )
+    parsed = extract_json_object(content)
+    cleaned = validate_analyze_result(parsed, payload)
+    cleaned["model"] = data.get("model") or model
+    return cleaned
 
 
 @app.get("/health")
@@ -445,6 +635,12 @@ def put_origin_status(
         "currentOrigin": current_origin,
         "origins": list_origin_statuses(user["id"]),
     }
+
+
+@app.post("/api/ai/analyze-entry")
+def analyze_entry(payload: AnalyzeEntryPayload, xingce_session: Optional[str] = Cookie(default=None)) -> dict[str, Any]:
+    require_user(xingce_session)
+    return {"ok": True, "result": call_minimax_analyze_entry(payload)}
 
 
 @app.get("/api/debug/users")

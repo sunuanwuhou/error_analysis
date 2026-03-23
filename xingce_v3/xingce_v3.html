@@ -507,7 +507,7 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .iq-actions{display:flex;gap:8px;align-items:center}
 
 /* ===== 右侧笔记面板（始终可见）===== */
-.notes-panel-right{width:540px;min-width:540px;background:#fff;border-left:1px solid #e8e8e8;display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+.notes-panel-right{display:none}
 .notes-panel-right-header{padding:10px 14px;border-bottom:1px solid #e8e8e8;background:#fafafa;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .notes-panel-right-header h3{font-size:14px;font-weight:700;color:#2c3e50;margin:0}
 .notes-panel-right-body{flex:1;overflow-y:auto;padding:8px 10px 12px}
@@ -674,11 +674,11 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
       <button class="btn btn-secondary" id="viewModeErrors" onclick="switchTab('errors')">题目列表</button>
       <button class="btn btn-secondary" id="viewModeNotes" onclick="switchTab('notes')">学习笔记</button>
     </div>
-    <button class="btn btn-primary" onclick="openAddModal()">＋ 添加</button>
+    <button class="btn btn-primary" onclick="openQuickAddModal()">＋ 添加</button>
     <div class="more-menu" id="moreMenu">
       <button class="btn btn-secondary" onclick="toggleMoreMenu(event)">更多</button>
       <div class="more-menu-panel" id="moreMenuPanel">
-        <button class="btn btn-secondary" onclick="closeMoreMenu();openImportModal()">⬆ 导入</button>
+        <button class="btn btn-secondary" onclick="closeMoreMenu();openQuickImportModal()">⬆ 导入</button>
         <button class="btn btn-secondary" onclick="closeMoreMenu();openExportModal()">⬇ 导出</button>
         <button class="btn btn-secondary" onclick="closeMoreMenu();clearCurrentModuleErrors()">🧹 清空当前模块</button>
         <button class="btn btn-secondary" onclick="closeMoreMenu();clearAllErrorsData()">🗑 清空全部题目</button>
@@ -806,6 +806,15 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
     <div class="form-group"><label>选项（用 | 分隔，如 A. xxx|B. xxx|C. xxx|D. xxx）</label><textarea id="editOptions" rows="3" placeholder="A. ...|B. ...|C. ...|D. ..."></textarea></div>
     <div class="form-group"><label>正确答案 <span style="color:#e74c3c">*</span></label><input type="text" id="editAnswer" placeholder="如：A（必填）"></div>
     <div class="form-group"><label>我的错误答案（可选）</label><input type="text" id="editMyAnswer" placeholder="如：B"></div>
+    <div class="form-group">
+      <label>AI 辅助分析</label>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button type="button" class="btn btn-secondary btn-sm" id="aiAnalyzeBtn" onclick="analyzeEntryWithAI()">AI识别并分析</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="aiApplyAllBtn" onclick="applyAISuggestions()" style="display:none">全部采纳</button>
+        <span id="aiAnalyzeStatus" style="font-size:12px;color:#888"></span>
+      </div>
+      <div id="aiAnalyzePanel" style="display:none;margin-top:8px;padding:10px 12px;background:#fafafa;border:1px solid #eee;border-radius:8px;font-size:12px;line-height:1.7"></div>
+    </div>
     <div class="form-group">
       <label>根本主因 <span style="color:#e74c3c">*</span> <span style="font-size:11px;color:#aaa;font-weight:400">（深层原因，如：该方法未掌握）</span></label>
       <input type="text" id="editRootReason" placeholder="为什么会犯这个错？深层原因是什么？">
@@ -1242,6 +1251,8 @@ let searchKw     = '';
 let reasonFilter = null;   // 错因筛选，null 表示不筛选
 let editingId    = null;
 let importMode   = 'merge';
+let importKnowledgeNodeId = null;
+let modalKnowledgeNodeId = null;
 
 let todayDate = '';
 let todayDone = 0;
@@ -1261,6 +1272,8 @@ let editImgDeleted  = false; // 用户主动点了删除按钮
 // 解析图片
 let editAnalysisImgBase64  = null;
 let editAnalysisImgDeleted = false;
+let aiAnalyzeBusy = false;
+let aiAnalyzeResult = null;
 
 // 日期筛选
 let dateFrom = '';
@@ -2972,6 +2985,8 @@ function clearAllData(){
 // ============================================================
 function openAddModal(){
   editingId=null; editImgBase64=null; editImgDeleted=false; editAnalysisImgBase64=null; editAnalysisImgDeleted=false;
+  modalKnowledgeNodeId = null;
+  resetAIAnalyzeState();
   document.getElementById('addModalTitle').textContent='添加错题';
   ['editSubtype','editSubSubtype','editQuestion','editOptions','editAnswer','editMyAnswer','editRootReason','editErrorReason','editAnalysis','editSrcOrigin'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('editSrcYear').value='';
@@ -2990,6 +3005,8 @@ function openAddModal(){
 function openEditModal(id){
   const e=errors.find(x=>x.id===id);if(!e)return;
   editingId=id; editImgBase64=null; editImgDeleted=false; editAnalysisImgBase64=null; editAnalysisImgDeleted=false;
+  modalKnowledgeNodeId = null;
+  resetAIAnalyzeState();
   document.getElementById('addModalTitle').textContent='编辑错题';
   document.getElementById('editType').value=e.type||'其他';
   document.getElementById('editSubtype').value=e.subtype||'';
@@ -3034,7 +3051,70 @@ function selectImportMode(m){
   importMode=m;
   ['merge','replace'].forEach(x=>document.getElementById('modeBtn_'+x).classList.toggle('active',x===m));
 }
-function openImportModal(){ document.getElementById('importText').value='';selectImportMode('merge');openModal('importModal'); }
+function openImportModal(){ importKnowledgeNodeId = null; document.getElementById('importText').value='';selectImportMode('merge');openModal('importModal'); }
+
+function getKnowledgeContextForEntry(nodeId) {
+  const node = nodeId ? getKnowledgeNodeById(nodeId) : null;
+  const titles = node ? getKnowledgePathTitles(node.id) : [];
+  return {
+    node,
+    type: titles[0] || '',
+    subtype: titles[1] || '',
+    subSubtype: node && node.isLeaf ? (titles[2] || node.title || '') : (titles[2] || '')
+  };
+}
+
+function openAddModalForCurrentKnowledge() {
+  const context = getKnowledgeContextForEntry(selectedKnowledgeNodeId);
+  openAddModal();
+  modalKnowledgeNodeId = context.node ? context.node.id : null;
+  if (context.type) document.getElementById('editType').value = context.type;
+  updateSubtypeOptions();
+  if (context.subtype) document.getElementById('editSubtype').value = context.subtype;
+  if (context.subSubtype) document.getElementById('editSubSubtype').value = context.subSubtype;
+  refreshKnowledgePicker(context.node && context.node.isLeaf ? context.node.id : '');
+}
+
+function openQuickAddModal() {
+  const notesTab = document.getElementById('tabContentNotes');
+  if (notesTab && notesTab.classList.contains('active') && notesViewMode === 'knowledge' && selectedKnowledgeNodeId) {
+    openAddModalForCurrentKnowledge();
+    return;
+  }
+  openAddModal();
+}
+
+function openImportModalForCurrentKnowledge() {
+  if (!selectedKnowledgeNodeId) {
+    showToast('请先选择当前知识点', 'warning');
+    return;
+  }
+  importKnowledgeNodeId = selectedKnowledgeNodeId;
+  document.getElementById('importText').value = '';
+  selectImportMode('merge');
+  openModal('importModal');
+}
+
+function openQuickImportModal() {
+  const notesTab = document.getElementById('tabContentNotes');
+  if (notesTab && notesTab.classList.contains('active') && notesViewMode === 'knowledge' && selectedKnowledgeNodeId) {
+    openImportModalForCurrentKnowledge();
+    return;
+  }
+  openImportModal();
+}
+
+function normalizeImportedErrorsForCurrentKnowledge(list) {
+  if (!importKnowledgeNodeId) return list;
+  const context = getKnowledgeContextForEntry(importKnowledgeNodeId);
+  return list.map(item => ({
+    ...item,
+    type: item.type || context.type,
+    subtype: item.subtype || context.subtype,
+    subSubtype: item.subSubtype || context.subSubtype,
+    noteNodeId: importKnowledgeNodeId
+  }));
+}
 
 function tryParseJson(text){
   try{return JSON.parse(text);}catch(e){}
@@ -3071,6 +3151,7 @@ function doImport(){
   if(Array.isArray(parsed)){ data=parsed; }
   else if(parsed.errors&&Array.isArray(parsed.errors)){ data=parsed.errors; }
   else{ showToast('应为数组或含 errors 字段的对象', 'error');return; }
+  data = normalizeImportedErrorsForCurrentKnowledge(data);
   if(importMode==='replace'){
     if(!confirm(`清空现有 ${errors.length} 条，替换为 ${data.length} 条？`))return;
     errors=data.map((e,i)=>({id:i+1,addDate:e.addDate||today(),quiz:e.quiz||null,status:e.status||'focus',...e}));
@@ -3081,6 +3162,7 @@ function doImport(){
     saveData();closeModal('importModal');renderSidebar();renderAll();
     showToast(`导入完成：更新 ${updated} 条，新增 ${added} 条`, 'success');
   }
+  importKnowledgeNodeId = null;
   syncNotesWithErrors(); // 同步笔记与错题
 }
 
@@ -3096,52 +3178,51 @@ function openClaudeHelper(){
 function genClaudeTemplate(){
   const raw=document.getElementById('rawQuestion').value.trim();
   if(!raw){showToast('请先粘贴题目', 'warning');return;}
-  const tmpl=`请分析以下行测错题，返回 JSON 数组格式（直接粘回错题系统导入）。
+  const tmpl=`请分析以下行测错题，只返回 JSON 数组，供错题系统直接导入。
 
 【错题内容】
 ${raw}
 
-【第一步：分析每道错题的错因】
-对每道题，先判断：
-1. 根本主因（rootReason）：这次错题背后的深层原因，如"该方法从未掌握""对条件句逻辑不熟""数感差导致估算失准"等，反映真实能力短板，需自己归纳总结，不限于下方列表
-2. 直接原因（errorReason）：当时发生的表象，从下方8个大类的选项中选一个
-3. 在 analysis 中先写【根本主因分析】说明为什么产生这个根本原因，再写【解题思路】
+【核心要求】
+1. rootReason = 根本原因，必须提炼本质，写深层能力短板，不要复述题面，不要写过程。
+2. errorReason = 表象原因，必须提炼当次失误现象，不要展开解释。
+3. rootReason 限制在 20 个字以内。
+4. errorReason 限制在 8 个字以内。
+5. rootReason 和 errorReason 都必须短句化、结论化，禁止空话、套话。
+6. analysis 里先写【根本主因分析】，再写【解题思路】。
 
-【错因大类 & 具体选项】
-审题（答题时审题不仔细）：粗心看错题目 / 题目没读完 / 选项没看全 / 关键词漏看
-知识（知识点不熟或记忆有误）：公式/方法不会 / 知识点遗忘 / 概念理解错误 / 概念混淆 / 常识知识空白
-言语（言语理解与表达题失误）：词义/语义理解偏差 / 主旨提炼失误 / 过度推断/绝对化 / 语境分析错误 / 近义词辨析失误
-推理（逻辑推理或图形推理出错）：逻辑推理出错 / 充分必要条件混淆 / 矛盾/反对关系混淆 / 论证结构误判 / 加强/削弱方向判反 / 图形规律识别失误 / 类比关系判断错误 / 定义关键要素未抓住
-资料分析（读数或计算出错）：读数/找数出错 / 增长率与增长量混淆 / 倍数与百分比混淆 / 计算量大估算偏差
-计算（运算计算出错）：粗心计算错误 / 方程列错
-方法（解题策略选择不当）：方法不熟练 / 解题思路错误 / 题型识别错误 / 代入排除法未用
-状态（考试状态或时间问题）：没时间/蒙的 / 会做但慌了
+【errorReason 可选范围】
+审题：粗心看错题目 / 题目没读完 / 选项没看全 / 关键词漏看
+知识：公式/方法不会 / 知识点遗忘 / 概念理解错误 / 概念混淆 / 常识知识空白
+言语：词义/语义理解偏差 / 主旨提炼失误 / 过度推断/绝对化 / 语境分析错误 / 近义词辨析失误
+推理：逻辑推理出错 / 充分必要条件混淆 / 矛盾/反对关系混淆 / 论证结构误判 / 加强/削弱方向判反 / 图形规律识别失误 / 类比关系判断错误 / 定义关键要素未抓住
+资料分析：读数/找数出错 / 增长率与增长量混淆 / 倍数与百分比混淆 / 计算量大估算偏差
+计算：粗心计算错误 / 方程列错
+方法：方法不熟练 / 解题思路错误 / 题型识别错误 / 代入排除法未用
+状态：没时间/蒙的 / 会做但慌了
 
-【返回格式要求】
-严格按以下 JSON 格式，不要任何说明文字，只返回 JSON 数组，选项用竖线|分隔：
+【返回格式】
 [
   {
-    "type": "言语理解与表达",
-    "subtype": "逻辑填空",
-    "subSubtype": "成语辨析",
+    "type": "判断推理",
+    "subtype": "逻辑判断",
+    "subSubtype": "条件推理",
     "question": "题目原文",
     "options": "A. 选项一|B. 选项二|C. 选项三|D. 选项四",
     "answer": "A",
     "myAnswer": "B",
-    "rootReason": "对排除法未形成条件反射，遇到选项多时仍逐一验证而非优先排除",
-    "errorReason": "粗心看错题目",
-    "analysis": "【根本主因分析】该题根本原因是...（深层能力短板分析）\n\n【解题思路】①正确答案解析 ②同类题技巧",
+    "rootReason": "条件链提炼能力不稳",
+    "errorReason": "逆命题误判",
+    "analysis": "【根本主因分析】......\n\n【解题思路】......",
     "difficulty": 2,
     "status": "focus"
   }
 ]
 
-【字段说明】
-- rootReason：必填，自行归纳的深层根本原因，反映真实能力短板（如"对某方法未掌握""某类题型反应模式欠缺"），不要只写表面现象
-- errorReason：必填，从上方列表中选择最匹配的直接原因（表象）
-- analysis：先写【根本主因分析】深入分析根本原因，再写【解题思路】
-- subSubtype：该题的细分知识点，尽量填写
-- difficulty：1=简单 2=中等 3=困难`;
+【再次强调】
+- rootReason：必须写本质短板，20 字内
+- errorReason：必须写表象失误，8 字内
+- 只返回 JSON，不要任何额外说明`;
   document.getElementById('templateText').value=tmpl;
   document.getElementById('templateArea').style.display='block';
 }
@@ -4228,8 +4309,10 @@ function syncKnowledgePickerHint(selectedLeafId) {
     document.getElementById('editSubSubtype')?.value.trim() || ''
   );
   const node = selectedLeafId ? getKnowledgeNodeById(selectedLeafId) : null;
-  const pathTitles = node ? collapseKnowledgePathTitles(getKnowledgePathTitles(node.id)).join(' > ') : `${base.rootTitle} > ${base.subTitle} > ${base.sub2Title}`;
-  hint.textContent = node ? `${pathTitles}（保存到当前节点）` : `${pathTitles}（保存时默认挂到当前节点）`;
+  const modalNode = !node && modalKnowledgeNodeId ? getKnowledgeNodeById(modalKnowledgeNodeId) : null;
+  const activeNode = node || modalNode;
+  const pathTitles = activeNode ? collapseKnowledgePathTitles(getKnowledgePathTitles(activeNode.id)).join(' > ') : `${base.rootTitle} > ${base.subTitle} > ${base.sub2Title}`;
+  hint.textContent = activeNode ? `${pathTitles}（保存到当前节点）` : `${pathTitles}（保存时默认挂到当前节点）`;
 }
 function refreshKnowledgePicker(preferredId) {
   ensureKnowledgeState();
@@ -4273,6 +4356,12 @@ function resolveKnowledgeNodeIdForSave(type, subtype, subSubtype) {
     ensureKnowledgeNoteRecord(selectedNode);
     selectedKnowledgeNodeId = selectedNode.id;
     return selectedNode.id;
+  }
+  const modalNode = modalKnowledgeNodeId ? getKnowledgeNodeById(modalKnowledgeNodeId) : null;
+  if (modalNode) {
+    ensureKnowledgeNoteRecord(modalNode);
+    selectedKnowledgeNodeId = modalNode.id;
+    return modalNode.id;
   }
   const branch = ensureKnowledgeBranchPath(type, subtype, subSubtype);
   ensureKnowledgeNoteRecord(branch.sub2);
@@ -5339,6 +5428,8 @@ function renderKnowledgeNotesView() {
       <button class="btn btn-secondary btn-sm" onclick="renameKnowledgeNode('${currentNode.id}')">重命名</button>
       ${findKnowledgeParent(currentNode.id) ? `<button class="btn btn-secondary btn-sm" onclick="moveKnowledgeNode('${currentNode.id}')">移动</button>` : ''}
       <button class="btn btn-secondary btn-sm" onclick="addKnowledgeLeafUnderSelected()">+ 新建知识点</button>
+      <button class="btn btn-secondary btn-sm" onclick="openAddModalForCurrentKnowledge()">+ 录入错题</button>
+      <button class="btn btn-secondary btn-sm" onclick="openImportModalForCurrentKnowledge()">JSON导入</button>
       ${currentNode.isLeaf ? `<button class="btn btn-primary btn-sm" onclick="noteEditing=${noteEditing ? 'false' : 'true'};renderNotesByType()">${noteEditing ? '完成编辑' : '编辑笔记'}</button>` : ''}
     </div>
   </div>`;
@@ -5442,6 +5533,8 @@ function renderKnowledgeNotesViewV2() {
       <button class="btn btn-secondary btn-sm" onclick="renameKnowledgeNode('${currentNode.id}')">重命名</button>
       ${findKnowledgeParent(currentNode.id) ? `<button class="btn btn-secondary btn-sm" onclick="moveKnowledgeNode('${currentNode.id}')">移动</button>` : ''}
       <button class="btn btn-secondary btn-sm" onclick="selectedKnowledgeNodeId='${currentNode.id}';addKnowledgeLeafUnderSelected()">+ 新建下级</button>
+      <button class="btn btn-secondary btn-sm" onclick="openAddModalForCurrentKnowledge()">+ 录入错题</button>
+      <button class="btn btn-secondary btn-sm" onclick="openImportModalForCurrentKnowledge()">JSON导入</button>
       ${findKnowledgeParent(currentNode.id) ? `<button class="btn btn-secondary btn-sm" onclick="deleteKnowledgeNode('${currentNode.id}')">删除节点</button>` : ''}
       <button class="btn btn-primary btn-sm" onclick="noteEditing=${noteEditing ? 'false' : 'true'};renderNotesByType()">${noteEditing ? '完成编辑' : '编辑笔记'}</button>
     </div>
@@ -5460,6 +5553,8 @@ function renderKnowledgeNotesViewV2() {
           <div class="note-btn-bar">
             <button class="btn btn-primary btn-sm" onclick="saveNoteTypeContent()">保存</button>
             <button class="btn btn-secondary btn-sm" onclick="selectedKnowledgeNodeId='${currentNode.id}';addKnowledgeLeafUnderSelected()">+ 新建下级</button>
+            <button class="btn btn-secondary btn-sm" onclick="openAddModalForCurrentKnowledge()">+ 录入错题</button>
+            <button class="btn btn-secondary btn-sm" onclick="openImportModalForCurrentKnowledge()">JSON导入</button>
             <span class="save-hint">Ctrl+S 快捷保存</span>
           </div>
         </div>
@@ -5553,6 +5648,8 @@ function renderLegacyNotesView() {
             oninput="liveNotePreview()">${escapeHtml(currentContent)}</textarea>
           <div class="note-btn-bar">
             <button class="btn btn-primary btn-sm" onclick="saveNoteTypeContent()">💾 保存</button>
+            <button class="btn btn-secondary btn-sm" onclick="openAddModal()">+ 录入错题</button>
+            <button class="btn btn-secondary btn-sm" onclick="openImportModal()">JSON导入</button>
             <div style="position:relative;display:inline-block">
               <button class="btn btn-secondary btn-sm" onclick="toggleTablePicker()" id="tablePickerBtn">⊞ 表格</button>
               <div id="tablePickerPanel" style="display:none;position:absolute;bottom:32px;left:0;background:#fff;border:1px solid #ddd;border-radius:8px;padding:12px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:100;white-space:nowrap">
@@ -5581,6 +5678,10 @@ function renderLegacyNotesView() {
         <div class="note-split-preview" style="flex:1">
           <div class="note-split-label">👁 预览
             <button onclick="noteEditing=true;renderNotesByType()" style="float:right;background:#e74c3c;color:#fff;border:none;border-radius:4px;padding:2px 10px;cursor:pointer;font-size:12px">✏ 编辑</button>
+          </div>
+          <div class="note-btn-bar" style="margin-bottom:10px">
+            <button class="btn btn-secondary btn-sm" onclick="openAddModal()">+ 录入错题</button>
+            <button class="btn btn-secondary btn-sm" onclick="openImportModal()">JSON导入</button>
           </div>
           <div class="note-preview-scroll notes-content" id="noteSplitPreview">${tocHtml}${previewHtml}</div>
         </div>
@@ -6068,6 +6169,175 @@ function getExistingSubtypes() {
   const subtype = document.getElementById('editSubtype')?.value?.trim() || '';
   const subSubtypes = [...new Set(errors.filter(e => e.type === type && e.subtype === subtype).map(e => e.subSubtype).filter(Boolean))];
   return { subtypes, subSubtypes };
+}
+
+function resetAIAnalyzeState() {
+  aiAnalyzeBusy = false;
+  aiAnalyzeResult = null;
+  const statusEl = document.getElementById('aiAnalyzeStatus');
+  const panelEl = document.getElementById('aiAnalyzePanel');
+  const applyAllBtn = document.getElementById('aiApplyAllBtn');
+  const analyzeBtn = document.getElementById('aiAnalyzeBtn');
+  if (statusEl) statusEl.textContent = '';
+  if (panelEl) {
+    panelEl.style.display = 'none';
+    panelEl.innerHTML = '';
+  }
+  if (applyAllBtn) applyAllBtn.style.display = 'none';
+  if (analyzeBtn) {
+    analyzeBtn.disabled = false;
+    analyzeBtn.textContent = 'AI识别并分析';
+  }
+}
+
+function getAIFieldLabel(key) {
+  return ({
+    type: '题型',
+    subtype: '子类型',
+    subSubtype: '细分类型',
+    rootReason: '根本主因',
+    errorReason: '直接原因',
+    analysis: 'AI解析'
+  })[key] || key;
+}
+
+function collectAIAnalyzePayload() {
+  const existing = getExistingSubtypes();
+  return {
+    type: document.getElementById('editType').value || '',
+    subtype: document.getElementById('editSubtype').value.trim(),
+    subSubtype: document.getElementById('editSubSubtype').value.trim(),
+    question: document.getElementById('editQuestion').value.trim(),
+    options: document.getElementById('editOptions').value.trim(),
+    answer: document.getElementById('editAnswer').value.trim(),
+    myAnswer: document.getElementById('editMyAnswer').value.trim(),
+    rootReason: document.getElementById('editRootReason').value.trim(),
+    errorReason: document.getElementById('editErrorReason').value.trim(),
+    analysis: document.getElementById('editAnalysis').value.trim(),
+    availableSubtypes: existing.subtypes,
+    availableSubSubtypes: existing.subSubtypes
+  };
+}
+
+function applyAISuggestionField(key, value) {
+  const val = String(value || '').trim();
+  if (!val) return;
+  if (key === 'type') {
+    document.getElementById('editType').value = val;
+    updateSubtypeOptions();
+    refreshKnowledgePicker();
+  } else if (key === 'subtype') {
+    document.getElementById('editSubtype').value = val;
+    refreshKnowledgePicker();
+  } else if (key === 'subSubtype') {
+    document.getElementById('editSubSubtype').value = val;
+    refreshKnowledgePicker();
+  } else if (key === 'rootReason') {
+    document.getElementById('editRootReason').value = val;
+  } else if (key === 'errorReason') {
+    setReasonFormValue(val);
+  } else if (key === 'analysis') {
+    document.getElementById('editAnalysis').value = val;
+  }
+  renderAIAnalyzePanel();
+}
+
+function applyAISuggestionFieldEncoded(key, encodedValue) {
+  applyAISuggestionField(key, decodeURIComponent(encodedValue || ''));
+}
+
+function applyAISuggestions() {
+  if (!aiAnalyzeResult) return;
+  ['type', 'subtype', 'subSubtype', 'rootReason', 'errorReason', 'analysis'].forEach(key => {
+    applyAISuggestionField(key, aiAnalyzeResult[key] || '');
+  });
+  const statusEl = document.getElementById('aiAnalyzeStatus');
+  if (statusEl) statusEl.textContent = 'AI 建议已回填';
+}
+
+function copyAIAnalyzeJson() {
+  if (!aiAnalyzeResult) return;
+  const text = JSON.stringify(aiAnalyzeResult, null, 2);
+  const statusEl = document.getElementById('aiAnalyzeStatus');
+  navigator.clipboard.writeText(text).then(() => {
+    if (statusEl) statusEl.textContent = 'JSON 已复制';
+  }).catch(() => {
+    if (statusEl) statusEl.textContent = 'JSON 复制失败';
+  });
+}
+
+function renderAIAnalyzePanel() {
+  const panelEl = document.getElementById('aiAnalyzePanel');
+  const applyAllBtn = document.getElementById('aiApplyAllBtn');
+  if (!panelEl || !aiAnalyzeResult) return;
+  const rawJson = escapeHtml(JSON.stringify(aiAnalyzeResult, null, 2));
+  panelEl.innerHTML = `
+    <div style="margin-bottom:10px;padding:8px 10px;background:#fff;border:1px solid #ececec;border-radius:6px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
+        <div style="font-weight:600;color:#555">JSON 结果</div>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="copyAIAnalyzeJson()">复制 JSON</button>
+      </div>
+      <pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.6;color:#222;background:none;border:none;padding:0">${rawJson}</pre>
+    </div>
+  `;
+  panelEl.style.display = '';
+  if (applyAllBtn) applyAllBtn.style.display = '';
+}
+
+async function analyzeEntryWithAI() {
+  if (aiAnalyzeBusy) return;
+  const payload = collectAIAnalyzePayload();
+  if (!payload.question) {
+    showToast('请先填写题目', 'warning');
+    document.getElementById('editQuestion').focus();
+    return;
+  }
+  if (!payload.answer) {
+    showToast('请先填写正确答案', 'warning');
+    document.getElementById('editAnswer').focus();
+    return;
+  }
+  aiAnalyzeBusy = true;
+  const analyzeBtn = document.getElementById('aiAnalyzeBtn');
+  const statusEl = document.getElementById('aiAnalyzeStatus');
+  if (analyzeBtn) {
+    analyzeBtn.disabled = true;
+    analyzeBtn.textContent = '分析中...';
+  }
+  if (statusEl) statusEl.textContent = '正在调用 Minimax';
+  try {
+    const res = await fetch('/api/ai/analyze-entry', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.detail || data.error || 'AI 分析失败');
+    aiAnalyzeResult = data.result || null;
+    renderAIAnalyzePanel();
+    if (statusEl) {
+      const model = aiAnalyzeResult && aiAnalyzeResult.model ? ` (${aiAnalyzeResult.model})` : '';
+      statusEl.textContent = 'AI 分析完成' + model;
+    }
+  } catch (e) {
+    aiAnalyzeResult = null;
+    const panelEl = document.getElementById('aiAnalyzePanel');
+    const applyAllBtn = document.getElementById('aiApplyAllBtn');
+    if (panelEl) {
+      panelEl.style.display = 'none';
+      panelEl.innerHTML = '';
+    }
+    if (applyAllBtn) applyAllBtn.style.display = 'none';
+    if (statusEl) statusEl.textContent = e.message || 'AI 分析失败';
+    showToast(e.message || 'AI 分析失败', 'error');
+  } finally {
+    aiAnalyzeBusy = false;
+    if (analyzeBtn) {
+      analyzeBtn.disabled = false;
+      analyzeBtn.textContent = 'AI识别并分析';
+    }
+  }
 }
 
 // 修改添加错题函数，增加联动

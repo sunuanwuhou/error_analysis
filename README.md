@@ -83,6 +83,8 @@ When using the workbench:
 
 ```bash
 cd E:\IdeaProject\git\xingce_v3_lab
+set MINIMAX_API_KEY=your_key_here
+set MINIMAX_MODEL=MiniMax-M2.5
 docker compose up --build -d app
 ```
 
@@ -96,6 +98,8 @@ If Docker image pulls are blocked on this machine, use the local Python runtime:
 
 ```powershell
 cd E:\IdeaProject\git\xingce_v3_lab
+$env:MINIMAX_API_KEY='your_key_here'
+$env:MINIMAX_MODEL='MiniMax-M2.5'
 powershell -ExecutionPolicy Bypass -File .\scripts\start-local.ps1
 ```
 
@@ -127,6 +131,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start-tunnel.ps1
 - Current auth is simple username/password with SQLite-backed sessions.
 - Current sync model is full-backup sync, not per-record merge.
 - This is intentional: it lets the original workbench keep working with minimal change.
+- AI entry analysis uses MiniMax and reads `MINIMAX_API_KEY` / `MINIMAX_MODEL` from the runtime environment.
+- If you are running with Docker, after front-end edits or AI feature changes you must rebuild the `app` container.
 - `localhost` and the public tunnel domain use separate browser-local caches; use `Cloud Save` then `Cloud Load` when switching entries.
 - If running with Docker, front-end code changes under `app/` or `xingce_v3/` require `docker compose up --build -d app`.
 - Operational experience is recorded in `docs/ops-notes.md`.
