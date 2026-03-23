@@ -186,6 +186,8 @@ class AuthPayload(BaseModel):
 class BackupPayload(BaseModel):
     xc_version: int = 2
     exportTime: Optional[str] = None
+    baseUpdatedAt: Optional[str] = None
+    forceOverwrite: bool = False
     errors: list[dict[str, Any]] = Field(default_factory=list)
     notesByType: dict[str, Any] = Field(default_factory=dict)
     noteImages: dict[str, Any] = Field(default_factory=dict)
@@ -611,6 +613,48 @@ def put_backup(payload: BackupPayload, request: Request, xingce_session: Optiona
         body["exportTime"] = updated_at
 
     with get_conn() as conn:
+        existing = conn.execute(
+            "SELECT updated_at FROM user_backups WHERE user_id = ?",
+            (user["id"],),
+        ).fetchone()
+        existing_updated_at = existing["updated_at"] if existing else ""
+        base_updated_at = (payload.baseUpdatedAt or "").strip()
+
+        if existing_updated_at and not payload.forceOverwrite:
+            if not base_updated_at:
+                return JSONResponse(
+                    {
+                        "error": "cloud backup changed; reload latest backup before saving",
+                        "currentUpdatedAt": existing_updated_at,
+                        "currentOrigin": current_origin,
+                        "origins": list_origin_statuses(user["id"]),
+                    },
+                    status_code=409,
+                )
+            try:
+                base_dt = datetime.fromisoformat(base_updated_at)
+                existing_dt = datetime.fromisoformat(existing_updated_at)
+            except ValueError:
+                return JSONResponse(
+                    {
+                        "error": "cloud backup version is invalid; reload latest backup before saving",
+                        "currentUpdatedAt": existing_updated_at,
+                        "currentOrigin": current_origin,
+                        "origins": list_origin_statuses(user["id"]),
+                    },
+                    status_code=409,
+                )
+            if existing_dt > base_dt:
+                return JSONResponse(
+                    {
+                        "error": "cloud backup is newer than your local base version",
+                        "currentUpdatedAt": existing_updated_at,
+                        "currentOrigin": current_origin,
+                        "origins": list_origin_statuses(user["id"]),
+                    },
+                    status_code=409,
+                )
+
         conn.execute(
             """
             INSERT INTO user_backups(user_id, payload_json, updated_at)

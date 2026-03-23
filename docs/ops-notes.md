@@ -99,6 +99,12 @@ Practical rule:
 
 Do not treat local and public entry as one live-synced workspace.
 
+Current behavior:
+
+- local edits auto-save to cloud after debounce
+- page open may auto-load or prompt for cloud restore depending on current local state
+- manual `Cloud Save` and `Cloud Load` remain available as explicit controls
+
 ## Docker Frontend Rule
 
 When running through Docker, front-end code edits are not live-mounted into the container.
@@ -224,6 +230,19 @@ For note-heading / outline issues specifically:
 - first verify the target note content in storage
 - then verify the exact render function used by the current note view
 - avoid broad speculative UI edits before checking the live execution path
+
+## Directory Rule
+
+The front-end directory model is now treated as durable workspace state.
+
+Practical rule:
+
+1. `dirTree` is not temporary UI state
+2. `dirTree` is stored both locally and inside the cloud full backup
+3. a new origin showing default or empty directory data does not prove the user has no saved directory
+4. directory debugging should start from account, origin, and backup content verification
+
+Detailed frozen rules are recorded in `docs/frontend-directory-rules.md`.
 
 ## Knowledge Context Rule
 

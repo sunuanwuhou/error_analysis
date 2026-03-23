@@ -1484,6 +1484,8 @@ function getFullBackupPayload() {
   return {
     xc_version: 2,
     exportTime: new Date().toISOString(),
+    baseUpdatedAt: cloudMeta.lastSeenBackupAt || '',
+    forceOverwrite: false,
     errors: errors,
     notesByType: notesByType,
     noteImages: noteImages,
@@ -1506,8 +1508,43 @@ function getDefaultCloudMeta() {
 function saveCloudMeta() {
   DB.set(KEY_CLOUD_META, JSON.stringify(cloudMeta || getDefaultCloudMeta()));
 }
+async function clearWorkspaceStorageForRemoteRestore() {
+  errors = [];
+  revealed = new Set();
+  expTypes = new Set();
+  expMain = new Set();
+  expMainSub = new Set();
+  expMainSub2 = new Set();
+  notesByType = {};
+  noteImages = {};
+  globalNote = '';
+  knowledgeTree = null;
+  knowledgeNotes = {};
+  selectedKnowledgeNodeId = null;
+  knowledgeNodeFilter = null;
+  selectedNoteType = null;
+  noteEditing = false;
+  await Promise.all([
+    DB.set(KEY_ERRORS, '[]'),
+    DB.set(KEY_REVEALED, '[]'),
+    DB.set(KEY_EXP_TYPES, '[]'),
+    DB.set(KEY_EXP_MAIN, '[]'),
+    DB.set(KEY_EXP_SUB2, '[]'),
+    DB.set(KEY_NOTES_BY_TYPE, '{}'),
+    DB.set(KEY_NOTE_IMAGES, '{}'),
+    DB.set(KEY_GLOBAL_NOTE, ''),
+    DB.set(KEY_TYPE_RULES, 'null'),
+    DB.set(KEY_DIR_TREE, 'null'),
+    DB.set(KEY_KNOWLEDGE_TREE, 'null'),
+    DB.set(KEY_KNOWLEDGE_NOTES, '{}')
+  ]);
+}
 function getCloudOriginKey() {
   return window.location.origin || 'unknown';
+}
+function isLocalDebugOrigin(origin) {
+  const value = String(origin || getCloudOriginKey() || '').toLowerCase();
+  return value.includes('127.0.0.1') || value.includes('localhost');
 }
 function formatCloudTime(value) {
   if (!value) return '';
@@ -1591,8 +1628,11 @@ function hasLocalWorkspaceData() {
   return Boolean(
     (errors && errors.length) ||
     Object.keys(notesByType || {}).length ||
+    Object.keys(noteImages || {}).length ||
     Object.keys(knowledgeNotes || {}).length ||
-    (globalNote || '').trim()
+    (globalNote || '').trim() ||
+    _dirTree ||
+    _typeRules
   );
 }
 function rememberCloudDecision(updatedAt, action) {
@@ -1790,9 +1830,35 @@ async function saveCloudBackup(opts) {
       method: 'PUT',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(getFullBackupPayload())
+      body: JSON.stringify({
+        ...getFullBackupPayload(),
+        forceOverwrite: Boolean(opts.forceOverwrite)
+      })
     });
     const data = await res.json().catch(() => ({}));
+    if (res.status === 409) {
+      updateCloudOriginStatuses(data.origins);
+      if (!cloudMeta || typeof cloudMeta !== 'object') cloudMeta = getDefaultCloudMeta();
+      if (data.currentUpdatedAt) {
+        cloudMeta.lastSeenBackupAt = data.currentUpdatedAt;
+        saveCloudMeta();
+      }
+      setCloudSyncState('dirty', 'Cloud backup is newer; local save paused', data.currentUpdatedAt || '');
+      if (!opts.silent) {
+        const shouldLoadLatest = confirm('云端备份比当前本地基线更新，已暂停保存，避免覆盖其他入口的新数据。\n\n点击“确定”加载最新云端备份。\n点击“取消”后，将继续询问是否用当前本地数据强制覆盖云端。');
+        if (shouldLoadLatest) {
+          await loadCloudBackup({ silent: false, askBeforeRestore: true });
+        } else {
+          const shouldForceOverwrite = confirm('确认要用当前页面这份本地数据强制覆盖云端吗？\n\n这会把云端现有数据替换成你当前看到的内容。');
+          if (shouldForceOverwrite) {
+            await saveCloudBackup({ silent: false, forceOverwrite: true });
+          } else {
+            showToast('已保留当前本地数据，未覆盖云端', 'warning');
+          }
+        }
+      }
+      return;
+    }
     if (!res.ok) throw new Error(data.detail || data.error || 'save failed');
     updateCloudOriginStatuses(data.origins);
     rememberCloudDecision(data.updatedAt || '', 'saved');
@@ -1808,11 +1874,12 @@ async function saveCloudBackup(opts) {
 function scheduleCloudSave() {
   markLocalChange();
   if (!cloudUser) {
-    pendingCloudSave = true;
     setCloudSyncState('dirty', 'Local changes pending until login', '');
+    pendingCloudSave = true;
     return;
   }
   clearTimeout(cloudSaveTimer);
+  pendingCloudSave = false;
   setCloudSyncState('dirty', 'Waiting 1.2s before auto-save', '');
   cloudSaveTimer = setTimeout(() => {
     saveCloudBackup({ silent: true });
@@ -3880,8 +3947,10 @@ function _applyFullBackup(data, mode) {
       id: i + 1, addDate: e.addDate || today(), quiz: e.quiz || null, status: e.status || 'focus', ...e
     }));
     saveData();
-    if (data.typeRules) { _typeRules = data.typeRules; DB.set(KEY_TYPE_RULES, JSON.stringify(data.typeRules)); }
-    if (data.dirTree)   { _dirTree   = data.dirTree;   DB.set(KEY_DIR_TREE,   JSON.stringify(data.dirTree)); }
+    _typeRules = data.typeRules || null;
+    _dirTree = data.dirTree || null;
+    DB.set(KEY_TYPE_RULES, JSON.stringify(_typeRules));
+    DB.set(KEY_DIR_TREE, JSON.stringify(_dirTree));
     if (data.globalNote !== undefined) { globalNote = data.globalNote; DB.set(KEY_GLOBAL_NOTE, data.globalNote); }
   } else {
     // 合并错题
