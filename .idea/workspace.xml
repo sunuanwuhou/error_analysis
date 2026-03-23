@@ -4,9 +4,7 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="16a5dc9a-53ef-4535-ac8b-deea822e333c" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/ops-notes.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/ops-notes.md" afterDir="false" />
+    <list default="true" id="16a5dc9a-53ef-4535-ac8b-deea822e333c" name="Changes" comment="11">
       <change beforePath="$PROJECT_DIR$/xingce_v3/xingce_v3.html" beforeDir="false" afterPath="$PROJECT_DIR$/xingce_v3/xingce_v3.html" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -141,7 +139,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1774192824473</updated>
-      <workItem from="1774192825698" duration="4294000" />
+      <workItem from="1774192825698" duration="18030000" />
     </task>
     <servers />
   </component>
@@ -161,5 +159,7 @@
   </component>
   <component name="VcsManagerConfiguration">
     <option name="SHOW_DIRTY_RECURSIVELY" value="true" />
+    <MESSAGE value="11" />
+    <option name="LAST_COMMIT_MESSAGE" value="11" />
   </component>
 </project>

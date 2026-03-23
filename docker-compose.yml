@@ -5,6 +5,7 @@ services:
     container_name: xingce_v3_app
     ports:
       - "8000:8000"
+      - "8080:8000"
     environment:
       MINIMAX_API_KEY: ${MINIMAX_API_KEY:-}
       MINIMAX_MODEL: ${MINIMAX_MODEL:-MiniMax-M2.5}

@@ -472,7 +472,14 @@ def root(xingce_session: Optional[str] = Cookie(default=None)) -> Response:
     user = get_user_by_token(xingce_session)
     if not user:
         return RedirectResponse(url="/login", status_code=302)
-    return FileResponse(HTML_PATH)
+    return FileResponse(
+        HTML_PATH,
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
 
 
 @app.get("/login")
@@ -480,7 +487,14 @@ def login_page(request: Request, xingce_session: Optional[str] = Cookie(default=
     user = get_user_by_token(xingce_session)
     if user:
         return RedirectResponse(url="/", status_code=302)
-    return FileResponse(LOGIN_HTML_PATH)
+    return FileResponse(
+        LOGIN_HTML_PATH,
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
 
 
 @app.get("/api/public-entry")
