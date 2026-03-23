@@ -107,6 +107,38 @@ Open:
 
 - `http://127.0.0.1:8000`
 
+## Local Entry Recommendation
+
+For daily local debugging, prefer one fixed entry:
+
+- recommended: `http://127.0.0.1:8000`
+
+Do not casually switch between:
+
+- `http://127.0.0.1:8000`
+- `http://localhost:8000`
+- `http://localhost:8080`
+
+They may look similar, but during debugging they may not represent the same runtime path or the same browser-local state.
+
+## `127.0.0.1:8000` vs `localhost:8000`
+
+These two addresses often reach the same machine and the same port, but they are not the same browser origin.
+
+Practical differences:
+
+- `127.0.0.1` is a fixed loopback IP
+- `localhost` is a hostname that usually resolves to loopback
+- browser cache, cookies, localStorage, and IndexedDB are separated by origin
+- this project also keeps browser-local workspace state by origin
+
+So even if both addresses point to the same app process, they can still show different local state in the browser.
+
+Rule of thumb:
+
+- when debugging UI issues, use `http://127.0.0.1:8000` consistently
+- do not compare `localhost` and `127.0.0.1` as if they were one shared local session
+
 ## Start Cloudflare Tunnel
 
 ```bash
@@ -117,6 +149,11 @@ docker compose logs -f cloudflared
 
 The tunnel log will print a `trycloudflare.com` URL.
 
+Important:
+
+- the public tunnel only reflects the runtime it currently points to
+- it does not automatically prove that the latest local front-end edits are active there
+
 ## Start Tunnel Without Docker
 
 If `cloudflared` is already installed locally:
@@ -126,6 +163,33 @@ cd E:\IdeaProject\git\xingce_v3_lab
 powershell -ExecutionPolicy Bypass -File .\scripts\start-tunnel.ps1
 ```
 
+This script points the tunnel to:
+
+- `http://127.0.0.1:8000`
+
+So it is suitable when you want the public domain to expose the current local Python runtime.
+
+## Public Access Rule
+
+The public `trycloudflare.com` domain may not match the page you see on local `127.0.0.1:8000`.
+
+Why this happens:
+
+1. Docker tunnel and local tunnel can point to different runtimes
+2. Docker front-end edits require rebuilding the `app` container
+3. browser cache on the public origin is independent from local origin cache
+4. an old public tab or an old tunnel URL may still be in use
+
+Practical rule:
+
+1. first verify that `http://127.0.0.1:8000` already shows the expected behavior
+2. then confirm how the public tunnel was started
+3. if using Docker tunnel, run `docker compose up --build -d app` before trusting the public URL
+4. if using local tunnel, ensure local `uvicorn` is the runtime currently listening on `127.0.0.1:8000`
+5. if switching between local and public entries, use `Cloud Save` on one side and `Cloud Load` on the other side
+
+Do not assume that fixing local `127.0.0.1:8000` automatically fixes the public domain at the same moment.
+
 ## Notes
 
 - Current auth is simple username/password with SQLite-backed sessions.
@@ -133,9 +197,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start-tunnel.ps1
 - This is intentional: it lets the original workbench keep working with minimal change.
 - AI entry analysis uses MiniMax and reads `MINIMAX_API_KEY` / `MINIMAX_MODEL` from the runtime environment.
 - If you are running with Docker, after front-end edits or AI feature changes you must rebuild the `app` container.
-- `localhost` and the public tunnel domain use separate browser-local caches; use `Cloud Save` then `Cloud Load` when switching entries.
+- `127.0.0.1`, `localhost`, and the public tunnel domain are different browser origins; use `Cloud Save` then `Cloud Load` when switching entries.
 - If running with Docker, front-end code changes under `app/` or `xingce_v3/` require `docker compose up --build -d app`.
 - Operational experience is recorded in `docs/ops-notes.md`.
 - Stage progress and current implementation order are recorded in docs/roadmap.md.
 - Frontend module split preparation is recorded in docs/frontend-split-plan.md.
-

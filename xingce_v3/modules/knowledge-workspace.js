@@ -89,8 +89,14 @@
     var ta = document.getElementById("noteTypeTextarea");
     var preview = document.getElementById("noteSplitPreview");
     if (ta && preview) {
+      var anchorPrefix = notesViewMode === "knowledge"
+        ? getKnowledgeNoteAnchorPrefix(selectedKnowledgeNodeId)
+        : getLegacyNoteAnchorPrefix(selectedNoteType);
+      var liveHeadings = extractMdHeadings(ta.value);
+      var tocHtml = renderFloatingHeadingPanel(liveHeadings, anchorPrefix);
+      updateGlobalNoteTocDock(liveHeadings, anchorPrefix);
       preview.innerHTML = ta.value
-        ? renderMd(ta.value)
+        ? renderNotePreviewLayout(renderMd(ta.value, { anchorPrefix: anchorPrefix }), tocHtml)
         : '<span style="color:#ccc;font-size:12px;font-style:italic">输入 Markdown 后在此预览…</span>';
     }
     var gta = document.getElementById("globalNoteTA");
@@ -138,8 +144,11 @@
     var linkedCount = countErrorsForKnowledgeNode(currentNode.id, true);
     var directCount = countErrorsForKnowledgeNode(currentNode.id, false);
     var noteContent = currentNode.contentMd || "";
+    var noteAnchorPrefix = getKnowledgeNoteAnchorPrefix(currentNode.id);
+    var noteHeadings = extractMdHeadings(noteContent);
+    var tocHtml = renderFloatingHeadingPanel(noteHeadings, noteAnchorPrefix);
     var previewHtml = noteContent
-      ? renderMd(noteContent)
+      ? renderNotePreviewLayout(renderMd(noteContent, { anchorPrefix: noteAnchorPrefix }), tocHtml)
       : '<div style="color:#c0c4cc;font-size:13px;font-style:italic;padding:18px 0">当前节点还没有笔记，直接在这里记录规则、易错点和行动建议。</div>';
 
     var workspaceBar = "<div class=\"knowledge-workspace-bar\">" +
@@ -147,6 +156,14 @@
         "<div class=\"knowledge-workspace-kicker\">知识点笔记</div>" +
         "<div class=\"knowledge-workspace-title\">" + escapeHtml(currentNode.title) + "</div>" +
         "<div class=\"knowledge-workspace-path\">" + escapeHtml(pathText) + " · 直属错题 " + directCount + " 题 · 含下级 " + linkedCount + " 题</div>" +
+        (noteHeadings.length
+          ? "<div class=\"knowledge-outline-bar\">" + noteHeadings.map(function (item) {
+              var anchorId = getNoteHeadingAnchorId(noteAnchorPrefix, item.headingIndex);
+              return "<button class=\"knowledge-outline-pill\" onclick=\"jumpToRenderedAnchor('" + anchorId + "')\">" +
+                "#".repeat(item.level) + " " + escapeHtml(item.text) +
+              "</button>";
+            }).join("") + "</div>"
+          : "<div class=\"knowledge-outline-empty\">Outline: no headings found</div>") +
       "</div>" +
       "<div class=\"knowledge-workspace-actions\">" +
         "<button class=\"btn btn-secondary btn-sm\" onclick=\"renameKnowledgeNode('" + currentNode.id + "')\">重命名</button>" +
@@ -193,6 +210,7 @@
     content.innerHTML = workspaceBar + bodyHtml;
     if (noteEditing) bindKnowledgeEditorShortcuts(content);
     updateKnowledgeWorkspaceChrome(currentNode, linkedCount);
+    updateGlobalNoteTocDock(noteHeadings, noteAnchorPrefix);
     renderKnowledgeNotesPanelRight();
   }
 

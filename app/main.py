@@ -229,6 +229,17 @@ app.add_middleware(
 app.mount("/assets", StaticFiles(directory=str(BASE_DIR / "xingce_v3")), name="assets")
 
 
+@app.middleware("http")
+async def disable_static_cache_for_local_debug(request: Request, call_next):
+    response = await call_next(request)
+    path = request.url.path or ""
+    if path == "/" or path == "/login" or path.startswith("/assets/"):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
+
 @app.on_event("startup")
 def on_startup() -> None:
     init_db()

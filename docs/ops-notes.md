@@ -121,6 +121,92 @@ docker compose up --build -d app
 
 Do not debug UI behavior in Docker until the container has been rebuilt after code edits.
 
+## TOC Runtime Rule
+
+The note TOC bug is a runtime-path problem before it is a rendering problem.
+
+Observed case on 2026-03-23:
+
+- the patched code worked on `http://127.0.0.1:8000`
+- the public entry and some old local entries still showed the old note page without TOC
+
+Root cause:
+
+1. the live TOC fix was served by local `uvicorn` on `127.0.0.1:8000`
+2. another entry was still hitting an older runtime
+3. browser cache made the mismatch harder to notice
+
+Practical interpretation:
+
+- if `127.0.0.1:8000` works, the front-end code itself is likely correct
+- if another origin does not work, assume runtime mismatch first
+- do not keep editing UI code until the served HTML and served JS are confirmed for that exact origin
+
+Verification order for note TOC:
+
+1. confirm which exact URL the user opened
+2. confirm which process is serving that URL
+3. fetch the served `/assets/modules/knowledge-workspace.js`
+4. check whether the served script contains the expected TOC code
+5. only then debug note content or CSS
+
+## Local 8000 Vs Other Entrances
+
+There are multiple valid entry paths in this project, but they are not guaranteed to run the same build.
+
+Current local rules:
+
+- `scripts/start-local.ps1` starts local `uvicorn` on `127.0.0.1:8000`
+- Docker maps the app container to both `8000` and `8080`
+- the Docker tunnel targets `http://app:8000` inside Docker
+- the local tunnel script targets `http://127.0.0.1:8000`
+
+This means:
+
+- `127.0.0.1:8000` can be the newest local Python runtime
+- `localhost:8080` may be a different process or an older containerized build
+- a public `trycloudflare.com` URL only reflects whichever runtime the tunnel currently points to
+
+Do not assume “same project” means “same served front-end”.
+
+## Public Domain Rule
+
+If the public domain does not reflect a local front-end fix, check tunnel target before changing code again.
+
+Most likely causes:
+
+1. the tunnel points to Docker `app`, but the container was not rebuilt after `app/` or `xingce_v3/` edits
+2. the tunnel points to an older local process
+3. the browser opened an older saved domain or a stale tab
+4. the public origin is using its own cached page shell and JS bundle
+
+Required checks:
+
+1. identify whether the tunnel was started by Docker or by `scripts/start-tunnel.ps1`
+2. if Docker tunnel is used, run `docker compose up --build -d app` before trusting the public URL
+3. if local tunnel is used, confirm `127.0.0.1:8000` is the exact runtime currently listening
+4. fetch the public `/assets/modules/knowledge-workspace.js` and compare it with the local one
+
+Rule of thumb:
+
+- local `127.0.0.1:8000` working only proves the source code is fixed
+- the public domain works only after its target runtime is confirmed to serve the same files
+
+## Local Debug Cache Rule
+
+For local debugging, HTML and `/assets/*` should return no-cache headers.
+
+Reason:
+
+- otherwise the browser can keep an older page shell or module file
+- this can make a fixed local runtime look unfixed
+
+Practical rule:
+
+1. local debug responses for `/`, `/login`, and `/assets/*` should send `Cache-Control: no-store`
+2. after front-end debugging fixes, restart the local service once
+3. if behavior still looks old, verify headers before assuming the patch failed
+
 ## Frontend Debug Rule
 
 For UI bugs, do not default to repeated rendering tweaks before verifying the runtime path.
