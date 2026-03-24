@@ -47,6 +47,31 @@ This avoids the blocked base-image pull while keeping Docker deployment usable.
 
 ## Cloudflare Experience
 
+### 2026-03-24: Custom Domain Setup Attempt
+
+**Goal**: Configure `erroranaly.qzz.io` as custom domain for the tunnel
+
+**What was done**:
+1. Downloaded Argo Tunnel token from Cloudflare Dashboard
+2. Updated docker-compose.yml with token
+3. Tried multiple token formats (file mount, environment variable)
+
+**Result**: Token always reported as invalid
+
+**Lessons learned**:
+1. Argo Tunnel tokens from Cloudflare Dashboard may have different formats
+2. The token format starting with `-----BEGIN ARGO TUNNEL TOKEN-----` may require specific setup
+3. Alternative approach: use the older `credentials.json` method instead of token
+4. Or use Quick Tunnel (temporary URL) for testing
+
+**Successful approach for production**:
+- Use `cloudflared tunnel login` to get proper credentials
+- Create tunnel via CLI: `cloudflared tunnel create <name>`
+- Generate DNS with: `cloudflared tunnel route dns <name> <domain>`
+- Use `credentials.json` for Docker volume mount
+
+---
+
 `cloudflare/cloudflared` was already present locally, so Docker tunnel startup worked.
 
 Verification rule:
