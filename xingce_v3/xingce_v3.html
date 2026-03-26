@@ -131,7 +131,7 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .nav-sub2.active .nav-count{background:#ffe4e1;color:#e74c3c}
 
 /* ===== 中间笔记区域 ===== */
-.notes-area{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.notes-area{flex:1;overflow:hidden;display:flex;flex-direction:column;padding-right:282px}
 .notes-header{display:none}
 .notes-header h2{font-size:16px;margin:0;color:#2c3e50}
 .notes-header .btn{font-size:12px;padding:6px 12px}
@@ -541,10 +541,12 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .iq-actions{display:flex;gap:8px;align-items:center}
 
 /* ===== 右侧笔记面板（始终可见）===== */
-.notes-panel-right{display:none}
-.notes-panel-right-header{padding:10px 14px;border-bottom:1px solid #e8e8e8;background:#fafafa;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-.notes-panel-right-header h3{font-size:14px;font-weight:700;color:#2c3e50;margin:0}
-.notes-panel-right-body{flex:1;overflow-y:auto;padding:8px 10px 12px}
+.notes-panel-right{display:none!important}
+.notes-panel-right-header{display:none!important}
+.notes-panel-right-header h3{font-size:13px;font-weight:700;color:#7c4a1d;margin:0;letter-spacing:.04em;text-transform:uppercase}
+.notes-panel-right-caption{font-size:11px;color:#a16207;line-height:1.5;margin-top:4px}
+.notes-panel-right-header > div[style]{display:none!important}
+.notes-panel-right-body{flex:1;overflow-y:auto;padding:10px 10px 12px}
 .notes-panel-right-body::-webkit-scrollbar{width:5px}
 .notes-panel-right-body::-webkit-scrollbar-thumb{background:#ddd;border-radius:3px}
 .notes-panel-right .error-card{border:1px solid #eceff3;border-radius:12px;padding:10px 11px;margin-bottom:8px;background:#fff;box-shadow:0 2px 10px rgba(15,23,42,.04)}
@@ -552,10 +554,7 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .notes-panel-right .error-card .card-question{font-size:12px;line-height:1.7;color:#2d3436;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .notes-panel-right .error-card .card-actions{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
 .notes-panel-right .error-card .btn-sm{padding:4px 8px;font-size:11px}
-.related-errors-summary{padding:6px 2px 8px;color:#7f8c8d;font-size:11px;line-height:1.7}
-.related-error-path{margin-top:6px;font-size:11px;color:#97a0af;line-height:1.55}
-.related-error-path strong{color:#7b8794;font-weight:600}
-.related-error-actions{margin-top:8px}
+.related-errors-summary,.related-error-path,.related-error-actions,.related-error-detail,.related-error-question,.related-error-image,.related-error-options,.related-error-option,.related-error-meta-grid,.related-error-meta,.related-error-analysis{display:none!important}
 .note-panel-item{margin-bottom:1px}
 .note-panel-item-header{display:flex;align-items:center;gap:5px;padding:5px 7px;border-radius:5px;cursor:pointer;transition:.15s;font-size:12px;color:#555;user-select:none}
 .note-panel-item-header:hover{background:#fafafa;color:#333}
@@ -574,16 +573,21 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .note-type-tab.active{background:#e74c3c;border-color:#e74c3c;color:#fff;font-weight:600}
 .note-type-tab.has-content::after{content:'·';position:absolute;bottom:1px;right:4px;font-size:10px;color:#e74c3c;font-weight:bold}
 .note-type-tab.active.has-content::after{color:#fff}
-.knowledge-workspace-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:12px 14px;border-bottom:1px solid #f0f0f0;background:linear-gradient(180deg,#fafbfc,#fff);flex-shrink:0}
-.knowledge-workspace-meta{min-width:0;display:flex;flex-direction:column;gap:4px}
-.knowledge-workspace-kicker{font-size:11px;color:#999;font-weight:700;letter-spacing:.4px;text-transform:uppercase}
-.knowledge-workspace-title{font-size:18px;font-weight:700;color:#2c3e50;line-height:1.3;word-break:break-word}
-.knowledge-workspace-path{font-size:12px;color:#888;line-height:1.6;word-break:break-word}
-.knowledge-outline-bar{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
-.knowledge-outline-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid #f0d7c2;border-radius:999px;background:#fffaf3;color:#9a3412;font-size:12px;cursor:pointer}
-.knowledge-outline-pill:hover{background:#fff2df;border-color:#fdba74}
-.knowledge-outline-empty{margin-top:6px;font-size:12px;color:#a16207}
-.knowledge-workspace-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.knowledge-workspace-bar{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:14px 18px 10px;border-bottom:1px solid #f1e7d8;background:linear-gradient(180deg,rgba(255,252,247,.96),rgba(255,255,255,.9));flex-shrink:0}
+.knowledge-workspace-meta{min-width:0;display:flex;flex-direction:column;gap:6px}
+.knowledge-workspace-kicker{display:none}
+.knowledge-workspace-title{font-size:22px;font-weight:700;color:#2c3e50;line-height:1.2;word-break:break-word}
+.knowledge-workspace-path{font-size:12px;color:#8b735d;line-height:1.7;word-break:break-word}
+.knowledge-workspace-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;flex-shrink:0}
+.knowledge-page-meta{display:none}
+.knowledge-page-pill{display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;background:#fff7ed;border:1px solid #f6d3b1;color:#b45309;font-size:11px;font-weight:600}
+.knowledge-page-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.knowledge-page-actions .note-more-menu{display:none}
+.note-more-menu{position:relative}
+.note-more-menu summary{list-style:none;cursor:pointer}
+.note-more-menu summary::-webkit-details-marker{display:none}
+.note-more-menu-panel{position:absolute;top:calc(100% + 8px);right:0;min-width:168px;padding:8px;background:#fff;border:1px solid #eadfd4;border-radius:14px;box-shadow:0 18px 36px rgba(15,23,42,.12);display:flex;flex-direction:column;gap:6px;z-index:30}
+.note-more-menu-panel .btn{justify-content:flex-start;width:100%}
 .knowledge-children-bar{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
 .knowledge-node-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #e5e7eb;border-radius:999px;background:#fff;cursor:pointer;font-size:12px;color:#475569}
 .knowledge-node-pill:hover{border-color:#f59e0b;color:#b45309;background:#fffaf0}
@@ -638,6 +642,14 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .note-preview-scroll{flex:1;overflow-y:auto;min-height:0;position:relative}
 .note-preview-scroll::-webkit-scrollbar{width:5px}
 .note-preview-scroll::-webkit-scrollbar-thumb{background:#ddd;border-radius:3px}
+.note-page-shell{display:flex;flex-direction:column;gap:16px;height:100%}
+.note-page-header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:6px 0 2px}
+.note-page-header-main{min-width:0;display:flex;flex-direction:column;gap:8px}
+.note-page-breadcrumb{display:none}
+.note-page-title{font-size:28px;line-height:1.15;color:#1f2937;font-weight:750;letter-spacing:-.02em;word-break:break-word}
+.note-page-submeta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.note-page-submeta .knowledge-page-pill{background:#fff;border-color:#ead8c6;color:#9a5b22}
+.note-page-intro{display:none}
 /* ===== 右侧面板笔记标题条目 ===== */
 .note-heading-item{padding:3px 8px 3px 18px;font-size:11px;color:#888;cursor:pointer;transition:.15s;line-height:1.6;border-left:2px solid transparent;margin-left:6px}
 .note-heading-item:hover{color:#e74c3c;background:#fff2f0;border-left-color:#e74c3c}
@@ -648,25 +660,27 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .note-md-heading:hover .note-md-anchor{opacity:1}
 .note-md-anchor{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;margin-right:6px;border-radius:999px;color:#e74c3c;text-decoration:none;font-size:11px;opacity:0;transition:.15s;background:#fff2f0;vertical-align:middle}
 .note-md-anchor:hover{background:#ffe3df}
-.note-toc{margin:0 0 14px;padding:10px 12px;border:1px solid #f0e2cf;border-radius:10px;background:#fffaf3}
-.note-toc-title{font-size:11px;font-weight:700;color:#b45309;letter-spacing:.4px;text-transform:uppercase;margin-bottom:8px}
+.note-toc{margin:0;padding:0;border:none;border-radius:0;background:transparent}
+.note-toc-title{font-size:11px;font-weight:700;color:#b45309;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
 .note-toc-list{display:flex;flex-direction:column;gap:4px}
-.note-toc-item{padding:4px 8px;border-radius:6px;color:#7c5a2f;cursor:pointer;font-size:12px;line-height:1.5}
+.note-toc-item{padding:6px 2px;border-radius:10px;color:#7c5a2f;cursor:pointer;font-size:12px;line-height:1.55}
 .note-toc-item:hover{background:#fff2df;color:#c2410c}
-.note-toc-item.lv2{padding-left:18px}
-.note-toc-item.lv3{padding-left:28px}
-.note-toc-item.lv4{padding-left:38px}
+.note-toc-item.lv2{padding-left:14px}
+.note-toc-item.lv3{padding-left:24px}
+.note-toc-item.lv4{padding-left:34px}
 .note-toc-inline{margin:10px 14px 0}
 .note-preview-layout{display:block;min-height:100%}
 .note-preview-article{min-width:0;max-width:none}
 .note-preview-toc{display:none!important}
 .global-note-toc-dock{position:fixed;top:118px;right:18px;z-index:1200;width:240px;max-height:calc(100vh - 142px);overflow:auto;display:none}
-.note-toc-floating{position:relative;z-index:3;display:block;width:100%;max-width:100%;margin:0;border-color:#f3d6b8;box-shadow:0 12px 28px rgba(180,83,9,.1)}
+.note-toc-floating{position:relative;z-index:3;display:block;width:100%;max-width:100%;margin:0;border-color:#f3d6b8;box-shadow:0 8px 24px rgba(180,83,9,.08)}
 .note-toc-floating .note-toc-title{display:flex;align-items:center;justify-content:space-between}
 @media (max-width: 980px){
+  .notes-area{padding-right:0}
+  .notes-panel-right{display:none!important}
+  .global-note-toc-dock{display:none!important}
   .note-preview-layout{display:block}
   .note-preview-toc{width:auto;max-width:none;margin-bottom:12px}
-.global-note-toc-dock{display:none}
 }
 /* ===== Layout Refresh v3.1 ===== */
 body{
@@ -767,7 +781,7 @@ body{
   margin-left:auto;
   margin-right:auto;
 }
-.notes-panel-right{display:none!important}
+.notes-panel-right{display:none}
 .notes-panel-right-header{border-bottom:1px solid #eef1f5}
 .notes-panel-right-body{padding:12px}
 .notes-panel-right .error-card{border-radius:16px;margin-bottom:10px}
@@ -1255,14 +1269,14 @@ body{
 <!-- ===== 右侧笔记面板（始终可见）===== -->
 <div class="notes-panel-right">
   <div class="notes-panel-right-header">
-    <h3>关联错题</h3>
+    <h3>笔记目录</h3>
     <div style="display:flex;gap:5px">
       <button class="btn btn-sm btn-secondary" onclick="knowledgeNodeFilter=null;renderSidebar();renderAll();renderNotesPanelRight()" title="清除节点筛选">全部</button>
       <button class="btn btn-sm btn-secondary" onclick="switchTab('notes')" title="编辑笔记">✏</button>
     </div>
   </div>
   <div class="notes-panel-right-body" id="notesPanelRightBody">
-    <div style="color:#ccc;font-size:12px;padding:20px;text-align:center">暂无关联错题<br><span style="font-size:11px">选择左侧知识点后显示</span></div>
+    <div style="color:#b08968;font-size:12px;padding:20px;text-align:center">当前笔记还没有标题目录</div>
   </div>
 </div>
 
@@ -3975,7 +3989,7 @@ function renderSidebarKnowledgeTreeV2(nodes, depth) {
     const cls = depth === 0 ? 'nav-item nav-type-header' : depth === 1 ? 'nav-item nav-subtype' : 'nav-item nav-sub2';
     const extraStyle = depth > 2 ? `padding-left:${60 + ((depth - 2) * 18)}px` : '';
     const hasChildren = !!(node.children && node.children.length);
-    const expanded = hasChildren && isKnowledgeExpanded(node);
+    const expanded = hasChildren && depth > 0 && isKnowledgeExpanded(node);
     const marker = hasChildren ? (expanded ? '▾' : '▸') : '•';
     const countClass = count > 0 ? 'knowledge-tree-count' : 'knowledge-tree-count is-empty';
     let html = `<div class="${cls} knowledge-tree-node ${active ? 'active is-active' : ''} ${hasChildren ? 'is-branch' : ''}" style="${extraStyle}" data-knowledge-node-id="${node.id}" draggable="true" ondragstart="startKnowledgeNodeDrag('${node.id}', event)" ondragend="endKnowledgeNodeDrag()" ondragover="allowKnowledgeDrop(event, '${node.id}')" ondragleave="leaveKnowledgeDrop(event)" ondrop="handleKnowledgeDrop('${node.id}', event)" onclick="selectKnowledgeNodeFromSidebar('${node.id}')">
@@ -7083,12 +7097,6 @@ function renderKnowledgeNotesViewV2() {
   const noteAnchorPrefix = getKnowledgeNoteAnchorPrefix(currentNode.id);
   const noteHeadings = extractMdHeadings(noteContent);
   const tocHtml = renderFloatingHeadingPanel(noteHeadings, noteAnchorPrefix);
-  const headerOutlineHtml = noteHeadings.length
-    ? `<div class="knowledge-outline-bar">${noteHeadings.map(item => {
-        const anchorId = getNoteHeadingAnchorId(noteAnchorPrefix, item.headingIndex);
-        return `<button class="knowledge-outline-pill" onclick="jumpToRenderedAnchor('${anchorId}')">${'#'.repeat(item.level)} ${escapeHtml(item.text)}</button>`;
-      }).join('')}</div>`
-    : `<div class="knowledge-outline-empty">Outline: no headings found</div>`;
   const previewHtml = noteContent
     ? renderMd(noteContent, { anchorPrefix: noteAnchorPrefix })
     : '<div style="color:#c0c4cc;font-size:13px;font-style:italic;padding:18px 0">当前节点还没有笔记，直接在这里记录规则、易错点和行动建议。</div>';
@@ -7097,7 +7105,6 @@ function renderKnowledgeNotesViewV2() {
       <div class="knowledge-workspace-kicker">知识点笔记</div>
       <div class="knowledge-workspace-title">${escapeHtml(currentNode.title)}</div>
       <div class="knowledge-workspace-path">${escapeHtml(pathText)} · 直属错题 ${directCount} 题 · 含下级 ${linkedCount} 题</div>
-      ${headerOutlineHtml}
     </div>
     <div class="knowledge-workspace-actions">
       <button class="btn btn-secondary btn-sm" onclick="renameKnowledgeNode('${currentNode.id}')">重命名</button>
@@ -7143,6 +7150,8 @@ function renderKnowledgeNotesViewV2() {
         </div>`;
   }
   content.innerHTML = `${workspaceBar}${bodyHtml}`;
+  decorateKnowledgeNotesView(content, currentNode, pathText, directCount, linkedCount, summaryHtml, noteEditing);
+  updateGlobalNoteTocDock(noteHeadings, noteAnchorPrefix);
   if (noteEditing) {
     const ta = content.querySelector('#noteTypeTextarea');
     if (ta) {
@@ -7259,6 +7268,7 @@ function renderLegacyNotesView() {
   }
 
   content.innerHTML = `<div class="note-type-tabs">${tabsHtml}</div>${bodyHtml}`;
+  updateGlobalNoteTocDock(noteHeadings, noteAnchorPrefix);
 
   // 编辑模式下绑定 Ctrl+S
   if (noteEditing) {
@@ -7404,6 +7414,55 @@ function prependNodeHeading(headings, nodeTitle) {
 function renderNotePreviewLayout(previewHtml, tocHtml) {
   const article = `<article class="note-preview-article">${previewHtml || ''}</article>`;
   return `<div class="note-preview-layout">${article}</div>`;
+}
+function renderKnowledgeWorkspaceHeader(node, pathText, directCount, linkedCount, noteEditing) {
+  if (!node) return '';
+  return `<div class="knowledge-workspace-meta">
+      <div class="note-page-breadcrumb">${escapeHtml(pathText || '')}</div>
+      <div class="knowledge-workspace-title">${escapeHtml(node.title || '')}</div>
+      <div class="knowledge-page-meta">
+        <span class="knowledge-page-pill">直属 ${directCount || 0}</span>
+        <span class="knowledge-page-pill">含下级 ${linkedCount || 0}</span>
+      </div>
+    </div>
+    <div class="knowledge-page-actions">
+      <button class="btn btn-primary btn-sm" onclick="noteEditing=${noteEditing ? 'false' : 'true'};renderNotesByType()">${noteEditing ? '完成' : '编辑'}</button>
+      <details class="note-more-menu">
+        <summary class="btn btn-secondary btn-sm">更多</summary>
+        <div class="note-more-menu-panel">
+          <button class="btn btn-secondary btn-sm" onclick="renameKnowledgeNode('${node.id}')">重命名</button>
+          ${findKnowledgeParent(node.id) ? `<button class="btn btn-secondary btn-sm" onclick="moveKnowledgeNode('${node.id}')">移动</button>` : ''}
+          <button class="btn btn-secondary btn-sm" onclick="selectedKnowledgeNodeId='${node.id}';addKnowledgeLeafUnderSelected()">新建下级</button>
+          <button class="btn btn-secondary btn-sm" onclick="openAddModalForCurrentKnowledge()">录入题目</button>
+          <button class="btn btn-secondary btn-sm" onclick="openImportModalForCurrentKnowledge()">导入 JSON</button>
+          ${findKnowledgeParent(node.id) ? `<button class="btn btn-secondary btn-sm" onclick="deleteKnowledgeNode('${node.id}')">删除节点</button>` : ''}
+        </div>
+      </details>
+    </div>`;
+}
+function decorateKnowledgeNotesView(contentEl, currentNode, pathText, directCount, linkedCount, summaryHtml, noteEditing) {
+  if (!contentEl) return;
+  const header = contentEl.querySelector('.knowledge-workspace-bar');
+  if (header) {
+    header.innerHTML = renderKnowledgeWorkspaceHeader(currentNode, pathText, directCount, linkedCount, noteEditing);
+  }
+  const splitArea = contentEl.querySelector('.note-split-area');
+  if (splitArea) {
+    let intro = contentEl.querySelector('.note-page-intro');
+    if (!intro) {
+      intro = document.createElement('div');
+      intro.className = 'note-page-intro';
+      splitArea.parentNode.insertBefore(intro, splitArea);
+    }
+    intro.innerHTML = summaryHtml || '';
+    contentEl.querySelectorAll('.note-split-area .knowledge-children-bar, .note-split-area .knowledge-node-hint').forEach(node => node.remove());
+  }
+  contentEl.querySelectorAll('.note-split-label').forEach(label => {
+    const text = (label.textContent || '').trim();
+    if (!noteEditing || text.indexOf('预览') >= 0 || text.indexOf('当前笔记') >= 0) {
+      label.remove();
+    }
+  });
 }
 function ensureGlobalNoteTocDock() {
   let dock = document.getElementById('globalNoteTocDock');
@@ -7658,9 +7717,26 @@ function renderKnowledgeNotesPanelRight() {
   }).join('');
 }
 function renderNotesPanelRight() {
-  const panel = document.querySelector('.notes-panel-right');
-  if (!panel || getComputedStyle(panel).display === 'none') return;
-  renderKnowledgeNotesPanelRight();
+  const notesTab = document.getElementById('tabContentNotes');
+  if (!notesTab || !notesTab.classList.contains('active')) {
+    clearGlobalNoteTocDock();
+    return;
+  }
+  let anchorPrefix = '';
+  let content = '';
+  if (notesViewMode === 'knowledge') {
+    ensureKnowledgeState();
+    const currentNode = getCurrentKnowledgeNode();
+    if (currentNode) {
+      anchorPrefix = getKnowledgeNoteAnchorPrefix(currentNode.id);
+      content = currentNode.contentMd || '';
+    }
+  } else {
+    anchorPrefix = getLegacyNoteAnchorPrefix(selectedNoteType);
+    const noteData = selectedNoteType ? notesByType[selectedNoteType] : null;
+    content = noteData && noteData.content ? noteData.content : '';
+  }
+  updateGlobalNoteTocDock(extractMdHeadings(content), anchorPrefix);
 }
 function renderLegacyNotesPanelRight() {
   const body = document.getElementById('notesPanelRightBody');
@@ -7704,6 +7780,25 @@ function renderLegacyNotesPanelRight() {
       ${subItemsHtml}
     </div>`;
   }).join('');
+}
+
+// Override legacy right-panel behavior: notes tab uses TOC only.
+function updateKnowledgeWorkspaceChrome(currentNode, linkedCount) {
+  const titleEl = document.querySelector('.notes-header h2');
+  if (titleEl) titleEl.textContent = currentNode ? currentNode.title : '学习笔记';
+  const actionWrap = document.querySelector('.notes-header > div:last-child');
+  if (actionWrap) actionWrap.innerHTML = '';
+  const rightHeader = document.querySelector('.notes-panel-right-header h3');
+  if (rightHeader) rightHeader.textContent = '笔记目录';
+  renderNotesPanelRight();
+}
+
+function setKnowledgeRelatedMode(mode) {
+  renderNotesPanelRight();
+}
+
+function renderKnowledgeNotesPanelRight() {
+  renderNotesPanelRight();
 }
 
 // 点击右侧 MD 标题：设置错题筛选 + 跳到笔记Tab + 定位标题

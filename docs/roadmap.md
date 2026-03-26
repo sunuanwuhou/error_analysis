@@ -107,6 +107,7 @@ The next stage is considered successful when:
 6. tiny numeric MCQ screenshots improved from noisy partial extraction to usable stem-plus-options recovery on real samples
 7. knowledge tree first level is now meant to stay collapsed by default
 8. note TOC behavior has been clarified to right-floating only, with stale TOC cleanup on non-leaf nodes
+9. note TOC debugging now has a fixed baseline rule: compare against the pre-2026-03-26 good implementation before changing source logic
 
 ### Highest-Value Next Steps
 

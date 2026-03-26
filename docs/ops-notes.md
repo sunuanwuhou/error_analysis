@@ -169,6 +169,18 @@ Do not manually rewrite these copies as product content. Product-facing structur
 - Do not reintroduce duplicate inline TOC blocks above note content.
 - When a knowledge node is a directory node rather than a leaf note node, clear the floating TOC so stale headings do not remain visible.
 
+## 2026-03-26 TOC Recovery Rule
+
+- When note TOC behavior regresses, inspect the last known good implementation before adding more local fixes.
+- For this repo, the reliable pre-regression reference is the `2026-03-23` TOC line, especially commit `669d35e`.
+- The right-side TOC should be sourced from note-body Markdown headings only.
+- Do not force knowledge-node titles or note-type labels into the TOC unless the product explicitly wants that behavior.
+- Separate two questions during debugging:
+  1. where the TOC data comes from
+  2. where the TOC is rendered
+- If the UI is showing the wrong labels, verify the data-source rule first before changing layout or CSS again.
+- If old right-rail code and new floating-TOC code coexist, choose one active runtime path and explicitly disable the other.
+
 ## 2026-03-26 OCR Boundary Notes
 
 - Numeric multiple-choice screenshots can justify special handling and aggressive preprocessing.
