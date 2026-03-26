@@ -8,7 +8,7 @@ Keep the existing manual workflow intact:
 
 1. You manually enter questions.
 2. You manually paste analysis results.
-3. The system only stores and syncs the full workspace by user.
+3. The system keeps full-workspace backup compatibility while adding safer per-error sync.
 
 No Excel parsing is required in the current path.
 
@@ -37,9 +37,13 @@ No Excel parsing is required in the current path.
 
 ## Storage Model
 
-This project does not split the xingce data into many backend tables yet.
+This project now uses a hybrid model:
 
-Instead it stores one full backup JSON per user:
+1. one full backup JSON per user for compatibility and restore
+2. per-error incremental sync operations for safer multi-entry editing
+3. file-backed image storage for uploaded images when available
+
+The full backup still stores:
 
 - errors
 - notes
@@ -50,7 +54,13 @@ Instead it stores one full backup JSON per user:
 - knowledge tree
 - knowledge-node Markdown content
 
-That matches the existing xingce front-end model and keeps the migration small.
+The incremental sync path currently focuses on `errors[]` changes.
+
+Important:
+
+- full backup remains the fallback and restore source
+- note bodies / knowledge content still rely mainly on the full-backup path
+- error records now use UUIDs instead of integer-only ids for cross-device safety
 
 ## Knowledge Tree Extension
 
@@ -77,16 +87,25 @@ When using the workbench:
 
 1. The left panel is the knowledge navigation tree.
 2. The center panel is the current knowledge node workspace.
-3. The right panel shows related errors for the current knowledge node.
+3. The right-side related-errors rail has been retired to keep the workspace focused.
 
 ## Run With Docker
 
 ```bash
 cd E:\IdeaProject\git\xingce_v3_lab
+set DEEPSEEK_API_KEY=your_deepseek_key_here
 set MINIMAX_API_KEY=your_key_here
 set MINIMAX_MODEL=MiniMax-M2.5
+set ALLOWED_ORIGINS=http://127.0.0.1:8000,http://localhost:8000,https://erroranaly.qzz.io
+set TUNNEL_TOKEN=your_cloudflare_tunnel_token
 docker compose up --build -d app
 ```
+
+DeepSeek priority:
+
+- if `DEEPSEEK_API_KEY` is set, AI analysis prefers DeepSeek
+- if DeepSeek is unavailable, the backend falls back to MiniMax
+- if you only want DeepSeek, you may leave `MINIMAX_API_KEY` empty
 
 Open:
 
@@ -98,8 +117,10 @@ If Docker image pulls are blocked on this machine, use the local Python runtime:
 
 ```powershell
 cd E:\IdeaProject\git\xingce_v3_lab
+$env:DEEPSEEK_API_KEY='your_deepseek_key_here'
 $env:MINIMAX_API_KEY='your_key_here'
 $env:MINIMAX_MODEL='MiniMax-M2.5'
+$env:ALLOWED_ORIGINS='http://127.0.0.1:8000,http://localhost:8000'
 powershell -ExecutionPolicy Bypass -File .\scripts\start-local.ps1
 ```
 
@@ -147,7 +168,27 @@ docker compose --profile tunnel up --build -d
 docker compose logs -f cloudflared
 ```
 
-The tunnel log will print a `trycloudflare.com` URL.
+The named tunnel is configured to serve:
+
+- `https://erroranaly.qzz.io`
+
+If you need to create or repair the named tunnel and DNS binding from the local Cloudflare token bundle, run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\bind-cloudflare-domain.ps1
+```
+
+If you only want a temporary public URL, use the Docker quick-tunnel helper instead:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\start-quick-tunnel-docker.ps1
+```
+
+or:
+
+```bash
+bash ./scripts/start-quick-tunnel-docker.sh
+```
 
 Important:
 
@@ -169,16 +210,35 @@ This script points the tunnel to:
 
 So it is suitable when you want the public domain to expose the current local Python runtime.
 
+## AI And Practice APIs
+
+The backend now exposes the roadmap stage capabilities even when the UI entry points are still evolving:
+
+- `/api/ai/evaluate-answer`
+- `/api/ai/generate-question`
+- `/api/ai/diagnose`
+- `/api/ai/chat`
+- `/api/ai/module-summary-for-claude`
+- `/api/ai/distill-to-node`
+- `/api/ai/synthesize-node`
+- `/api/ai/discover-patterns`
+- `/api/ai/suggest-restructure`
+- `/api/practice/daily`
+- `/api/practice/log`
+- `/api/knowledge/search`
+
+These endpoints currently work off the authenticated user's hybrid backup data and practice log table.
+
 ## Public Access Rule
 
-The public `trycloudflare.com` domain may not match the page you see on local `127.0.0.1:8000`.
+The public `https://erroranaly.qzz.io` domain may not match the page you see on local `127.0.0.1:8000` if the container runtime has not been rebuilt.
 
 Why this happens:
 
 1. Docker tunnel and local tunnel can point to different runtimes
 2. Docker front-end edits require rebuilding the `app` container
 3. browser cache on the public origin is independent from local origin cache
-4. an old public tab or an old tunnel URL may still be in use
+4. an old public tab or an old tunnel route may still be in use
 
 Practical rule:
 
@@ -193,12 +253,15 @@ Do not assume that fixing local `127.0.0.1:8000` automatically fixes the public 
 ## Notes
 
 - Current auth is simple username/password with SQLite-backed sessions.
-- Current sync model is full-backup sync, not per-record merge.
-- This is intentional: it lets the original workbench keep working with minimal change.
-- AI entry analysis uses MiniMax and reads `MINIMAX_API_KEY` / `MINIMAX_MODEL` from the runtime environment.
+- Current sync model is hybrid:
+  - full-backup restore/save remains available
+  - per-error incremental sync runs through `/api/sync`
+- AI entry analysis prefers DeepSeek when `DEEPSEEK_API_KEY` is present and falls back to MiniMax.
 - If you are running with Docker, after front-end edits or AI feature changes you must rebuild the `app` container.
 - `127.0.0.1`, `localhost`, and the public tunnel domain are different browser origins; use `Cloud Save` then `Cloud Load` when switching entries.
 - If running with Docker, front-end code changes under `app/` or `xingce_v3/` require `docker compose up --build -d app`.
+- Uploaded images may now be stored under `data/images/` and referenced through `/api/images/*`.
+- A backend smoke test is available at `scripts/verify_v31_smoke.py`.
 - Operational experience is recorded in `docs/ops-notes.md`.
 - Stage progress and current implementation order are recorded in docs/roadmap.md.
 - Frontend module split preparation is recorded in docs/frontend-split-plan.md.

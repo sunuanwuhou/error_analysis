@@ -11,6 +11,10 @@ Current boundary:
 3. per-user workspace storage
 4. full-backup cloud sync
 
+Current v3.1 addition:
+
+5. per-error incremental sync for safer multi-entry editing
+
 Do not pull it back into Excel parsing or a heavy question-bank architecture unless that becomes a new deliberate phase.
 
 ## Why The Storage Model Is Simple
@@ -24,6 +28,13 @@ That keeps:
 - the front-end nearly unchanged
 - migration cost low
 - manual entry flow fast
+
+Current practical extension:
+
+- `user_backups` remains the restore and compatibility layer
+- `operations` adds per-error incremental sync
+- `user_images` allows file-backed image storage
+- the system is intentionally hybrid rather than a hard cut-over
 
 ## Auth Rule
 
@@ -106,6 +117,7 @@ This project has two separate data layers:
 
 1. browser-local cache by origin
 2. per-user cloud full backup
+3. per-user incremental error ops
 
 Important behavior:
 
@@ -127,6 +139,7 @@ Do not treat local and public entry as one live-synced workspace.
 Current behavior:
 
 - local edits auto-save to cloud after debounce
+- error edits can also sync through `/api/sync`
 - page open may auto-load or prompt for cloud restore depending on current local state
 - manual `Cloud Save` and `Cloud Load` remain available as explicit controls
 
@@ -222,6 +235,34 @@ Rule of thumb:
 
 - local `127.0.0.1:8000` working only proves the source code is fixed
 - the public domain works only after its target runtime is confirmed to serve the same files
+
+## Quick Tunnel Fallback
+
+If the configured `cloudflared` container keeps failing with token errors, use a Docker quick tunnel instead of debugging auth first.
+
+Practical command on this machine:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\start-quick-tunnel-docker.ps1
+```
+
+This starts a temporary `cloudflare/cloudflared` container pointing at `http://host.docker.internal:8000` and prints a fresh `trycloudflare.com` URL.
+
+## v3.1 Smoke Check
+
+There is now a repeatable backend smoke test:
+
+```powershell
+python .\scripts\verify_v31_smoke.py
+```
+
+It verifies:
+
+1. health endpoint
+2. register/login
+3. full backup read/write
+4. incremental sync push/pull and idempotency
+5. image upload/read/unref
 
 ## Local Debug Cache Rule
 

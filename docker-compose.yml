@@ -7,8 +7,10 @@ services:
       - "8000:8000"
       - "8080:8000"
     environment:
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
       MINIMAX_API_KEY: ${MINIMAX_API_KEY:-}
       MINIMAX_MODEL: ${MINIMAX_MODEL:-MiniMax-M2.5}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://127.0.0.1:8000,http://localhost:8000}
     volumes:
       - ./data:/app/data
       - ./runtime:/app/runtime
@@ -19,7 +21,9 @@ services:
     container_name: xingce_v3_tunnel
     depends_on:
       - app
-    command: tunnel --no-autoupdate --url http://app:8000 --logfile /runtime/cloudflared.log
+    command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
     volumes:
       - ./runtime:/runtime
     restart: unless-stopped

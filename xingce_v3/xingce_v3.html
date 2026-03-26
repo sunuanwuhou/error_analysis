@@ -634,6 +634,199 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
   .note-preview-toc{width:auto;max-width:none;margin-bottom:12px}
   .global-note-toc-dock{display:none!important}
 }
+/* ===== Layout Refresh v3.1 ===== */
+body{
+  background:
+    radial-gradient(circle at top left, rgba(255,226,214,.65), transparent 28%),
+    linear-gradient(180deg,#f7f5f1 0%,#eef2f7 100%);
+  gap:0;
+}
+.sidebar{
+  width:280px;
+  min-width:280px;
+  background:linear-gradient(180deg,#fffdfb 0%,#ffffff 100%);
+  border-right:1px solid #e6e8ee;
+  box-shadow:12px 0 32px rgba(15,23,42,.04);
+  position:relative;
+  z-index:2;
+}
+.sidebar-logo{padding:18px 18px 14px;font-size:16px;letter-spacing:.2px}
+.quiz-block{padding:14px 16px}
+.nav-scroll{padding:10px 10px 14px}
+.nav-item,.nav-type-header,.nav-subtype,.nav-sub2{border-radius:12px;margin:2px 6px}
+.nav-item.active,.nav-subtype.active,.nav-sub2.active{box-shadow:inset 0 0 0 1px #ffd7ce}
+.main-area{padding:16px 16px 16px 18px;gap:14px;background:transparent}
+.top-bar{
+  padding:14px 16px;
+  border:1px solid rgba(226,232,240,.9);
+  border-radius:22px;
+  background:rgba(255,255,255,.88);
+  box-shadow:0 10px 32px rgba(15,23,42,.07);
+  backdrop-filter:blur(14px);
+  position:sticky;
+  top:0;
+  z-index:40;
+}
+.top-bar-primary{display:flex;align-items:center;gap:14px;min-width:0}
+.app-title-block{display:flex;flex-direction:column;gap:2px;min-width:0}
+.app-kicker{font-size:11px;line-height:1;color:#9a6b57;text-transform:uppercase;letter-spacing:.12em;font-weight:700}
+.top-bar h1{font-size:19px;line-height:1.2}
+.top-bar > h1 + h1{display:none}
+.top-bar{
+  display:grid;
+  grid-template-columns:auto auto auto auto minmax(16px,1fr) auto;
+  align-items:center;
+  column-gap:10px;
+  row-gap:10px;
+}
+.top-bar > h1:first-of-type{
+  margin-right:2px;
+  color:#1f2937;
+  letter-spacing:.02em;
+}
+.top-bar-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.view-mode-switch{padding:4px;border-radius:999px;background:#f6f1eb;border:1px solid #eadfd4}
+.view-mode-switch .btn{border-radius:999px}
+.toolbar-spacer{flex:1 1 auto}
+.top-bar > .view-mode-switch{margin-right:2px}
+.top-bar > .btn-primary,
+.top-bar > .more-menu,
+.top-bar > .cloud-controls{justify-self:start}
+.top-bar > .toolbar-spacer{width:100%;min-width:16px}
+.cloud-controls{padding:8px 10px;border-radius:16px;background:#f8fafc;border:1px solid #e5eaf2}
+.cloud-meta{align-items:flex-start;min-width:200px}
+.cloud-status-line,.cloud-status-hint,.cloud-origin-list{text-align:left;justify-content:flex-start}
+.tab-content.active{min-height:0}
+#tabContentErrors .errors-area,#tabContentNotes .notes-area{
+  border:1px solid #e7ebf1;
+  border-radius:24px;
+  box-shadow:0 16px 40px rgba(15,23,42,.06);
+  overflow:hidden;
+  background:rgba(255,255,255,.96);
+}
+.errors-header,.notes-header,.notes-panel-right-header,.date-filter-bar,.content-header{background:rgba(255,255,255,.92)}
+.errors-header,.notes-header,.notes-panel-right-header{padding:14px 18px}
+.notes-header{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #eef1f5}
+.notes-header h2,.errors-header h2,.notes-panel-right-header h3{font-size:17px;letter-spacing:.2px}
+.search-box input{height:40px;border-radius:14px;background:#faf7f2;border-color:#ebe2d8}
+.date-filter-bar{padding:10px 16px;flex-wrap:wrap}
+.content-header{padding:12px 16px}
+.errors-list{padding:8px 0 12px}
+.error-card{padding:14px 18px 14px 28px}
+.knowledge-workspace-bar{
+  padding:16px 18px;
+  background:
+    radial-gradient(circle at top right, rgba(254,215,170,.3), transparent 34%),
+    linear-gradient(180deg,#fffaf5,#fff);
+  border-bottom:1px solid #f1e5d7;
+}
+.knowledge-workspace-title{font-size:20px}
+.knowledge-workspace-path{color:#8b735d}
+.notes-content{
+  background:transparent;
+  overflow:auto;
+  padding:0 18px 20px;
+}
+#notesContent > *{
+  width:100%;
+  max-width:1180px;
+  margin-left:auto;
+  margin-right:auto;
+}
+.notes-panel-right{display:none!important}
+.notes-panel-right-header{border-bottom:1px solid #eef1f5}
+.notes-panel-right-body{padding:12px}
+.notes-panel-right .error-card{border-radius:16px;margin-bottom:10px}
+.related-errors-summary{padding:10px 4px 12px}
+.quiz-block{
+  margin:12px 12px 8px;
+  border:1px solid #f1dfd2;
+  border-radius:18px;
+  background:linear-gradient(180deg,#fffaf6,#fff);
+  box-shadow:0 8px 20px rgba(191,64,41,.05);
+}
+.nav-section-title{padding:10px 18px 6px;color:#b08968}
+.nav-type-header,.nav-subtype,.nav-sub2,.nav-item{min-height:34px}
+.knowledge-tree-node{
+  margin:2px 6px;
+  border-radius:12px;
+  transition:background .15s ease, box-shadow .15s ease;
+}
+.knowledge-tree-node:hover{background:#faf7f2}
+.knowledge-tree-node.is-active{
+  background:#fff4ef;
+  box-shadow:inset 0 0 0 1px #ffd6ca;
+}
+.notes-header{position:sticky;top:0;z-index:3}
+.note-type-tabs{padding:12px 18px;background:linear-gradient(180deg,#fffdfa,#fff)}
+.note-type-tab{border-radius:999px;padding:6px 14px}
+.note-split-area{
+  gap:16px;
+  padding:16px 18px 18px;
+  background:linear-gradient(180deg,#fcfcfd,#fff);
+}
+.note-split-editor,.note-split-preview{
+  border:1px solid #edf0f4;
+  border-radius:18px;
+  background:#fff;
+  box-shadow:0 10px 24px rgba(15,23,42,.04);
+}
+.note-split-editor{padding:14px 14px 12px}
+.note-split-preview{padding:14px 16px}
+.note-md-textarea{
+  border-radius:14px;
+  border-color:#e5e7eb;
+  background:#fcfcfd;
+}
+.errors-header{position:sticky;top:0;z-index:3}
+.date-filter-bar,.content-header{position:sticky;z-index:2}
+.date-filter-bar{top:69px}
+.content-header{top:118px}
+.errors-list{
+  background:linear-gradient(180deg,#fcfcfd,#fff);
+  padding:12px 14px 18px;
+}
+.errors-list > *{
+  max-width:1180px;
+  margin-left:auto;
+  margin-right:auto;
+}
+.type-group{
+  border-radius:16px;
+  border-color:#e8ebf0;
+  box-shadow:0 10px 24px rgba(15,23,42,.04);
+  margin-bottom:12px;
+}
+.type-header{
+  padding:12px 14px;
+  background:linear-gradient(180deg,#fafbfc,#f6f7f9);
+}
+.subtype-header{padding:9px 14px 9px 28px}
+.sub2-header{padding:7px 14px 7px 42px}
+.error-card{border-bottom-color:#eef1f5;background:#fff}
+.error-card:hover{background:#fffaf8}
+.btn{border-radius:10px}
+.btn-primary{background:linear-gradient(135deg,#d85b43,#bf4029)}
+.btn-secondary{background:#fff;border-color:#dde3ea;color:#475569}
+.btn-secondary:hover{background:#f8fafc}
+@media (max-width: 1280px){
+  .sidebar{width:256px;min-width:256px}
+  .main-area{padding:14px}
+}
+@media (max-width: 1120px){.main-area{padding:12px}}
+@media (max-width: 860px){
+  .sidebar{display:none}
+  .main-area{padding:10px}
+  .top-bar{
+    border-radius:18px;
+    grid-template-columns:1fr;
+  }
+  .cloud-controls{justify-content:flex-start}
+  .cloud-meta{min-width:0}
+  .cloud-origin-list{max-width:none}
+  .date-filter-bar,.content-header,.errors-header,.notes-header{position:static}
+  .note-split-area{flex-direction:column}
+}
 /* ===== @media print ===== */
 @media print{
   body{background:#fff!important;overflow:visible!important}
@@ -653,7 +846,7 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 @media(max-width:768px){.sidebar{display:none}.main-area{width:100%}}
 </style>
 </head>
-<body>
+<body class="tab-notes-active">
 
 <!-- ===== 左侧菜单栏 ===== -->
 <div class="sidebar">
@@ -681,7 +874,8 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
   <!-- 顶部操作栏 -->
 <div class="top-bar">
     <h1>📚 错题分析</h1>
-    <div class="view-mode-switch">
+        <h1>馃摎 閿欓鍒嗘瀽</h1>
+      <div class="view-mode-switch">
       <button class="btn btn-secondary" id="viewModeErrors" onclick="switchTab('errors')">题目列表</button>
       <button class="btn btn-secondary" id="viewModeNotes" onclick="switchTab('notes')">学习笔记</button>
     </div>
@@ -716,6 +910,7 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
   </div>
 
   <div class="toast-stack" id="toastStack"></div>
+  <button id="aiWorkbenchBtn" class="btn btn-secondary" style="position:fixed;right:18px;bottom:18px;z-index:1200;box-shadow:0 10px 24px rgba(15,23,42,.18)" onclick="openAIToolsModal()">AI 工具台</button>
 
   <!-- Tab切换栏 -->
   <div class="tab-header">
@@ -1021,6 +1216,50 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 </div>
 
 <!-- ===== 题型自动识别规则弹窗 ===== -->
+<div class="modal-mask" id="aiToolsModal">
+  <div class="modal" style="width:820px;max-width:96vw;max-height:92vh">
+    <button class="modal-close" onclick="closeModal('aiToolsModal')">✕</button>
+    <h2>✨ AI 工具台</h2>
+    <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:14px;align-items:start">
+      <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+        <div style="padding:12px;border:1px solid #eee;border-radius:12px;background:#fafafa">
+          <div style="font-size:13px;font-weight:700;color:#333;margin-bottom:8px">AI 助手</div>
+          <textarea id="aiChatInput" rows="5" placeholder="例如：根据我当前的错题情况，告诉我这周最应该先补哪一块。" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;resize:vertical;font:inherit"></textarea>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+            <button class="btn btn-primary" onclick="submitAIChat()">发送</button>
+            <button class="btn btn-secondary" onclick="clearAIChat()">清空</button>
+            <span id="aiChatStatus" style="font-size:12px;color:#888"></span>
+          </div>
+          <div id="aiChatOutput" style="margin-top:10px;min-height:120px;padding:12px;border-radius:10px;background:#fff;border:1px solid #eceff3;white-space:pre-wrap;line-height:1.75;color:#334155"></div>
+        </div>
+        <div style="padding:12px;border:1px solid #eee;border-radius:12px;background:#fafafa">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
+            <div style="font-size:13px;font-weight:700;color:#333">AI 诊断</div>
+            <button class="btn btn-secondary btn-sm" onclick="runAIDiagnosis()">刷新诊断</button>
+          </div>
+          <div id="aiDiagnoseOutput" style="min-height:140px;padding:12px;border-radius:10px;background:#fff;border:1px solid #eceff3;white-space:pre-wrap;line-height:1.75;color:#334155"></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+        <div style="padding:12px;border:1px solid #eee;border-radius:12px;background:#fafafa">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
+            <div style="font-size:13px;font-weight:700;color:#333">Claude 摘要桥接</div>
+            <button class="btn btn-secondary btn-sm" onclick="buildClaudeSummary()">生成</button>
+          </div>
+          <textarea id="aiModuleSummaryOutput" rows="10" readonly style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;resize:vertical;font:12px/1.6 Consolas,monospace;background:#fff"></textarea>
+        </div>
+        <div style="padding:12px;border:1px solid #eee;border-radius:12px;background:#fafafa">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
+            <div style="font-size:13px;font-weight:700;color:#333">相似题生成</div>
+            <button class="btn btn-secondary btn-sm" onclick="generateNodePractice()">生成 3 题</button>
+          </div>
+          <div id="aiGenerateOutput" style="min-height:180px;padding:12px;border-radius:10px;background:#fff;border:1px solid #eceff3;white-space:pre-wrap;line-height:1.75;color:#334155"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-mask" id="typeRulesModal">
   <div class="modal" style="width:640px;max-width:96vw;max-height:92vh">
     <button class="modal-close" onclick="closeModal('typeRulesModal')">✕</button>
@@ -1377,7 +1616,9 @@ function hl(s, kw) {
   const ek = escapeHtml(kw).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   return e.replace(new RegExp(ek,'gi'), m=>`<span class="highlight">${escapeHtml(m)}</span>`);
 }
-function newId() { return errors.length ? Math.max(...errors.map(e=>e.id))+1 : 1; }
+function newId() { return crypto.randomUUID(); }
+function idArg(id) { return JSON.stringify(String(id)); }
+function noteNodeArg(id) { return JSON.stringify(String(id || '')); }
 
 // ============================================================
 // 持久化（IndexedDB）
@@ -1409,8 +1650,13 @@ async function loadData() {
   catch(e) { cloudMeta = getDefaultCloudMeta(); }
   await loadNotesByType();
   await loadKnowledgeState();
+  await migrateIntegerIds();
 }
-function saveData()    { DB.set(KEY_ERRORS, JSON.stringify(errors)); scheduleCloudSave(); }
+function saveData()    {
+  DB.set(KEY_ERRORS, JSON.stringify(errors))
+    .catch(e => showToast('本地存储失败: ' + e.message, 'error'));
+  scheduleCloudSave();
+}
 function saveReveal()  { DB.set(KEY_REVEALED, JSON.stringify([...revealed])); scheduleCloudSave(); }
 function saveExpMain() {
   DB.set(KEY_EXP_MAIN, JSON.stringify([...expMain,...expMainSub]));
@@ -1773,6 +2019,7 @@ async function refreshCloudSession() {
   }
   setCloudSyncState('idle', 'Logged in. Waiting for local/cloud actions.', '');
   await maybeRestoreCloudBackup();
+  await syncWithServer();
   renderCloudUi();
   if (pendingCloudSave) {
     pendingCloudSave = false;
@@ -1824,6 +2071,11 @@ async function saveCloudBackup(opts) {
   }
   if (cloudBusy) return;
   cloudBusy = true;
+  const controller = new AbortController();
+  const busyTimer = setTimeout(() => {
+    cloudBusy = false;
+    controller.abort();
+  }, 30000);
   setCloudSyncState('saving', 'Saving local changes to cloud', '');
   try {
     const res = await fetch('/api/backup', {
@@ -1833,7 +2085,8 @@ async function saveCloudBackup(opts) {
       body: JSON.stringify({
         ...getFullBackupPayload(),
         forceOverwrite: Boolean(opts.forceOverwrite)
-      })
+      }),
+      signal: controller.signal
     });
     const data = await res.json().catch(() => ({}));
     if (res.status === 409) {
@@ -1862,12 +2115,18 @@ async function saveCloudBackup(opts) {
     if (!res.ok) throw new Error(data.detail || data.error || 'save failed');
     updateCloudOriginStatuses(data.origins);
     rememberCloudDecision(data.updatedAt || '', 'saved');
+    await syncWithServer();
     setCloudSyncState('synced', 'Local changes saved to cloud', data.updatedAt || '');
     if (!opts.silent) showToast('Cloud backup saved', 'success');
   } catch (e) {
-    setCloudSyncState('error', e.message || 'Cloud save failed', '');
-    if (!opts.silent) showToast(e.message || 'Cloud save failed', 'error');
+    if (e.name === 'AbortError') {
+      setCloudSyncState('error', 'Cloud save timed out (30s)', '');
+    } else {
+      setCloudSyncState('error', e.message || 'Cloud save failed', '');
+      if (!opts.silent) showToast(e.message || 'Cloud save failed', 'error');
+    }
   } finally {
+    clearTimeout(busyTimer);
     cloudBusy = false;
   }
 }
@@ -1886,6 +2145,130 @@ function scheduleCloudSave() {
   }, 1200);
 }
 // 生成笔记图片短 ID
+async function migrateIntegerIds() {
+  if (!Array.isArray(errors) || !errors.length) return;
+  const hasIntegerId = errors.some(item => Number.isInteger(item.id));
+  if (!hasIntegerId) return;
+  const idMap = {};
+  errors.forEach(item => {
+    if (Number.isInteger(item.id)) {
+      const oldId = item.id;
+      const nextId = crypto.randomUUID();
+      idMap[String(oldId)] = nextId;
+      item.id = nextId;
+      item.updatedAt = item.updatedAt || new Date().toISOString();
+    } else {
+      item.id = String(item.id);
+    }
+  });
+  revealed = new Set(
+    [...revealed]
+      .map(id => idMap[String(id)] || (typeof id === 'string' ? id : null))
+      .filter(Boolean)
+  );
+  await Promise.all([
+    DB.set(KEY_ERRORS, JSON.stringify(errors)),
+    DB.set(KEY_REVEALED, JSON.stringify([...revealed]))
+  ]);
+  console.log('[migrate] integer IDs converted to UUIDs:', Object.keys(idMap).length);
+}
+function recordOp(opType, entityId, payload) {
+  const op = {
+    id: crypto.randomUUID(),
+    op_type: opType,
+    entity_id: String(entityId),
+    payload: payload || {},
+    created_at: new Date().toISOString(),
+  };
+  try {
+    const pending = JSON.parse(localStorage.getItem('pendingOps') || '[]');
+    pending.push(op);
+    localStorage.setItem('pendingOps', JSON.stringify(pending));
+  } catch (e) {
+    console.warn('[recordOp] localStorage write failed', e);
+  }
+  scheduleIncrementalSync();
+}
+let incrementalSyncTimer = null;
+function scheduleIncrementalSync() {
+  if (!cloudUser) return;
+  clearTimeout(incrementalSyncTimer);
+  incrementalSyncTimer = setTimeout(() => {
+    syncWithServer();
+  }, 1500);
+}
+function recordErrorUpsert(errorItem) {
+  if (!errorItem) return;
+  recordOp('error_upsert', errorItem.id, errorItem);
+}
+function recordErrorDelete(errorId) {
+  recordOp('error_delete', errorId, {});
+}
+function applyRemoteError(remote) {
+  const idx = errors.findIndex(e => String(e.id) === String(remote.id));
+  if (idx === -1) {
+    errors.push(remote);
+    return true;
+  }
+  if ((remote.updatedAt || '') > (errors[idx].updatedAt || '')) {
+    errors[idx] = { ...errors[idx], ...remote };
+    return true;
+  }
+  return false;
+}
+function applyOps(ops) {
+  let changed = false;
+  for (const op of ops) {
+    if (op.op_type === 'error_upsert') {
+      const remote = typeof op.payload === 'string' ? JSON.parse(op.payload) : op.payload;
+      if (remote && remote.id) {
+        remote.id = String(remote.id);
+        changed = applyRemoteError(remote) || changed;
+      }
+    } else if (op.op_type === 'error_delete') {
+      const before = errors.length;
+      errors = errors.filter(e => String(e.id) !== String(op.entity_id));
+      revealed.delete(String(op.entity_id));
+      changed = changed || errors.length !== before;
+    }
+  }
+  if (changed) {
+    saveData();
+    saveReveal();
+    syncNotesWithErrors();
+    renderSidebar();
+    renderAll();
+    renderNotesByType();
+    renderNotesPanelRight();
+  }
+}
+async function syncWithServer() {
+  if (!cloudUser) return;
+  try {
+    const pending = JSON.parse(localStorage.getItem('pendingOps') || '[]');
+    if (pending.length > 0) {
+      const pushRes = await fetch('/api/sync', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ops: pending }),
+      });
+      if (!pushRes.ok) {
+        const pushData = await pushRes.json().catch(() => ({}));
+        throw new Error(pushData.detail || pushData.error || 'sync push failed');
+      }
+      localStorage.removeItem('pendingOps');
+    }
+    const lastSync = localStorage.getItem('lastSyncTime') || '';
+    const pullRes = await fetch(`/api/sync?since=${encodeURIComponent(lastSync)}`, { credentials: 'include' });
+    const pullData = await pullRes.json().catch(() => ({}));
+    if (!pullRes.ok) throw new Error(pullData.detail || pullData.error || 'sync pull failed');
+    if (Array.isArray(pullData.ops) && pullData.ops.length) applyOps(pullData.ops);
+    if (pullData.serverTime) localStorage.setItem('lastSyncTime', pullData.serverTime);
+  } catch (e) {
+    console.warn('[syncWithServer] failed', e);
+  }
+}
 function noteImgId() {
   return 'ni' + Math.random().toString(36).slice(2, 8);
 }
@@ -1949,6 +2332,160 @@ function saveTodayDone(){
 let _history = [];
 function loadHistory(){ return _history; }
 function pushHistory(rec){ _history.unshift(rec); if(_history.length>30)_history.length=30; DB.set(KEY_HISTORY,JSON.stringify(_history)); scheduleCloudSave(); }
+let aiChatHistory = [];
+
+async function fetchJsonWithAuth(url, options){
+  const res = await fetch(url, { credentials:'include', ...(options||{}) });
+  let data = null;
+  try { data = await res.json(); } catch(e) {}
+  if(!res.ok){
+    throw new Error((data && (data.detail || data.error)) || `Request failed: ${res.status}`);
+  }
+  return data;
+}
+
+function getCurrentKnowledgeNodeSummary(){
+  const node = selectedKnowledgeNodeId ? getKnowledgeNodeById(selectedKnowledgeNodeId) : null;
+  if(!node) return null;
+  const path = (getKnowledgePathTitles(node.id) || []).join(' > ');
+  return {
+    id: node.id,
+    title: node.title || '',
+    path,
+    contentMd: node.contentMd || '',
+    linkedErrors: errors.filter(e => e.noteNodeId === node.id).slice(0, 20)
+  };
+}
+
+function openAIToolsModal(){
+  openModal('aiToolsModal');
+  const diagnoseOutput = document.getElementById('aiDiagnoseOutput');
+  const chatOutput = document.getElementById('aiChatOutput');
+  const summaryOutput = document.getElementById('aiModuleSummaryOutput');
+  const genOutput = document.getElementById('aiGenerateOutput');
+  if(diagnoseOutput && !diagnoseOutput.textContent.trim()) diagnoseOutput.textContent = '点击“刷新诊断”生成当前阶段诊断。';
+  if(chatOutput && !chatOutput.textContent.trim()) chatOutput.textContent = '在上方输入你的问题，AI 会结合当前账号数据回答。';
+  if(summaryOutput && !summaryOutput.value.trim()) summaryOutput.value = '点击“生成”后，这里会产出可以直接发给 Claude 的摘要。';
+  if(genOutput && !genOutput.textContent.trim()) genOutput.textContent = '选中一个知识点后，可为当前知识点生成 3 道相似题。';
+}
+
+function clearAIChat(){
+  aiChatHistory = [];
+  const input = document.getElementById('aiChatInput');
+  const output = document.getElementById('aiChatOutput');
+  const status = document.getElementById('aiChatStatus');
+  if(input) input.value = '';
+  if(output) output.textContent = '';
+  if(status) status.textContent = '';
+}
+
+async function submitAIChat(){
+  const input = document.getElementById('aiChatInput');
+  const output = document.getElementById('aiChatOutput');
+  const status = document.getElementById('aiChatStatus');
+  const message = (input && input.value || '').trim();
+  if(!message){ showToast('请先输入问题', 'warning'); return; }
+  if(status) status.textContent = 'AI 正在思考...';
+  try{
+    const data = await fetchJsonWithAuth('/api/ai/chat', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ message, history: aiChatHistory.slice(-6) })
+    });
+    aiChatHistory.push({ role:'user', content: message });
+    aiChatHistory.push({ role:'assistant', content: data.reply || '' });
+    if(output) output.textContent = data.reply || '暂无回复';
+    if(status) status.textContent = data.model || 'done';
+  }catch(e){
+    if(status) status.textContent = '失败';
+    if(output) output.textContent = e.message || 'AI 助手调用失败';
+    showToast(e.message || 'AI 助手调用失败', 'error');
+  }
+}
+
+async function runAIDiagnosis(){
+  const output = document.getElementById('aiDiagnoseOutput');
+  if(output) output.textContent = '诊断生成中...';
+  try{
+    const data = await fetchJsonWithAuth('/api/ai/diagnose', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ errors: getFiltered().slice(0, 120) })
+    });
+    const result = data.result || {};
+    const weakPoints = (result.weakPoints || []).map((item, idx) =>
+      `${idx+1}. ${item.area || '未命名'} [${item.priority || 'normal'}]\n${item.description || ''}\n建议：${item.suggestion || ''}`
+    ).join('\n\n');
+    if(output) output.textContent = `${result.summary || '暂无总结'}\n\n${weakPoints}`.trim();
+  }catch(e){
+    if(output) output.textContent = e.message || 'AI 诊断失败';
+    showToast(e.message || 'AI 诊断失败', 'error');
+  }
+}
+
+async function buildClaudeSummary(){
+  const output = document.getElementById('aiModuleSummaryOutput');
+  if(output) output.value = '生成中...';
+  try{
+    const data = await fetchJsonWithAuth('/api/ai/module-summary-for-claude', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        type: typeFilter && typeFilter.level === 'type' ? typeFilter.value : '',
+        subtype: typeFilter && typeFilter.level === 'subtype' ? typeFilter.value : '',
+        rootReason: reasonFilter || '',
+        status: statusFilter && statusFilter !== 'all' ? statusFilter : '',
+        masteryLevel: '',
+        dateFrom: dateFrom || '',
+        dateTo: dateTo || '',
+        limit: 80
+      })
+    });
+    const result = data.result || {};
+    const text = [
+      result.overview || '',
+      '',
+      'Weakness Tags:',
+      JSON.stringify(result.weaknessTags || [], null, 2),
+      '',
+      'Recommended Prompt:',
+      result.recommendedPrompt || '',
+      '',
+      'Items:',
+      JSON.stringify(result.items || [], null, 2)
+    ].join('\n');
+    if(output) output.value = text.trim();
+  }catch(e){
+    if(output) output.value = e.message || '生成失败';
+    showToast(e.message || '生成 Claude 摘要失败', 'error');
+  }
+}
+
+async function generateNodePractice(){
+  const output = document.getElementById('aiGenerateOutput');
+  const node = getCurrentKnowledgeNodeSummary();
+  if(!node){ showToast('请先选中一个知识点', 'warning'); return; }
+  if(output) output.textContent = '相似题生成中...';
+  try{
+    const data = await fetchJsonWithAuth('/api/ai/generate-question', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        nodeTitle: node.title,
+        nodeSummary: node.contentMd || node.path,
+        referenceError: node.linkedErrors[0] || {},
+        count: 3
+      })
+    });
+    const items = (data.items || []).map((item, idx) =>
+      `第 ${idx+1} 题\n题目：${item.question || ''}\n选项：${item.options || ''}\n答案：${item.answer || ''}\n解析：${item.analysis || ''}`
+    ).join('\n\n');
+    if(output) output.textContent = items || '暂无结果';
+  }catch(e){
+    if(output) output.textContent = e.message || '相似题生成失败';
+    showToast(e.message || '相似题生成失败', 'error');
+  }
+}
 
 // ============================================================
 // 图片处理（直接 base64 存在 e.imgData，无 IndexedDB）
@@ -1966,6 +2503,45 @@ function clearEditImg(isUserAction) {
 }
 function readFileAsBase64(file) {
   return new Promise(res=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.readAsDataURL(file);});
+}
+function isRemoteImageRef(value) {
+  return typeof value === 'string' && value.startsWith('/api/images/');
+}
+function dataUrlToBytes(dataUrl) {
+  const parts = String(dataUrl || '').split(',');
+  if (parts.length < 2) throw new Error('invalid data url');
+  const mimeMatch = parts[0].match(/^data:([^;]+);base64$/);
+  const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+  const binary = atob(parts[1]);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return { mime, bytes };
+}
+async function uploadImageValue(value) {
+  if (!value || !String(value).startsWith('data:')) return value;
+  try {
+    const { mime, bytes } = dataUrlToBytes(value);
+    const res = await fetch('/api/images', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': mime },
+      body: bytes
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.detail || data.error || 'image upload failed');
+    return data.url || value;
+  } catch (e) {
+    console.warn('[uploadImageValue] fallback to inline image', e);
+    return value;
+  }
+}
+async function unrefImageValue(value) {
+  if (!isRemoteImageRef(value)) return;
+  try {
+    await fetch(`${value}/unref`, { method: 'DELETE', credentials: 'include' });
+  } catch (e) {
+    console.warn('[unrefImageValue] failed', e);
+  }
 }
 // 解析图片
 function setEditAnalysisImgPreview(b64) {
@@ -2016,7 +2592,7 @@ document.addEventListener('paste', async e=>{
     e.preventDefault();
     const b64=await readFileAsBase64(imgItem.getAsFile());
     const id=noteImgId();
-    noteImages[id]=b64;
+    noteImages[id]=await uploadImageValue(b64);
     saveNotesByType(); // 持久化图片
     const ta=e.target;
     const start=ta.selectionStart, end=ta.selectionEnd;
@@ -2320,8 +2896,17 @@ function updateSidebar() {
 // ============================================================
 // 答题流程（新版：选项点击 → 全部完成 → 批量回顾 → 保存）
 // ============================================================
-function startQuiz() {
-  quizQueue = getDueList();
+async function startQuiz() {
+  let serverItems = [];
+  try{
+    const data = await fetchJsonWithAuth('/api/practice/daily?limit=12');
+    serverItems = data.items || [];
+  }catch(e){
+    console.warn('daily practice fallback:', e);
+  }
+  quizQueue = serverItems.length
+    ? serverItems.map(item => ({ ...errors.find(e => e.id === item.id), ...item }))
+    : getDueList();
   if (!quizQueue.length) { showToast('今日暂无需要复习的题目', 'warning'); return; }
   quizIdx = 0; quizAnswers = []; quizSkipped = new Set();
   document.getElementById('quizTitleText').textContent = '📝 今日复习';
@@ -2534,7 +3119,7 @@ function renderQuizReview() {
     </div>`;
 }
 
-function saveQuizResults() {
+async function saveQuizResults() {
   const realAnswers = quizAnswers.filter(a=>!a.skipped);
   realAnswers.forEach(a => {
     const e = errors.find(x=>x.id===a.id);
@@ -2567,6 +3152,22 @@ function saveQuizResults() {
     skipped: quizAnswers.filter(a=>a.skipped).length,
     details: quizAnswers.map(a=>({id:a.id,correct:a.correct,skipped:a.skipped||false}))
   });
+  try{
+    await fetchJsonWithAuth('/api/practice/log', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        date: today(),
+        mode: sessionType.includes('全量') ? 'targeted' : 'daily',
+        weaknessTag: reasonFilter || '',
+        total: realAnswers.length,
+        correct: realAnswers.filter(a=>a.correct).length,
+        errorIds: realAnswers.map(a=>String(a.id))
+      })
+    });
+  }catch(e){
+    console.warn('practice log sync failed:', e);
+  }
   todayDone += realAnswers.length;
   saveTodayDone();
   saveData();
@@ -2770,7 +3371,7 @@ function getFiltered(){
     if(reasonFilter && (e.rootReason||e.errorReason||'').trim() !== reasonFilter) return false;
     if(searchKw){
       const terms=searchKw.toLowerCase().split(/\s+/).filter(Boolean);
-      const text=(e.question+' '+(e.options||'')+' '+(e.analysis||'')+' '+e.type+' '+(e.subtype||'')+' '+(e.srcYear||'')+' '+(e.srcProvince||'')+' '+(e.srcOrigin||'')).toLowerCase();
+      const text=(e.question+' '+(e.options||'')+' '+(e.analysis||'')+' '+e.type+' '+(e.subtype||'')+' '+(e.subSubtype||'')+' '+(e.errorReason||'')+' '+(e.rootReason||'')+' '+(e.srcYear||'')+' '+(e.srcProvince||'')+' '+(e.srcOrigin||'')).toLowerCase();
       // 多关键词 AND 子串匹配：空格分隔多个词，每个词都必须出现在题目中
       if(!terms.every(t=>text.includes(t)))return false;
     }
@@ -2915,6 +3516,8 @@ function renderCard(e){
   const statusMap={focus:'重点复习',review:'待复习',mastered:'已掌握'};
   const opts=e.options?e.options.split(/\n|\|/).map(o=>`<p>${hl(o.trim(),searchKw)}</p>`).join(''):'';
   const isRev=revealed.has(e.id);
+  const idLit = idArg(e.id);
+  const noteNodeLit = noteNodeArg(e.noteNodeId || '');
   const notePath = e.noteNodeId ? collapseKnowledgePathTitles(getKnowledgePathTitles(e.noteNodeId)).join(' > ') : '未关联知识点';
 
   // 复习信息
@@ -2955,7 +3558,7 @@ function renderCard(e){
   const imgTag = e.imgData ? `<img src="${escapeHtml(e.imgData)}" class="cuoti-img" onclick="this.classList.toggle('expanded')" title="点击放大/缩小">` : '';
   const noteArea = isRev ? `<div class="card-note-area">
     <div class="card-note-label">📝 我的笔记</div>
-    <textarea class="card-note-ta" placeholder="添加笔记..." onblur="saveCardNote(${e.id},this.value)">${escapeHtml(e.note||'')}</textarea>
+    <textarea class="card-note-ta" placeholder="添加笔记..." onblur="saveCardNote(${idLit},this.value)">${escapeHtml(e.note||'')}</textarea>
   </div>` : '';
   // 内联做题区渲染
   const iqState = inlineQuizState[e.id];
@@ -2966,14 +3569,14 @@ function renderCard(e){
       const optBtns = opts2.length
         ? opts2.map((o,i)=>{
             const letter=String.fromCharCode(65+i);
-            return `<button class="iq-opt" id="iqopt_${e.id}_${letter}" onclick="selectInlineAnswer(${e.id},'${letter}')">${escapeHtml(o)}</button>`;
+            return `<button class="iq-opt" id="iqopt_${e.id}_${letter}" onclick="selectInlineAnswer(${idLit},'${letter}')">${escapeHtml(o)}</button>`;
           }).join('')
-        : ['A','B','C','D'].map(l=>`<button class="iq-opt" id="iqopt_${e.id}_${l}" onclick="selectInlineAnswer(${e.id},'${l}')" style="text-align:center;font-weight:700">${l}</button>`).join('');
+        : ['A','B','C','D'].map(l=>`<button class="iq-opt" id="iqopt_${e.id}_${l}" onclick="selectInlineAnswer(${idLit},'${l}')" style="text-align:center;font-weight:700">${l}</button>`).join('');
       iqHtml = `<div class="iq-area">
         <div class="iq-hint">📝 选择你的答案：</div>
         <div class="iq-opts">${optBtns}</div>
         <div class="iq-actions">
-          <button class="btn btn-sm btn-secondary" onclick="closeInlineQuiz(${e.id})">取消</button>
+          <button class="btn btn-sm btn-secondary" onclick="closeInlineQuiz(${idLit})">取消</button>
         </div>
       </div>`;
     } else {
@@ -2984,8 +3587,8 @@ function renderCard(e){
         <div class="iq-result ${cls}">${icon} 你选了 <strong>${escapeHtml(iqState.userAnswer)}</strong>，正确答案 <strong>${escapeHtml(e.answer||'—')}</strong></div>
         ${anaHtml}
         <div class="iq-actions" style="margin-top:8px">
-          <button class="btn btn-sm btn-primary" onclick="saveInlineResult(${e.id})">💾 保存记录</button>
-          <button class="btn btn-sm btn-secondary" onclick="closeInlineQuiz(${e.id})">关闭</button>
+          <button class="btn btn-sm btn-primary" onclick="saveInlineResult(${idLit})">💾 保存记录</button>
+          <button class="btn btn-sm btn-secondary" onclick="closeInlineQuiz(${idLit})">关闭</button>
         </div>
       </div>`;
     }
@@ -2993,11 +3596,11 @@ function renderCard(e){
 
   // 难度星显示
   const diff = e.difficulty || 0;
-  const starHtml = `<span class="star-disp" title="点击修改难度">${[1,2,3].map(i=>`<span class="s${i<=diff?' on':''}" onclick="setCardDifficulty(${e.id},${i},event)">★</span>`).join('')}</span>`;
+  const starHtml = `<span class="star-disp" title="点击修改难度">${[1,2,3].map(i=>`<span class="s${i<=diff?' on':''}" onclick="setCardDifficulty(${idLit},${i},event)">★</span>`).join('')}</span>`;
   // 批量复选框
-  const cbHtml = batchMode ? `<input type="checkbox" class="batch-cb" id="bcb_${e.id}" ${batchSelected.has(e.id)?'checked':''} onclick="toggleBatchSelect(${e.id},event)">` : '';
+  const cbHtml = batchMode ? `<input type="checkbox" class="batch-cb" id="bcb_${e.id}" ${batchSelected.has(e.id)?'checked':''} onclick="toggleBatchSelect(${idLit},event)">` : '';
 
-  return `<div class="error-card" id="card-${e.id}" draggable="true" ondragstart="startErrorDrag(${e.id}, event)" ondragend="endErrorDrag()" ${isRev?`onmouseleave="collapseCard(${e.id})"`:''} >
+  return `<div class="error-card" id="card-${e.id}" draggable="true" ondragstart="startErrorDrag(${idLit}, event)" ondragend="endErrorDrag()" ${isRev?`onmouseleave="collapseCard(${idLit})"`:''} >
     ${cbHtml}
     <div class="card-top">
       <span class="card-num">#${e.id}</span>
@@ -3012,21 +3615,27 @@ function renderCard(e){
     ${imgTag}
     ${opts?`<div class="card-options">${opts}</div>`:''}
     ${isRev ? detailHtml+noteArea : ''}
-    <button class="card-reveal-btn" onclick="revealCard(${e.id})" style="${isRev?'color:#bbb;border-color:#eee;font-size:11px;margin-top:6px':''}">
+    <button class="card-reveal-btn" onclick="revealCard(${idLit})" style="${isRev?'color:#bbb;border-color:#eee;font-size:11px;margin-top:6px':''}">
       ${isRev ? '▲ 收起' : '👁 查看答案与解析'}
     </button>
     ${iqHtml}
     <div class="card-actions">
-      <button class="btn btn-sm btn-secondary" onclick="openKnowledgeForError(${e.id})">知识点</button>
-      <button class="btn btn-sm btn-secondary" onclick="moveErrorToKnowledgeNode(${e.id}, '${e.noteNodeId || ''}')">改挂载</button>
-      <select class="status-select" onchange="updateStatus(${e.id},this.value)">
+      <button class="btn btn-sm btn-secondary" onclick="openKnowledgeForError(${idLit})">知识点</button>
+      <button class="btn btn-sm btn-secondary" onclick="moveErrorToKnowledgeNode(${idLit}, ${noteNodeLit})">改挂载</button>
+      <select class="status-select" onchange="updateStatus(${idLit},this.value)">
         <option value="focus" ${e.status==='focus'?'selected':''}>重点复习</option>
         <option value="review" ${e.status==='review'?'selected':''}>待复习</option>
         <option value="mastered" ${e.status==='mastered'?'selected':''}>已掌握</option>
       </select>
-      <button class="btn btn-sm btn-secondary" onclick="openEditModal(${e.id})">✏ 编辑</button>
-      <button class="btn btn-sm btn-secondary" style="color:#4e8ef7;border-color:#adc6ff" onclick="startInlineQuiz(${e.id})">📝 做题</button>
-      <button class="del-btn" onclick="deleteError(${e.id})">🗑</button>
+      ${(()=>{
+        const ml=e.masteryLevel||'not_mastered';
+        const cfg={not_mastered:{label:'未掌握',color:'#ff7875',bg:'#fff2f0',border:'#ffa39e'},fuzzy:{label:'模糊',color:'#fa8c16',bg:'#fff7e6',border:'#ffd591'},mastered:{label:'已掌握',color:'#52c41a',bg:'#f6ffed',border:'#b7eb8f'}};
+        const c=cfg[ml]||cfg.not_mastered;
+        return `<button class="btn btn-sm" style="color:${c.color};background:${c.bg};border:1px solid ${c.border}" onclick="cyclemastery(${idLit})" title="点击切换掌握状态">◎ ${c.label}</button>`;
+      })()}
+      <button class="btn btn-sm btn-secondary" onclick="openEditModal(${idLit})">✏ 编辑</button>
+      <button class="btn btn-sm btn-secondary" style="color:#4e8ef7;border-color:#adc6ff" onclick="startInlineQuiz(${idLit})">📝 做题</button>
+      <button class="del-btn" onclick="deleteError(${idLit})">🗑</button>
     </div>
   </div>`;
 }
@@ -3057,9 +3666,21 @@ function collapseCard(id){
 }
 function saveCardNote(id, val) {
   const e=errors.find(x=>x.id===id);if(!e)return;
-  e.note=val; saveData();
+  e.note=val;
+  e.updatedAt=new Date().toISOString();
+  recordErrorUpsert(e);
+  saveData();
 }
-function updateStatus(id,s){ const e=errors.find(x=>x.id===id);if(e){e.status=s;saveData();renderSidebar();renderAll();} }
+function updateStatus(id,s){ const e=errors.find(x=>x.id===id);if(e){e.status=s;e.updatedAt=new Date().toISOString();recordErrorUpsert(e);saveData();renderSidebar();renderAll();} }
+function cyclemastery(id){
+  const e=errors.find(x=>x.id===id);if(!e)return;
+  const cycle={not_mastered:'fuzzy',fuzzy:'mastered',mastered:'not_mastered'};
+  e.masteryLevel=cycle[e.masteryLevel||'not_mastered']||'not_mastered';
+  e.masteryUpdatedAt=new Date().toISOString();
+  e.updatedAt=new Date().toISOString();
+  recordErrorUpsert(e);
+  saveData();renderAll();
+}
 function deleteError(id){
   if(!confirm(`确认删除 #${id}？`))return;
   errors=errors.filter(e=>e.id!==id);revealed.delete(id);
@@ -3943,8 +4564,16 @@ function importFullMerge(data) {
 
 function _applyFullBackup(data, mode) {
   if (mode === 'restore') {
-    errors = (data.errors || []).map((e, i) => ({
-      id: i + 1, addDate: e.addDate || today(), quiz: e.quiz || null, status: e.status || 'focus', ...e
+    errors = (data.errors || []).map((e) => ({
+      ...e,
+      id: String(e.id || crypto.randomUUID()),
+      addDate: e.addDate || today(),
+      quiz: e.quiz || null,
+      status: e.status || 'focus',
+      updatedAt: e.updatedAt || new Date().toISOString(),
+      masteryLevel: e.masteryLevel || 'not_mastered',
+      masteryUpdatedAt: e.masteryUpdatedAt || null,
+      lastPracticedAt: e.lastPracticedAt || null
     }));
     saveData();
     _typeRules = data.typeRules || null;
@@ -4788,6 +5417,8 @@ function assignErrorToKnowledgeNode(errorId, targetNodeId, opts) {
   if (!errorItem || !targetNode) return false;
   const previousNodeId = errorItem.noteNodeId || null;
   errorItem.noteNodeId = targetNode.id;
+  errorItem.updatedAt = new Date().toISOString();
+  recordErrorUpsert(errorItem);
   saveData();
   saveKnowledgeState();
   if (opts && opts.focusNode) {
@@ -5072,8 +5703,11 @@ function saveInlineResult(id) {
     e.myAnswer = st.userAnswer;
   }
   e.quiz.nextReview = addDays(today(), INTERVALS[Math.min(e.quiz.streak||0, INTERVALS.length-1)]);
+  e.lastPracticedAt = new Date().toISOString();
+  e.updatedAt = new Date().toISOString();
   todayDone++;
   saveTodayDone();
+  recordErrorUpsert(e);
   saveData();
   delete inlineQuizState[id];
   renderSidebar();
@@ -5101,6 +5735,8 @@ function setCardDifficulty(id, n, event) {
   const e = errors.find(x => x.id === id);
   if (!e) return;
   e.difficulty = (e.difficulty === n) ? 0 : n;
+  e.updatedAt = new Date().toISOString();
+  recordErrorUpsert(e);
   saveData();
   renderAll();
 }
@@ -5143,11 +5779,12 @@ function executeBatch(action) {
   if (!batchSelected.size) { showToast('请先勾选题目', 'warning'); return; }
   if (action === 'delete') {
     if (!confirm('确认删除选中的 ' + batchSelected.size + ' 题？')) return;
+    batchSelected.forEach(id => recordErrorDelete(id));
     errors = errors.filter(e => !batchSelected.has(e.id));
     batchSelected.forEach(id => revealed.delete(id));
     saveReveal();
   } else {
-    errors.forEach(e => { if (batchSelected.has(e.id)) e.status = action; });
+    errors.forEach(e => { if (batchSelected.has(e.id)) { e.status = action; e.updatedAt = new Date().toISOString(); recordErrorUpsert(e); } });
   }
   batchSelected.clear();
   saveData();
@@ -5289,6 +5926,8 @@ function groupByType(displayData) {
 
 // Tab切换函数
 function switchTab(tabName) {
+  document.body.classList.toggle('tab-errors-active', tabName === 'errors');
+  document.body.classList.toggle('tab-notes-active', tabName === 'notes');
   // 更新Tab按钮状态
   document.getElementById('tabErrors').classList.toggle('active', tabName === 'errors');
   document.getElementById('tabNotes').classList.toggle('active', tabName === 'notes');
@@ -6165,7 +6804,9 @@ function renderKnowledgeNotesPanelRight() {
       renderRelatedErrorMeta('直接原因', e.errorReason)
     ].filter(Boolean).join('');
     const analysisHtml = e.analysis ? `<div class="related-error-analysis">${escapeHtml(e.analysis)}</div>` : '';
-    return `<div class="error-card related-error-card" draggable="true" ondragstart="startErrorDrag(${e.id}, event)" ondragend="endErrorDrag()">
+    const idLit = idArg(e.id);
+    const noteNodeLit = noteNodeArg(e.noteNodeId || '');
+    return `<div class="error-card related-error-card" draggable="true" ondragstart="startErrorDrag(${idLit}, event)" ondragend="endErrorDrag()">
       <div class="card-top">
         <span class="status-tag ${escapeHtml(e.status || 'focus')}">${escapeHtml((e.status === 'review' ? '待复习' : e.status === 'mastered' ? '已掌握' : '重点复习'))}</span>
         <span class="card-num">#${e.id}</span>
@@ -6180,8 +6821,8 @@ function renderKnowledgeNotesPanelRight() {
         ${analysisImg}
       </div>
       <div class="card-actions related-error-actions">
-        <button class="btn btn-secondary btn-sm" onclick="moveErrorToKnowledgeNode(${e.id}, '${e.noteNodeId || ''}')">改挂载</button>
-        <button class="btn btn-secondary btn-sm" onclick="openEditModal(${e.id})">编辑</button>
+        <button class="btn btn-secondary btn-sm" onclick="moveErrorToKnowledgeNode(${idLit}, ${noteNodeLit})">改挂载</button>
+        <button class="btn btn-secondary btn-sm" onclick="openEditModal(${idLit})">编辑</button>
       </div>
     </div>`;
   }).join('');
@@ -6500,7 +7141,7 @@ async function analyzeEntryWithAI() {
 }
 
 // 修改添加错题函数，增加联动
-function saveError(){
+async function saveError(){
   const type = document.getElementById('editType').value;
   const subtype = document.getElementById('editSubtype').value.trim();
   const subSubtype = document.getElementById('editSubSubtype').value.trim();
@@ -6525,15 +7166,31 @@ function saveError(){
   const id = editingId; // JS 变量，openAddModal/openEditModal 时设置
 
   // 图片：有新图用新图；主动删除置 null；否则保留原图
+  const existing = id ? errors.find(e=>e.id===id) : null;
+  const prevImgData = existing?.imgData || null;
+  const prevAnalysisImgData = existing?.analysisImgData || null;
+
   let imgData;
-  if (editImgBase64) { imgData = editImgBase64; }
-  else if (editImgDeleted) { imgData = null; }
-  else { imgData = id ? (errors.find(e=>e.id===id)?.imgData || null) : null; }
+  if (editImgDeleted) {
+    imgData = null;
+    await unrefImageValue(prevImgData);
+  } else if (editImgBase64) {
+    imgData = await uploadImageValue(editImgBase64);
+    if (prevImgData && prevImgData !== imgData) await unrefImageValue(prevImgData);
+  } else {
+    imgData = prevImgData;
+  }
 
   let analysisImgData;
-  if (editAnalysisImgBase64) { analysisImgData = editAnalysisImgBase64; }
-  else if (editAnalysisImgDeleted) { analysisImgData = null; }
-  else { analysisImgData = id ? (errors.find(e=>e.id===id)?.analysisImgData || null) : null; }
+  if (editAnalysisImgDeleted) {
+    analysisImgData = null;
+    await unrefImageValue(prevAnalysisImgData);
+  } else if (editAnalysisImgBase64) {
+    analysisImgData = await uploadImageValue(editAnalysisImgBase64);
+    if (prevAnalysisImgData && prevAnalysisImgData !== analysisImgData) await unrefImageValue(prevAnalysisImgData);
+  } else {
+    analysisImgData = prevAnalysisImgData;
+  }
 
   const data = {
     type, subtype, subSubtype, question, options, answer, myAnswer, rootReason, errorReason, analysis, status, difficulty,
@@ -6543,6 +7200,7 @@ function saveError(){
     const old = errors.find(e=>e.id===id);
     const oldType = old ? old.type : null;
     Object.assign(old, data);
+    old.updatedAt = new Date().toISOString();
     // 题型改名 → 同步笔记 key
     if (oldType && oldType !== type && notesByType[oldType] !== undefined) {
       if (!notesByType[type]) notesByType[type] = notesByType[oldType];
@@ -6551,9 +7209,20 @@ function saveError(){
       if (!stillUsed) delete notesByType[oldType];
       saveNotesByType();
     }
+    recordErrorUpsert(old);
     showToast('修改成功', 'success');
   }else{
-    errors.push({id:newId(),addDate:today(),...data});
+    const newErr = {
+      id:newId(),
+      addDate:today(),
+      updatedAt:new Date().toISOString(),
+      masteryLevel:'not_mastered',
+      masteryUpdatedAt:null,
+      lastPracticedAt:null,
+      ...data
+    };
+    errors.push(newErr);
+    recordErrorUpsert(newErr);
     showToast('添加成功', 'success');
   }
   saveData();closeModal('addModal');renderSidebar();renderAll();
@@ -6570,8 +7239,11 @@ function deleteError(id){
   const error = errors.find(e => e.id === id);
   if (!error) return;
 
+  unrefImageValue(error.imgData);
+  unrefImageValue(error.analysisImgData);
   errors = errors.filter(e => e.id !== id);
   revealed.delete(id);
+  recordErrorDelete(id);
   saveData();saveReveal();renderSidebar();renderAll();
 
   // 题型整体为空时，询问是否删除对应笔记（notesByType 是扁平结构，key 为题型名）
@@ -6719,6 +7391,19 @@ function fallbackCopy(text) {
   renderNotesByType();
   renderNotesPanelRight();
   checkStorageUsage();
+
+  window.addEventListener('beforeunload', () => {
+    if (cloudSaveTimer) {
+      clearTimeout(cloudSaveTimer);
+      saveCloudBackup({ silent: true });
+    }
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && cloudSaveTimer) {
+      clearTimeout(cloudSaveTimer);
+      saveCloudBackup({ silent: true });
+    }
+  });
 })();
 </script>
 <script src="/assets/modules/knowledge-state.js"></script>

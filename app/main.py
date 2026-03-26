@@ -24,6 +24,7 @@ from pydantic import BaseModel, Field
 BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = BASE_DIR / "data"
 DB_PATH = DATA_DIR / "xingce.db"
+IMAGES_DIR = DATA_DIR / "images"
 HTML_PATH = BASE_DIR / "xingce_v3" / "xingce_v3.html"
 LOGIN_HTML_PATH = BASE_DIR / "app" / "login.html"
 RUNTIME_DIR = BASE_DIR / "runtime"
@@ -32,6 +33,30 @@ SESSION_COOKIE = "xingce_session"
 SESSION_TTL_DAYS = 30
 MINIMAX_API_URL = "https://api.minimaxi.com/v1/text/chatcompletion_v2"
 DEFAULT_MINIMAX_MODEL = "MiniMax-M2.5"
+DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
+DEEPSEEK_CHAT_MODEL = "deepseek-chat"
+DEEPSEEK_REASONER_MODEL = "deepseek-reasoner"
+TASK_ROUTING: dict[str, str] = {
+    "analyze_entry": DEEPSEEK_CHAT_MODEL,
+    "distill_to_node": DEEPSEEK_CHAT_MODEL,
+    "synthesize_node": DEEPSEEK_CHAT_MODEL,
+    "generate_question": DEEPSEEK_CHAT_MODEL,
+    "suggest_restructure": DEEPSEEK_CHAT_MODEL,
+    "chat": DEEPSEEK_CHAT_MODEL,
+    "evaluate_answer": DEEPSEEK_REASONER_MODEL,
+    "discover_patterns": DEEPSEEK_REASONER_MODEL,
+    "diagnose": DEEPSEEK_REASONER_MODEL,
+}
+JSON_RESPONSE_TASKS = {
+    "analyze_entry",
+    "distill_to_node",
+    "synthesize_node",
+    "generate_question",
+    "suggest_restructure",
+    "evaluate_answer",
+    "discover_patterns",
+    "diagnose",
+}
 ALLOWED_ENTRY_TYPES = {
     "言语理解与表达",
     "数量关系",
@@ -103,6 +128,46 @@ def init_db() -> None:
               PRIMARY KEY (user_id, origin),
               FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             );
+
+            CREATE TABLE IF NOT EXISTS user_images (
+              hash TEXT NOT NULL,
+              user_id TEXT NOT NULL,
+              content_type TEXT NOT NULL DEFAULT 'image/jpeg',
+              size_bytes INTEGER NOT NULL DEFAULT 0,
+              ref_count INTEGER NOT NULL DEFAULT 1,
+              created_at TEXT NOT NULL,
+              PRIMARY KEY (hash, user_id),
+              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS operations (
+              id TEXT PRIMARY KEY,
+              user_id TEXT NOT NULL,
+              op_type TEXT NOT NULL,
+              entity_id TEXT NOT NULL,
+              payload TEXT NOT NULL,
+              created_at TEXT NOT NULL,
+              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_ops_user_time
+              ON operations(user_id, created_at);
+
+            CREATE TABLE IF NOT EXISTS practice_log (
+              id TEXT PRIMARY KEY,
+              user_id TEXT NOT NULL,
+              date TEXT NOT NULL,
+              mode TEXT NOT NULL,
+              weakness_tag TEXT NOT NULL DEFAULT '',
+              total INTEGER NOT NULL DEFAULT 0,
+              correct INTEGER NOT NULL DEFAULT 0,
+              error_ids TEXT NOT NULL DEFAULT '[]',
+              created_at TEXT NOT NULL,
+              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_plog_user_date
+              ON practice_log(user_id, date);
             """
         )
 
@@ -220,10 +285,81 @@ class AnalyzeEntryPayload(BaseModel):
     availableSubSubtypes: list[str] = Field(default_factory=list)
 
 
+class SyncPushPayload(BaseModel):
+    ops: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class EvaluateAnswerPayload(BaseModel):
+    question: str = ""
+    options: str = ""
+    correctAnswer: str = ""
+    myAnswer: str = ""
+    originalErrorReason: str = ""
+    rootReason: str = ""
+
+
+class GenerateQuestionPayload(BaseModel):
+    nodeTitle: str = ""
+    nodeSummary: str = ""
+    referenceError: dict[str, Any] = Field(default_factory=dict)
+    count: int = Field(default=1, ge=1, le=5)
+
+
+class PracticeLogPayload(BaseModel):
+    date: str
+    mode: str
+    weaknessTag: str = ""
+    total: int = Field(ge=0)
+    correct: int = Field(ge=0)
+    errorIds: list[str] = Field(default_factory=list)
+
+
+class ChatPayload(BaseModel):
+    message: str = Field(min_length=1, max_length=4000)
+    history: list[dict[str, str]] = Field(default_factory=list)
+
+
+class ModuleSummaryPayload(BaseModel):
+    type: str = ""
+    subtype: str = ""
+    rootReason: str = ""
+    status: str = ""
+    masteryLevel: str = ""
+    dateFrom: str = ""
+    dateTo: str = ""
+    limit: int = Field(default=80, ge=10, le=200)
+
+
+class DistillPayload(BaseModel):
+    nodeTitle: str = ""
+    nodeContent: str = ""
+    error: dict[str, Any] = Field(default_factory=dict)
+
+
+class SynthesizeNodePayload(BaseModel):
+    nodeTitle: str = ""
+    nodeContent: str = ""
+    linkedErrors: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class DiscoverPatternsPayload(BaseModel):
+    errors: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class SuggestRestructurePayload(BaseModel):
+    tree: Any = None
+    notes: dict[str, Any] = Field(default_factory=dict)
+
+
 app = FastAPI(title="xingce_v3_lab")
+_raw_origins = os.getenv(
+    "ALLOWED_ORIGINS",
+    "http://127.0.0.1:8000,http://localhost:8000",
+)
+ALLOWED_ORIGINS = [origin.strip() for origin in _raw_origins.split(",") if origin.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
     allow_credentials=True,
@@ -394,10 +530,20 @@ def build_ai_messages(payload: AnalyzeEntryPayload) -> list[dict[str, str]]:
         "knowledgeCandidates 必须是字符串数组，最多 3 项。"
         "type 只能从以下值中选一个：言语理解与表达、数量关系、判断推理、资料分析、常识判断、其他。"
         "subtype 和 subSubtype 要尽量简洁，适合直接回填表单。"
-        "rootReason 必须提炼成深层能力短板，本质化表达，控制在 20 个字以内。"
-        "errorReason 必须提炼成这次失误的表象原因，控制在 8 个字以内。"
-        "rootReason 和 errorReason 都不要写空话、套话、过程复述。"
-        "analysis 控制在 120 字以内，直接写可回填到错题解析。"
+        "\n"
+        "rootReason：20 字以内，写深层能力短板，不复述题面，不照抄 errorReason。"
+        "\n"
+        "errorReason：8 字以内。优先从以下参考词中选择；若均不贴切，可自由填写但不超过 8 字：\n"
+        "审题类：粗心看错题目/题目没读完/选项没看全/关键词漏看\n"
+        "知识类：公式/方法不会/知识点遗忘/概念理解错误/概念混淆/常识知识空白\n"
+        "言语类：词义/语义理解偏差/主旨提炼失误/过度推断/绝对化/语境分析错误/近义词辨析失误\n"
+        "推理类：逻辑推理出错/充分必要条件混淆/矛盾/反对关系混淆/论证结构误判/加强/削弱方向判反/图形规律识别失误/类比关系判断错误/定义关键要素未抓住\n"
+        "资料分析类：读数/找数出错/增长率与增长量混淆/倍数与百分比混淆/计算量大估算偏差\n"
+        "计算类：粗心计算错误/方程列错\n"
+        "方法类：方法不熟练/解题思路错误/题型识别错误/代入排除法未用\n"
+        "状态类：没时间/蒙的/会做但慌了\n"
+        "\n"
+        "analysis：先写【根本主因分析】，再写【解题思路】，用 \\n\\n 分隔，总计 150 字以内。"
         "如果信息不足，也要给出最稳妥的短答案，但仍然只能返回 JSON 对象。"
     )
     user_prompt = {
@@ -428,16 +574,66 @@ def build_ai_messages(payload: AnalyzeEntryPayload) -> list[dict[str, str]]:
         }
     }
     return [
-        {"role": "system", "name": "MiniMax AI", "content": system_prompt},
+        {"role": "system", "name": "AI", "content": system_prompt},
         {"role": "user", "name": "用户", "content": json.dumps(user_prompt, ensure_ascii=False)},
     ]
 
 
-def call_minimax_analyze_entry(payload: AnalyzeEntryPayload) -> dict[str, Any]:
+def call_ai(
+    messages: list[dict[str, str]],
+    task_type: str = "general",
+    temperature: float = 0.2,
+    max_tokens: int = 1200,
+) -> tuple[str, str]:
+    api_key = os.getenv("DEEPSEEK_API_KEY", "").strip()
+    deepseek_error: Optional[str] = None
+    if api_key:
+        model = TASK_ROUTING.get(task_type, DEEPSEEK_CHAT_MODEL)
+        body: dict[str, Any] = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        if task_type in JSON_RESPONSE_TASKS and "reasoner" not in model:
+            body["response_format"] = {"type": "json_object"}
+
+        request = urllib.request.Request(
+            DEEPSEEK_API_URL,
+            data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=60) as response:
+                raw = response.read().decode("utf-8")
+            data = json.loads(raw)
+            content = (((data.get("choices") or [{}])[0].get("message") or {}).get("content") or "")
+            if content:
+                return content, data.get("model") or model
+            deepseek_error = "deepseek returned empty content"
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")
+            deepseek_error = f"deepseek request failed: {detail}"
+        except urllib.error.URLError as exc:
+            deepseek_error = f"deepseek unavailable: {exc.reason}"
+        except Exception as exc:
+            deepseek_error = f"deepseek request failed: {exc}"
+
+    if not os.getenv("MINIMAX_API_KEY", "").strip() and deepseek_error:
+        raise HTTPException(status_code=502, detail=deepseek_error)
+
+    return call_minimax_raw(messages)
+
+
+def call_minimax_raw(messages: list[dict[str, str]]) -> tuple[str, str]:
     api_key, model = get_minimax_settings()
     body = {
         "model": model,
-        "messages": build_ai_messages(payload),
+        "messages": messages,
         "temperature": 0.2,
         "top_p": 0.95,
         "max_completion_tokens": 1200,
@@ -465,19 +661,321 @@ def call_minimax_analyze_entry(payload: AnalyzeEntryPayload) -> dict[str, Any]:
     if base_resp.get("status_code") not in (None, 0):
         raise HTTPException(status_code=502, detail=base_resp.get("status_msg") or "minimax error")
 
-    content = (
-        ((data.get("choices") or [{}])[0].get("message") or {}).get("content")
-        or ""
-    )
+    content = (((data.get("choices") or [{}])[0].get("message") or {}).get("content") or "")
+    return content, data.get("model") or model
+
+
+def call_analyze_entry(payload: AnalyzeEntryPayload) -> dict[str, Any]:
+    content, model = call_ai(build_ai_messages(payload), task_type="analyze_entry")
     parsed = extract_json_object(content)
     cleaned = validate_analyze_result(parsed, payload)
-    cleaned["model"] = data.get("model") or model
+    cleaned["model"] = model
     return cleaned
+
+
+def cleanup_old_ops(user_id: str, conn: sqlite3.Connection) -> None:
+    conn.execute(
+        "DELETE FROM operations WHERE user_id = ? AND created_at < datetime('now', '-30 days')",
+        (user_id,),
+    )
+
+
+def extract_json_value(text: str) -> Any:
+    cleaned = (text or "").strip()
+    if cleaned.startswith("```"):
+        cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
+        cleaned = re.sub(r"\s*```$", "", cleaned)
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        pass
+
+    for pattern in (r"\{[\s\S]*\}", r"\[[\s\S]*\]"):
+        match = re.search(pattern, cleaned)
+        if match:
+            return json.loads(match.group(0))
+    raise ValueError("model did not return JSON payload")
+
+
+def load_backup_payload(user_id: str) -> dict[str, Any]:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT payload_json FROM user_backups WHERE user_id = ?",
+            (user_id,),
+        ).fetchone()
+    if not row:
+        return {}
+    try:
+        data = json.loads(row["payload_json"])
+        return data if isinstance(data, dict) else {}
+    except json.JSONDecodeError:
+        return {}
+
+
+def save_backup_payload(user_id: str, payload: dict[str, Any]) -> None:
+    updated_at = utcnow().isoformat()
+    body = dict(payload or {})
+    body["exportTime"] = body.get("exportTime") or updated_at
+    with get_conn() as conn:
+        conn.execute(
+            """
+            INSERT INTO user_backups(user_id, payload_json, updated_at)
+            VALUES (?, ?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET
+              payload_json = excluded.payload_json,
+              updated_at = excluded.updated_at
+            """,
+            (user_id, json.dumps(body, ensure_ascii=False), updated_at),
+        )
+        conn.commit()
+
+
+def get_backup_errors(user_id: str) -> list[dict[str, Any]]:
+    payload = load_backup_payload(user_id)
+    errors = payload.get("errors") or []
+    return [item for item in errors if isinstance(item, dict)]
+
+
+def flatten_knowledge_tree(nodes: Any, path: Optional[list[str]] = None) -> list[dict[str, Any]]:
+    path = path or []
+    if not isinstance(nodes, list):
+        return []
+    flat: list[dict[str, Any]] = []
+    for node in nodes:
+        if not isinstance(node, dict):
+            continue
+        title = str(node.get("title") or "").strip()
+        node_id = str(node.get("id") or "").strip()
+        current_path = [*path, title] if title else list(path)
+        flat.append(
+            {
+                "id": node_id,
+                "title": title,
+                "path": current_path,
+                "contentMd": str(node.get("contentMd") or ""),
+                "isLeaf": bool(node.get("isLeaf")),
+                "childCount": len(node.get("children") or []),
+            }
+        )
+        flat.extend(flatten_knowledge_tree(node.get("children") or [], current_path))
+    return flat
+
+
+def summarize_error(error: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": str(error.get("id") or ""),
+        "type": str(error.get("type") or ""),
+        "subtype": str(error.get("subtype") or ""),
+        "subSubtype": str(error.get("subSubtype") or ""),
+        "question": clean_multiline_text(error.get("question"), 280),
+        "answer": clean_short_text(error.get("answer"), 20),
+        "myAnswer": clean_short_text(error.get("myAnswer"), 20),
+        "status": clean_short_text(error.get("status"), 20),
+        "difficulty": int(error.get("difficulty") or 2),
+        "errorReason": clean_short_text(error.get("errorReason"), 40),
+        "rootReason": clean_short_text(error.get("rootReason"), 80),
+        "analysis": clean_multiline_text(error.get("analysis"), 320),
+        "masteryLevel": clean_short_text(error.get("masteryLevel"), 30),
+        "updatedAt": clean_short_text(error.get("updatedAt") or error.get("addDate"), 40),
+        "noteNodeId": clean_short_text(error.get("noteNodeId"), 60),
+    }
+
+
+def filter_errors(errors: list[dict[str, Any]], payload: ModuleSummaryPayload) -> list[dict[str, Any]]:
+    result = []
+    for error in errors:
+        if payload.type and error.get("type") != payload.type:
+            continue
+        if payload.subtype and error.get("subtype") != payload.subtype:
+            continue
+        if payload.rootReason and payload.rootReason not in str(error.get("rootReason") or ""):
+            continue
+        if payload.status and error.get("status") != payload.status:
+            continue
+        if payload.masteryLevel and error.get("masteryLevel") != payload.masteryLevel:
+            continue
+        add_date = str(error.get("addDate") or "")
+        if payload.dateFrom and add_date and add_date < payload.dateFrom:
+            continue
+        if payload.dateTo and add_date and add_date > payload.dateTo:
+            continue
+        result.append(error)
+        if len(result) >= payload.limit:
+            break
+    return result
+
+
+def compute_daily_practice(errors: list[dict[str, Any]], limit: int = 12) -> list[dict[str, Any]]:
+    now = utcnow().date()
+    ranked: list[tuple[int, dict[str, Any]]] = []
+    for error in errors:
+        answer = str(error.get("answer") or "").strip()
+        if not answer:
+            continue
+        score = 0
+        mastery = str(error.get("masteryLevel") or "not_mastered")
+        if mastery == "not_mastered":
+            score += 30
+        elif mastery == "fuzzy":
+            score += 20
+        elif mastery == "mastered":
+            score += 8
+        status = str(error.get("status") or "")
+        if status == "focus":
+            score += 18
+        elif status == "review":
+            score += 10
+        try:
+            date_text = str(error.get("lastPracticedAt") or error.get("updatedAt") or error.get("addDate") or "")[:10]
+            if date_text:
+                delta = (now - datetime.fromisoformat(date_text).date()).days
+                score += min(max(delta, 0), 20)
+        except ValueError:
+            score += 5
+        if str(error.get("addDate") or "")[:10]:
+            try:
+                recent = (now - datetime.fromisoformat(str(error.get("addDate"))[:10]).date()).days
+                if recent <= 7:
+                    score += 10
+            except ValueError:
+                pass
+        ranked.append((score, error))
+    ranked.sort(key=lambda item: (-item[0], str(item[1].get("updatedAt") or ""), str(item[1].get("id") or "")))
+    return [summarize_error(error) | {"practiceScore": score} for score, error in ranked[:limit]]
+
+
+def write_practice_log(user_id: str, payload: PracticeLogPayload) -> dict[str, Any]:
+    entry = {
+        "id": secrets.token_hex(12),
+        "date": payload.date,
+        "mode": payload.mode,
+        "weakness_tag": payload.weaknessTag,
+        "total": payload.total,
+        "correct": payload.correct,
+        "error_ids": payload.errorIds,
+    }
+    with get_conn() as conn:
+        conn.execute(
+            """
+            INSERT INTO practice_log(id, user_id, date, mode, weakness_tag, total, correct, error_ids, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                entry["id"],
+                user_id,
+                entry["date"],
+                entry["mode"],
+                entry["weakness_tag"],
+                entry["total"],
+                entry["correct"],
+                json.dumps(entry["error_ids"], ensure_ascii=False),
+                utcnow().isoformat(),
+            ),
+        )
+        conn.execute(
+            "DELETE FROM practice_log WHERE user_id = ? AND date < date('now', '-180 days')",
+            (user_id,),
+        )
+        conn.commit()
+    return entry
+
+
+def read_recent_practice_logs(user_id: str, limit: int = 30) -> list[dict[str, Any]]:
+    with get_conn() as conn:
+        rows = conn.execute(
+            """
+            SELECT id, date, mode, weakness_tag, total, correct, error_ids, created_at
+            FROM practice_log
+            WHERE user_id = ?
+            ORDER BY date DESC, created_at DESC
+            LIMIT ?
+            """,
+            (user_id, limit),
+        ).fetchall()
+    return [
+        {
+            "id": row["id"],
+            "date": row["date"],
+            "mode": row["mode"],
+            "weaknessTag": row["weakness_tag"],
+            "total": row["total"],
+            "correct": row["correct"],
+            "errorIds": json.loads(row["error_ids"] or "[]"),
+            "createdAt": row["created_at"],
+        }
+        for row in rows
+    ]
+
+
+def build_local_diagnosis(errors: list[dict[str, Any]]) -> dict[str, Any]:
+    reason_counts: dict[str, int] = {}
+    subtype_counts: dict[str, int] = {}
+    for error in errors:
+        reason = clean_short_text(error.get("rootReason"), 80)
+        subtype = clean_short_text(error.get("subtype"), 40)
+        if reason:
+            reason_counts[reason] = reason_counts.get(reason, 0) + 1
+        if subtype:
+            subtype_counts[subtype] = subtype_counts.get(subtype, 0) + 1
+    top_reasons = sorted(reason_counts.items(), key=lambda item: (-item[1], item[0]))[:5]
+    top_subtypes = sorted(subtype_counts.items(), key=lambda item: (-item[1], item[0]))[:5]
+    summary_parts = []
+    if top_reasons:
+        summary_parts.append("高频根因：" + "；".join(f"{name}({count})" for name, count in top_reasons))
+    if top_subtypes:
+        summary_parts.append("高频题型：" + "；".join(f"{name}({count})" for name, count in top_subtypes))
+    weak_points = [
+        {
+            "area": name,
+            "description": f"最近累计出现 {count} 次，建议优先复盘同类题目的分析与正确思路。",
+            "priority": "high" if idx == 0 else "medium",
+            "suggestion": "先做 3-5 题同类题，再回看错因和知识点笔记。",
+        }
+        for idx, (name, count) in enumerate(top_reasons[:3])
+    ]
+    return {
+        "summary": "；".join(summary_parts) if summary_parts else "当前数据量较少，建议继续积累错题后再做 AI 诊断。",
+        "weakPoints": weak_points,
+        "model": "local-fallback",
+    }
 
 
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {"ok": True, "time": utcnow().isoformat()}
+
+
+def build_local_diagnosis_safe(errors: list[dict[str, Any]]) -> dict[str, Any]:
+    reason_counts: dict[str, int] = {}
+    subtype_counts: dict[str, int] = {}
+    for error in errors:
+        reason = clean_short_text(error.get("rootReason"), 80)
+        subtype = clean_short_text(error.get("subtype"), 40)
+        if reason:
+            reason_counts[reason] = reason_counts.get(reason, 0) + 1
+        if subtype:
+            subtype_counts[subtype] = subtype_counts.get(subtype, 0) + 1
+    top_reasons = sorted(reason_counts.items(), key=lambda item: (-item[1], item[0]))[:5]
+    top_subtypes = sorted(subtype_counts.items(), key=lambda item: (-item[1], item[0]))[:5]
+    summary_parts = []
+    if top_reasons:
+        summary_parts.append("Top root causes: " + ", ".join(f"{name}({count})" for name, count in top_reasons))
+    if top_subtypes:
+        summary_parts.append("Top question types: " + ", ".join(f"{name}({count})" for name, count in top_subtypes))
+    weak_points = [
+        {
+            "area": name,
+            "description": f"Seen {count} times recently. Review similar mistakes and the correct solving path first.",
+            "priority": "high" if idx == 0 else "medium",
+            "suggestion": "Practice 3-5 similar questions, then revisit the mistake reason and note.",
+        }
+        for idx, (name, count) in enumerate(top_reasons[:3])
+    ]
+    return {
+        "summary": " | ".join(summary_parts) if summary_parts else "Not enough data yet. Add more mistakes and run diagnosis again.",
+        "weakPoints": weak_points,
+        "model": "local-fallback",
+    }
 
 
 @app.get("/")
@@ -709,11 +1207,532 @@ def put_origin_status(
 @app.post("/api/ai/analyze-entry")
 def analyze_entry(payload: AnalyzeEntryPayload, xingce_session: Optional[str] = Cookie(default=None)) -> dict[str, Any]:
     require_user(xingce_session)
-    return {"ok": True, "result": call_minimax_analyze_entry(payload)}
+    return {"ok": True, "result": call_analyze_entry(payload)}
 
 
-@app.get("/api/debug/users")
-def debug_users() -> dict[str, Any]:
+@app.post("/api/images")
+async def upload_image(
+    request: Request,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    user = require_user(xingce_session)
+    body = await request.body()
+    if not body:
+        raise HTTPException(status_code=400, detail="empty image body")
+    if len(body) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="image too large (max 5MB)")
+
+    content_type = request.headers.get("content-type", "image/jpeg").strip() or "image/jpeg"
+    sha256 = hashlib.sha256(body).hexdigest()
+    user_img_dir = IMAGES_DIR / user["id"]
+    user_img_dir.mkdir(parents=True, exist_ok=True)
+    img_path = user_img_dir / sha256
+    if not img_path.exists():
+        img_path.write_bytes(body)
+
     with get_conn() as conn:
-        rows = conn.execute("SELECT id, username, created_at FROM users ORDER BY created_at DESC").fetchall()
-    return {"items": [dict(row) for row in rows]}
+        conn.execute(
+            """
+            INSERT INTO user_images(hash, user_id, content_type, size_bytes, ref_count, created_at)
+            VALUES(?, ?, ?, ?, 1, ?)
+            ON CONFLICT(hash, user_id) DO UPDATE SET
+              ref_count = ref_count + 1,
+              content_type = excluded.content_type,
+              size_bytes = excluded.size_bytes
+            """,
+            (sha256, user["id"], content_type, len(body), utcnow().isoformat()),
+        )
+        conn.commit()
+
+    return {"ok": True, "hash": sha256, "url": f"/api/images/{sha256}"}
+
+
+@app.get("/api/images/{sha256}")
+def get_image(
+    sha256: str,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> Response:
+    user = require_user(xingce_session)
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT content_type FROM user_images WHERE hash = ? AND user_id = ?",
+            (sha256, user["id"]),
+        ).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="image not found")
+
+    img_path = IMAGES_DIR / user["id"] / sha256
+    if not img_path.exists():
+        raise HTTPException(status_code=404, detail="image file missing")
+
+    return Response(
+        content=img_path.read_bytes(),
+        media_type=row["content_type"],
+        headers={"Cache-Control": "max-age=31536000, immutable"},
+    )
+
+
+@app.delete("/api/images/{sha256}/unref")
+def unref_image(
+    sha256: str,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    user = require_user(xingce_session)
+    img_path = IMAGES_DIR / user["id"] / sha256
+
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT ref_count FROM user_images WHERE hash = ? AND user_id = ?",
+            (sha256, user["id"]),
+        ).fetchone()
+        if not row:
+            return {"ok": True, "deleted": False}
+
+        next_ref_count = row["ref_count"] - 1
+        if next_ref_count <= 0:
+            conn.execute(
+                "DELETE FROM user_images WHERE hash = ? AND user_id = ?",
+                (sha256, user["id"]),
+            )
+            if img_path.exists():
+                img_path.unlink()
+            deleted = True
+        else:
+            conn.execute(
+                "UPDATE user_images SET ref_count = ? WHERE hash = ? AND user_id = ?",
+                (next_ref_count, sha256, user["id"]),
+            )
+            deleted = False
+        conn.commit()
+
+    return {"ok": True, "deleted": deleted}
+
+
+@app.get("/api/sync")
+def sync_pull(
+    since: str = "",
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    user = require_user(xingce_session)
+    with get_conn() as conn:
+        rows = conn.execute(
+            """
+            SELECT id, op_type, entity_id, payload, created_at
+            FROM operations
+            WHERE user_id = ? AND created_at > ?
+            ORDER BY created_at ASC
+            LIMIT 500
+            """,
+            (user["id"], since or ""),
+        ).fetchall()
+    return {
+        "ops": [dict(row) for row in rows],
+        "serverTime": utcnow().isoformat(),
+        "hasMore": len(rows) == 500,
+    }
+
+
+@app.post("/api/sync")
+def sync_push(
+    body: SyncPushPayload,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    user = require_user(xingce_session)
+    with get_conn() as conn:
+        for op in body.ops:
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO operations(id, user_id, op_type, entity_id, payload, created_at)
+                VALUES(?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    op["id"],
+                    user["id"],
+                    op["op_type"],
+                    str(op["entity_id"]),
+                    json.dumps(op.get("payload") or {}, ensure_ascii=False),
+                    op["created_at"],
+                ),
+            )
+        cleanup_old_ops(user["id"], conn)
+        conn.commit()
+
+    return {"ok": True, "serverTime": utcnow().isoformat()}
+
+
+@app.post("/api/practice/log")
+def create_practice_log(
+    payload: PracticeLogPayload,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    user = require_user(xingce_session)
+    entry = write_practice_log(user["id"], payload)
+    return {"ok": True, "entry": entry, "recent": read_recent_practice_logs(user["id"], 14)}
+
+
+@app.get("/api/practice/daily")
+def get_practice_daily(
+    limit: int = 12,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    user = require_user(xingce_session)
+    errors = get_backup_errors(user["id"])
+    queue = compute_daily_practice(errors, max(1, min(limit, 30)))
+    return {"ok": True, "items": queue, "recentLogs": read_recent_practice_logs(user["id"], 14)}
+
+
+@app.post("/api/ai/evaluate-answer")
+def evaluate_answer(
+    payload: EvaluateAnswerPayload,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    require_user(xingce_session)
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "Evaluate whether the learner answered correctly. "
+                "Return JSON only with keys: isCorrect, analysis, thoughtProcess, masteryUpdate. "
+                "masteryUpdate must be one of not_mastered, fuzzy, mastered."
+            ),
+        },
+        {
+            "role": "user",
+            "content": json.dumps(payload.dict(), ensure_ascii=False),
+        },
+    ]
+    content, model = call_ai(messages, task_type="evaluate_answer", temperature=0.1, max_tokens=800)
+    parsed = extract_json_object(content)
+    result = {
+        "isCorrect": bool(parsed.get("isCorrect")),
+        "analysis": clean_multiline_text(parsed.get("analysis"), 240),
+        "thoughtProcess": clean_multiline_text(parsed.get("thoughtProcess"), 240),
+        "masteryUpdate": clean_short_text(parsed.get("masteryUpdate") or "fuzzy", 20),
+        "model": model,
+    }
+    if result["masteryUpdate"] not in {"not_mastered", "fuzzy", "mastered"}:
+        result["masteryUpdate"] = "fuzzy"
+    return {"ok": True, "result": result}
+
+
+@app.post("/api/ai/generate-question")
+def generate_question(
+    payload: GenerateQuestionPayload,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    require_user(xingce_session)
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "Generate similar practice questions. "
+                "Return JSON only as an array. "
+                "Each item must contain question, options, answer, analysis."
+            ),
+        },
+        {
+            "role": "user",
+            "content": json.dumps(payload.dict(), ensure_ascii=False),
+        },
+    ]
+    content, model = call_ai(messages, task_type="generate_question", temperature=0.7, max_tokens=1200)
+    parsed = extract_json_value(content)
+    if not isinstance(parsed, list):
+        parsed = parsed.get("items") if isinstance(parsed, dict) else []
+    items = []
+    for item in parsed[: payload.count]:
+        if not isinstance(item, dict):
+            continue
+        items.append(
+            {
+                "question": clean_multiline_text(item.get("question"), 400),
+                "options": clean_multiline_text(item.get("options"), 400),
+                "answer": clean_short_text(item.get("answer"), 40),
+                "analysis": clean_multiline_text(item.get("analysis"), 220),
+            }
+        )
+    return {"ok": True, "items": items, "model": model}
+
+
+@app.post("/api/ai/diagnose")
+def diagnose(
+    payload: DiscoverPatternsPayload,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    user = require_user(xingce_session)
+    errors = payload.errors or get_backup_errors(user["id"])
+    if not errors:
+        return {"ok": True, "result": build_local_diagnosis_safe([])}
+    condensed = [summarize_error(item) for item in errors[:120]]
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are a study diagnosis assistant. "
+                "Return JSON only with keys: summary and weakPoints. "
+                "weakPoints must be an array of {area, description, priority, suggestion}."
+            ),
+        },
+        {"role": "user", "content": json.dumps({"errors": condensed}, ensure_ascii=False)},
+    ]
+    try:
+        content, model = call_ai(messages, task_type="diagnose", temperature=0.1, max_tokens=1400)
+        parsed = extract_json_object(content)
+        weak_points = parsed.get("weakPoints") if isinstance(parsed.get("weakPoints"), list) else []
+        return {
+            "ok": True,
+            "result": {
+                "summary": clean_multiline_text(parsed.get("summary"), 600),
+                "weakPoints": [
+                    {
+                        "area": clean_short_text(item.get("area"), 60),
+                        "description": clean_multiline_text(item.get("description"), 180),
+                        "priority": clean_short_text(item.get("priority"), 20),
+                        "suggestion": clean_multiline_text(item.get("suggestion"), 180),
+                    }
+                    for item in weak_points[:10]
+                    if isinstance(item, dict)
+                ],
+                "model": model,
+            },
+        }
+    except Exception:
+        return {"ok": True, "result": build_local_diagnosis_safe(errors)}
+
+
+@app.post("/api/ai/chat")
+def ai_chat(
+    payload: ChatPayload,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    user = require_user(xingce_session)
+    errors = get_backup_errors(user["id"])
+    backup = load_backup_payload(user["id"])
+    tree = flatten_knowledge_tree(backup.get("knowledgeTree") or [])
+    context = {
+        "errorCount": len(errors),
+        "topRootReasons": {},
+        "knowledgeNodes": [{"title": item["title"], "path": item["path"]} for item in tree[:40]],
+    }
+    for error in errors:
+        reason = clean_short_text(error.get("rootReason"), 80)
+        if reason:
+            context["topRootReasons"][reason] = context["topRootReasons"].get(reason, 0) + 1
+    top_roots = sorted(context["topRootReasons"].items(), key=lambda item: (-item[1], item[0]))[:8]
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are a study copilot for a Chinese error-analysis notebook. "
+                "Answer concisely, ground advice in the provided user data, and avoid invented claims."
+            ),
+        },
+        {
+            "role": "user",
+            "content": json.dumps(
+                {
+                    "context": {
+                        "errorCount": context["errorCount"],
+                        "topRootReasons": top_roots,
+                        "knowledgeNodes": context["knowledgeNodes"],
+                    },
+                    "history": payload.history[-6:],
+                    "message": payload.message,
+                },
+                ensure_ascii=False,
+            ),
+        },
+    ]
+    content, model = call_ai(messages, task_type="chat", temperature=0.3, max_tokens=1200)
+    return {"ok": True, "reply": clean_multiline_text(content, 2000), "model": model}
+
+
+@app.post("/api/ai/module-summary-for-claude")
+def module_summary_for_claude(
+    payload: ModuleSummaryPayload,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    user = require_user(xingce_session)
+    filtered = filter_errors(get_backup_errors(user["id"]), payload)
+    summary_input = [summarize_error(item) for item in filtered]
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "Compress the module data for handoff into Claude. "
+                "Return JSON only with keys: overview, weaknessTags, recommendedPrompt, items."
+            ),
+        },
+        {"role": "user", "content": json.dumps({"errors": summary_input}, ensure_ascii=False)},
+    ]
+    content, model = call_ai(messages, task_type="chat", temperature=0.2, max_tokens=1400)
+    parsed = extract_json_object(content)
+    return {
+        "ok": True,
+        "result": {
+            "overview": clean_multiline_text(parsed.get("overview"), 800),
+            "weaknessTags": parsed.get("weaknessTags") if isinstance(parsed.get("weaknessTags"), list) else [],
+            "recommendedPrompt": clean_multiline_text(parsed.get("recommendedPrompt"), 1200),
+            "items": summary_input[: min(len(summary_input), payload.limit)],
+            "model": model,
+        },
+    }
+
+
+@app.post("/api/ai/distill-to-node")
+def distill_to_node(
+    payload: DistillPayload,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    require_user(xingce_session)
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "Distill one reusable rule from the error. "
+                "Return JSON only with keys: rule, shouldAppend, reason."
+            ),
+        },
+        {"role": "user", "content": json.dumps(payload.dict(), ensure_ascii=False)},
+    ]
+    content, model = call_ai(messages, task_type="distill_to_node", temperature=0.2, max_tokens=700)
+    parsed = extract_json_object(content)
+    return {
+        "ok": True,
+        "result": {
+            "rule": clean_multiline_text(parsed.get("rule"), 160),
+            "shouldAppend": bool(parsed.get("shouldAppend")),
+            "reason": clean_multiline_text(parsed.get("reason"), 180),
+            "model": model,
+        },
+    }
+
+
+@app.post("/api/ai/synthesize-node")
+def synthesize_node(
+    payload: SynthesizeNodePayload,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    require_user(xingce_session)
+    condensed = [summarize_error(item) for item in payload.linkedErrors[:80]]
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "Summarize the knowledge node from the linked errors. "
+                "Return JSON only with keys: summary, pitfalls, drills."
+            ),
+        },
+        {
+            "role": "user",
+            "content": json.dumps(
+                {
+                    "nodeTitle": payload.nodeTitle,
+                    "nodeContent": payload.nodeContent,
+                    "linkedErrors": condensed,
+                },
+                ensure_ascii=False,
+            ),
+        },
+    ]
+    content, model = call_ai(messages, task_type="synthesize_node", temperature=0.2, max_tokens=1200)
+    parsed = extract_json_object(content)
+    return {"ok": True, "result": parsed | {"model": model}}
+
+
+@app.post("/api/ai/discover-patterns")
+def discover_patterns(
+    payload: DiscoverPatternsPayload,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    user = require_user(xingce_session)
+    errors = payload.errors or get_backup_errors(user["id"])
+    condensed = [summarize_error(item) for item in errors[:120]]
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "Find cross-topic learning patterns. "
+                "Return JSON only with keys: summary and patterns. "
+                "patterns must be an array of {theme, evidence, impact, suggestion}."
+            ),
+        },
+        {"role": "user", "content": json.dumps({"errors": condensed}, ensure_ascii=False)},
+    ]
+    content, model = call_ai(messages, task_type="discover_patterns", temperature=0.15, max_tokens=1400)
+    parsed = extract_json_object(content)
+    return {"ok": True, "result": parsed | {"model": model}}
+
+
+@app.post("/api/ai/suggest-restructure")
+def suggest_restructure(
+    payload: SuggestRestructurePayload,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    require_user(xingce_session)
+    tree = flatten_knowledge_tree(payload.tree or [])
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "Review the knowledge tree structure. "
+                "Return JSON only with keys: summary and suggestions. "
+                "suggestions must be an array of {action, target, reason}."
+            ),
+        },
+        {"role": "user", "content": json.dumps({"tree": tree[:200]}, ensure_ascii=False)},
+    ]
+    content, model = call_ai(messages, task_type="suggest_restructure", temperature=0.2, max_tokens=1200)
+    parsed = extract_json_object(content)
+    return {"ok": True, "result": parsed | {"model": model}}
+
+
+@app.get("/api/knowledge/search")
+def knowledge_search(
+    q: str,
+    limit: int = 10,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    user = require_user(xingce_session)
+    keyword = q.strip().lower()
+    if not keyword:
+        return {"ok": True, "nodes": [], "errors": []}
+    payload = load_backup_payload(user["id"])
+    nodes = flatten_knowledge_tree(payload.get("knowledgeTree") or [])
+    node_hits = []
+    for node in nodes:
+        haystack = " ".join(
+            [
+                str(node.get("title") or ""),
+                " / ".join(node.get("path") or []),
+                str(node.get("contentMd") or ""),
+            ]
+        ).lower()
+        if keyword in haystack:
+            node_hits.append(
+                {
+                    "id": node["id"],
+                    "title": node["title"],
+                    "path": node["path"],
+                    "excerpt": clean_multiline_text(node.get("contentMd"), 180),
+                }
+            )
+            if len(node_hits) >= limit:
+                break
+
+    error_hits = []
+    for error in get_backup_errors(user["id"]):
+        haystack = " ".join(
+            [
+                str(error.get("question") or ""),
+                str(error.get("analysis") or ""),
+                str(error.get("rootReason") or ""),
+                str(error.get("errorReason") or ""),
+            ]
+        ).lower()
+        if keyword in haystack:
+            error_hits.append(summarize_error(error))
+            if len(error_hits) >= limit:
+                break
+
+    return {"ok": True, "nodes": node_hits, "errors": error_hits}
