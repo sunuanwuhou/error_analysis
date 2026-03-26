@@ -669,10 +669,10 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .note-toc-item.lv3{padding-left:24px}
 .note-toc-item.lv4{padding-left:34px}
 .note-toc-inline{margin:10px 14px 0}
-.note-preview-layout{display:grid;grid-template-columns:minmax(180px,220px) minmax(0,1fr);gap:28px;align-items:start;min-height:100%}
-.note-preview-layout-no-toc{display:block}
-.note-preview-article{min-width:0;max-width:none}
-.note-preview-toc{display:block!important;position:sticky;top:0;align-self:start;max-height:calc(100vh - 260px);overflow:auto;padding:4px 0 12px}
+.note-preview-layout{display:grid;grid-template-columns:minmax(180px,220px) minmax(0,1fr);gap:24px;align-items:start;min-height:100%;width:100%}
+.note-preview-layout.no-toc{display:block}
+.note-preview-article{min-width:0;max-width:none;width:100%}
+.note-preview-toc{display:block!important;position:sticky;top:0;align-self:start;max-height:calc(100vh - 240px);overflow:auto}
 .note-preview-toc .note-toc-floating{padding:12px 14px;border:1px solid #f1e2ce;border-radius:16px;background:linear-gradient(180deg,#fffdf8 0%,#fffaf2 100%);box-shadow:none}
 .global-note-toc-dock{position:fixed;top:118px;right:18px;z-index:1200;width:240px;max-height:calc(100vh - 142px);overflow:auto;display:none}
 .note-toc-floating{position:relative;z-index:3;display:block;width:100%;max-width:100%;margin:0;border-color:#f3d6b8;box-shadow:0 8px 24px rgba(180,83,9,.08)}
@@ -735,7 +735,7 @@ body{
   letter-spacing:.02em;
 }
 .top-bar-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.view-mode-switch{padding:4px;border-radius:999px;background:#f6f1eb;border:1px solid #eadfd4}
+.view-mode-switch{display:none!important;padding:4px;border-radius:999px;background:#f6f1eb;border:1px solid #eadfd4}
 .view-mode-switch .btn{border-radius:999px}
 .toolbar-spacer{flex:1 1 auto}
 .top-bar > .view-mode-switch{margin-right:2px}
@@ -756,7 +756,7 @@ body{
 }
 .errors-header,.notes-header,.notes-panel-right-header,.date-filter-bar,.content-header{background:rgba(255,255,255,.92)}
 .errors-header,.notes-header,.notes-panel-right-header{padding:14px 18px}
-.notes-header{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #eef1f5}
+.notes-header{display:none!important}
 .notes-header h2,.errors-header h2,.notes-panel-right-header h3{font-size:17px;letter-spacing:.2px}
 .search-box input{height:40px;border-radius:14px;background:#faf7f2;border-color:#ebe2d8}
 .date-filter-bar{padding:10px 16px;flex-wrap:wrap}
@@ -775,15 +775,31 @@ body{
 .notes-content{
   background:transparent;
   overflow:auto;
-  padding:0 24px 24px;
+  padding:0 18px 18px;
 }
 #notesContent > *{
   width:100%;
-  max-width:1400px;
+  max-width:none;
   margin-left:auto;
   margin-right:auto;
 }
-.notes-panel-right{display:none}
+.knowledge-workspace-shell{display:flex;flex-direction:column;gap:14px;padding-top:12px}
+.knowledge-workspace-shell-header{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 16px;align-items:start;padding:12px 14px;border:1px solid #ebe5dc;border-radius:18px;background:linear-gradient(180deg,#fffaf4 0%,#fff 100%)}
+.knowledge-workspace-shell-meta{min-width:0}
+.knowledge-workspace-shell-title{font-size:18px;line-height:1.2;font-weight:700;color:#233044;word-break:break-word}
+.knowledge-workspace-shell-path{margin-top:4px;font-size:11px;line-height:1.6;color:#8b735d;word-break:break-word}
+.knowledge-workspace-shell-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.knowledge-workspace-mode-switch{display:flex;align-items:center;gap:6px;padding:4px;border:1px solid #eadfd4;border-radius:999px;background:#faf6ef}
+.knowledge-workspace-count{display:inline-flex;align-items:center;padding:0 10px;height:32px;border-radius:999px;background:#fff7ed;border:1px solid #f6d3b1;color:#b45309;font-size:12px;font-weight:700}
+.knowledge-workspace-shell-stats{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.knowledge-workspace-stat{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;background:#fff;border:1px solid #e8e0d7;color:#8b5e34;font-size:11px}
+.knowledge-workspace-list-wrap,.knowledge-workspace-note-wrap{display:flex;flex-direction:column;gap:10px}
+.knowledge-workspace-list-head{font-size:12px;font-weight:700;color:#9a6b57;letter-spacing:.04em}
+.knowledge-workspace-list{display:flex;flex-direction:column;gap:12px}
+.knowledge-workspace-list .error-card{padding:16px 18px 16px 24px}
+.knowledge-workspace-empty{padding:48px 24px;border:1px dashed #e7ddd0;border-radius:18px;background:#fffdf9;color:#9b8b77;font-size:13px;line-height:1.8;text-align:center}
+.knowledge-workspace-note-wrap .note-preview-scroll{overflow:visible}
+.notes-panel-right{display:none!important;width:0!important;min-width:0!important;flex:0 0 0!important;overflow:hidden!important}
 .notes-panel-right-header{border-bottom:1px solid #eef1f5}
 .notes-panel-right-body{padding:12px}
 .notes-panel-right .error-card{border-radius:16px;margin-bottom:10px}
@@ -1015,6 +1031,12 @@ body{
   .cloud-controls{justify-content:flex-start}
   .cloud-meta{min-width:0}
   .cloud-origin-list{max-width:none}
+  .knowledge-workspace-shell-header{
+    grid-template-columns:1fr;
+  }
+  .knowledge-workspace-shell-actions{
+    justify-content:flex-start;
+  }
   .errors-header,
   .content-header{
     grid-template-columns:1fr;
@@ -1052,6 +1074,11 @@ body{
   }
   .top-bar h1{
     font-size:17px;
+  }
+  .knowledge-workspace-shell-actions .btn,
+  .knowledge-workspace-mode-switch,
+  .knowledge-workspace-count{
+    width:100%;
   }
   .top-bar .btn,
   .cloud-controls > .btn{
@@ -1177,10 +1204,6 @@ body{
   <!-- 顶部操作栏 -->
 <div class="top-bar">
     <h1>Ashore</h1>
-    <div class="view-mode-switch">
-      <button class="btn btn-secondary" id="viewModeErrors" onclick="switchTab('errors')">题目列表</button>
-      <button class="btn btn-secondary" id="viewModeNotes" onclick="switchTab('notes')">学习笔记</button>
-    </div>
     <button class="btn btn-primary" onclick="openQuickAddModal()">＋ 添加</button>
     <div class="more-menu" id="moreMenu">
       <button class="btn btn-secondary" onclick="toggleMoreMenu(event)">更多</button>
@@ -1268,20 +1291,6 @@ body{
     </div>
   </div>
 
-</div>
-
-<!-- ===== 右侧笔记面板（始终可见）===== -->
-<div class="notes-panel-right">
-  <div class="notes-panel-right-header">
-    <h3>笔记目录</h3>
-    <div style="display:flex;gap:5px">
-      <button class="btn btn-sm btn-secondary" onclick="knowledgeNodeFilter=null;renderSidebar();renderAll();renderNotesPanelRight()" title="清除节点筛选">全部</button>
-      <button class="btn btn-sm btn-secondary" onclick="switchTab('notes')" title="编辑笔记">✏</button>
-    </div>
-  </div>
-  <div class="notes-panel-right-body" id="notesPanelRightBody">
-    <div style="color:#b08968;font-size:12px;padding:20px;text-align:center">当前笔记还没有标题目录</div>
-  </div>
 </div>
 
 <!-- ===== 添加/编辑弹窗 ===== -->
@@ -7418,7 +7427,7 @@ function prependNodeHeading(headings, nodeTitle) {
 function renderNotePreviewLayout(previewHtml, tocHtml) {
   const article = `<article class="note-preview-article">${previewHtml || ''}</article>`;
   if (!tocHtml) {
-    return `<div class="note-preview-layout note-preview-layout-no-toc">${article}</div>`;
+    return `<div class="note-preview-layout no-toc">${article}</div>`;
   }
   return `<div class="note-preview-layout"><aside class="note-preview-toc">${tocHtml}</aside>${article}</div>`;
 }

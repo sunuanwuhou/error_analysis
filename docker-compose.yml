@@ -11,10 +11,24 @@ services:
       MINIMAX_API_KEY: ${MINIMAX_API_KEY:-}
       MINIMAX_MODEL: ${MINIMAX_MODEL:-MiniMax-M2.5}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://127.0.0.1:8000,http://localhost:8000}
+      OCR_BACKEND: ${OCR_BACKEND:-tesseract}
+      OCR_TESSERACT_FALLBACK: ${OCR_TESSERACT_FALLBACK:-true}
+      UMI_OCR_URL: ${UMI_OCR_URL:-http://umi-ocr:1224/api/ocr}
     volumes:
       - ./data:/app/data
       - ./runtime:/app/runtime
     restart: unless-stopped
+
+  umi-ocr:
+    image: xtulnx/ocr-umi:latest
+    container_name: xingce_v3_umi_ocr
+    environment:
+      HEADLESS: "true"
+    ports:
+      - "1224:1224"
+    restart: unless-stopped
+    profiles:
+      - ocr-wechat
 
   cloudflared:
     image: cloudflare/cloudflared:latest
