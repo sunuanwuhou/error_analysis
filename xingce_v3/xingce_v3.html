@@ -131,7 +131,7 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .nav-sub2.active .nav-count{background:#ffe4e1;color:#e74c3c}
 
 /* ===== 中间笔记区域 ===== */
-.notes-area{flex:1;overflow:hidden;display:flex;flex-direction:column;padding-right:282px}
+.notes-area{flex:1;overflow:hidden;display:flex;flex-direction:column;padding-right:0}
 .notes-header{display:none}
 .notes-header h2{font-size:16px;margin:0;color:#2c3e50}
 .notes-header .btn{font-size:12px;padding:6px 12px}
@@ -880,7 +880,7 @@ body{
   max-width:none;
 }
 .top-bar{
-  grid-template-columns:minmax(220px,1.2fr) auto auto auto minmax(16px,1fr) minmax(320px,auto);
+  grid-template-columns:minmax(220px,1fr) auto auto minmax(16px,1fr) minmax(240px,auto);
 }
 .top-bar .btn{
   min-height:40px;
@@ -903,18 +903,39 @@ body{
   padding:8px 12px;
 }
 .cloud-controls{
-  gap:8px;
-  justify-content:flex-end;
+  display:grid;
+  grid-template-columns:repeat(3,auto);
+  gap:6px;
+  justify-content:end;
+  align-items:center;
   padding:8px 10px;
+  max-width:240px;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.7);
 }
 .cloud-controls > .btn{
-  min-width:92px;
-  min-height:38px;
-  padding:8px 12px;
+  min-width:68px;
+  min-height:34px;
+  padding:6px 10px;
+  font-size:12px;
 }
 .cloud-meta{
-  padding-right:2px;
+  grid-column:1 / -1;
+  width:100%;
+  max-width:none;
+  padding-right:0;
+}
+.cloud-status-line{
+  gap:4px;
+}
+.cloud-status-hint{
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:100%;
+}
+.cloud-details-toggle,
+.cloud-origin-list{
+  display:none!important;
 }
 .tab-header{
   display:none!important;
@@ -1093,10 +1114,12 @@ body{
   .view-mode-switch .btn{
     width:100%;
   }
-  .cloud-controls{
-    width:100%;
-    justify-content:stretch;
-  }
+    .cloud-controls{
+      width:100%;
+      display:flex;
+      justify-content:stretch;
+      max-width:none;
+    }
   .cloud-meta{
     width:100%;
     padding-right:0;
@@ -1222,16 +1245,16 @@ body{
     <div class="cloud-controls">
       <div class="cloud-meta">
         <div class="cloud-status-line">
-          <span id="cloudUserBadge" style="font-size:12px;color:#666">Cloud: offline</span>
+          <span id="cloudUserBadge" style="font-size:12px;color:#666">云端: 未登录</span>
           <span id="cloudSyncBadge" class="cloud-status-badge">idle</span>
           <button type="button" id="cloudDetailsToggle" class="cloud-details-toggle" onclick="toggleCloudDetails()">详情</button>
         </div>
-        <div id="cloudSyncHint" class="cloud-status-hint">Local cache is per origin.</div>
+        <div id="cloudSyncHint" class="cloud-status-hint">等待同步</div>
         <div id="cloudOriginStatus" class="cloud-origin-list"></div>
       </div>
-      <button class="btn btn-secondary" onclick="loadCloudBackup()">Cloud Load</button>
-      <button class="btn btn-secondary" onclick="saveCloudBackup()">Cloud Save</button>
-      <button class="btn btn-secondary" id="cloudLogoutBtn" onclick="logoutCloud()">Logout</button>
+      <button class="btn btn-secondary" onclick="loadCloudBackup()">载入</button>
+      <button class="btn btn-secondary" onclick="saveCloudBackup()">保存</button>
+      <button class="btn btn-secondary" id="cloudLogoutBtn" onclick="logoutCloud()">退出</button>
     </div>
   </div>
 
@@ -2396,50 +2419,29 @@ function renderCloudUi() {
   const logoutBtn = document.getElementById('cloudLogoutBtn');
   if (!badge || !logoutBtn || !syncBadge || !syncHint || !originStatus || !detailsToggle) return;
   if (cloudUser) {
-    badge.textContent = 'Cloud: ' + cloudUser.username;
+    badge.textContent = '云端: ' + cloudUser.username;
     logoutBtn.style.display = '';
   } else {
-    badge.textContent = 'Cloud: offline';
+    badge.textContent = '云端: 未登录';
     logoutBtn.style.display = '';
   }
   syncBadge.className = `cloud-status-badge ${cloudSyncState}`;
   syncBadge.textContent = ({
-    idle: 'idle',
-    dirty: 'local changed',
-    saving: 'syncing',
-    synced: 'synced',
-    error: 'sync failed'
+    idle: '待机',
+    dirty: '本地改动',
+    saving: '同步中',
+    synced: '已同步',
+    error: '失败'
   })[cloudSyncState] || cloudSyncState;
   const currentOrigin = mergeCurrentOriginStatus();
-  const originText = currentOrigin.origin || getCloudOriginKey();
-  const timeText = formatCloudTime(cloudSyncUpdatedAt || cloudMeta.lastSavedAt || cloudMeta.lastLoadedAt || '');
   const cloudUpdatedText = formatCloudTime(cloudMeta.lastSeenBackupAt || currentOrigin.lastBackupUpdatedAt || '');
   const localUpdatedText = formatCloudTime(currentOrigin.lastLocalChangeAt || currentOrigin.lastSavedAt || currentOrigin.lastLoadedAt || '');
   syncHint.textContent = [
-    `账号: ${cloudUser ? cloudUser.username : 'offline'}`,
-    `当前域名: ${originText}`,
-    cloudSyncMessage || '',
-    timeText ? `Last event: ${timeText}` : '',
-    localUpdatedText ? `当前最后修改: ${localUpdatedText}` : '',
-    cloudUpdatedText ? `云端备份: ${cloudUpdatedText}` : '',
-    'Local cache is per origin.'
-  ].filter(Boolean).join(' | ');
-  const currentMs = toCloudTimeMs(getOriginDisplayTime(currentOrigin));
-  const newerOrigins = (cloudOriginStatuses || []).filter(item => item.origin !== originText).filter(item => currentMs && currentMs > toCloudTimeMs(getOriginDisplayTime(item)));
-  const lines = [];
-  if (newerOrigins.length) lines.push(`<div class="cloud-origin-alert">当前域名修改时间更新，已晚于其他 ${newerOrigins.length} 个入口</div>`);
-  const mergedItems = [currentOrigin].concat((cloudOriginStatuses || []).filter(item => item.origin !== originText));
-  mergedItems.forEach(item => {
-    const label = item.origin === originText ? '当前' : '其他';
-    const localText = formatCloudTime(item.lastLocalChangeAt || item.lastSavedAt || item.lastLoadedAt || '');
-    const cloudText = formatCloudTime(item.lastBackupUpdatedAt || '');
-    const suffix = [
-      localText ? `本地: ${localText}` : '',
-      cloudText ? `云端: ${cloudText}` : ''
-    ].filter(Boolean).join(' | ');
-    lines.push(`<div>${escapeHtml(label)} ${escapeHtml(item.origin)}${suffix ? ` | ${escapeHtml(suffix)}` : ''}</div>`);
-  });
-  originStatus.innerHTML = lines.join('');
+    localUpdatedText ? `最后同步 ${localUpdatedText}` : '',
+    cloudUpdatedText ? `云端 ${cloudUpdatedText}` : '',
+    cloudSyncMessage || ''
+  ].filter(Boolean).join(' | ') || '等待同步';
+  originStatus.innerHTML = '';
 }
 renderCloudUi = function() {
   const badge = document.getElementById('cloudUserBadge');
@@ -2450,19 +2452,19 @@ renderCloudUi = function() {
   const logoutBtn = document.getElementById('cloudLogoutBtn');
   if (!badge || !logoutBtn || !syncBadge || !syncHint || !originStatus || !detailsToggle) return;
   if (cloudUser) {
-    badge.textContent = 'Cloud: ' + cloudUser.username;
+    badge.textContent = '云端: ' + cloudUser.username;
     logoutBtn.style.display = '';
   } else {
-    badge.textContent = 'Cloud: offline';
+    badge.textContent = '云端: 未登录';
     logoutBtn.style.display = '';
   }
   syncBadge.className = `cloud-status-badge ${cloudSyncState}`;
   syncBadge.textContent = ({
-    idle: 'idle',
-    dirty: 'local changed',
-    saving: 'syncing',
-    synced: 'synced',
-    error: 'sync failed'
+    idle: '待机',
+    dirty: '本地改动',
+    saving: '同步中',
+    synced: '已同步',
+    error: '失败'
   })[cloudSyncState] || cloudSyncState;
   const currentOrigin = mergeCurrentOriginStatus();
   const originText = currentOrigin.origin || getCloudOriginKey();
@@ -2495,6 +2497,41 @@ renderCloudUi = function() {
   detailsToggle.textContent = cloudDetailsExpanded ? '收起' : '详情';
   originStatus.classList.toggle('expanded', cloudDetailsExpanded);
   originStatus.innerHTML = lines.join('');
+};
+renderCloudUi = function() {
+  const badge = document.getElementById('cloudUserBadge');
+  const syncBadge = document.getElementById('cloudSyncBadge');
+  const syncHint = document.getElementById('cloudSyncHint');
+  const originStatus = document.getElementById('cloudOriginStatus');
+  const detailsToggle = document.getElementById('cloudDetailsToggle');
+  const logoutBtn = document.getElementById('cloudLogoutBtn');
+  if (!badge || !logoutBtn || !syncBadge || !syncHint || !originStatus || !detailsToggle) return;
+  if (cloudUser) {
+    badge.textContent = '云端: ' + cloudUser.username;
+    logoutBtn.style.display = '';
+  } else {
+    badge.textContent = '云端: 未登录';
+    logoutBtn.style.display = '';
+  }
+  syncBadge.className = `cloud-status-badge ${cloudSyncState}`;
+  syncBadge.textContent = ({
+    idle: '待机',
+    dirty: '本地改动',
+    saving: '同步中',
+    synced: '已同步',
+    error: '失败'
+  })[cloudSyncState] || cloudSyncState;
+  const currentOrigin = mergeCurrentOriginStatus();
+  const cloudUpdatedText = formatCloudTime(cloudMeta.lastSeenBackupAt || currentOrigin.lastBackupUpdatedAt || '');
+  const localUpdatedText = formatCloudTime(currentOrigin.lastLocalChangeAt || currentOrigin.lastSavedAt || currentOrigin.lastLoadedAt || '');
+  syncHint.textContent = [
+    localUpdatedText ? `最后同步 ${localUpdatedText}` : '',
+    cloudUpdatedText ? `云端 ${cloudUpdatedText}` : '',
+    cloudSyncMessage || ''
+  ].filter(Boolean).join(' | ') || '等待同步';
+  detailsToggle.textContent = '详情';
+  originStatus.classList.remove('expanded');
+  originStatus.innerHTML = '';
 };
 async function refreshCloudSession() {
   try {

@@ -103,6 +103,13 @@ For UI bugs, verify runtime path before changing code again:
 2. confirm which runtime serves that URL
 3. confirm Docker container was rebuilt if needed
 4. then debug HTML/CSS/JS behavior
+5. if local still looks old after rebuild, force-refresh the browser with `Ctrl + F5`
+6. if needed, fetch `http://127.0.0.1:8000/` with an authenticated session and verify the served HTML contains the new labels or CSS
+
+Practical note from this rollout:
+
+- checking the served HTML was faster and more reliable than debating whether the source edit had already landed
+- the user-facing local page can stay visually stale even after source edits until both Docker rebuild and browser refresh happen
 
 ## Windows Encoding Rule
 
@@ -191,3 +198,20 @@ Do not manually rewrite these copies as product content. Product-facing structur
   2. better candidate ranking
   3. better failure messaging
   It does not mean generic OCR should be forced onto low-text image questions.
+## 2026-03-26 Umi OCR Acceptance Rule
+
+- Do not treat `OCR_BACKEND=umi` or a healthy `umi-ocr` container as proof that the app is already using WeChat OCR.
+- The only reliable acceptance check is a real authenticated call to `/api/ai/ocr-image`.
+- Success means the live response includes:
+  - `result.engine == "umi-ocr"`
+  - `result.variant == "remote-http"`
+- If the app still returns `tesseract`, inspect the live app code inside the container and look for swallowed fallback errors.
+- A concrete failure found in this rollout:
+  - `run_umi_ocr_bytes()` raised `NameError`
+  - fallback logic then silently returned the Tesseract result
+- Practical sequence:
+  1. verify `docker-compose.yml` and `.env`
+  2. rebuild the app container
+  3. verify the live app code and env inside the container
+  4. run a real OCR request through the app endpoint
+  5. only then declare the OCR switch complete

@@ -66,6 +66,14 @@ ALLOWED_ENTRY_TYPES = {
     "其他",
 }
 OCR_MAX_BYTES = 5 * 1024 * 1024
+OCR_BACKEND = (os.getenv("OCR_BACKEND", "tesseract") or "tesseract").strip().lower()
+OCR_TESSERACT_FALLBACK = (os.getenv("OCR_TESSERACT_FALLBACK", "true") or "true").strip().lower() not in {
+    "0",
+    "false",
+    "no",
+    "off",
+}
+UMI_OCR_URL = (os.getenv("UMI_OCR_URL", "http://umi-ocr:1224/api/ocr") or "http://umi-ocr:1224/api/ocr").strip()
 
 
 def utcnow() -> datetime:
@@ -674,7 +682,7 @@ def call_analyze_entry(payload: AnalyzeEntryPayload) -> dict[str, Any]:
     return cleaned
 
 
-def run_ocr_bytes(image_bytes: bytes) -> dict[str, Any]:
+def run_tesseract_ocr_bytes_legacy(image_bytes: bytes) -> dict[str, Any]:
     if not image_bytes:
         raise HTTPException(status_code=400, detail="empty image body")
     if len(image_bytes) > OCR_MAX_BYTES:
@@ -762,7 +770,7 @@ def run_ocr_bytes(image_bytes: bytes) -> dict[str, Any]:
     }
 
 
-def run_ocr_bytes(image_bytes: bytes) -> dict[str, Any]:
+def run_tesseract_ocr_bytes(image_bytes: bytes) -> dict[str, Any]:
     if not image_bytes:
         raise HTTPException(status_code=400, detail="empty image body")
     if len(image_bytes) > OCR_MAX_BYTES:
@@ -1203,6 +1211,98 @@ def run_ocr_bytes(image_bytes: bytes) -> dict[str, Any]:
         "alternatives": alternative_items,
         "hint": low_text_hint,
     }
+
+
+def run_umi_ocr_bytes(image_bytes: bytes) -> dict[str, Any]:
+    if not image_bytes:
+        raise HTTPException(status_code=400, detail="empty image body")
+    if len(image_bytes) > OCR_MAX_BYTES:
+        raise HTTPException(status_code=413, detail="image too large (max 5MB)")
+
+    body = {
+        "base64": base64.b64encode(image_bytes).decode("ascii"),
+        "options": {
+            "data.format": "dict",
+            "ocr.language": "models/config_chinese.txt",
+            "tbpu.parser": "multi_para",
+        },
+    }
+    request = urllib.request.Request(
+        UMI_OCR_URL,
+        data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            raw = response.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise HTTPException(status_code=502, detail=f"umi ocr request failed: {detail}") from exc
+    except urllib.error.URLError as exc:
+        raise HTTPException(status_code=502, detail=f"umi ocr unavailable: {exc.reason}") from exc
+
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=502, detail=f"umi ocr invalid response: {raw[:200]}") from exc
+
+    if int(data.get("code") or 0) != 100:
+        raise HTTPException(status_code=502, detail=f"umi ocr failed: {data.get('data') or data.get('message') or data}")
+
+    items = data.get("data") or []
+    lines: list[dict[str, Any]] = []
+    texts: list[str] = []
+    alternatives = [
+        {
+            "variant": "remote-http",
+            "text": "\n".join(str(item.get("text") or "").strip() for item in items if str(item.get("text") or "").strip()).strip(),
+            "lineCount": len(items),
+            "quality": round(float(data.get("score") or 0.0), 4),
+        }
+    ]
+    for item in items:
+        text = str(item.get("text") or "").strip()
+        if not text:
+            continue
+        texts.append(text)
+        lines.append(
+            {
+                "text": text,
+                "score": round(float(item.get("score") or 0.0), 4),
+                "box": item.get("box") or [[0, 0], [0, 0], [0, 0], [0, 0]],
+            }
+        )
+
+    merged_text = "\n".join(texts).strip()
+    hint = ""
+    text_token_count = len(re.findall(r"-?\d+(?:\.\d+)?", merged_text)) + len(re.findall(r"[\u4e00-\u9fff]", merged_text))
+    if text_token_count <= 6 and len(merged_text) <= 24:
+        hint = "检测到图片里的可识别文字较少，像图形推理或纯图题这类内容更适合保留题图并手动补题干。"
+
+    return {
+        "engine": "umi-ocr",
+        "variant": "remote-http",
+        "lineCount": len(lines),
+        "text": merged_text,
+        "lines": lines,
+        "alternatives": alternatives,
+        "hint": hint,
+    }
+
+
+def run_ocr_bytes(image_bytes: bytes) -> dict[str, Any]:
+    backend = OCR_BACKEND or "tesseract"
+    if backend == "umi":
+        try:
+            return run_umi_ocr_bytes(image_bytes)
+        except HTTPException:
+            if not OCR_TESSERACT_FALLBACK:
+                raise
+        except Exception as exc:
+            if not OCR_TESSERACT_FALLBACK:
+                raise HTTPException(status_code=502, detail=f"umi ocr failed: {exc}") from exc
+    return run_tesseract_ocr_bytes(image_bytes)
 
 
 def cleanup_old_ops(user_id: str, conn: sqlite3.Connection) -> None:
