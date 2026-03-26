@@ -2015,6 +2015,8 @@ async function clearWorkspaceStorageForRemoteRestore() {
   notesByType = {};
   noteImages = {};
   globalNote = '';
+  _typeRules = null;
+  _dirTree = null;
   knowledgeTree = null;
   knowledgeNotes = {};
   selectedKnowledgeNodeId = null;
@@ -2035,6 +2037,21 @@ async function clearWorkspaceStorageForRemoteRestore() {
     DB.set(KEY_KNOWLEDGE_TREE, 'null'),
     DB.set(KEY_KNOWLEDGE_NOTES, '{}')
   ]);
+}
+function clearLocalSyncMarkers() {
+  try {
+    localStorage.removeItem('pendingOps');
+    localStorage.removeItem('lastSyncTime');
+  } catch (e) {
+    console.warn('clearLocalSyncMarkers failed:', e);
+  }
+}
+function resetCurrentOriginRestoreDecision() {
+  if (!cloudMeta || typeof cloudMeta !== 'object') cloudMeta = getDefaultCloudMeta();
+  const originKey = getCloudOriginKey();
+  cloudMeta.restoreDecisions = cloudMeta.restoreDecisions || {};
+  delete cloudMeta.restoreDecisions[originKey];
+  saveCloudMeta();
 }
 function getCloudOriginKey() {
   return window.location.origin || 'unknown';
@@ -2161,7 +2178,13 @@ async function fetchCloudBackupData() {
   updateCloudOriginStatuses(data.origins);
   return data;
 }
-function applyCloudBackup(data, updatedAt, opts) {
+async function applyCloudBackup(data, updatedAt, opts) {
+  opts = opts || {};
+  if (opts.forceOverwriteLocal !== false) {
+    await clearWorkspaceStorageForRemoteRestore();
+    clearLocalSyncMarkers();
+    resetCurrentOriginRestoreDecision();
+  }
   _applyFullBackup(data, 'restore');
   rememberCloudDecision(updatedAt || data.exportTime || '', 'loaded');
   scheduleOriginStatusSync({
@@ -2182,7 +2205,7 @@ async function maybeRestoreCloudBackup() {
     const originKey = getCloudOriginKey();
     const existingDecision = cloudMeta.restoreDecisions && cloudMeta.restoreDecisions[originKey];
     if (!hasLocalWorkspaceData()) {
-      applyCloudBackup(data.backup, updatedAt, { silent: true });
+      await applyCloudBackup(data.backup, updatedAt, { silent: true, forceOverwriteLocal: true });
       showToast('当前入口已自动恢复云端备份', 'success');
       return;
     }
@@ -2194,7 +2217,7 @@ async function maybeRestoreCloudBackup() {
       showToast('已保留当前入口本地数据，可随时点击 Cloud Load 恢复云端', 'warning');
       return;
     }
-    applyCloudBackup(data.backup, updatedAt, { silent: true });
+    await applyCloudBackup(data.backup, updatedAt, { silent: true, forceOverwriteLocal: true });
     showToast('已恢复云端备份到当前入口', 'success');
   } catch (e) {
     console.warn('cloud restore skipped:', e);
@@ -2306,7 +2329,7 @@ async function loadCloudBackup(opts) {
       const ok = confirm('Cloud backup found. Restore it to current device?');
       if (!ok) return;
     }
-    applyCloudBackup(data.backup, updatedAt, opts);
+    await applyCloudBackup(data.backup, updatedAt, { ...opts, forceOverwriteLocal: true });
   } catch (e) {
     setCloudSyncState('error', e.message || 'Cloud load failed', '');
     if (!opts.silent) showToast(e.message || 'Cloud load failed', 'error');
