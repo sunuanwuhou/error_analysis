@@ -150,3 +150,32 @@ Do not manually rewrite these copies as product content. Product-facing structur
   1. stabilize OCR candidate selection in the frontend
   2. keep improving OCR for mixed text images
   3. only then revisit whether a separate OCR worker is still necessary
+
+## 2026-03-26 Frontend Safety Notes
+
+- The main page still ships as one large inline script inside `xingce_v3.html`.
+- A single malformed regex or template string can break the whole workbench at load time.
+- Practical rule after meaningful frontend edits:
+  1. extract inline script and run `node --check`
+  2. rebuild Docker
+  3. verify `/login` or `/` actually renders from the rebuilt runtime
+- Do not trust only static HTML inspection when the page appears blank or unresponsive.
+
+## 2026-03-26 Notes And Tree Rules
+
+- The knowledge tree should default to collapsed at the first level.
+- Expansion should happen only from explicit user action or path-focused navigation.
+- Notes should keep only the floating TOC on the right.
+- Do not reintroduce duplicate inline TOC blocks above note content.
+- When a knowledge node is a directory node rather than a leaf note node, clear the floating TOC so stale headings do not remain visible.
+
+## 2026-03-26 OCR Boundary Notes
+
+- Numeric multiple-choice screenshots can justify special handling and aggressive preprocessing.
+- Graphic reasoning or image-first questions should not be treated as standard OCR success cases.
+- If extracted text is too sparse, the UI should tell the user to keep the image and fill the text manually, rather than pretending OCR is reliable.
+- “More like WeChat scan” in practice means:
+  1. stronger preprocessing
+  2. better candidate ranking
+  3. better failure messaging
+  It does not mean generic OCR should be forced onto low-text image questions.

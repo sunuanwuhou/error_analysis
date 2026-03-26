@@ -2,7 +2,7 @@
 
 ## Goal
 
-Make manual question entry feel fast enough that users will keep using it during daily review, instead of postponing input because the modal feels heavy.
+Make manual question entry feel fast enough that users will keep using it during daily review instead of postponing input because the modal feels heavy.
 
 ## User Journey
 
@@ -25,7 +25,7 @@ Current friction:
 What the user wants:
 
 1. paste text or image quickly
-2. let OCR do first-pass extraction
+2. let OCR do a first-pass extraction
 3. fix only the few wrong parts
 
 Current friction:
@@ -44,7 +44,7 @@ What the user wants:
 Current friction:
 
 1. answer, difficulty, source, and reason fields compete for attention too early
-2. there is not yet a stronger “minimum required to save” path
+2. there is not yet a stronger minimum-required-to-save path
 
 ### 4. Add analysis only when useful
 
@@ -74,20 +74,29 @@ Current friction:
 
 ### P2
 
-1. add a clearer “quick save, refine later” mode
+1. add a clearer quick-save-refine-later mode
 2. add presets for common source metadata
 3. later split advanced fields behind progressive disclosure if needed
 
 ## What Was Already Applied On 2026-03-26
 
-1. widened entry modal and made footer actions easier to reach
+1. widened the entry modal and made footer actions easier to reach
 2. added a user-facing flow banner to explain the fastest entry path
 3. surfaced current knowledge path and quick actions around node attachment
 4. kept OCR integrated directly inside the question field workflow
 5. improved tiny numeric screenshot OCR using real database-backed regression images
+6. split the entry UI into primary capture, analysis, and advanced metadata sections
+7. made advanced metadata collapsible so first-step entry is less mentally heavy
 
 ## Next Recommended Implementation
 
 1. make OCR alternatives one-click visible and easier to compare
-2. add a compact “minimum required fields” visual grouping
-3. collapse low-priority metadata by default on mobile or small screens
+2. add a compact minimum-required-fields visual grouping
+3. keep graphic reasoning or low-text images on a manual-first path instead of forcing OCR confidence
+4. collapse low-priority metadata by default on mobile or small screens
+
+## Additional Notes
+
+1. the entry modal works better when users can finish the core capture path without seeing every metadata field at once
+2. advanced metadata should stay available, but it should not compete with question capture on the first screen
+3. low-text images such as graphic reasoning should use a manual-first path with better guidance instead of pretending OCR is strong enough

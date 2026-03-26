@@ -1188,6 +1188,12 @@ def run_ocr_bytes(image_bytes: bytes) -> dict[str, Any]:
         if len(alternative_items) >= 5:
             break
 
+    low_text_hint = ""
+    selected_text = str(selected.get("text") or "").strip()
+    text_token_count = count_numeric_tokens(selected_text) + count_cjk_tokens(selected_text)
+    if text_token_count <= 6 and len(selected_text) <= 24:
+        low_text_hint = "检测到图片里的可识别文字较少，像图形推理或纯图题这类内容更适合保留题图并手动补题干。"
+
     return {
         "engine": "tesseract",
         "variant": selected["name"],
@@ -1195,6 +1201,7 @@ def run_ocr_bytes(image_bytes: bytes) -> dict[str, Any]:
         "text": selected["text"],
         "lines": selected["lines"],
         "alternatives": alternative_items,
+        "hint": low_text_hint,
     }
 
 

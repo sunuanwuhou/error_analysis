@@ -105,9 +105,12 @@ The next stage is considered successful when:
 4. OCR upload, preview, and fill-back flow were connected into the error editor
 5. OCR now uses real database-backed regression images during validation, not only examples
 6. tiny numeric MCQ screenshots improved from noisy partial extraction to usable stem-plus-options recovery on real samples
+7. knowledge tree first level is now meant to stay collapsed by default
+8. note TOC behavior has been clarified to right-floating only, with stale TOC cleanup on non-leaf nodes
 
 ### Highest-Value Next Steps
 
 1. finish OCR candidate selection UX so users can recover quickly when the first result is imperfect
 2. continue frontend cleanup around the notes editor and active OCR entry path
-3. only after the daily capture/edit flow feels fast enough, start Shenlun module buildout
+3. improve OCR handling for mixed-text screenshots without overfitting low-text graphic questions
+4. only after the daily capture/edit flow feels fast enough, start Shenlun module buildout

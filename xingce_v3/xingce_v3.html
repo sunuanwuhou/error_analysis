@@ -666,7 +666,7 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 @media (max-width: 980px){
   .note-preview-layout{display:block}
   .note-preview-toc{width:auto;max-width:none;margin-bottom:12px}
-  .global-note-toc-dock{display:none!important}
+.global-note-toc-dock{display:none}
 }
 /* ===== Layout Refresh v3.1 ===== */
 body{
@@ -3156,6 +3156,7 @@ renderQuestionOCRPanel = function() {
   const rawText = escapeHtml(questionOCRResult.rawText || '');
   const questionText = escapeHtml(questionOCRResult.question || '');
   const optionsText = escapeHtml(questionOCRResult.options || '');
+  const hintText = escapeHtml(questionOCRResult.hint || '');
   const metaText = [questionOCRResult.engine || '', questionOCRResult.variant || '', questionOCRResult.lineCount ? `${questionOCRResult.lineCount} lines` : '']
     .filter(Boolean)
     .join(' / ');
@@ -3205,6 +3206,7 @@ renderQuestionOCRPanel = function() {
         <div style="font-weight:600;color:#334155;margin-bottom:4px">原始识别文本</div>
         <div style="white-space:pre-wrap;color:#475569;max-height:160px;overflow:auto">${rawText || '<span style="color:#94a3b8">empty</span>'}</div>
       </div>
+      ${hintText ? `<div style="padding:10px 12px;border:1px solid #fde68a;border-radius:10px;background:#fffbeb;color:#92400e;font-size:12px;line-height:1.7">${hintText}</div>` : ''}
       ${alternatives ? `<div class="ocr-alt-grid"><div style="font-weight:600;color:#334155">候选结果</div>${alternatives}</div>` : ''}
     </div>
   `;
@@ -3245,7 +3247,8 @@ async function runQuestionOCRFromBytes(fileName, mime, bytes, previewBase64) {
       lineCount: Number(result.lineCount || 0),
       engine: result.engine || '',
       variant: result.variant || '',
-      alternatives: Array.isArray(result.alternatives) ? result.alternatives : []
+      alternatives: Array.isArray(result.alternatives) ? result.alternatives : [],
+      hint: result.hint || ''
     };
     renderQuestionOCRPanel();
     if (previewBase64) {
@@ -5832,7 +5835,6 @@ function findKnowledgeBranchForModal(createIfMissing) {
 }
 function ensureKnowledgeExpandedDefaults() {
   if (knowledgeExpandedLoaded) return;
-  getKnowledgeRootNodes().forEach(node => knowledgeExpanded.add(node.id));
   knowledgeExpandedLoaded = true;
 }
 function expandKnowledgePath(nodeId) {
@@ -7005,12 +7007,12 @@ function renderKnowledgeNotesView() {
         <div class="note-split-preview" style="width:100%">
           <div class="note-split-label">📂 ${escapeHtml(currentNode.title)}</div>
           <div class="note-preview-scroll notes-content" id="noteSplitPreview" style="padding:18px 20px">
-              <div class="note-toc note-toc-floating"><div class="note-toc-title"><span>本页笔记目录</span><span>0</span></div><div class="note-toc-list"><div class="note-toc-item">当前节点是目录，进入子节点后可查看标题跳转</div></div></div>
             <p style="margin:0 0 12px;color:#666;line-height:1.8">当前节点是目录节点，不直接编辑 Markdown。关联错题会固定显示在右侧。</p>
             ${childItems ? `<div style="display:flex;gap:8px;flex-wrap:wrap">${childItems}</div>` : '<div style="color:#bbb;font-size:12px">暂无下级知识点</div>'}
           </div>
         </div>
       </div>`;
+    clearGlobalNoteTocDock();
     updateKnowledgeWorkspaceChrome(currentNode, linkedCount);
     return;
   }
@@ -7018,8 +7020,6 @@ function renderKnowledgeNotesView() {
   const noteAnchorPrefix = getKnowledgeNoteAnchorPrefix(currentNode.id);
   const noteHeadings = extractMdHeadings(note.content || '');
   const tocHtml = renderFloatingHeadingPanel(noteHeadings, noteAnchorPrefix);
-  updateGlobalNoteTocDock(noteHeadings, noteAnchorPrefix);
-  updateGlobalNoteTocDock(noteHeadings, noteAnchorPrefix);
   updateGlobalNoteTocDock(noteHeadings, noteAnchorPrefix);
   const previewHtml = note.content
     ? renderMd(note.content, { anchorPrefix: noteAnchorPrefix })
