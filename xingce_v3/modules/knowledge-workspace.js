@@ -70,7 +70,7 @@
   function renderKnowledgeWorkspaceHint(currentNode) {
     var childItems = renderKnowledgeChildPills(currentNode);
     return (childItems ? "<div class=\"knowledge-children-bar\">" + childItems + "</div>" : "") +
-      "<div class=\"knowledge-node-hint\">当前节点本身就可以写笔记，也可以继续新增下级知识点。错题可以直接挂在当前节点，也可以拖到左侧其他节点重新挂载。</div>";
+      "<div class=\"knowledge-node-hint\">当前节点既可以直接写笔记，也可以继续拆分下级知识点。错题可以挂在当前节点，也可以拖到左侧其他节点重新归类。</div>";
   }
 
   function bindKnowledgeEditorShortcuts(content) {
@@ -97,7 +97,7 @@
       updateGlobalNoteTocDock(liveHeadings, anchorPrefix);
       preview.innerHTML = ta.value
         ? renderNotePreviewLayout(renderMd(ta.value, { anchorPrefix: anchorPrefix }), tocHtml)
-        : '<span style="color:#ccc;font-size:12px;font-style:italic">输入 Markdown 后在此预览…</span>';
+        : '<span style="color:#ccc;font-size:12px;font-style:italic">输入 Markdown 后在这里预览</span>';
     }
     var gta = document.getElementById("globalNoteTA");
     var gpv = document.getElementById("noteEditPreview");
@@ -135,7 +135,7 @@
 
     var currentNode = getCurrentKnowledgeNode() || getKnowledgeRootNodes()[0];
     if (!currentNode) {
-      content.innerHTML = '<div class="note-placeholder" style="padding:40px;text-align:center;color:#999">暂无知识点笔记，先录入错题后自动生成</div>';
+      content.innerHTML = '<div class="note-placeholder" style="padding:40px;text-align:center;color:#999">暂无知识点笔记，先录入错题后会自动生成结构。</div>';
       return;
     }
 
@@ -156,14 +156,6 @@
         "<div class=\"knowledge-workspace-kicker\">知识点笔记</div>" +
         "<div class=\"knowledge-workspace-title\">" + escapeHtml(currentNode.title) + "</div>" +
         "<div class=\"knowledge-workspace-path\">" + escapeHtml(pathText) + " · 直属错题 " + directCount + " 题 · 含下级 " + linkedCount + " 题</div>" +
-        (noteHeadings.length
-          ? "<div class=\"knowledge-outline-bar\">" + noteHeadings.map(function (item) {
-              var anchorId = getNoteHeadingAnchorId(noteAnchorPrefix, item.headingIndex);
-              return "<button class=\"knowledge-outline-pill\" onclick=\"jumpToRenderedAnchor('" + anchorId + "')\">" +
-                "#".repeat(item.level) + " " + escapeHtml(item.text) +
-              "</button>";
-            }).join("") + "</div>"
-          : "<div class=\"knowledge-outline-empty\">Outline: no headings found</div>") +
       "</div>" +
       "<div class=\"knowledge-workspace-actions\">" +
         "<button class=\"btn btn-secondary btn-sm\" onclick=\"renameKnowledgeNode('" + currentNode.id + "')\">重命名</button>" +
@@ -181,7 +173,7 @@
       bodyHtml = "" +
         "<div class=\"note-split-area\">" +
           "<div class=\"note-split-editor\">" +
-            "<div class=\"note-split-label\">✎ 编辑" +
+            "<div class=\"note-split-label\">编辑" +
               "<button onclick=\"saveNoteTypeContent();noteEditing=false;renderNotesByType()\" style=\"float:right;background:#52c41a;color:#fff;border:none;border-radius:4px;padding:2px 10px;cursor:pointer;font-size:12px\">完成</button>" +
             "</div>" +
             summaryHtml +

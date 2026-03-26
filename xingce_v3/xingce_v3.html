@@ -53,7 +53,7 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .cloud-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;max-width:420px}
 .cloud-meta{display:flex;flex-direction:column;gap:2px;align-items:flex-end;min-width:160px;max-width:100%}
 .cloud-status-line{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-.cloud-details-toggle{border:none;background:transparent;color:#64748b;font-size:11px;padding:0 2px;cursor:pointer}
+.cloud-details-toggle{display:none;border:none;background:transparent;color:#64748b;font-size:11px;padding:0 2px;cursor:pointer}
 .cloud-details-toggle:hover{color:#0f172a}
 .cloud-status-badge{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;background:#f5f5f5;color:#666;font-size:11px;border:1px solid #e5e7eb}
 .cloud-status-badge.synced{background:#f0fdf4;color:#166534;border-color:#bbf7d0}
@@ -639,7 +639,7 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .note-md-textarea:focus{border-color:#e74c3c;box-shadow:0 0 0 2px rgba(231,76,60,.1)}
 .note-btn-bar{display:flex;gap:8px;margin-top:6px;flex-shrink:0;align-items:center}
 .note-btn-bar .save-hint{font-size:11px;color:#aaa}
-.note-preview-scroll{flex:1;overflow-y:auto;min-height:0;position:relative}
+.note-preview-scroll{flex:1;overflow-y:auto;min-height:0;position:relative;padding-right:6px}
 .note-preview-scroll::-webkit-scrollbar{width:5px}
 .note-preview-scroll::-webkit-scrollbar-thumb{background:#ddd;border-radius:3px}
 .note-page-shell{display:flex;flex-direction:column;gap:16px;height:100%}
@@ -669,9 +669,11 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .note-toc-item.lv3{padding-left:24px}
 .note-toc-item.lv4{padding-left:34px}
 .note-toc-inline{margin:10px 14px 0}
-.note-preview-layout{display:block;min-height:100%}
+.note-preview-layout{display:grid;grid-template-columns:minmax(180px,220px) minmax(0,1fr);gap:28px;align-items:start;min-height:100%}
+.note-preview-layout-no-toc{display:block}
 .note-preview-article{min-width:0;max-width:none}
-.note-preview-toc{display:none!important}
+.note-preview-toc{display:block!important;position:sticky;top:0;align-self:start;max-height:calc(100vh - 260px);overflow:auto;padding:4px 0 12px}
+.note-preview-toc .note-toc-floating{padding:12px 14px;border:1px solid #f1e2ce;border-radius:16px;background:linear-gradient(180deg,#fffdf8 0%,#fffaf2 100%);box-shadow:none}
 .global-note-toc-dock{position:fixed;top:118px;right:18px;z-index:1200;width:240px;max-height:calc(100vh - 142px);overflow:auto;display:none}
 .note-toc-floating{position:relative;z-index:3;display:block;width:100%;max-width:100%;margin:0;border-color:#f3d6b8;box-shadow:0 8px 24px rgba(180,83,9,.08)}
 .note-toc-floating .note-toc-title{display:flex;align-items:center;justify-content:space-between}
@@ -680,7 +682,7 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
   .notes-panel-right{display:none!important}
   .global-note-toc-dock{display:none!important}
   .note-preview-layout{display:block}
-  .note-preview-toc{width:auto;max-width:none;margin-bottom:12px}
+  .note-preview-toc{position:static;max-height:none;width:auto;max-width:none;margin-bottom:12px}
 }
 /* ===== Layout Refresh v3.1 ===== */
 body{
@@ -705,9 +707,9 @@ body{
 .nav-item.active,.nav-subtype.active,.nav-sub2.active{box-shadow:inset 0 0 0 1px #ffd7ce}
 .main-area{padding:16px 16px 16px 18px;gap:14px;background:transparent}
 .top-bar{
-  padding:14px 16px;
+  padding:10px 14px;
   border:1px solid rgba(226,232,240,.9);
-  border-radius:22px;
+  border-radius:18px;
   background:rgba(255,255,255,.88);
   box-shadow:0 10px 32px rgba(15,23,42,.07);
   backdrop-filter:blur(14px);
@@ -718,7 +720,7 @@ body{
 .top-bar-primary{display:flex;align-items:center;gap:14px;min-width:0}
 .app-title-block{display:flex;flex-direction:column;gap:2px;min-width:0}
 .app-kicker{font-size:11px;line-height:1;color:#9a6b57;text-transform:uppercase;letter-spacing:.12em;font-weight:700}
-.top-bar h1{font-size:19px;line-height:1.2}
+.top-bar h1{font-size:17px;line-height:1.2}
 .top-bar > h1 + h1{display:none}
 .top-bar{
   display:grid;
@@ -741,8 +743,8 @@ body{
 .top-bar > .more-menu,
 .top-bar > .cloud-controls{justify-self:start}
 .top-bar > .toolbar-spacer{width:100%;min-width:16px}
-.cloud-controls{padding:8px 10px;border-radius:16px;background:#f8fafc;border:1px solid #e5eaf2}
-.cloud-meta{align-items:flex-start;min-width:200px}
+.cloud-controls{padding:7px 10px;border-radius:14px;background:#f8fafc;border:1px solid #e5eaf2;max-width:360px}
+.cloud-meta{align-items:flex-start;min-width:0;max-width:220px}
 .cloud-status-line,.cloud-status-hint,.cloud-origin-list{text-align:left;justify-content:flex-start}
 .tab-content.active{min-height:0}
 #tabContentErrors .errors-area,#tabContentNotes .notes-area{
@@ -762,14 +764,14 @@ body{
 .errors-list{padding:8px 0 12px}
 .error-card{padding:14px 18px 14px 28px}
 .knowledge-workspace-bar{
-  padding:16px 18px;
+  padding:10px 14px;
   background:
     radial-gradient(circle at top right, rgba(254,215,170,.3), transparent 34%),
     linear-gradient(180deg,#fffaf5,#fff);
   border-bottom:1px solid #f1e5d7;
 }
-.knowledge-workspace-title{font-size:20px}
-.knowledge-workspace-path{color:#8b735d}
+.knowledge-workspace-title{font-size:18px}
+.knowledge-workspace-path{color:#8b735d;font-size:11px;line-height:1.5}
 .notes-content{
   background:transparent;
   overflow:auto;
@@ -885,16 +887,18 @@ body{
   padding:8px 12px;
 }
 .cloud-controls{
-  gap:10px;
+  gap:8px;
   justify-content:flex-end;
-  padding:10px 12px;
+  padding:8px 10px;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.7);
 }
 .cloud-controls > .btn{
-  min-width:104px;
+  min-width:92px;
+  min-height:38px;
+  padding:8px 12px;
 }
 .cloud-meta{
-  padding-right:4px;
+  padding-right:2px;
 }
 .tab-header{
   display:none!important;
@@ -2457,10 +2461,10 @@ renderCloudUi = function() {
   const cloudUpdatedText = formatCloudTime(cloudMeta.lastSeenBackupAt || currentOrigin.lastBackupUpdatedAt || '');
   const localUpdatedText = formatCloudTime(currentOrigin.lastLocalChangeAt || currentOrigin.lastSavedAt || currentOrigin.lastLoadedAt || '');
   syncHint.textContent = [
-    cloudSyncMessage || '',
-    timeText ? `Last event: ${timeText}` : '',
-    cloudUpdatedText ? `Backup: ${cloudUpdatedText}` : ''
-  ].filter(Boolean).join(' | ') || 'Local cache is per origin.';
+    localUpdatedText ? `最后同步: ${localUpdatedText}` : '',
+    cloudUpdatedText ? `云端备份: ${cloudUpdatedText}` : '',
+    cloudSyncMessage || ''
+  ].filter(Boolean).join(' | ') || '本地修改会自动保存到云端';
   const currentMs = toCloudTimeMs(getOriginDisplayTime(currentOrigin));
   const newerOrigins = (cloudOriginStatuses || []).filter(item => item.origin !== originText).filter(item => currentMs && currentMs > toCloudTimeMs(getOriginDisplayTime(item)));
   const lines = [];
@@ -7413,7 +7417,10 @@ function prependNodeHeading(headings, nodeTitle) {
 }
 function renderNotePreviewLayout(previewHtml, tocHtml) {
   const article = `<article class="note-preview-article">${previewHtml || ''}</article>`;
-  return `<div class="note-preview-layout">${article}</div>`;
+  if (!tocHtml) {
+    return `<div class="note-preview-layout note-preview-layout-no-toc">${article}</div>`;
+  }
+  return `<div class="note-preview-layout"><aside class="note-preview-toc">${tocHtml}</aside>${article}</div>`;
 }
 function renderKnowledgeWorkspaceHeader(node, pathText, directCount, linkedCount, noteEditing) {
   if (!node) return '';
