@@ -124,3 +124,29 @@ Current locations:
 - [knowledge_sources/shenlun/ashore](E:\IdeaProject\git\xingce_v3_lab\knowledge_sources\shenlun\ashore)
 
 Do not manually rewrite these copies as product content. Product-facing structured data should be generated from them in a later phase.
+## 2026-03-26 OCR note
+
+- `PaddleOCR` was evaluated inside the current `error_manage-ocr` app container.
+- App-side upload wiring is straightforward, but the runtime is not stable enough for production yet.
+- Current blockers found during real tests:
+  - missing system libs (`libGL.so.1`, `libgomp.so.1`) until added in Docker
+  - Paddle runtime compatibility errors in this base image (`ConvertPirAttribute2RuntimeAttribute...`)
+- Recommendation:
+  - keep OCR as a separate worker/container instead of coupling it to the main app
+  - use a two-step flow: OCR to text, then feed text into existing AI analysis endpoints
+
+## 2026-03-26 OCR progress update
+
+- The current production OCR path is now `Tesseract`-based, not `PaddleOCR`-based.
+- OCR regression is being checked against real screenshots extracted from `user_backups`.
+- Current practical result:
+  - long numeric options now recover much better than the first Tesseract pass
+  - tiny numeric MCQ screenshots gained a dedicated short-option-column recovery path
+  - the OCR response now includes alternative candidates so the frontend can expose safer fallback choices
+- Current boundary:
+  - numeric choice screenshots improved the most
+  - mixed Chinese text stems and non-standard layouts still need another pass
+- Current priority order:
+  1. stabilize OCR candidate selection in the frontend
+  2. keep improving OCR for mixed text images
+  3. only then revisit whether a separate OCR worker is still necessary

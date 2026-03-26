@@ -50,16 +50,19 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .top-bar{background:#fff;border-bottom:1px solid #e8e8e8;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0}
 .top-bar h1{font-size:15px;font-weight:700;color:#2c3e50;white-space:nowrap}
 .toolbar-spacer{margin-left:auto}
-.cloud-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.cloud-meta{display:flex;flex-direction:column;gap:2px;align-items:flex-end;min-width:180px}
+.cloud-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;max-width:420px}
+.cloud-meta{display:flex;flex-direction:column;gap:2px;align-items:flex-end;min-width:160px;max-width:100%}
 .cloud-status-line{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.cloud-details-toggle{border:none;background:transparent;color:#64748b;font-size:11px;padding:0 2px;cursor:pointer}
+.cloud-details-toggle:hover{color:#0f172a}
 .cloud-status-badge{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;background:#f5f5f5;color:#666;font-size:11px;border:1px solid #e5e7eb}
 .cloud-status-badge.synced{background:#f0fdf4;color:#166534;border-color:#bbf7d0}
 .cloud-status-badge.dirty{background:#fff7ed;color:#c2410c;border-color:#fed7aa}
 .cloud-status-badge.saving{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}
 .cloud-status-badge.error{background:#fef2f2;color:#b91c1c;border-color:#fecaca}
-.cloud-status-hint{font-size:11px;color:#888;line-height:1.4;text-align:right}
-.cloud-origin-list{font-size:11px;color:#666;line-height:1.45;text-align:right;max-width:520px}
+.cloud-status-hint{font-size:11px;color:#888;line-height:1.4;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.cloud-origin-list{display:none;font-size:11px;color:#666;line-height:1.45;text-align:right;max-width:420px;padding-top:2px}
+.cloud-origin-list.expanded{display:block}
 .cloud-origin-list .cloud-origin-alert{color:#c2410c;font-weight:600}
 .more-menu{position:relative}
 .more-menu-panel{display:none;position:absolute;top:calc(100% + 8px);left:0;background:#fff;border:1px solid #e8e8e8;border-radius:10px;box-shadow:0 14px 32px rgba(0,0,0,.12);padding:8px;min-width:180px;z-index:120}
@@ -296,6 +299,37 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .form-group input:focus,.form-group textarea:focus,.form-group select:focus{border-color:#e74c3c;box-shadow:0 0 0 2px rgba(231,76,60,.1)}
 .form-group textarea{resize:vertical;min-height:70px}
 .modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.entry-modal{width:min(920px,96vw);max-height:92vh}
+.entry-flow-banner{display:grid;gap:10px;margin:0 0 16px;padding:14px 16px;border:1px solid #e2e8f0;border-radius:14px;background:linear-gradient(180deg,#f8fbff 0%,#f8fafc 100%)}
+.entry-flow-title{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.entry-flow-title strong{font-size:13px;color:#0f172a}
+.entry-flow-sub{font-size:12px;line-height:1.7;color:#64748b}
+.entry-flow-steps{display:flex;gap:8px;flex-wrap:wrap}
+.entry-flow-chip{padding:6px 10px;border-radius:999px;background:#fff;border:1px solid #dbeafe;font-size:12px;color:#334155}
+.entry-flow-chip strong{color:#0f172a}
+.entry-quick-row{display:flex;gap:8px;flex-wrap:wrap}
+.entry-inline-tip{font-size:12px;color:#64748b}
+.entry-section{margin:0 0 14px;padding:16px;border:1px solid #e5e7eb;border-radius:16px;background:#fff}
+.entry-section-primary{border-color:#dbeafe;background:linear-gradient(180deg,#ffffff 0%,#f8fbff 100%)}
+.entry-section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.entry-section-title strong{font-size:14px;color:#0f172a}
+.entry-section-sub{font-size:12px;color:#64748b;line-height:1.7}
+.entry-required-badge{padding:4px 8px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-size:11px;font-weight:600}
+.entry-advanced{margin:0 0 14px;border:1px solid #e5e7eb;border-radius:16px;background:#fff;overflow:hidden}
+.entry-advanced summary{display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;list-style:none;padding:14px 16px;font-weight:600;color:#0f172a}
+.entry-advanced summary::-webkit-details-marker{display:none}
+.entry-advanced-body{padding:0 16px 16px}
+.entry-advanced-hint{font-size:12px;color:#64748b;line-height:1.7;margin:0 0 12px}
+.ocr-alt-grid{display:grid;gap:8px}
+.ocr-alt-card{padding:10px 12px;border:1px solid #e2e8f0;border-radius:12px;background:#fff}
+.ocr-alt-card.active{border-color:#93c5fd;background:#eff6ff}
+.ocr-alt-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.ocr-alt-meta{font-size:11px;color:#64748b}
+#addModal .modal-btns{position:sticky;bottom:-22px;padding:14px 0 0;margin-top:18px;background:linear-gradient(180deg,rgba(255,255,255,0) 0%, #fff 36%)}
+#addModal textarea{min-height:88px}
+#addModal #editQuestion{min-height:128px}
+#addModal #editAnalysis{min-height:110px}
+#addModal .form-group{margin-bottom:14px}
 .import-modes{display:flex;gap:10px;margin-bottom:12px}
 .import-mode-btn{flex:1;padding:10px;border:2px solid #e0e0e0;border-radius:8px;cursor:pointer;text-align:center;transition:.2s;background:#fff}
 .import-mode-btn:hover{border-color:#e74c3c}
@@ -623,11 +657,11 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .note-toc-item.lv3{padding-left:28px}
 .note-toc-item.lv4{padding-left:38px}
 .note-toc-inline{margin:10px 14px 0}
-.note-preview-layout{display:grid;grid-template-columns:minmax(0,1fr) 280px;align-items:start;gap:16px;min-height:100%}
-.note-preview-article{min-width:0;grid-column:1}
-.note-preview-toc{width:280px;max-width:280px;grid-column:2}
-.global-note-toc-dock{position:fixed;top:72px;right:16px;z-index:1200;width:280px;max-height:calc(100vh - 96px);overflow:auto;display:none}
-.note-toc-floating{position:sticky;top:8px;z-index:3;display:block;width:100%;max-width:100%;margin:0;border-color:#f3d6b8;box-shadow:0 8px 24px rgba(180,83,9,.08)}
+.note-preview-layout{display:block;min-height:100%}
+.note-preview-article{min-width:0;max-width:none}
+.note-preview-toc{display:none!important}
+.global-note-toc-dock{position:fixed;top:118px;right:18px;z-index:1200;width:240px;max-height:calc(100vh - 142px);overflow:auto;display:none}
+.note-toc-floating{position:relative;z-index:3;display:block;width:100%;max-width:100%;margin:0;border-color:#f3d6b8;box-shadow:0 12px 28px rgba(180,83,9,.1)}
 .note-toc-floating .note-toc-title{display:flex;align-items:center;justify-content:space-between}
 @media (max-width: 980px){
   .note-preview-layout{display:block}
@@ -725,11 +759,11 @@ body{
 .notes-content{
   background:transparent;
   overflow:auto;
-  padding:0 18px 20px;
+  padding:0 24px 24px;
 }
 #notesContent > *{
   width:100%;
-  max-width:1180px;
+  max-width:1400px;
   margin-left:auto;
   margin-right:auto;
 }
@@ -761,8 +795,8 @@ body{
 .note-type-tabs{padding:12px 18px;background:linear-gradient(180deg,#fffdfa,#fff)}
 .note-type-tab{border-radius:999px;padding:6px 14px}
 .note-split-area{
-  gap:16px;
-  padding:16px 18px 18px;
+  gap:18px;
+  padding:16px 20px 20px;
   background:linear-gradient(180deg,#fcfcfd,#fff);
 }
 .note-split-editor,.note-split-preview{
@@ -771,8 +805,8 @@ body{
   background:#fff;
   box-shadow:0 10px 24px rgba(15,23,42,.04);
 }
-.note-split-editor{padding:14px 14px 12px}
-.note-split-preview{padding:14px 16px}
+.note-split-editor{flex:1.05;padding:14px 14px 12px}
+.note-split-preview{flex:1.35;padding:14px 18px}
 .note-md-textarea{
   border-radius:14px;
   border-color:#e5e7eb;
@@ -1125,8 +1159,7 @@ body{
   <!-- 顶部操作栏 -->
 <div class="top-bar">
     <h1>Ashore</h1>
-        <h1>Ashore</h1>
-      <div class="view-mode-switch">
+    <div class="view-mode-switch">
       <button class="btn btn-secondary" id="viewModeErrors" onclick="switchTab('errors')">题目列表</button>
       <button class="btn btn-secondary" id="viewModeNotes" onclick="switchTab('notes')">学习笔记</button>
     </div>
@@ -1150,6 +1183,7 @@ body{
         <div class="cloud-status-line">
           <span id="cloudUserBadge" style="font-size:12px;color:#666">Cloud: offline</span>
           <span id="cloudSyncBadge" class="cloud-status-badge">idle</span>
+          <button type="button" id="cloudDetailsToggle" class="cloud-details-toggle" onclick="toggleCloudDetails()">详情</button>
         </div>
         <div id="cloudSyncHint" class="cloud-status-hint">Local cache is per origin.</div>
         <div id="cloudOriginStatus" class="cloud-origin-list"></div>
@@ -1234,9 +1268,18 @@ body{
 
 <!-- ===== 添加/编辑弹窗 ===== -->
 <div class="modal-mask" id="addModal">
-  <div class="modal">
+  <div class="modal entry-modal">
     <button class="modal-close" onclick="closeModal('addModal')">✕</button>
     <h2 id="addModalTitle">添加错题</h2>
+    <div id="entryFlowBanner" class="entry-flow-banner" style="display:none"></div>
+    <div class="entry-section entry-section-primary">
+      <div class="entry-section-title">
+        <div>
+          <strong>先完成最小录入</strong>
+          <div class="entry-section-sub">先录题干、选项、答案和知识点。只要这几项对了，这道题就能先存下来。</div>
+        </div>
+        <span class="entry-required-badge">优先必填</span>
+      </div>
     <div class="form-group"><label>题型</label>
       <select id="editType" onchange="onTypeChange()">
         <option>言语理解与表达</option><option>数量关系</option><option>判断推理</option>
@@ -1254,15 +1297,40 @@ body{
       </div>
       <div id="editKnowledgeHint" style="font-size:11px;color:#888;margin-top:6px;line-height:1.5">未分类 > 未分类 > 未细分 > 保存时默认挂到当前节点</div>
     </div>
-    <div class="form-group"><label>题目（必填）</label><textarea id="editQuestion" rows="4" placeholder="粘贴题目原文..." oninput="autoDetectType(this.value)"></textarea></div>
+    <div class="form-group">
+      <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <span>题目（必填）</span>
+        <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <input type="file" id="ocrQuestionFileInput" accept="image/*" style="display:none" onchange="handleQuestionOCRFile(event)">
+          <button type="button" class="btn btn-secondary btn-sm" id="ocrQuestionBtn" onclick="document.getElementById('ocrQuestionFileInput').click()">识别题图</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="ocrCurrentImgBtn" onclick="runQuestionOCRFromCurrentImage()" style="display:none">识别当前图</button>
+          <span id="ocrQuestionStatus" style="font-size:12px;color:#888"></span>
+        </span>
+      </label>
+      <textarea id="editQuestion" rows="4" placeholder="粘贴题目原文..." oninput="autoDetectType(this.value)"></textarea>
+      <div id="ocrQuestionPanel" style="display:none;margin-top:10px;padding:10px 12px;background:#fafafa;border:1px solid #eee;border-radius:10px;font-size:12px;line-height:1.7"></div>
+    </div>
     <div style="font-size:11px;color:#aaa;margin-top:-8px;margin-bottom:6px">💡 在题目框中直接 Ctrl+V 粘贴图片可自动附加</div>
     <div class="form-group" id="imgFormGroup" style="display:none;margin-bottom:10px">
       <img id="imgPreview" src="" style="max-width:100%;max-height:200px;border-radius:6px;border:1px solid #e0e0e0;display:block">
-      <button type="button" onclick="clearEditImg(true)" style="margin-top:4px;background:none;border:none;color:#e74c3c;cursor:pointer;font-size:12px">✕ 删除图片</button>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:4px">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="runQuestionOCRFromCurrentImage()">识别当前图</button>
+        <button type="button" onclick="clearEditImg(true)" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:12px">✕ 删除图片</button>
+      </div>
     </div>
     <div class="form-group"><label>选项（用 | 分隔，如 A. xxx|B. xxx|C. xxx|D. xxx）</label><textarea id="editOptions" rows="3" placeholder="A. ...|B. ...|C. ...|D. ..."></textarea></div>
     <div class="form-group"><label>正确答案 <span style="color:#e74c3c">*</span></label><input type="text" id="editAnswer" placeholder="如：A（必填）"></div>
     <div class="form-group"><label>我的错误答案（可选）</label><input type="text" id="editMyAnswer" placeholder="如：B"></div>
+    </div>
+
+    <div class="entry-section">
+      <div class="entry-section-title">
+        <div>
+          <strong>再补分析和错因</strong>
+          <div class="entry-section-sub">这里更适合在题目已经确认后处理，AI 也优先服务这一段。</div>
+        </div>
+        <span class="entry-inline-tip">可稍后补</span>
+      </div>
     <div class="form-group">
       <label>AI 辅助分析</label>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -1287,43 +1355,53 @@ body{
       <img id="analysisImgPreview" src="" style="max-width:100%;max-height:160px;border-radius:6px;border:1px solid #e0e0e0;display:block">
       <button type="button" onclick="clearEditAnalysisImg(true)" style="margin-top:4px;background:none;border:none;color:#e74c3c;cursor:pointer;font-size:12px">✕ 删除解析图片</button>
     </div>
-    <div class="form-group"><label>状态</label>
-      <select id="editStatus"><option value="focus">重点复习</option><option value="review">待复习</option><option value="mastered">已掌握</option></select></div>
-    <div class="form-group"><label>难度 <span style="font-size:11px;color:#aaa">（可选，1-3星）</span></label>
-      <div class="star-edit">
-        <button type="button" class="star-edit-btn" id="dstar1" onclick="setModalDiff(1)">★</button>
-        <button type="button" class="star-edit-btn" id="dstar2" onclick="setModalDiff(2)">★</button>
-        <button type="button" class="star-edit-btn" id="dstar3" onclick="setModalDiff(3)">★</button>
-        <span id="dstarLabel" style="font-size:12px;color:#aaa;margin-left:6px"></span>
-      </div>
     </div>
-    <div class="form-group">
-      <label>出处 <span style="font-size:11px;color:#aaa">（可选）</span></label>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <select id="editSrcYear" style="flex:1;min-width:90px;padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none">
-          <option value="">年份</option>
-          <option>2025</option><option>2024</option><option>2023</option><option>2022</option>
-          <option>2021</option><option>2020</option><option>2019</option><option>2018</option>
-          <option>2017</option><option>2016</option><option>2015</option><option>2014</option>
-          <option>2013</option><option>2012</option><option>2011</option><option>2010</option>
-        </select>
-        <select id="editSrcProvince" style="flex:1;min-width:100px;padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none">
-          <option value="">省份/级别</option>
-          <option>国考</option>
-          <option>北京</option><option>天津</option><option>上海</option><option>重庆</option>
-          <option>河北</option><option>山西</option><option>辽宁</option><option>吉林</option><option>黑龙江</option>
-          <option>江苏</option><option>浙江</option><option>安徽</option><option>福建</option><option>江西</option>
-          <option>山东</option><option>河南</option><option>湖北</option><option>湖南</option><option>广东</option>
-          <option>广西</option><option>海南</option><option>四川</option><option>贵州</option><option>云南</option>
-          <option>西藏</option><option>陕西</option><option>甘肃</option><option>青海</option><option>宁夏</option>
-          <option>新疆</option><option>内蒙古</option>
-        </select>
-        <input type="text" id="editSrcOrigin" placeholder="来源（自填）" style="flex:2;min-width:120px;padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none">
+    <details class="entry-advanced" id="entryAdvancedDetails">
+      <summary>
+        <span>补充信息</span>
+        <span class="entry-inline-tip">状态、难度、出处这些可以最后再补</span>
+      </summary>
+      <div class="entry-advanced-body">
+        <div class="entry-advanced-hint">如果你现在只是想先把题收进去，可以直接跳过这一段，后面再回来补。</div>
+        <div class="form-group"><label>状态</label>
+          <select id="editStatus"><option value="focus">重点复习</option><option value="review">待复习</option><option value="mastered">已掌握</option></select></div>
+        <div class="form-group"><label>难度 <span style="font-size:11px;color:#aaa">（可选，1-3星）</span></label>
+          <div class="star-edit">
+            <button type="button" class="star-edit-btn" id="dstar1" onclick="setModalDiff(1)">★</button>
+            <button type="button" class="star-edit-btn" id="dstar2" onclick="setModalDiff(2)">★</button>
+            <button type="button" class="star-edit-btn" id="dstar3" onclick="setModalDiff(3)">★</button>
+            <span id="dstarLabel" style="font-size:12px;color:#aaa;margin-left:6px"></span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>出处 <span style="font-size:11px;color:#aaa">（可选）</span></label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <select id="editSrcYear" style="flex:1;min-width:90px;padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none">
+              <option value="">年份</option>
+              <option>2025</option><option>2024</option><option>2023</option><option>2022</option>
+              <option>2021</option><option>2020</option><option>2019</option><option>2018</option>
+              <option>2017</option><option>2016</option><option>2015</option><option>2014</option>
+              <option>2013</option><option>2012</option><option>2011</option><option>2010</option>
+            </select>
+            <select id="editSrcProvince" style="flex:1;min-width:100px;padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none">
+              <option value="">省份/级别</option>
+              <option>国考</option>
+              <option>北京</option><option>天津</option><option>上海</option><option>重庆</option>
+              <option>河北</option><option>山西</option><option>辽宁</option><option>吉林</option><option>黑龙江</option>
+              <option>江苏</option><option>浙江</option><option>安徽</option><option>福建</option><option>江西</option>
+              <option>山东</option><option>河南</option><option>湖北</option><option>湖南</option><option>广东</option>
+              <option>广西</option><option>海南</option><option>四川</option><option>贵州</option><option>云南</option>
+              <option>西藏</option><option>陕西</option><option>甘肃</option><option>青海</option><option>宁夏</option>
+              <option>新疆</option><option>内蒙古</option>
+            </select>
+            <input type="text" id="editSrcOrigin" placeholder="来源（自填）" style="flex:2;min-width:120px;padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none">
+          </div>
+        </div>
       </div>
-    </div>
+    </details>
     <div class="modal-btns">
       <button class="btn btn-secondary" onclick="closeModal('addModal')">取消</button>
-      <button class="btn btn-primary" onclick="saveError()">保存</button>
+      <button class="btn btn-primary" id="saveErrorBtn" onclick="saveError()">保存这道题</button>
     </div>
   </div>
 </div>
@@ -1775,6 +1853,8 @@ let editAnalysisImgBase64  = null;
 let editAnalysisImgDeleted = false;
 let aiAnalyzeBusy = false;
 let aiAnalyzeResult = null;
+let questionOCRBusy = false;
+let questionOCRResult = null;
 
 // 日期筛选
 let dateFrom = '';
@@ -1967,6 +2047,54 @@ function saveKnowledgeState() {
 function saveKnowledgeExpanded() {
   DB.set(KEY_KNOWLEDGE_EXPANDED, JSON.stringify(Array.from(knowledgeExpanded)));
 }
+const persistTimers = new Map();
+let suppressCloudAutoSave = 0;
+function queuePersist(key, value, delay) {
+  const wait = typeof delay === 'number' ? delay : 160;
+  const encoded = typeof value === 'string' ? value : JSON.stringify(value);
+  clearTimeout(persistTimers.get(key));
+  const timer = setTimeout(() => {
+    DB.set(key, encoded).catch(e => showToast('本地存储失败: ' + e.message, 'error'));
+    persistTimers.delete(key);
+  }, wait);
+  persistTimers.set(key, timer);
+}
+function withCloudAutoSaveSuppressed(fn) {
+  suppressCloudAutoSave += 1;
+  try {
+    return fn();
+  } finally {
+    suppressCloudAutoSave = Math.max(0, suppressCloudAutoSave - 1);
+  }
+}
+saveData = function() {
+  queuePersist(KEY_ERRORS, errors);
+  scheduleCloudSave();
+};
+saveReveal = function() {
+  queuePersist(KEY_REVEALED, [...revealed]);
+  scheduleCloudSave();
+};
+saveExpMain = function() {
+  queuePersist(KEY_EXP_MAIN, [...expMain, ...expMainSub]);
+  queuePersist(KEY_EXP_SUB2, [...expMainSub2]);
+  scheduleCloudSave();
+};
+saveExpTypes = function() {
+  queuePersist(KEY_EXP_TYPES, [...expTypes]);
+  scheduleCloudSave();
+};
+saveNotesByType = function() {
+  queuePersist(KEY_NOTES_BY_TYPE, notesByType);
+  queuePersist(KEY_NOTE_IMAGES, noteImages);
+  scheduleCloudSave();
+};
+saveKnowledgeState = function() {
+  syncKnowledgeNotesFromTree();
+  queuePersist(KEY_KNOWLEDGE_TREE, knowledgeTree);
+  queuePersist(KEY_KNOWLEDGE_NOTES, knowledgeNotes);
+  scheduleCloudSave();
+};
 let cloudUser = null;
 let cloudSaveTimer = null;
 let cloudBusy = false;
@@ -1976,7 +2104,12 @@ let cloudSyncMessage = '';
 let cloudSyncUpdatedAt = '';
 let cloudOriginStatuses = [];
 let cloudOriginStatusTimer = null;
+let cloudDetailsExpanded = false;
 let cloudMeta = getDefaultCloudMeta();
+function toggleCloudDetails() {
+  cloudDetailsExpanded = !cloudDetailsExpanded;
+  renderCloudUi();
+}
 function getFullBackupPayload() {
   return {
     xc_version: 2,
@@ -2185,7 +2318,9 @@ async function applyCloudBackup(data, updatedAt, opts) {
     clearLocalSyncMarkers();
     resetCurrentOriginRestoreDecision();
   }
-  _applyFullBackup(data, 'restore');
+  withCloudAutoSaveSuppressed(() => {
+    _applyFullBackup(data, 'restore');
+  });
   rememberCloudDecision(updatedAt || data.exportTime || '', 'loaded');
   scheduleOriginStatusSync({
     localChangedAt: updatedAt || data.exportTime || '',
@@ -2230,8 +2365,9 @@ function renderCloudUi() {
   const syncBadge = document.getElementById('cloudSyncBadge');
   const syncHint = document.getElementById('cloudSyncHint');
   const originStatus = document.getElementById('cloudOriginStatus');
+  const detailsToggle = document.getElementById('cloudDetailsToggle');
   const logoutBtn = document.getElementById('cloudLogoutBtn');
-  if (!badge || !logoutBtn || !syncBadge || !syncHint || !originStatus) return;
+  if (!badge || !logoutBtn || !syncBadge || !syncHint || !originStatus || !detailsToggle) return;
   if (cloudUser) {
     badge.textContent = 'Cloud: ' + cloudUser.username;
     logoutBtn.style.display = '';
@@ -2278,6 +2414,61 @@ function renderCloudUi() {
   });
   originStatus.innerHTML = lines.join('');
 }
+renderCloudUi = function() {
+  const badge = document.getElementById('cloudUserBadge');
+  const syncBadge = document.getElementById('cloudSyncBadge');
+  const syncHint = document.getElementById('cloudSyncHint');
+  const originStatus = document.getElementById('cloudOriginStatus');
+  const detailsToggle = document.getElementById('cloudDetailsToggle');
+  const logoutBtn = document.getElementById('cloudLogoutBtn');
+  if (!badge || !logoutBtn || !syncBadge || !syncHint || !originStatus || !detailsToggle) return;
+  if (cloudUser) {
+    badge.textContent = 'Cloud: ' + cloudUser.username;
+    logoutBtn.style.display = '';
+  } else {
+    badge.textContent = 'Cloud: offline';
+    logoutBtn.style.display = '';
+  }
+  syncBadge.className = `cloud-status-badge ${cloudSyncState}`;
+  syncBadge.textContent = ({
+    idle: 'idle',
+    dirty: 'local changed',
+    saving: 'syncing',
+    synced: 'synced',
+    error: 'sync failed'
+  })[cloudSyncState] || cloudSyncState;
+  const currentOrigin = mergeCurrentOriginStatus();
+  const originText = currentOrigin.origin || getCloudOriginKey();
+  const timeText = formatCloudTime(cloudSyncUpdatedAt || cloudMeta.lastSavedAt || cloudMeta.lastLoadedAt || '');
+  const cloudUpdatedText = formatCloudTime(cloudMeta.lastSeenBackupAt || currentOrigin.lastBackupUpdatedAt || '');
+  const localUpdatedText = formatCloudTime(currentOrigin.lastLocalChangeAt || currentOrigin.lastSavedAt || currentOrigin.lastLoadedAt || '');
+  syncHint.textContent = [
+    cloudSyncMessage || '',
+    timeText ? `Last event: ${timeText}` : '',
+    cloudUpdatedText ? `Backup: ${cloudUpdatedText}` : ''
+  ].filter(Boolean).join(' | ') || 'Local cache is per origin.';
+  const currentMs = toCloudTimeMs(getOriginDisplayTime(currentOrigin));
+  const newerOrigins = (cloudOriginStatuses || []).filter(item => item.origin !== originText).filter(item => currentMs && currentMs > toCloudTimeMs(getOriginDisplayTime(item)));
+  const lines = [];
+  if (newerOrigins.length) lines.push(`<div class="cloud-origin-alert">Current origin is newer than ${newerOrigins.length} other entries</div>`);
+  lines.push(`<div>Current: ${escapeHtml(originText)}</div>`);
+  if (localUpdatedText) lines.push(`<div>Local: ${escapeHtml(localUpdatedText)}</div>`);
+  if (cloudUpdatedText) lines.push(`<div>Cloud: ${escapeHtml(cloudUpdatedText)}</div>`);
+  const mergedItems = [currentOrigin].concat((cloudOriginStatuses || []).filter(item => item.origin !== originText));
+  mergedItems.forEach(item => {
+    const label = item.origin === originText ? 'Current' : 'Other';
+    const localText = formatCloudTime(item.lastLocalChangeAt || item.lastSavedAt || item.lastLoadedAt || '');
+    const cloudText = formatCloudTime(item.lastBackupUpdatedAt || '');
+    const suffix = [
+      localText ? `Local: ${localText}` : '',
+      cloudText ? `Cloud: ${cloudText}` : ''
+    ].filter(Boolean).join(' | ');
+    lines.push(`<div>${escapeHtml(label)} ${escapeHtml(item.origin)}${suffix ? ` | ${escapeHtml(suffix)}` : ''}</div>`);
+  });
+  detailsToggle.textContent = cloudDetailsExpanded ? '收起' : '详情';
+  originStatus.classList.toggle('expanded', cloudDetailsExpanded);
+  originStatus.innerHTML = lines.join('');
+};
 async function refreshCloudSession() {
   try {
     const res = await fetch('/api/me', { credentials: 'include' });
@@ -2405,6 +2596,7 @@ async function saveCloudBackup(opts) {
   }
 }
 function scheduleCloudSave() {
+  if (suppressCloudAutoSave > 0) return;
   markLocalChange();
   if (!cloudUser) {
     setCloudSyncState('dirty', 'Local changes pending until login', '');
@@ -2413,10 +2605,10 @@ function scheduleCloudSave() {
   }
   clearTimeout(cloudSaveTimer);
   pendingCloudSave = false;
-  setCloudSyncState('dirty', 'Waiting 1.2s before auto-save', '');
+  setCloudSyncState('dirty', 'Waiting 2.5s before auto-save', '');
   cloudSaveTimer = setTimeout(() => {
     saveCloudBackup({ silent: true });
-  }, 1200);
+  }, 2500);
 }
 // 生成笔记图片短 ID
 async function migrateIntegerIds() {
@@ -2605,7 +2797,7 @@ function saveTodayDone(){
 }
 let _history = [];
 function loadHistory(){ return _history; }
-function pushHistory(rec){ _history.unshift(rec); if(_history.length>30)_history.length=30; DB.set(KEY_HISTORY,JSON.stringify(_history)); scheduleCloudSave(); }
+function pushHistory(rec){ _history.unshift(rec); if(_history.length>30)_history.length=30; queuePersist(KEY_HISTORY, _history, 220); scheduleCloudSave(); }
 let aiChatHistory = [];
 
 async function fetchJsonWithAuth(url, options){
@@ -2768,12 +2960,16 @@ function setEditImgPreview(b64) {
   editImgBase64 = b64;
   document.getElementById('imgPreview').src = b64;
   document.getElementById('imgFormGroup').style.display = 'block';
+  const currentBtn = document.getElementById('ocrCurrentImgBtn');
+  if (currentBtn) currentBtn.style.display = '';
 }
 function clearEditImg(isUserAction) {
   editImgBase64 = null;
   if(isUserAction) editImgDeleted = true;
   document.getElementById('imgFormGroup').style.display = 'none';
   document.getElementById('imgPreview').src = '';
+  const currentBtn = document.getElementById('ocrCurrentImgBtn');
+  if (currentBtn) currentBtn.style.display = 'none';
 }
 function readFileAsBase64(file) {
   return new Promise(res=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.readAsDataURL(file);});
@@ -2807,6 +3003,291 @@ async function uploadImageValue(value) {
   } catch (e) {
     console.warn('[uploadImageValue] fallback to inline image', e);
     return value;
+  }
+}
+async function imageValueToBytes(value) {
+  if (!value) throw new Error('image is empty');
+  if (String(value).startsWith('data:')) {
+    const { mime, bytes } = dataUrlToBytes(value);
+    return { mime, bytes };
+  }
+  if (isRemoteImageRef(value)) {
+    const res = await fetch(value, { credentials: 'include' });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || data.error || 'image fetch failed');
+    }
+    const mime = res.headers.get('content-type') || 'image/jpeg';
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    return { mime, bytes };
+  }
+  throw new Error('unsupported image reference');
+}
+function normalizeOCRText(text) {
+  return String(text || '')
+    .replace(/\r/g, '\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/[ ]{2,}/g, ' ')
+    .trim();
+}
+function parseOCRQuestionPayload(text) {
+  const normalized = normalizeOCRText(text)
+    .replace(/\s([A-D])[\.、]/g, '\n$1.')
+    .replace(/([（(][A-D][）)])/g, '\n$1');
+  const compact = normalized.split('\n').map(line => line.trim()).filter(Boolean);
+  const optionStart = compact.findIndex(line => /^[A-D][\.\u3001]/.test(line) || /^[（(][A-D][）)]/.test(line));
+  if (optionStart === -1) {
+    return { question: normalized, options: '' };
+  }
+  const question = compact.slice(0, optionStart).join('\n').trim();
+  const options = compact.slice(optionStart).join('|').trim();
+  return { question, options };
+}
+parseOCRQuestionPayload = function(text) {
+  const normalized = normalizeOCRText(text)
+    .replace(/\s+([A-D])[\.\u3001]/g, '\n$1.')
+    .replace(/\s+([A-D])\s+/g, '\n$1. ');
+  const compact = normalized.split('\n').map(line => line.trim()).filter(Boolean);
+  const optionStart = compact.findIndex(line => /^[A-D][\.\u3001]/.test(line));
+  if (optionStart !== -1) {
+    const question = compact.slice(0, optionStart).join('\n').trim();
+    const options = compact.slice(optionStart).join('|').trim();
+    return { question, options };
+  }
+  if (compact.length >= 3) {
+    const numericOptionLines = compact.slice(1).filter(line => /^-?\d+(?:\.\d+)?$/.test(line.replace(/\s+/g, '')));
+    if (numericOptionLines.length >= 2) {
+      const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
+      const options = numericOptionLines
+        .slice(0, labels.length)
+        .map((line, idx) => `${labels[idx]}. ${line.replace(/\s+/g, '')}`)
+        .join('|');
+      return { question: compact[0], options };
+    }
+  }
+  return { question: normalized, options: '' };
+};
+
+function applyOCRQuestionField(field) {
+  if (!questionOCRResult) return;
+  if (field === 'question') {
+    const el = document.getElementById('editQuestion');
+    if (el && questionOCRResult.question) {
+      el.value = questionOCRResult.question;
+      autoDetectType(el.value);
+    }
+  } else if (field === 'options') {
+    const el = document.getElementById('editOptions');
+    if (el && questionOCRResult.options) el.value = questionOCRResult.options;
+  } else if (field === 'all') {
+    applyOCRQuestionField('question');
+    applyOCRQuestionField('options');
+  } else if (field === 'append') {
+    const el = document.getElementById('editQuestion');
+    if (el && questionOCRResult.rawText) {
+      el.value = `${el.value.trim()}\n${questionOCRResult.rawText}`.trim();
+      autoDetectType(el.value);
+    }
+  }
+  updateQuestionOCRStatus('已回填，可继续修改', 'success');
+}
+function renderQuestionOCRPanel() {
+  const panel = document.getElementById('ocrQuestionPanel');
+  if (!panel) return;
+  if (!questionOCRResult) {
+    panel.style.display = 'none';
+    panel.innerHTML = '';
+    return;
+  }
+  const rawText = escapeHtml(questionOCRResult.rawText || '');
+  const questionText = escapeHtml(questionOCRResult.question || '');
+  const optionsText = escapeHtml(questionOCRResult.options || '');
+  panel.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <div style="font-weight:700;color:#475569">OCR 识别结果</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="applyOCRQuestionField('question')">回填题干</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="applyOCRQuestionField('options')" ${questionOCRResult.options ? '' : 'disabled'}>回填选项</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="applyOCRQuestionField('all')" ${questionOCRResult.options ? '' : 'disabled'}>全部回填</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="applyOCRQuestionField('append')">追加原文</button>
+      </div>
+    </div>
+    <div style="display:grid;gap:8px">
+      <div style="padding:8px 10px;background:#fff;border:1px solid #eceff3;border-radius:8px">
+        <div style="font-weight:600;color:#334155;margin-bottom:4px">拆分后的题干</div>
+        <div style="white-space:pre-wrap;word-break:break-word">${questionText || '<span style="color:#94a3b8">未拆出题干</span>'}</div>
+      </div>
+      <div style="padding:8px 10px;background:#fff;border:1px solid #eceff3;border-radius:8px">
+        <div style="font-weight:600;color:#334155;margin-bottom:4px">拆分后的选项</div>
+        <div style="white-space:pre-wrap;word-break:break-word">${optionsText || '<span style="color:#94a3b8">未识别出标准选项结构</span>'}</div>
+      </div>
+      <div style="padding:8px 10px;background:#fff;border:1px solid #eceff3;border-radius:8px">
+        <div style="font-weight:600;color:#334155;margin-bottom:4px">原始识别文本</div>
+        <div style="white-space:pre-wrap;word-break:break-word">${rawText || '<span style="color:#94a3b8">无结果</span>'}</div>
+      </div>
+    </div>
+  `;
+  panel.style.display = '';
+}
+function useQuestionOCRAlternative(index) {
+  if (!questionOCRResult || !Array.isArray(questionOCRResult.alternatives)) return;
+  const alt = questionOCRResult.alternatives[index];
+  if (!alt) return;
+  const normalized = normalizeOCRText(alt.text || '');
+  const parsed = parseOCRQuestionPayload(normalized);
+  questionOCRResult.rawText = normalized;
+  questionOCRResult.question = parsed.question || '';
+  questionOCRResult.options = parsed.options || '';
+  questionOCRResult.lineCount = Number(alt.lineCount || questionOCRResult.lineCount || 0);
+  questionOCRResult.variant = alt.variant || questionOCRResult.variant || '';
+  renderQuestionOCRPanel();
+  updateQuestionOCRStatus('已切换识别候选，请确认后回填', 'success');
+}
+
+renderQuestionOCRPanel = function() {
+  const panel = document.getElementById('ocrQuestionPanel');
+  if (!panel) return;
+  if (!questionOCRResult) {
+    panel.style.display = 'none';
+    panel.innerHTML = '';
+    return;
+  }
+  const rawText = escapeHtml(questionOCRResult.rawText || '');
+  const questionText = escapeHtml(questionOCRResult.question || '');
+  const optionsText = escapeHtml(questionOCRResult.options || '');
+  const metaText = [questionOCRResult.engine || '', questionOCRResult.variant || '', questionOCRResult.lineCount ? `${questionOCRResult.lineCount} lines` : '']
+    .filter(Boolean)
+    .join(' / ');
+  const alternatives = (Array.isArray(questionOCRResult.alternatives) ? questionOCRResult.alternatives : [])
+    .map((alt, idx) => {
+      const text = escapeHtml(normalizeOCRText(alt.text || '')).replace(/\n/g, '<br>');
+      const variant = escapeHtml(alt.variant || `candidate-${idx + 1}`);
+      const isActive = (alt.variant || '') === (questionOCRResult.variant || '');
+      const quality = Number(alt.quality || 0);
+      return `
+        <div class="ocr-alt-card${isActive ? ' active' : ''}">
+          <div class="ocr-alt-head">
+            <div>
+              <div style="font-weight:600;color:#334155">${variant}</div>
+              <div class="ocr-alt-meta">${quality ? `score ${quality.toFixed(2)}` : 'candidate'}</div>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="useQuestionOCRAlternative(${idx})">使用这条</button>
+          </div>
+          <div style="font-size:12px;line-height:1.6;color:#475569;max-height:120px;overflow:auto;white-space:normal">${text || '<span style="color:#94a3b8">empty</span>'}</div>
+        </div>
+      `;
+    })
+    .join('');
+  panel.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <div>
+        <div style="font-weight:700;color:#475569">OCR 识别结果</div>
+        <div style="font-size:12px;color:#64748b">${escapeHtml(metaText || 'tesseract')}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="applyOCRQuestionField('question')">回填题干</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="applyOCRQuestionField('options')" ${questionOCRResult.options ? '' : 'disabled'}>回填选项</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="applyOCRQuestionField('all')" ${questionOCRResult.options ? '' : 'disabled'}>全部回填</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="applyOCRQuestionField('append')">追加原文</button>
+      </div>
+    </div>
+    <div style="display:grid;gap:10px">
+      <div style="padding:8px 10px;border:1px solid #e2e8f0;border-radius:10px;background:#fff">
+        <div style="font-weight:600;color:#334155;margin-bottom:4px">题干</div>
+        <div style="white-space:pre-wrap;color:#0f172a">${questionText || '<span style="color:#94a3b8">未识别到题干</span>'}</div>
+      </div>
+      <div style="padding:8px 10px;border:1px solid #e2e8f0;border-radius:10px;background:#fff">
+        <div style="font-weight:600;color:#334155;margin-bottom:4px">选项</div>
+        <div style="white-space:pre-wrap;color:#0f172a">${optionsText || '<span style="color:#94a3b8">未拆出选项</span>'}</div>
+      </div>
+      <div style="padding:8px 10px;border:1px solid #e2e8f0;border-radius:10px;background:#fff">
+        <div style="font-weight:600;color:#334155;margin-bottom:4px">原始识别文本</div>
+        <div style="white-space:pre-wrap;color:#475569;max-height:160px;overflow:auto">${rawText || '<span style="color:#94a3b8">empty</span>'}</div>
+      </div>
+      ${alternatives ? `<div class="ocr-alt-grid"><div style="font-weight:600;color:#334155">候选结果</div>${alternatives}</div>` : ''}
+    </div>
+  `;
+  panel.style.display = '';
+};
+
+function updateQuestionOCRStatus(text, tone) {
+  const el = document.getElementById('ocrQuestionStatus');
+  if (!el) return;
+  el.textContent = text || '';
+  el.style.color = tone === 'error' ? '#dc2626' : tone === 'success' ? '#047857' : '#888';
+}
+async function runQuestionOCRFromBytes(fileName, mime, bytes, previewBase64) {
+  if (questionOCRBusy) return;
+  questionOCRBusy = true;
+  const btn = document.getElementById('ocrQuestionBtn');
+  const currentBtn = document.getElementById('ocrCurrentImgBtn');
+  if (btn) btn.disabled = true;
+  if (currentBtn) currentBtn.disabled = true;
+  updateQuestionOCRStatus('识别中...', 'muted');
+  try {
+    const form = new FormData();
+    const blob = new Blob([bytes], { type: mime || 'image/jpeg' });
+    form.append('file', blob, fileName || 'question-image');
+    const res = await fetch('/api/ai/ocr-image', {
+      method: 'POST',
+      credentials: 'include',
+      body: form
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.detail || data.error || 'OCR failed');
+    const result = data.result || {};
+    const parsed = parseOCRQuestionPayload(result.text || '');
+    questionOCRResult = {
+      rawText: normalizeOCRText(result.text || ''),
+      question: parsed.question || '',
+      options: parsed.options || '',
+      lineCount: Number(result.lineCount || 0),
+      engine: result.engine || '',
+      variant: result.variant || '',
+      alternatives: Array.isArray(result.alternatives) ? result.alternatives : []
+    };
+    renderQuestionOCRPanel();
+    if (previewBase64) {
+      editImgDeleted = false;
+      setEditImgPreview(previewBase64);
+    }
+    const lineCount = Number(result.lineCount || 0);
+    updateQuestionOCRStatus(`已识别 ${lineCount} 段，先确认后回填`, 'success');
+  } catch (e) {
+    questionOCRResult = null;
+    renderQuestionOCRPanel();
+    updateQuestionOCRStatus(e.message || 'OCR 失败', 'error');
+    showToast(e.message || 'OCR 失败', 'error');
+  } finally {
+    questionOCRBusy = false;
+    if (btn) btn.disabled = false;
+    if (currentBtn) currentBtn.disabled = false;
+  }
+}
+async function handleQuestionOCRFile(event) {
+  const input = event && event.target;
+  const file = input && input.files && input.files[0];
+  if (!file) return;
+  const previewBase64 = await readFileAsBase64(file);
+  editImgDeleted = false;
+  setEditImgPreview(previewBase64);
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  await runQuestionOCRFromBytes(file.name || 'question-image', file.type || 'image/jpeg', bytes, previewBase64);
+  if (input) input.value = '';
+}
+async function runQuestionOCRFromCurrentImage() {
+  try {
+    const source = editImgBase64 || document.getElementById('imgPreview')?.src || '';
+    if (!source) {
+      showToast('当前没有题图可识别', 'warning');
+      return;
+    }
+    const { mime, bytes } = await imageValueToBytes(source);
+    await runQuestionOCRFromBytes('current-question-image', mime, bytes, editImgBase64 || null);
+  } catch (e) {
+    updateQuestionOCRStatus(e.message || 'OCR 失败', 'error');
+    showToast(e.message || 'OCR 失败', 'error');
   }
 }
 async function unrefImageValue(value) {
@@ -3989,7 +4470,10 @@ function openAddModal(){
   updateSubtypeOptions();
   setReasonFormValue('');
   refreshKnowledgePicker();
+  setEntryAdvancedOpen(false);
+  updateEntryFlowBanner(getKnowledgeContextForEntry(selectedKnowledgeNodeId));
   openModal('addModal');
+  focusPrimaryEntryField();
 }
 function openEditModal(id){
   const e=errors.find(x=>x.id===id);if(!e)return;
@@ -4018,8 +4502,31 @@ function openEditModal(id){
   document.getElementById('editRootReason').value = e.rootReason||'';
   setReasonFormValue(e.errorReason||'');
   refreshKnowledgePicker(e.noteNodeId || '');
+  setEntryAdvancedOpen(Boolean((e.status && e.status !== 'focus') || e.difficulty || e.srcYear || e.srcProvince || e.srcOrigin));
+  updateEntryFlowBanner(getKnowledgeContextForEntry(e.noteNodeId || selectedKnowledgeNodeId));
   openModal('addModal');
+  focusPrimaryEntryField();
 }
+const _openAddModalBase = openAddModal;
+openAddModal = function() {
+  questionOCRBusy = false;
+  questionOCRResult = null;
+  const fileInput = document.getElementById('ocrQuestionFileInput');
+  if (fileInput) fileInput.value = '';
+  updateQuestionOCRStatus('', 'muted');
+  renderQuestionOCRPanel();
+  _openAddModalBase();
+};
+const _openEditModalBase = openEditModal;
+openEditModal = function(id) {
+  questionOCRBusy = false;
+  questionOCRResult = null;
+  const fileInput = document.getElementById('ocrQuestionFileInput');
+  if (fileInput) fileInput.value = '';
+  updateQuestionOCRStatus('', 'muted');
+  renderQuestionOCRPanel();
+  _openEditModalBase(id);
+};
 
 // ============================================================
 // 导出 / 导入
@@ -4053,6 +4560,55 @@ function getKnowledgeContextForEntry(nodeId) {
   };
 }
 
+function updateEntryFlowBanner(context) {
+  const banner = document.getElementById('entryFlowBanner');
+  if (!banner) return;
+  const node = context && context.node ? context.node : null;
+  const path = node ? getKnowledgePathTitles(node.id).filter(Boolean).join(' / ') : '';
+  const modeLabel = editingId ? '编辑模式' : '新增模式';
+  const quickActions = node ? `
+    <div class="entry-quick-row">
+      <button type="button" class="btn btn-secondary btn-sm" onclick="refreshKnowledgePicker('${node.isLeaf ? node.id : ''}')">使用当前路径</button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="createKnowledgeLeafFromModal()">当前路径下新建节点</button>
+    </div>
+  ` : `
+    <div class="entry-inline-tip">当前未锁定知识点，保存时会按题型和当前上下文自动挂载。</div>
+  `;
+  banner.innerHTML = `
+    <div class="entry-flow-title">
+      <strong>${modeLabel}：先把题目放进来，再补答案与原因</strong>
+      <span class="entry-inline-tip">${path ? `当前路径：${escapeHtml(path)}` : '当前路径：未固定'}</span>
+    </div>
+    <div class="entry-flow-steps">
+      <span class="entry-flow-chip"><strong>1</strong> 贴题目或识别题图</span>
+      <span class="entry-flow-chip"><strong>2</strong> 确认选项与答案</span>
+      <span class="entry-flow-chip"><strong>3</strong> AI 辅助补错因与分析</span>
+      <span class="entry-flow-chip"><strong>4</strong> 保存后继续复盘</span>
+    </div>
+    <div class="entry-flow-sub">
+      录题优先保证题干、选项、答案正确；根因、直接原因和解析可以稍后再补，别在第一步卡太久。
+    </div>
+    ${quickActions}
+  `;
+  banner.style.display = '';
+}
+
+function focusPrimaryEntryField() {
+  setTimeout(() => {
+    const target = document.getElementById('editQuestion');
+    if (!target) return;
+    target.focus();
+    const len = target.value.length;
+    try { target.setSelectionRange(len, len); } catch (e) {}
+  }, 40);
+}
+
+function setEntryAdvancedOpen(open) {
+  const details = document.getElementById('entryAdvancedDetails');
+  if (!details) return;
+  details.open = !!open;
+}
+
 function openAddModalForCurrentKnowledge() {
   const context = getKnowledgeContextForEntry(selectedKnowledgeNodeId);
   openAddModal();
@@ -4062,6 +4618,7 @@ function openAddModalForCurrentKnowledge() {
   if (context.subtype) document.getElementById('editSubtype').value = context.subtype;
   if (context.subSubtype) document.getElementById('editSubSubtype').value = context.subSubtype;
   refreshKnowledgePicker(context.node && context.node.isLeaf ? context.node.id : '');
+  updateEntryFlowBanner(context);
 }
 
 function openQuickAddModal() {
@@ -4528,7 +5085,7 @@ function mdInsert(type) {
 // ============================================================
 let _typeRules = null;
 function loadTypeRules() { return _typeRules || DEFAULT_TYPE_RULES; }
-function _saveTypeRules(rules) { _typeRules = rules; DB.set(KEY_TYPE_RULES, JSON.stringify(rules)); scheduleCloudSave(); }
+function _saveTypeRules(rules) { _typeRules = rules; queuePersist(KEY_TYPE_RULES, rules, 220); scheduleCloudSave(); }
 function autoDetectType(text) {
   if (!text || text.length < 5) return;
   const rules = loadTypeRules();
@@ -6846,8 +7403,7 @@ function prependNodeHeading(headings, nodeTitle) {
 }
 function renderNotePreviewLayout(previewHtml, tocHtml) {
   const article = `<article class="note-preview-article">${previewHtml || ''}</article>`;
-  const tocColumn = `<aside class="note-preview-toc">${tocHtml || ''}</aside>`;
-  return `<div class="note-preview-layout">${tocHtml ? `${article}${tocColumn}` : article}</div>`;
+  return `<div class="note-preview-layout">${article}</div>`;
 }
 function ensureGlobalNoteTocDock() {
   let dock = document.getElementById('globalNoteTocDock');
@@ -7102,6 +7658,8 @@ function renderKnowledgeNotesPanelRight() {
   }).join('');
 }
 function renderNotesPanelRight() {
+  const panel = document.querySelector('.notes-panel-right');
+  if (!panel || getComputedStyle(panel).display === 'none') return;
   renderKnowledgeNotesPanelRight();
 }
 function renderLegacyNotesPanelRight() {

@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import Cookie, FastAPI, HTTPException, Request, Response
+from fastapi import Cookie, FastAPI, File, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -65,6 +65,7 @@ ALLOWED_ENTRY_TYPES = {
     "常识判断",
     "其他",
 }
+OCR_MAX_BYTES = 5 * 1024 * 1024
 
 
 def utcnow() -> datetime:
@@ -673,6 +674,530 @@ def call_analyze_entry(payload: AnalyzeEntryPayload) -> dict[str, Any]:
     return cleaned
 
 
+def run_ocr_bytes(image_bytes: bytes) -> dict[str, Any]:
+    if not image_bytes:
+        raise HTTPException(status_code=400, detail="empty image body")
+    if len(image_bytes) > OCR_MAX_BYTES:
+        raise HTTPException(status_code=413, detail="image too large (max 5MB)")
+
+    try:
+        import io
+        from PIL import Image
+        from PIL import ImageFilter
+        from PIL import ImageOps
+        import pytesseract
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"ocr dependencies unavailable: {exc}") from exc
+
+    try:
+        image = Image.open(io.BytesIO(image_bytes)).convert("L")
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"unsupported image content: {exc}") from exc
+
+    def run_variant(name: str, candidate: Any, psm: int) -> dict[str, Any]:
+        ocr_data = pytesseract.image_to_data(
+            candidate,
+            lang="chi_sim+eng",
+            config=f"--oem 3 --psm {psm}",
+            output_type=pytesseract.Output.DICT,
+        )
+        lines: list[dict[str, Any]] = []
+        merged_text: list[str] = []
+        weighted_score = 0.0
+        total_items = len(ocr_data.get("text") or [])
+        for idx in range(total_items):
+            text = str((ocr_data.get("text") or [""])[idx] or "").strip()
+            if not text:
+                continue
+            try:
+                score = float((ocr_data.get("conf") or [0])[idx])
+            except Exception:
+                score = 0.0
+            left = int((ocr_data.get("left") or [0])[idx] or 0)
+            top = int((ocr_data.get("top") or [0])[idx] or 0)
+            width = int((ocr_data.get("width") or [0])[idx] or 0)
+            height = int((ocr_data.get("height") or [0])[idx] or 0)
+            merged_text.append(text)
+            confidence = round(max(score, 0.0) / 100.0, 4)
+            weighted_score += confidence * max(len(text), 1)
+            lines.append(
+                {
+                    "text": text,
+                    "score": confidence,
+                    "box": [[left, top], [left + width, top], [left + width, top + height], [left, top + height]],
+                }
+            )
+        joined = " ".join(merged_text).strip()
+        alnum_weight = len(re.findall(r"[A-Za-z0-9\u4e00-\u9fff]", joined))
+        option_weight = len(re.findall(r"(?:^|\s)(?:[A-D][\.\u3001]|[（(][A-D][）)])", joined))
+        return {
+            "name": name,
+            "text": joined,
+            "lines": lines,
+            "lineCount": len(lines),
+            "quality": round(weighted_score + alnum_weight * 0.08 + option_weight * 1.5, 4),
+        }
+
+    base_auto = ImageOps.autocontrast(image)
+    variants = [
+        ("auto_up2_psm11", base_auto.resize((max(image.width * 2, 1), max(image.height * 2, 1))), 11),
+        ("sharp_up2_psm11", base_auto.resize((max(image.width * 2, 1), max(image.height * 2, 1))).filter(ImageFilter.SHARPEN), 11),
+        ("median_bin_psm11", base_auto.filter(ImageFilter.MedianFilter(3)).resize((max(image.width * 2, 1), max(image.height * 2, 1))).point(lambda p: 255 if p > 176 else 0), 11),
+        ("auto_up2_psm6", base_auto.resize((max(image.width * 2, 1), max(image.height * 2, 1))), 6),
+    ]
+    candidates: list[dict[str, Any]] = []
+    try:
+        for name, candidate, psm in variants:
+            candidates.append(run_variant(name, candidate, psm))
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"ocr failed: {exc}") from exc
+
+    best = max(candidates, key=lambda item: (item["quality"], item["lineCount"], len(item["text"])))
+    return {
+        "engine": "tesseract",
+        "variant": best["name"],
+        "lineCount": best["lineCount"],
+        "text": best["text"],
+        "lines": best["lines"],
+    }
+
+
+def run_ocr_bytes(image_bytes: bytes) -> dict[str, Any]:
+    if not image_bytes:
+        raise HTTPException(status_code=400, detail="empty image body")
+    if len(image_bytes) > OCR_MAX_BYTES:
+        raise HTTPException(status_code=413, detail="image too large (max 5MB)")
+
+    try:
+        import io
+        from PIL import Image
+        from PIL import ImageFilter
+        from PIL import ImageOps
+        import pytesseract
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"ocr dependencies unavailable: {exc}") from exc
+
+    try:
+        image = Image.open(io.BytesIO(image_bytes)).convert("L")
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"unsupported image content: {exc}") from exc
+
+    def collect_line_items(ocr_data: dict[str, Any]) -> list[dict[str, Any]]:
+        groups: dict[tuple[int, int, int], dict[str, Any]] = {}
+        total_items = len(ocr_data.get("text") or [])
+        for idx in range(total_items):
+            text = str((ocr_data.get("text") or [""])[idx] or "").strip()
+            if not text:
+                continue
+            try:
+                raw_score = float((ocr_data.get("conf") or [0])[idx])
+            except Exception:
+                raw_score = 0.0
+            confidence = round(max(raw_score, 0.0) / 100.0, 4)
+            left = int((ocr_data.get("left") or [0])[idx] or 0)
+            top = int((ocr_data.get("top") or [0])[idx] or 0)
+            width = int((ocr_data.get("width") or [0])[idx] or 0)
+            height = int((ocr_data.get("height") or [0])[idx] or 0)
+            block_num = int((ocr_data.get("block_num") or [0])[idx] or 0)
+            par_num = int((ocr_data.get("par_num") or [0])[idx] or 0)
+            line_num = int((ocr_data.get("line_num") or [0])[idx] or 0)
+            key = (block_num, par_num, line_num)
+            group = groups.setdefault(
+                key,
+                {
+                    "items": [],
+                    "top": top,
+                    "left": left,
+                    "right": left + width,
+                    "bottom": top + height,
+                    "score_sum": 0.0,
+                    "char_count": 0,
+                },
+            )
+            group["items"].append((left, text))
+            group["top"] = min(group["top"], top)
+            group["left"] = min(group["left"], left)
+            group["right"] = max(group["right"], left + width)
+            group["bottom"] = max(group["bottom"], top + height)
+            group["score_sum"] += confidence * max(len(text), 1)
+            group["char_count"] += max(len(text), 1)
+
+        line_items: list[dict[str, Any]] = []
+        for group in groups.values():
+            ordered = [text for _, text in sorted(group["items"], key=lambda item: item[0])]
+            merged = " ".join(ordered).strip()
+            if not merged:
+                continue
+            avg_score = round(group["score_sum"] / max(group["char_count"], 1), 4)
+            line_items.append(
+                {
+                    "text": merged,
+                    "score": avg_score,
+                    "box": [
+                        [group["left"], group["top"]],
+                        [group["right"], group["top"]],
+                        [group["right"], group["bottom"]],
+                        [group["left"], group["bottom"]],
+                    ],
+                }
+            )
+        return sorted(line_items, key=lambda item: (item["box"][0][1], item["box"][0][0]))
+
+    def normalize_numeric_line(text: str) -> str:
+        cleaned = (text or "").strip()
+        if not cleaned:
+            return ""
+        cleaned = cleaned.replace(" ", "")
+        cleaned = cleaned.replace("O", "0").replace("o", "0")
+        cleaned = re.sub(r"^[A-D](?=-?\d)", "", cleaned)
+        cleaned = re.sub(r"^[=._:;]+", "", cleaned)
+        cleaned = re.sub(r"[^\dA-D,\.\(\)\-]+", "", cleaned)
+        cleaned = cleaned.replace("B", "8")
+        cleaned = re.sub(r"\(\)$", "()", cleaned)
+        return cleaned.strip(".,")
+
+    def count_numeric_tokens(text: str) -> int:
+        return len(re.findall(r"-?\d+(?:\.\d+)?", text or ""))
+
+    def count_cjk_tokens(text: str) -> int:
+        return len(re.findall(r"[\u4e00-\u9fff]", text or ""))
+
+    def build_quality(text: str, weighted_score: float, numeric_mode: bool) -> float:
+        digit_weight = count_numeric_tokens(text) * 0.9
+        cjk_weight = count_cjk_tokens(text) * (0.12 if not numeric_mode else 0.02)
+        option_weight = len(re.findall(r"(?:^|\n)(?:[A-D][\.\u3001]|-?\d[\d\-,\.()]*)", text or "", re.M)) * 0.8
+        blank_weight = 1.8 if "()" in (text or "") else 0.0
+        stray_letter_penalty = 0.0
+        if numeric_mode:
+            stray_letter_penalty = len(re.findall(r"[EFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz]", text or "")) * 0.5
+        return round(weighted_score + digit_weight + cjk_weight + option_weight + blank_weight - stray_letter_penalty, 4)
+
+    def extract_numeric_option_lines(candidate: dict[str, Any]) -> list[str]:
+        numeric_lines = [str(line.get("text") or "").strip() for line in candidate.get("lines") or []]
+        numeric_lines = [line for line in numeric_lines if line]
+        option_lines = [line for line in numeric_lines[1:] if re.fullmatch(r"-?\d+(?:\.\d+)?", line)]
+        if not option_lines:
+            return []
+        digit_lengths = [len(re.sub(r"^-?", "", line)) for line in option_lines]
+        sorted_lengths = sorted(digit_lengths)
+        median_len = sorted_lengths[len(sorted_lengths) // 2] if sorted_lengths else 0
+        if median_len >= 3:
+            filtered = [
+                line
+                for line in option_lines
+                if len(re.sub(r"^-?", "", line)) >= max(2, median_len - 1)
+            ]
+            if len(filtered) >= 3:
+                option_lines = filtered
+        compacted: list[str] = []
+        for line in option_lines:
+            if compacted and compacted[-1] == line:
+                continue
+            compacted.append(line)
+        return compacted
+
+    def extract_short_option_column(source_image: Any) -> list[str]:
+        region_top = int(source_image.height * 0.18)
+        if source_image.width < 120 or source_image.height - region_top < 120:
+            return []
+        lower = source_image.crop((0, region_top, source_image.width, source_image.height))
+        binary = lower.point(lambda p: 0 if p > 185 else 1)
+        col_counts = [sum(binary.getpixel((x, y)) for y in range(binary.height)) for x in range(binary.width)]
+        col_threshold = max(8, int(binary.height * 0.05))
+        spans: list[list[int]] = []
+        start: Optional[int] = None
+        prev: Optional[int] = None
+        peak_x = 0
+        peak_val = 0
+        for x, value in enumerate(col_counts):
+            if value >= col_threshold:
+                if start is None:
+                    start = x
+                    prev = x
+                    peak_x = x
+                    peak_val = value
+                elif prev is not None and x - prev <= 2:
+                    prev = x
+                    if value > peak_val:
+                        peak_x = x
+                        peak_val = value
+                else:
+                    spans.append([start, prev or start, peak_x, peak_val])
+                    start = x
+                    prev = x
+                    peak_x = x
+                    peak_val = value
+        if start is not None:
+            spans.append([start, prev or start, peak_x, peak_val])
+
+        merged_spans: list[list[int]] = []
+        for span in spans:
+            if not merged_spans or span[0] - merged_spans[-1][1] > 6:
+                merged_spans.append(span)
+            else:
+                merged_spans[-1][1] = span[1]
+                if span[3] > merged_spans[-1][3]:
+                    merged_spans[-1][2] = span[2]
+                    merged_spans[-1][3] = span[3]
+
+        valid_spans = []
+        for start_x, end_x, peak_col, peak_value in merged_spans:
+            span_width = end_x - start_x + 1
+            center_x = (start_x + end_x) / 2
+            if span_width < 6 or span_width > max(int(source_image.width * 0.18), 55):
+                continue
+            if center_x < source_image.width * 0.15 or center_x > source_image.width * 0.7:
+                continue
+            valid_spans.append((start_x, end_x, peak_col, peak_value, span_width))
+        if not valid_spans:
+            return []
+
+        start_x, end_x, _, _, _ = max(valid_spans, key=lambda item: (item[0], item[3]))
+        option_region = source_image.crop((max(start_x - 14, 0), region_top, min(end_x + 14, source_image.width), source_image.height))
+        option_binary = option_region.point(lambda p: 0 if p > 185 else 1)
+        row_counts = [sum(option_binary.getpixel((x, y)) for x in range(option_binary.width)) for y in range(option_binary.height)]
+        smoothed_rows: list[float] = []
+        for y in range(option_region.height):
+            values = row_counts[max(0, y - 4):min(option_region.height, y + 5)]
+            smoothed_rows.append(sum(values) / max(len(values), 1))
+
+        row_peaks: list[list[float]] = []
+        row_threshold = max(2.5, option_region.width * 0.03)
+        merge_gap = max(int(option_region.height * 0.12), 24)
+        for y in range(1, option_region.height - 1):
+            value = smoothed_rows[y]
+            if value < row_threshold or value < smoothed_rows[y - 1] or value < smoothed_rows[y + 1]:
+                continue
+            if not row_peaks or y - row_peaks[-1][0] > merge_gap:
+                row_peaks.append([y, value])
+            elif value > row_peaks[-1][1]:
+                row_peaks[-1] = [y, value]
+        if not row_peaks:
+            return []
+
+        results: list[str] = []
+        for center_y, _ in row_peaks[:6]:
+            row_image = option_region.crop((0, max(0, int(center_y) - 28), option_region.width, min(option_region.height, int(center_y) + 28)))
+            vote_scores: dict[str, float] = {}
+            for invert in (False, True):
+                working_row = ImageOps.invert(row_image) if invert else row_image
+                for threshold in (170, 180, 190, 200):
+                    prepared = working_row.point(lambda p, t=threshold: 255 if p > t else 0).resize(
+                        (max(row_image.width * 18, 1), max(row_image.height * 18, 1)),
+                        Image.Resampling.NEAREST,
+                    )
+                    for psm in (10, 13, 6):
+                        raw_text = pytesseract.image_to_string(
+                            prepared,
+                            lang="eng",
+                            config="--oem 3 --psm %d -c tessedit_char_whitelist=0123456789ABCD-" % psm,
+                        )
+                        cleaned = normalize_numeric_line(raw_text)
+                        if not re.fullmatch(r"-?\d+", cleaned):
+                            continue
+                        weight = 1.0
+                        if psm == 13:
+                            weight += 0.4
+                        if invert:
+                            weight += 0.2
+                        if len(cleaned) >= 2:
+                            weight += 0.2
+                        vote_scores[cleaned] = vote_scores.get(cleaned, 0.0) + weight
+            if not vote_scores:
+                continue
+            chosen = max(vote_scores.items(), key=lambda item: (item[1], len(item[0]), item[0]))[0]
+            results.append(chosen)
+        compacted: list[str] = []
+        for value in results:
+            if compacted and compacted[-1] == value:
+                continue
+            compacted.append(value)
+        return compacted
+
+    def run_variant(
+        name: str,
+        candidate: Any,
+        psm: int,
+        *,
+        lang: str,
+        extra_config: str = "",
+        numeric_mode: bool = False,
+    ) -> dict[str, Any]:
+        ocr_data = pytesseract.image_to_data(
+            candidate,
+            lang=lang,
+            config=f"--oem 3 --psm {psm} {extra_config}".strip(),
+            output_type=pytesseract.Output.DICT,
+        )
+        raw_lines = collect_line_items(ocr_data)
+        lines: list[dict[str, Any]] = []
+        line_texts: list[str] = []
+        weighted_score = 0.0
+        for raw_line in raw_lines:
+            text = normalize_numeric_line(raw_line["text"]) if numeric_mode else str(raw_line["text"] or "").strip()
+            if not text:
+                continue
+            score = float(raw_line.get("score") or 0.0)
+            weighted_score += score * max(len(text), 1)
+            lines.append({**raw_line, "text": text, "score": round(score, 4)})
+            line_texts.append(text)
+        joined = "\n".join(line_texts).strip()
+        return {
+            "name": name,
+            "text": joined,
+            "lines": lines,
+            "lineCount": len(lines),
+            "quality": build_quality(joined, weighted_score, numeric_mode),
+            "numericTokens": count_numeric_tokens(joined),
+            "numericMode": numeric_mode,
+        }
+
+    base_auto = ImageOps.autocontrast(image)
+    width, height = image.size
+    safe_left_trim = min(max(int(width * 0.08), 0), max(width - 12, 0))
+    trimmed = base_auto.crop((safe_left_trim, 0, width, height)) if safe_left_trim > 0 else base_auto
+    lower_crop_top = min(max(int(height * 0.22), 0), max(height - 10, 0))
+    lower_crop = base_auto.crop((0, lower_crop_top, width, height)) if lower_crop_top > 0 else base_auto
+    numeric_whitelist = "-c tessedit_char_whitelist=0123456789ABCD.,()=-"
+    variants = [
+        {
+            "name": "general_auto_up2_psm11",
+            "image": base_auto.resize((max(width * 2, 1), max(height * 2, 1))),
+            "psm": 11,
+            "lang": "chi_sim+eng",
+        },
+        {
+            "name": "general_sharp_nearest3_psm6",
+            "image": base_auto.resize((max(width * 3, 1), max(height * 3, 1)), Image.Resampling.NEAREST).filter(ImageFilter.SHARPEN),
+            "psm": 6,
+            "lang": "chi_sim+eng",
+        },
+        {
+            "name": "general_trim_sharp3_psm6",
+            "image": trimmed.resize((max(trimmed.width * 3, 1), max(trimmed.height * 3, 1)), Image.Resampling.NEAREST).filter(ImageFilter.SHARPEN),
+            "psm": 6,
+            "lang": "chi_sim+eng",
+        },
+        {
+            "name": "numeric_sharp_nearest4_psm6",
+            "image": base_auto.resize((max(width * 4, 1), max(height * 4, 1)), Image.Resampling.NEAREST).filter(ImageFilter.SHARPEN),
+            "psm": 6,
+            "lang": "eng",
+            "extra_config": numeric_whitelist,
+            "numeric_mode": True,
+        },
+        {
+            "name": "numeric_bin_nearest4_psm6",
+            "image": base_auto.point(lambda p: 255 if p > 180 else 0).resize((max(width * 4, 1), max(height * 4, 1)), Image.Resampling.NEAREST),
+            "psm": 6,
+            "lang": "eng",
+            "extra_config": numeric_whitelist,
+            "numeric_mode": True,
+        },
+        {
+            "name": "numeric_bin_nearest5_psm6",
+            "image": base_auto.point(lambda p: 255 if p > 180 else 0).resize((max(width * 5, 1), max(height * 5, 1)), Image.Resampling.NEAREST),
+            "psm": 6,
+            "lang": "eng",
+            "extra_config": numeric_whitelist,
+            "numeric_mode": True,
+        },
+        {
+            "name": "numeric_lower_bin_nearest4_psm6",
+            "image": lower_crop.point(lambda p: 255 if p > 180 else 0).resize((max(lower_crop.width * 4, 1), max(lower_crop.height * 4, 1)), Image.Resampling.NEAREST),
+            "psm": 6,
+            "lang": "eng",
+            "extra_config": numeric_whitelist,
+            "numeric_mode": True,
+        },
+    ]
+    candidates: list[dict[str, Any]] = []
+    try:
+        for variant in variants:
+            candidates.append(
+                run_variant(
+                    variant["name"],
+                    variant["image"],
+                    variant["psm"],
+                    lang=str(variant.get("lang") or "chi_sim+eng"),
+                    extra_config=str(variant.get("extra_config") or ""),
+                    numeric_mode=bool(variant.get("numeric_mode")),
+                )
+            )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"ocr failed: {exc}") from exc
+
+    general_candidates = [item for item in candidates if not item.get("numericMode")]
+    numeric_candidates = [item for item in candidates if item.get("numericMode")]
+    best_general = max(general_candidates, key=lambda item: (item["quality"], item["lineCount"], len(item["text"])))
+    best_numeric = max(
+        numeric_candidates,
+        key=lambda item: (
+            len(extract_numeric_option_lines(item)),
+            len(set(extract_numeric_option_lines(item))),
+            item["quality"],
+            item["numericTokens"],
+            len(item["text"]),
+        ),
+    )
+    best_numeric_option_lines = extract_numeric_option_lines(best_numeric)
+    use_numeric = len(best_numeric_option_lines) >= 3 or best_numeric["numericTokens"] >= max(best_general["numericTokens"] + 2, 6)
+    selected = best_numeric if use_numeric else best_general
+
+    if use_numeric:
+        numeric_lines = [line["text"] for line in best_numeric["lines"] if str(line.get("text") or "").strip()]
+        stem_line = numeric_lines[0] if numeric_lines else ""
+        option_lines = [line for line in best_numeric_option_lines if 0 < len(line) <= 12]
+        short_option_candidates = [line for line in option_lines if len(re.sub(r"^-?", "", line)) <= 2]
+        if len(short_option_candidates) >= 3 or (stem_line and len(re.findall(r"-?\d+", stem_line)) >= 4 and option_lines and max(len(re.sub(r"^-?", "", line)) for line in option_lines) <= 2):
+            column_option_lines = extract_short_option_column(base_auto)
+            if len(column_option_lines) >= 3:
+                normalized_column_lines = [line for line in column_option_lines if 0 < len(line) <= 3]
+                if normalized_column_lines:
+                    option_lines = normalized_column_lines
+        if not stem_line and best_general["lines"]:
+            stem_line = str(best_general["lines"][0]["text"] or "").strip()
+        merged_lines = [line for line in [stem_line, *option_lines] if line]
+        if merged_lines:
+            selected = {
+                **best_numeric,
+                "name": f"{best_numeric['name']}+merge",
+                "text": "\n".join(merged_lines).strip(),
+                "lines": [
+                    {"text": text, "score": 0.0, "box": [[0, 0], [0, 0], [0, 0], [0, 0]]}
+                    for text in merged_lines
+                ],
+                "lineCount": len(merged_lines),
+            }
+
+    alternative_items: list[dict[str, Any]] = []
+    seen_variants: set[str] = set()
+    for item in [selected, best_numeric, best_general, *sorted(numeric_candidates, key=lambda entry: (entry["quality"], entry["numericTokens"], len(entry["text"])), reverse=True), *sorted(general_candidates, key=lambda entry: (entry["quality"], entry["lineCount"], len(entry["text"])), reverse=True)]:
+        name = str(item.get("name") or "")
+        if not name or name in seen_variants:
+            continue
+        seen_variants.add(name)
+        alternative_items.append(
+            {
+                "variant": name,
+                "text": item["text"],
+                "lineCount": item["lineCount"],
+                "quality": item["quality"],
+            }
+        )
+        if len(alternative_items) >= 5:
+            break
+
+    return {
+        "engine": "tesseract",
+        "variant": selected["name"],
+        "lineCount": selected["lineCount"],
+        "text": selected["text"],
+        "lines": selected["lines"],
+        "alternatives": alternative_items,
+    }
+
+
 def cleanup_old_ops(user_id: str, conn: sqlite3.Connection) -> None:
     conn.execute(
         "DELETE FROM operations WHERE user_id = ? AND created_at < datetime('now', '-30 days')",
@@ -1212,6 +1737,22 @@ def put_origin_status(
 def analyze_entry(payload: AnalyzeEntryPayload, xingce_session: Optional[str] = Cookie(default=None)) -> dict[str, Any]:
     require_user(xingce_session)
     return {"ok": True, "result": call_analyze_entry(payload)}
+
+
+@app.post("/api/ai/ocr-image")
+async def ocr_image(
+    file: UploadFile = File(...),
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    require_user(xingce_session)
+    image_bytes = await file.read()
+    result = run_ocr_bytes(image_bytes)
+    return {
+        "ok": True,
+        "filename": file.filename or "",
+        "contentType": (file.content_type or "").strip(),
+        "result": result,
+    }
 
 
 @app.post("/api/images")

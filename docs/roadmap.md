@@ -46,20 +46,33 @@ Not the old:
 
 ## Current Priority
 
-### P1: Frontend consolidation
+### P0: Stability And Responsiveness
+
+1. keep hybrid sync reliable across local/public origin boundaries
+2. reduce editor friction in the notes workspace and OCR entry flow
+3. continue runtime verification against real database-backed data, not only synthetic samples
+
+### P1: OCR Hardening
+
+1. keep the new tiny-image numeric OCR path stable
+2. add better fallback selection in the OCR panel so users can switch candidates quickly
+3. extend beyond numeric MCQ screenshots into mixed Chinese text stems
+4. avoid coupling OCR progress with a risky engine migration before Tesseract improvements are exhausted
+
+### P2: Frontend consolidation
 
 1. continue cleaning duplicated legacy CSS in `xingce_v3.html`
 2. keep removing stale compatibility UI from active paths
 3. prepare module split around the now-stable two-pane layout
 
-### P2: Shenlun workbench
+### P3: Shenlun workbench
 
 1. add Shenlun entry and data model
 2. import papers, questions, answers, and notes
 3. support AI answer comparison
 4. connect personal Shenlun notes with structured question context
 
-### P3: Knowledge-source retrieval
+### P4: Knowledge-source retrieval
 
 1. index imported Shenlun source materials
 2. support source-tagged search
@@ -81,3 +94,20 @@ The next stage is considered successful when:
 2. docs reflect the real runtime and deployment situation
 3. Shenlun data model is defined before UI coding starts
 4. AI comparison is designed around structured answer review, not generic chat first
+
+## 2026-03-26 Progress Snapshot
+
+### Completed Recently
+
+1. hybrid sync mainline is running on the named tunnel domain
+2. login page and top-bar disclosure were simplified to reduce visible system detail
+3. right rail was removed and the notes area was widened around floating TOC only
+4. OCR upload, preview, and fill-back flow were connected into the error editor
+5. OCR now uses real database-backed regression images during validation, not only examples
+6. tiny numeric MCQ screenshots improved from noisy partial extraction to usable stem-plus-options recovery on real samples
+
+### Highest-Value Next Steps
+
+1. finish OCR candidate selection UX so users can recover quickly when the first result is imperfect
+2. continue frontend cleanup around the notes editor and active OCR entry path
+3. only after the daily capture/edit flow feels fast enough, start Shenlun module buildout
