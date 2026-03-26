@@ -166,6 +166,8 @@
           : "<div class=\"knowledge-outline-empty\">Outline: no headings found</div>") +
       "</div>" +
       "<div class=\"knowledge-workspace-actions\">" +
+        "<button class=\"btn btn-secondary btn-sm\" onclick=\"openAIToolsModal();setTimeout(runAIDiagnosis, 0)\">AI诊断</button>" +
+        "<button class=\"btn btn-secondary btn-sm\" onclick=\"openAIToolsModal();setTimeout(distillCurrentNodeRule, 0)\">AI提炼</button>" +
         "<button class=\"btn btn-secondary btn-sm\" onclick=\"renameKnowledgeNode('" + currentNode.id + "')\">重命名</button>" +
         (findKnowledgeParent(currentNode.id) ? "<button class=\"btn btn-secondary btn-sm\" onclick=\"moveKnowledgeNode('" + currentNode.id + "')\">移动</button>" : "") +
         "<button class=\"btn btn-secondary btn-sm\" onclick=\"selectedKnowledgeNodeId='" + currentNode.id + "';addKnowledgeLeafUnderSelected()\">+ 新建下级</button>" +

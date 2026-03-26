@@ -131,7 +131,7 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .nav-sub2.active .nav-count{background:#ffe4e1;color:#e74c3c}
 
 /* ===== 中间笔记区域 ===== */
-.notes-area{flex:1;overflow:hidden;display:flex;flex-direction:column;padding-right:282px}
+.notes-area{flex:1;overflow:hidden;display:flex;flex-direction:column;padding-right:0}
 .notes-header{display:none}
 .notes-header h2{font-size:16px;margin:0;color:#2c3e50}
 .notes-header .btn{font-size:12px;padding:6px 12px}
@@ -320,6 +320,10 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .entry-advanced summary::-webkit-details-marker{display:none}
 .entry-advanced-body{padding:0 16px 16px}
 .entry-advanced-hint{font-size:12px;color:#64748b;line-height:1.7;margin:0 0 12px}
+.entry-meta-presets{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px}
+.entry-helper-chip{padding:5px 10px;border-radius:999px;border:1px solid #dbe3ef;background:#fff;color:#334155;font-size:12px;cursor:pointer;transition:.15s}
+.entry-helper-chip:hover{border-color:#93c5fd;background:#eff6ff;color:#1d4ed8}
+.entry-manual-hint{margin-top:10px;padding:10px 12px;border:1px dashed #f59e0b;border-radius:10px;background:#fffaf0;color:#9a3412;font-size:12px;line-height:1.7}
 .ocr-alt-grid{display:grid;gap:8px}
 .ocr-alt-card{padding:10px 12px;border:1px solid #e2e8f0;border-radius:12px;background:#fff}
 .ocr-alt-card.active{border-color:#93c5fd;background:#eff6ff}
@@ -541,19 +545,6 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .iq-actions{display:flex;gap:8px;align-items:center}
 
 /* ===== 右侧笔记面板（始终可见）===== */
-.notes-panel-right{display:none!important}
-.notes-panel-right-header{display:none!important}
-.notes-panel-right-header h3{font-size:13px;font-weight:700;color:#7c4a1d;margin:0;letter-spacing:.04em;text-transform:uppercase}
-.notes-panel-right-caption{font-size:11px;color:#a16207;line-height:1.5;margin-top:4px}
-.notes-panel-right-header > div[style]{display:none!important}
-.notes-panel-right-body{flex:1;overflow-y:auto;padding:10px 10px 12px}
-.notes-panel-right-body::-webkit-scrollbar{width:5px}
-.notes-panel-right-body::-webkit-scrollbar-thumb{background:#ddd;border-radius:3px}
-.notes-panel-right .error-card{border:1px solid #eceff3;border-radius:12px;padding:10px 11px;margin-bottom:8px;background:#fff;box-shadow:0 2px 10px rgba(15,23,42,.04)}
-.notes-panel-right .error-card .card-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
-.notes-panel-right .error-card .card-question{font-size:12px;line-height:1.7;color:#2d3436;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.notes-panel-right .error-card .card-actions{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
-.notes-panel-right .error-card .btn-sm{padding:4px 8px;font-size:11px}
 .related-errors-summary,.related-error-path,.related-error-actions,.related-error-detail,.related-error-question,.related-error-image,.related-error-options,.related-error-option,.related-error-meta-grid,.related-error-meta,.related-error-analysis{display:none!important}
 .note-panel-item{margin-bottom:1px}
 .note-panel-item-header{display:flex;align-items:center;gap:5px;padding:5px 7px;border-radius:5px;cursor:pointer;transition:.15s;font-size:12px;color:#555;user-select:none}
@@ -669,18 +660,18 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .note-toc-item.lv3{padding-left:24px}
 .note-toc-item.lv4{padding-left:34px}
 .note-toc-inline{margin:10px 14px 0}
-.note-preview-layout{display:block;min-height:100%}
-.note-preview-article{min-width:0;max-width:none}
-.note-preview-toc{display:none!important}
-.global-note-toc-dock{position:fixed;top:118px;right:18px;z-index:1200;width:240px;max-height:calc(100vh - 142px);overflow:auto;display:none}
+.note-preview-layout{display:flex;align-items:flex-start;gap:18px;min-height:100%}
+.note-preview-article{flex:1;min-width:0;max-width:none}
+.note-preview-toc{position:sticky;top:12px;flex:0 0 240px;max-width:240px}
+.note-preview-layout .note-toc-floating{margin:0}
+.global-note-toc-dock{display:none!important}
 .note-toc-floating{position:relative;z-index:3;display:block;width:100%;max-width:100%;margin:0;border-color:#f3d6b8;box-shadow:0 8px 24px rgba(180,83,9,.08)}
 .note-toc-floating .note-toc-title{display:flex;align-items:center;justify-content:space-between}
 @media (max-width: 980px){
   .notes-area{padding-right:0}
-  .notes-panel-right{display:none!important}
   .global-note-toc-dock{display:none!important}
   .note-preview-layout{display:block}
-  .note-preview-toc{width:auto;max-width:none;margin-bottom:12px}
+  .note-preview-toc{position:static;width:auto;max-width:none;margin:0 0 12px}
 }
 /* ===== Layout Refresh v3.1 ===== */
 body{
@@ -752,10 +743,10 @@ body{
   overflow:hidden;
   background:rgba(255,255,255,.96);
 }
-.errors-header,.notes-header,.notes-panel-right-header,.date-filter-bar,.content-header{background:rgba(255,255,255,.92)}
-.errors-header,.notes-header,.notes-panel-right-header{padding:14px 18px}
+.errors-header,.notes-header,.date-filter-bar,.content-header{background:rgba(255,255,255,.92)}
+.errors-header,.notes-header{padding:14px 18px}
 .notes-header{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #eef1f5}
-.notes-header h2,.errors-header h2,.notes-panel-right-header h3{font-size:17px;letter-spacing:.2px}
+.notes-header h2,.errors-header h2{font-size:17px;letter-spacing:.2px}
 .search-box input{height:40px;border-radius:14px;background:#faf7f2;border-color:#ebe2d8}
 .date-filter-bar{padding:10px 16px;flex-wrap:wrap}
 .content-header{padding:12px 16px}
@@ -781,10 +772,6 @@ body{
   margin-left:auto;
   margin-right:auto;
 }
-.notes-panel-right{display:none}
-.notes-panel-right-header{border-bottom:1px solid #eef1f5}
-.notes-panel-right-body{padding:12px}
-.notes-panel-right .error-card{border-radius:16px;margin-bottom:10px}
 .related-errors-summary{padding:10px 4px 12px}
 .quiz-block{
   margin:12px 12px 8px;
@@ -1266,20 +1253,6 @@ body{
 
 </div>
 
-<!-- ===== 右侧笔记面板（始终可见）===== -->
-<div class="notes-panel-right">
-  <div class="notes-panel-right-header">
-    <h3>笔记目录</h3>
-    <div style="display:flex;gap:5px">
-      <button class="btn btn-sm btn-secondary" onclick="knowledgeNodeFilter=null;renderSidebar();renderAll();renderNotesPanelRight()" title="清除节点筛选">全部</button>
-      <button class="btn btn-sm btn-secondary" onclick="switchTab('notes')" title="编辑笔记">✏</button>
-    </div>
-  </div>
-  <div class="notes-panel-right-body" id="notesPanelRightBody">
-    <div style="color:#b08968;font-size:12px;padding:20px;text-align:center">当前笔记还没有标题目录</div>
-  </div>
-</div>
-
 <!-- ===== 添加/编辑弹窗 ===== -->
 <div class="modal-mask" id="addModal">
   <div class="modal entry-modal">
@@ -1337,14 +1310,13 @@ body{
     <div class="form-group"><label>我的错误答案（可选）</label><input type="text" id="editMyAnswer" placeholder="如：B"></div>
     </div>
 
-    <div class="entry-section">
-      <div class="entry-section-title">
-        <div>
-          <strong>再补分析和错因</strong>
-          <div class="entry-section-sub">这里更适合在题目已经确认后处理，AI 也优先服务这一段。</div>
-        </div>
-        <span class="entry-inline-tip">可稍后补</span>
-      </div>
+    <details class="entry-advanced" id="entryAnalysisDetails">
+      <summary>
+        <span>分析和错因</span>
+        <span class="entry-inline-tip">题先存下来，这里可以稍后补</span>
+      </summary>
+      <div class="entry-advanced-body">
+        <div class="entry-advanced-hint">这里更适合在题目已经确认后处理，AI 也优先服务这一段，不会阻塞最短保存路径。</div>
     <div class="form-group">
       <label>AI 辅助分析</label>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -1369,7 +1341,8 @@ body{
       <img id="analysisImgPreview" src="" style="max-width:100%;max-height:160px;border-radius:6px;border:1px solid #e0e0e0;display:block">
       <button type="button" onclick="clearEditAnalysisImg(true)" style="margin-top:4px;background:none;border:none;color:#e74c3c;cursor:pointer;font-size:12px">✕ 删除解析图片</button>
     </div>
-    </div>
+      </div>
+    </details>
     <details class="entry-advanced" id="entryAdvancedDetails">
       <summary>
         <span>补充信息</span>
@@ -1389,6 +1362,12 @@ body{
         </div>
         <div class="form-group">
           <label>出处 <span style="font-size:11px;color:#aaa">（可选）</span></label>
+          <div class="entry-meta-presets">
+            <button type="button" class="entry-helper-chip" onclick="applySourcePreset('国考')">国考</button>
+            <button type="button" class="entry-helper-chip" onclick="applySourcePreset('联考')">联考</button>
+            <button type="button" class="entry-helper-chip" onclick="applySourcePreset('省考')">省考</button>
+            <button type="button" class="entry-helper-chip" onclick="applySourcePreset('模考')">模考</button>
+          </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <select id="editSrcYear" style="flex:1;min-width:90px;padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none">
               <option value="">年份</option>
@@ -1415,7 +1394,8 @@ body{
     </details>
     <div class="modal-btns">
       <button class="btn btn-secondary" onclick="closeModal('addModal')">取消</button>
-      <button class="btn btn-primary" id="saveErrorBtn" onclick="saveError()">保存这道题</button>
+      <button class="btn btn-secondary" id="saveErrorQuickBtn" onclick="saveError({ keepOpen: false })">保存</button>
+      <button class="btn btn-primary" id="saveErrorBtn" onclick="saveError({ keepOpen: true })">保存并完善</button>
     </div>
   </div>
 </div>
@@ -1582,6 +1562,13 @@ body{
           </div>
           <div id="aiDiagnoseOutput" style="min-height:140px;padding:12px;border-radius:10px;background:#fff;border:1px solid #eceff3;white-space:pre-wrap;line-height:1.75;color:#334155"></div>
         </div>
+        <div style="padding:12px;border:1px solid #eee;border-radius:12px;background:#fafafa">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
+            <div style="font-size:13px;font-weight:700;color:#333">模式发现</div>
+            <button class="btn btn-secondary btn-sm" onclick="runDiscoverPatterns()">生成</button>
+          </div>
+          <div id="aiPatternsOutput" style="min-height:140px;padding:12px;border-radius:10px;background:#fff;border:1px solid #eceff3;white-space:pre-wrap;line-height:1.75;color:#334155"></div>
+        </div>
       </div>
       <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
         <div style="padding:12px;border:1px solid #eee;border-radius:12px;background:#fafafa">
@@ -1597,6 +1584,20 @@ body{
             <button class="btn btn-secondary btn-sm" onclick="generateNodePractice()">生成 3 题</button>
           </div>
           <div id="aiGenerateOutput" style="min-height:180px;padding:12px;border-radius:10px;background:#fff;border:1px solid #eceff3;white-space:pre-wrap;line-height:1.75;color:#334155"></div>
+        </div>
+        <div style="padding:12px;border:1px solid #eee;border-radius:12px;background:#fafafa">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
+            <div style="font-size:13px;font-weight:700;color:#333">知识点提炼</div>
+            <button class="btn btn-secondary btn-sm" onclick="distillCurrentNodeRule()">AI提炼</button>
+          </div>
+          <div id="aiDistillOutput" style="min-height:120px;padding:12px;border-radius:10px;background:#fff;border:1px solid #eceff3;white-space:pre-wrap;line-height:1.75;color:#334155"></div>
+        </div>
+        <div style="padding:12px;border:1px solid #eee;border-radius:12px;background:#fafafa">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
+            <div style="font-size:13px;font-weight:700;color:#333">知识树重组建议</div>
+            <button class="btn btn-secondary btn-sm" onclick="runSuggestRestructure()">生成</button>
+          </div>
+          <div id="aiRestructureOutput" style="min-height:120px;padding:12px;border-radius:10px;background:#fff;border:1px solid #eceff3;white-space:pre-wrap;line-height:1.75;color:#334155"></div>
         </div>
       </div>
     </div>
@@ -1713,6 +1714,8 @@ body{
 </div>
 
 <!-- ===== 添加词条弹窗 ===== -->
+<script src="/assets/modules/dom-utils.js"></script>
+<script src="/assets/modules/toast.js"></script>
 <script>
 // ============================================================
 // 常量 & 全局状态
@@ -2445,11 +2448,11 @@ renderCloudUi = function() {
   }
   syncBadge.className = `cloud-status-badge ${cloudSyncState}`;
   syncBadge.textContent = ({
-    idle: 'idle',
-    dirty: 'local changed',
-    saving: 'syncing',
-    synced: 'synced',
-    error: 'sync failed'
+    idle: '空闲',
+    dirty: '待同步',
+    saving: '同步中',
+    synced: '已同步',
+    error: '同步失败'
   })[cloudSyncState] || cloudSyncState;
   const currentOrigin = mergeCurrentOriginStatus();
   const originText = currentOrigin.origin || getCloudOriginKey();
@@ -2458,24 +2461,24 @@ renderCloudUi = function() {
   const localUpdatedText = formatCloudTime(currentOrigin.lastLocalChangeAt || currentOrigin.lastSavedAt || currentOrigin.lastLoadedAt || '');
   syncHint.textContent = [
     cloudSyncMessage || '',
-    timeText ? `Last event: ${timeText}` : '',
-    cloudUpdatedText ? `Backup: ${cloudUpdatedText}` : ''
-  ].filter(Boolean).join(' | ') || 'Local cache is per origin.';
+    timeText ? `最后同步: ${timeText}` : '',
+    cloudUpdatedText ? `云端备份: ${cloudUpdatedText}` : ''
+  ].filter(Boolean).join(' | ') || '本地缓存按访问入口分别存放。';
   const currentMs = toCloudTimeMs(getOriginDisplayTime(currentOrigin));
   const newerOrigins = (cloudOriginStatuses || []).filter(item => item.origin !== originText).filter(item => currentMs && currentMs > toCloudTimeMs(getOriginDisplayTime(item)));
   const lines = [];
-  if (newerOrigins.length) lines.push(`<div class="cloud-origin-alert">Current origin is newer than ${newerOrigins.length} other entries</div>`);
-  lines.push(`<div>Current: ${escapeHtml(originText)}</div>`);
-  if (localUpdatedText) lines.push(`<div>Local: ${escapeHtml(localUpdatedText)}</div>`);
-  if (cloudUpdatedText) lines.push(`<div>Cloud: ${escapeHtml(cloudUpdatedText)}</div>`);
+  if (newerOrigins.length) lines.push(`<div class="cloud-origin-alert">当前入口比另外 ${newerOrigins.length} 个入口更新</div>`);
+  lines.push(`<div>当前入口: ${escapeHtml(originText)}</div>`);
+  if (localUpdatedText) lines.push(`<div>本地更新时间: ${escapeHtml(localUpdatedText)}</div>`);
+  if (cloudUpdatedText) lines.push(`<div>云端更新时间: ${escapeHtml(cloudUpdatedText)}</div>`);
   const mergedItems = [currentOrigin].concat((cloudOriginStatuses || []).filter(item => item.origin !== originText));
   mergedItems.forEach(item => {
-    const label = item.origin === originText ? 'Current' : 'Other';
+    const label = item.origin === originText ? '当前' : '其他';
     const localText = formatCloudTime(item.lastLocalChangeAt || item.lastSavedAt || item.lastLoadedAt || '');
     const cloudText = formatCloudTime(item.lastBackupUpdatedAt || '');
     const suffix = [
-      localText ? `Local: ${localText}` : '',
-      cloudText ? `Cloud: ${cloudText}` : ''
+      localText ? `本地: ${localText}` : '',
+      cloudText ? `云端: ${cloudText}` : ''
     ].filter(Boolean).join(' | ');
     lines.push(`<div>${escapeHtml(label)} ${escapeHtml(item.origin)}${suffix ? ` | ${escapeHtml(suffix)}` : ''}</div>`);
   });
@@ -2840,13 +2843,19 @@ function getCurrentKnowledgeNodeSummary(){
 function openAIToolsModal(){
   openModal('aiToolsModal');
   const diagnoseOutput = document.getElementById('aiDiagnoseOutput');
+  const patternsOutput = document.getElementById('aiPatternsOutput');
   const chatOutput = document.getElementById('aiChatOutput');
   const summaryOutput = document.getElementById('aiModuleSummaryOutput');
   const genOutput = document.getElementById('aiGenerateOutput');
+  const distillOutput = document.getElementById('aiDistillOutput');
+  const restructureOutput = document.getElementById('aiRestructureOutput');
   if(diagnoseOutput && !diagnoseOutput.textContent.trim()) diagnoseOutput.textContent = '点击“刷新诊断”生成当前阶段诊断。';
+  if(patternsOutput && !patternsOutput.textContent.trim()) patternsOutput.textContent = '点击“生成”查找跨题型、跨章节的共性错误模式。';
   if(chatOutput && !chatOutput.textContent.trim()) chatOutput.textContent = '在上方输入你的问题，AI 会结合当前账号数据回答。';
   if(summaryOutput && !summaryOutput.value.trim()) summaryOutput.value = '点击“生成”后，这里会产出可以直接发给 Claude 的摘要。';
   if(genOutput && !genOutput.textContent.trim()) genOutput.textContent = '选中一个知识点后，可为当前知识点生成 3 道相似题。';
+  if(distillOutput && !distillOutput.textContent.trim()) distillOutput.textContent = '选中知识点后点击“AI提炼”，把当前节点错题沉淀成可复用规则。';
+  if(restructureOutput && !restructureOutput.textContent.trim()) restructureOutput.textContent = '点击“生成”检查当前知识树是否值得拆分、合并或改名。';
 }
 
 function clearAIChat(){
@@ -2964,6 +2973,98 @@ async function generateNodePractice(){
   }catch(e){
     if(output) output.textContent = e.message || '相似题生成失败';
     showToast(e.message || '相似题生成失败', 'error');
+  }
+}
+
+async function runDiscoverPatterns(){
+  const output = document.getElementById('aiPatternsOutput');
+  if(output) output.textContent = '模式分析中...';
+  try{
+    const data = await fetchJsonWithAuth('/api/ai/discover-patterns', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ errors: getFiltered().slice(0, 120) })
+    });
+    const result = data.result || {};
+    const items = Array.isArray(result.patterns) ? result.patterns.map((item, idx) =>
+      `${idx+1}. ${item.theme || '未命名模式'}\n证据：${item.evidence || ''}\n影响：${item.impact || ''}\n建议：${item.suggestion || ''}`
+    ).join('\n\n') : '';
+    if(output) output.textContent = `${result.summary || '暂无总结'}${items ? `\n\n${items}` : ''}`.trim();
+  }catch(e){
+    if(output) output.textContent = e.message || '模式分析失败';
+    showToast(e.message || '模式分析失败', 'error');
+  }
+}
+
+function appendRuleToCurrentNode(rule, reason){
+  const node = getCurrentKnowledgeNode();
+  if(!node || !rule) return false;
+  const header = node.contentMd && node.contentMd.trim() ? '\n\n' : '';
+  const block = `## AI提炼\n- 规则：${rule}${reason ? `\n- 说明：${reason}` : ''}`;
+  if ((node.contentMd || '').includes(rule)) return false;
+  node.contentMd = `${node.contentMd || ''}${header}${block}`.trim();
+  node.updatedAt = new Date().toISOString();
+  syncNotesWithErrors();
+  saveKnowledgeState();
+  renderNotesByType();
+  return true;
+}
+
+async function distillCurrentNodeRule(){
+  const output = document.getElementById('aiDistillOutput');
+  const node = getCurrentKnowledgeNodeSummary();
+  if(!node){
+    showToast('请先选中一个知识点', 'warning');
+    return;
+  }
+  const referenceError = (node.linkedErrors || [])[0];
+  if(!referenceError){
+    if(output) output.textContent = '当前知识点还没有关联错题，先挂一题再提炼。';
+    showToast('当前知识点还没有关联错题', 'warning');
+    return;
+  }
+  if(output) output.textContent = 'AI提炼中...';
+  try{
+    const data = await fetchJsonWithAuth('/api/ai/distill-to-node', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        nodeTitle: node.title,
+        nodeContent: node.contentMd || '',
+        error: referenceError
+      })
+    });
+    const result = data.result || {};
+    const appended = result.rule ? appendRuleToCurrentNode(result.rule, result.reason || '') : false;
+    if(output) output.textContent = [
+      result.rule ? `规则：${result.rule}` : '未提炼出规则',
+      result.reason ? `说明：${result.reason}` : '',
+      appended ? '已自动插入当前知识点笔记。' : (result.rule ? '规则已生成，如需再次插入请调整后重试。' : '')
+    ].filter(Boolean).join('\n\n');
+    if(appended) showToast('AI提炼已写入当前知识点笔记', 'success');
+  }catch(e){
+    if(output) output.textContent = e.message || 'AI提炼失败';
+    showToast(e.message || 'AI提炼失败', 'error');
+  }
+}
+
+async function runSuggestRestructure(){
+  const output = document.getElementById('aiRestructureOutput');
+  if(output) output.textContent = '知识树检查中...';
+  try{
+    const data = await fetchJsonWithAuth('/api/ai/suggest-restructure', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ tree: knowledgeTree, notes: knowledgeNotes || {} })
+    });
+    const result = data.result || {};
+    const suggestions = Array.isArray(result.suggestions) ? result.suggestions.map((item, idx) =>
+      `${idx+1}. ${item.action || '调整'} -> ${item.target || '未指明目标'}\n原因：${item.reason || ''}`
+    ).join('\n\n') : '';
+    if(output) output.textContent = `${result.summary || '暂无总结'}${suggestions ? `\n\n${suggestions}` : ''}`.trim();
+  }catch(e){
+    if(output) output.textContent = e.message || '知识树建议生成失败';
+    showToast(e.message || '知识树建议生成失败', 'error');
   }
 }
 
@@ -3159,6 +3260,23 @@ function useQuestionOCRAlternative(index) {
   updateQuestionOCRStatus('已切换识别候选，请确认后回填', 'success');
 }
 
+function getOCRConfidenceMeta(score) {
+  const quality = Number(score || 0);
+  if (quality >= 0.75) return { label: '高置信', color: '#047857', bg: '#ecfdf5', border: '#a7f3d0' };
+  if (quality >= 0.45) return { label: '中置信', color: '#b45309', bg: '#fffbeb', border: '#fcd34d' };
+  return { label: '低置信', color: '#b91c1c', bg: '#fef2f2', border: '#fecaca' };
+}
+
+function activateOCRManualFallback(hintText) {
+  const questionEl = document.getElementById('editQuestion');
+  if (questionEl) {
+    questionEl.focus();
+    questionEl.placeholder = '这类低文字题更适合手动填写题干或保留题图后补录...';
+  }
+  updateQuestionOCRStatus('检测到低文字题，已切到手动优先模式', 'success');
+  if (hintText) showToast(hintText, 'warning');
+}
+
 renderQuestionOCRPanel = function() {
   const panel = document.getElementById('ocrQuestionPanel');
   if (!panel) return;
@@ -3180,14 +3298,19 @@ renderQuestionOCRPanel = function() {
       const variant = escapeHtml(alt.variant || `candidate-${idx + 1}`);
       const isActive = (alt.variant || '') === (questionOCRResult.variant || '');
       const quality = Number(alt.quality || 0);
+      const confidence = getOCRConfidenceMeta(quality);
       return `
         <div class="ocr-alt-card${isActive ? ' active' : ''}">
           <div class="ocr-alt-head">
             <div>
               <div style="font-weight:600;color:#334155">${variant}</div>
-              <div class="ocr-alt-meta">${quality ? `score ${quality.toFixed(2)}` : 'candidate'}</div>
+              <div class="ocr-alt-meta">
+                <span style="display:inline-flex;align-items:center;padding:1px 8px;border-radius:999px;border:1px solid ${confidence.border};background:${confidence.bg};color:${confidence.color};font-size:11px;font-weight:600">${confidence.label}</span>
+                ${quality ? `<span>score ${quality.toFixed(2)}</span>` : '<span>candidate</span>'}
+                ${isActive ? '<span style="color:#2563eb;font-weight:600">当前使用</span>' : ''}
+              </div>
             </div>
-            <button type="button" class="btn btn-secondary btn-sm" onclick="useQuestionOCRAlternative(${idx})">使用这条</button>
+            <button type="button" class="btn ${isActive ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="useQuestionOCRAlternative(${idx})">${isActive ? '当前结果' : '切换到这条'}</button>
           </div>
           <div style="font-size:12px;line-height:1.6;color:#475569;max-height:120px;overflow:auto;white-space:normal">${text || '<span style="color:#94a3b8">empty</span>'}</div>
         </div>
@@ -3220,7 +3343,7 @@ renderQuestionOCRPanel = function() {
         <div style="font-weight:600;color:#334155;margin-bottom:4px">原始识别文本</div>
         <div style="white-space:pre-wrap;color:#475569;max-height:160px;overflow:auto">${rawText || '<span style="color:#94a3b8">empty</span>'}</div>
       </div>
-      ${hintText ? `<div style="padding:10px 12px;border:1px solid #fde68a;border-radius:10px;background:#fffbeb;color:#92400e;font-size:12px;line-height:1.7">${hintText}</div>` : ''}
+      ${hintText ? `<div class="entry-manual-hint">${hintText}<div style="margin-top:8px"><button type="button" class="btn btn-secondary btn-sm" onclick="activateOCRManualFallback()">手动填写题干</button></div></div>` : ''}
       ${alternatives ? `<div class="ocr-alt-grid"><div style="font-weight:600;color:#334155">候选结果</div>${alternatives}</div>` : ''}
     </div>
   `;
@@ -3271,6 +3394,7 @@ async function runQuestionOCRFromBytes(fileName, mime, bytes, previewBase64) {
     }
     const lineCount = Number(result.lineCount || 0);
     updateQuestionOCRStatus(`已识别 ${lineCount} 段，先确认后回填`, 'success');
+    if (questionOCRResult.hint) activateOCRManualFallback(questionOCRResult.hint);
   } catch (e) {
     questionOCRResult = null;
     renderQuestionOCRPanel();
@@ -3818,6 +3942,92 @@ function nextQuizQuestion() {
   } else {
     renderQuizQuestion();
   }
+}
+
+function formatQuizEvaluationText(result) {
+  if (!result) return '';
+  return [
+    result.analysis ? `点评：${result.analysis}` : '',
+    result.thoughtProcess ? `思路：${result.thoughtProcess}` : '',
+    result.masteryUpdate ? `建议掌握度：${result.masteryUpdate}` : ''
+  ].filter(Boolean).join('\n');
+}
+
+async function evaluateQuizAnswerWithAI(answerIndex) {
+  const answerItem = quizAnswers[answerIndex];
+  if (!answerItem || answerItem.skipped) return;
+  const errorItem = errors.find(x => x.id === answerItem.id);
+  if (!errorItem) return;
+  answerItem.aiBusy = true;
+  enhanceQuizReviewUi();
+  try {
+    const data = await fetchJsonWithAuth('/api/ai/evaluate-answer', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        question: errorItem.question || '',
+        options: errorItem.options || '',
+        correctAnswer: errorItem.answer || '',
+        myAnswer: answerItem.userAnswer || '',
+        originalErrorReason: errorItem.errorReason || '',
+        rootReason: errorItem.rootReason || ''
+      })
+    });
+    answerItem.aiEvaluation = data.result || null;
+    if (answerItem.aiEvaluation && answerItem.aiEvaluation.masteryUpdate) {
+      errorItem.masteryLevel = answerItem.aiEvaluation.masteryUpdate;
+      errorItem.updatedAt = new Date().toISOString();
+    }
+  } catch (e) {
+    answerItem.aiEvaluation = { analysis: e.message || 'AI点评失败' };
+    showToast(e.message || 'AI点评失败', 'error');
+  } finally {
+    answerItem.aiBusy = false;
+    enhanceQuizReviewUi();
+  }
+}
+
+async function evaluateWrongQuizAnswers() {
+  const wrongIndexes = quizAnswers.map((item, idx) => ({ item, idx })).filter(({ item }) => !item.skipped && !item.correct);
+  if (!wrongIndexes.length) {
+    showToast('本次没有错题需要AI点评', 'warning');
+    return;
+  }
+  for (const { idx } of wrongIndexes) {
+    await evaluateQuizAnswerWithAI(idx);
+  }
+  showToast('本次错题AI点评已完成', 'success');
+}
+
+function enhanceQuizReviewUi() {
+  const content = document.getElementById('quizContent');
+  if (!content) return;
+  let toolbar = content.querySelector('#quizAiReviewToolbar');
+  if (!toolbar && content.innerHTML.indexOf('quiz-review-title') >= 0) {
+    toolbar = document.createElement('div');
+    toolbar.id = 'quizAiReviewToolbar';
+    toolbar.style.cssText = 'margin:0 0 14px;display:flex;gap:8px;flex-wrap:wrap';
+    toolbar.innerHTML = '<button class="btn btn-secondary" onclick="evaluateWrongQuizAnswers()">AI点评错题</button>';
+    const anchor = content.querySelector('.quiz-review-title');
+    if (anchor) anchor.insertAdjacentElement('afterend', toolbar);
+  }
+  const cards = Array.from(content.querySelectorAll('.quiz-review-item'));
+  cards.forEach((card, idx) => {
+    const answerItem = quizAnswers[idx];
+    if (!answerItem || answerItem.skipped) return;
+    let aiWrap = card.querySelector('.quiz-ai-review-wrap');
+    if (!aiWrap) {
+      aiWrap = document.createElement('div');
+      aiWrap.className = 'quiz-ai-review-wrap';
+      aiWrap.style.cssText = 'margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start';
+      card.appendChild(aiWrap);
+    }
+    const evalText = formatQuizEvaluationText(answerItem.aiEvaluation);
+    aiWrap.innerHTML = `
+      <button class="btn btn-secondary btn-sm" onclick="evaluateQuizAnswerWithAI(${idx})" ${answerItem.aiBusy ? 'disabled' : ''}>${answerItem.aiBusy ? 'AI点评中...' : 'AI点评这题'}</button>
+      ${evalText ? `<div class="review-analysis" style="margin:0;flex:1 1 100%;background:#f8fafc;border-left-color:#60a5fa">AI点评：<br>${escapeHtml(evalText)}</div>` : ''}
+    `;
+  });
 }
 
 function renderQuizReview() {
@@ -4441,6 +4651,10 @@ function saveCardNote(id, val) {
   e.note=val;
   e.updatedAt=new Date().toISOString();
   recordErrorUpsert(e);
+  expMain.add(type);
+  expMainSub.add('sub:' + type + '::' + (subtype || '未分类'));
+  if (subSubtype) expMainSub2.add('s2:' + type + '::' + (subtype || '未分类') + '::' + subSubtype);
+  saveExpMain();
   saveData();
 }
 function updateStatus(id,s){ const e=errors.find(x=>x.id===id);if(e){e.status=s;e.updatedAt=new Date().toISOString();recordErrorUpsert(e);saveData();renderSidebar();renderAll();} }
@@ -4487,6 +4701,7 @@ function openAddModal(){
   updateSubtypeOptions();
   setReasonFormValue('');
   refreshKnowledgePicker();
+  setEntryAnalysisOpen(false);
   setEntryAdvancedOpen(false);
   updateEntryFlowBanner(getKnowledgeContextForEntry(selectedKnowledgeNodeId));
   openModal('addModal');
@@ -4519,6 +4734,7 @@ function openEditModal(id){
   document.getElementById('editRootReason').value = e.rootReason||'';
   setReasonFormValue(e.errorReason||'');
   refreshKnowledgePicker(e.noteNodeId || '');
+  setEntryAnalysisOpen(Boolean(e.rootReason || e.errorReason || e.analysis || e.analysisImgData));
   setEntryAdvancedOpen(Boolean((e.status && e.status !== 'focus') || e.difficulty || e.srcYear || e.srcProvince || e.srcOrigin));
   updateEntryFlowBanner(getKnowledgeContextForEntry(e.noteNodeId || selectedKnowledgeNodeId));
   openModal('addModal');
@@ -4624,6 +4840,19 @@ function setEntryAdvancedOpen(open) {
   const details = document.getElementById('entryAdvancedDetails');
   if (!details) return;
   details.open = !!open;
+}
+
+function setEntryAnalysisOpen(open) {
+  const details = document.getElementById('entryAnalysisDetails');
+  if (!details) return;
+  details.open = !!open;
+}
+
+function applySourcePreset(label) {
+  const input = document.getElementById('editSrcOrigin');
+  if (!input) return;
+  input.value = label || '';
+  setEntryAdvancedOpen(true);
 }
 
 function openAddModalForCurrentKnowledge() {
@@ -6641,28 +6870,8 @@ function executeBatch(action) {
 }
 
 // ============================================================
-// 弹窗控制
+// 弹窗 / Toast 基础能力已抽到 modules/dom-utils.js 和 modules/toast.js
 // ============================================================
-function openModal(id){ document.getElementById(id).classList.add('open'); }
-function closeModal(id){ document.getElementById(id).classList.remove('open'); }
-document.querySelectorAll('.modal-mask').forEach(mask=>{
-  mask.addEventListener('click',function(e){
-    if(e.target===this&&this.id!=='quizModal') closeModal(this.id);
-  });
-});
-function showToast(message, type) {
-  const stack = document.getElementById('toastStack');
-  if (!stack) return;
-  const toast = document.createElement('div');
-  toast.className = `toast ${type || 'success'}`;
-  toast.textContent = message;
-  stack.appendChild(toast);
-  requestAnimationFrame(() => toast.classList.add('show'));
-  setTimeout(() => {
-    toast.classList.remove('show');
-    setTimeout(() => toast.remove(), 220);
-  }, 2200);
-}
 function closeMoreMenu() {
   const menu = document.getElementById('moreMenu');
   if (menu) menu.classList.remove('open');
@@ -7413,7 +7622,8 @@ function prependNodeHeading(headings, nodeTitle) {
 }
 function renderNotePreviewLayout(previewHtml, tocHtml) {
   const article = `<article class="note-preview-article">${previewHtml || ''}</article>`;
-  return `<div class="note-preview-layout">${article}</div>`;
+  const aside = tocHtml ? `<aside class="note-preview-toc">${tocHtml}</aside>` : '';
+  return `<div class="note-preview-layout">${aside}${article}</div>`;
 }
 function renderKnowledgeWorkspaceHeader(node, pathText, directCount, linkedCount, noteEditing) {
   if (!node) return '';
@@ -7439,6 +7649,7 @@ function renderKnowledgeWorkspaceHeader(node, pathText, directCount, linkedCount
         </div>
       </details>
     </div>`;
+  enhanceQuizReviewUi();
 }
 function decorateKnowledgeNotesView(contentEl, currentNode, pathText, directCount, linkedCount, summaryHtml, noteEditing) {
   if (!contentEl) return;
@@ -7465,30 +7676,17 @@ function decorateKnowledgeNotesView(contentEl, currentNode, pathText, directCoun
   });
 }
 function ensureGlobalNoteTocDock() {
-  let dock = document.getElementById('globalNoteTocDock');
-  if (!dock) {
-    dock = document.createElement('div');
-    dock.id = 'globalNoteTocDock';
-    dock.className = 'global-note-toc-dock';
-    document.body.appendChild(dock);
-  }
-  return dock;
+  return null;
 }
 function clearGlobalNoteTocDock() {
   const dock = document.getElementById('globalNoteTocDock');
-  if (!dock) return;
-  dock.innerHTML = '';
-  dock.style.display = 'none';
+  if (dock) {
+    dock.innerHTML = '';
+    dock.style.display = 'none';
+  }
 }
 function updateGlobalNoteTocDock(headings, anchorPrefix) {
-  const dock = ensureGlobalNoteTocDock();
-  const tocHtml = renderFloatingHeadingPanel(headings, anchorPrefix);
-  if (!tocHtml || !document.getElementById('tabContentNotes') || !document.getElementById('tabContentNotes').classList.contains('active')) {
-    clearGlobalNoteTocDock();
-    return;
-  }
-  dock.innerHTML = tocHtml;
-  dock.style.display = '';
+  clearGlobalNoteTocDock();
 }
 function renderNoteToc(content, anchorPrefix) {
   const raw = (content || '').trim();
@@ -7717,26 +7915,7 @@ function renderKnowledgeNotesPanelRight() {
   }).join('');
 }
 function renderNotesPanelRight() {
-  const notesTab = document.getElementById('tabContentNotes');
-  if (!notesTab || !notesTab.classList.contains('active')) {
-    clearGlobalNoteTocDock();
-    return;
-  }
-  let anchorPrefix = '';
-  let content = '';
-  if (notesViewMode === 'knowledge') {
-    ensureKnowledgeState();
-    const currentNode = getCurrentKnowledgeNode();
-    if (currentNode) {
-      anchorPrefix = getKnowledgeNoteAnchorPrefix(currentNode.id);
-      content = currentNode.contentMd || '';
-    }
-  } else {
-    anchorPrefix = getLegacyNoteAnchorPrefix(selectedNoteType);
-    const noteData = selectedNoteType ? notesByType[selectedNoteType] : null;
-    content = noteData && noteData.content ? noteData.content : '';
-  }
-  updateGlobalNoteTocDock(extractMdHeadings(content), anchorPrefix);
+  clearGlobalNoteTocDock();
 }
 function renderLegacyNotesPanelRight() {
   const body = document.getElementById('notesPanelRightBody');
@@ -8068,12 +8247,14 @@ async function analyzeEntryWithAI() {
 }
 
 // 修改添加错题函数，增加联动
-async function saveError(){
+async function saveError(opts){
+  const saveOpts = opts || {};
+  const keepOpen = Boolean(saveOpts.keepOpen);
   const type = document.getElementById('editType').value;
   const subtype = document.getElementById('editSubtype').value.trim();
   const subSubtype = document.getElementById('editSubSubtype').value.trim();
   const question = document.getElementById('editQuestion').value.trim();
-  const options = document.getElementById('editOptions').value.trim();
+  const optionText = document.getElementById('editOptions').value.trim();
   const answer = document.getElementById('editAnswer').value.trim();
   const myAnswer = document.getElementById('editMyAnswer').value.trim();
   const rootReason = document.getElementById('editRootReason').value.trim();
@@ -8120,9 +8301,10 @@ async function saveError(){
   }
 
   const data = {
-    type, subtype, subSubtype, question, options, answer, myAnswer, rootReason, errorReason, analysis, status, difficulty,
+    type, subtype, subSubtype, question, options: optionText, answer, myAnswer, rootReason, errorReason, analysis, status, difficulty,
     imgData, analysisImgData, srcYear, srcProvince, srcOrigin, noteNodeId
   };
+  let savedId = id;
   if(id){
     const old = errors.find(e=>e.id===id);
     const oldType = old ? old.type : null;
@@ -8150,13 +8332,29 @@ async function saveError(){
     };
     errors.push(newErr);
     recordErrorUpsert(newErr);
+    savedId = newErr.id;
+    editingId = newErr.id;
+    document.getElementById('addModalTitle').textContent = '编辑错题';
     showToast('添加成功', 'success');
   }
-  saveData();closeModal('addModal');renderSidebar();renderAll();
+  saveData();
+  renderSidebar();
+  renderAll();
   // 同步笔记结构（自动补充子类型标题）
   syncNotesWithErrors();
   saveKnowledgeState();
   renderNotesByType();
+  if (keepOpen) {
+    setEntryAnalysisOpen(true);
+    setEntryAdvancedOpen(true);
+    updateEntryFlowBanner(getKnowledgeContextForEntry(resolveKnowledgeNodeIdForSave(type, subtype, subSubtype)));
+    const focusTarget = document.getElementById('editRootReason') || document.getElementById('editAnalysis');
+    if (focusTarget) focusTarget.focus();
+    showToast(savedId && id ? '已保存，可继续补充细节' : '已保存，继续完善这道题', 'success');
+    return savedId;
+  }
+  closeModal('addModal');
+  return savedId;
 }
 
 // 修改删除错题函数，增加联动
@@ -8334,9 +8532,14 @@ function fallbackCopy(text) {
 })();
 </script>
 <script src="/assets/modules/knowledge-state.js"></script>
+<script src="/assets/modules/cloud-sync-store.js"></script>
 <script src="/assets/modules/knowledge-workbench.js"></script>
 <script src="/assets/modules/knowledge-workspace.js"></script>
 <script src="/assets/modules/knowledge-node-modal.js"></script>
+<script src="/assets/modules/ai-tools-modal.js"></script>
+<script src="/assets/modules/error-card-render.js"></script>
+<script src="/assets/modules/error-list-panel.js"></script>
+<script src="/assets/modules/entry-flow-store.js"></script>
 <script src="/assets/modules/data-management.js"></script>
 </body>
 </html>

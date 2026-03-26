@@ -65,6 +65,40 @@ Command:
 docker compose up --build -d app
 ```
 
+## OCR Docker Rule
+
+The current preferred OCR runtime is now a sidecar Umi-OCR service instead of a direct in-process engine swap inside the app container.
+
+Current rule:
+
+1. the app keeps `/api/ai/ocr-image` as the only product-facing OCR entry
+2. OCR backend selection is env-driven
+3. `umi` is the preferred runtime path
+4. Tesseract stays in place as fallback safety
+
+Required envs:
+
+- `OCR_BACKEND=umi`
+- `OCR_TESSERACT_FALLBACK=true`
+- `UMI_OCR_URL=http://umi-ocr:1224/api/ocr`
+
+Start command:
+
+```powershell
+docker compose --profile ocr-wechat up -d app umi-ocr
+```
+
+Important runtime note:
+
+- the `umi-ocr` container must run with `HEADLESS=true`
+- without it, the container falls into GUI mode and fails with `$DISPLAY is not set`
+
+Success criteria:
+
+1. `xingce_v3_umi_ocr` is `Up`
+2. `http://127.0.0.1:1224/api/ocr/get_options` returns `200`
+3. `/api/ai/ocr-image` from the main app returns `engine = "umi-ocr"`
+
 ## Cloudflare Rule
 
 Production public access should use the named tunnel and fixed domain:
@@ -91,9 +125,17 @@ Recommended verification sequence after meaningful backend or frontend changes:
 
 1. `python -m py_compile app/main.py`
 2. `python .\scripts\verify_v31_smoke.py`
-3. `docker compose up --build -d app`
+3. `docker compose --profile ocr-wechat up --build -d app umi-ocr`
 4. verify local `http://127.0.0.1:8000`
-5. verify public `https://erroranaly.qzz.io/login`
+5. verify OCR sidecar `http://127.0.0.1:1224/api/ocr/get_options`
+6. verify public `https://erroranaly.qzz.io/login`
+7. verify public OCR path through the real page/runtime, not only direct local API calls
+
+If browser-based UI smoke is needed inside the app container:
+
+1. `docker exec xingce_v3_app npx playwright install chromium`
+2. `docker exec xingce_v3_app npx playwright install-deps chromium`
+3. `docker exec xingce_v3_app node /app/scripts/verify_ui_smoke.mjs`
 
 ## Frontend Runtime Rule
 
@@ -191,3 +233,31 @@ Do not manually rewrite these copies as product content. Product-facing structur
   2. better candidate ranking
   3. better failure messaging
   It does not mean generic OCR should be forced onto low-text image questions.
+
+## 2026-03-26 OCR WeChat Docker Decision
+
+- The earlier assumption that OCR had already been moved to a WeChat-like Docker path was false.
+- Before the final integration pass, the repo was still running a Tesseract-only OCR runtime.
+- The chosen implementation for this phase is:
+  1. keep the frontend OCR contract unchanged
+  2. keep the FastAPI OCR endpoint unchanged
+  3. add backend dispatch between `umi` and `tesseract`
+  4. keep Tesseract as fallback instead of deleting it
+- This gives the product a more WeChat-like OCR runtime without forcing a risky all-at-once rewrite.
+
+## 2026-03-26 Public Verification Rule
+
+- Public homepage `200` is necessary but not sufficient.
+- For this project, meaningful public verification now means:
+  1. the public login page opens
+  2. a browser-based smoke flow passes on `https://erroranaly.qzz.io`
+  3. a real browser-context upload to `/api/ai/ocr-image` returns `engine = "umi-ocr"`
+- Direct script requests to the public domain can still hit edge-layer restrictions and should not be the only acceptance signal.
+
+## 2026-03-26 Backend Safety Note
+
+- `app/main.py` carried duplicate `run_ocr_bytes` definitions during this phase.
+- Practical rule:
+  1. when touching OCR again, verify which definition wins at runtime
+  2. prefer one final dispatch entry and explicit backend-specific helpers
+  3. do not add another OCR path without checking the final active function order first

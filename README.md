@@ -48,6 +48,7 @@ Important caveat:
 The backend already exposes:
 
 - `/api/ai/analyze-entry`
+- `/api/ai/ocr-image`
 - `/api/ai/evaluate-answer`
 - `/api/ai/generate-question`
 - `/api/ai/diagnose`
@@ -59,6 +60,25 @@ The backend already exposes:
 - `/api/ai/suggest-restructure`
 
 DeepSeek is preferred when `DEEPSEEK_API_KEY` is present.
+
+## OCR Backends
+
+The OCR upload API now supports two backends:
+
+1. `tesseract`
+   - default
+   - embedded in the app container
+   - keeps the current numeric-question tuning
+2. `umi`
+   - remote HTTP OCR through a Umi-OCR compatible container
+   - intended for the WeChat-style OCR runtime path
+   - falls back to Tesseract when `OCR_TESSERACT_FALLBACK=true`
+
+Relevant env vars:
+
+- `OCR_BACKEND=tesseract|umi`
+- `OCR_TESSERACT_FALLBACK=true|false`
+- `UMI_OCR_URL=http://umi-ocr:1224/api/ocr`
 
 ## Practice Capabilities
 
@@ -90,6 +110,16 @@ set MINIMAX_MODEL=MiniMax-M2.5
 set ALLOWED_ORIGINS=http://127.0.0.1:8000,http://localhost:8000,https://erroranaly.qzz.io
 set TUNNEL_TOKEN=your_cloudflare_tunnel_token
 docker compose up --build -d app
+```
+
+To run with the Umi-OCR Docker sidecar:
+
+```bash
+cd E:\IdeaProject\git\xingce_v3_lab
+set OCR_BACKEND=umi
+set OCR_TESSERACT_FALLBACK=true
+set UMI_OCR_URL=http://umi-ocr:1224/api/ocr
+docker compose --profile ocr-wechat up --build -d app umi-ocr
 ```
 
 ## Run Without Docker
@@ -129,12 +159,14 @@ Useful checks:
 python -m py_compile app/main.py
 python .\scripts\verify_v31_smoke.py
 docker compose up --build -d app
+docker compose --profile ocr-wechat up --build -d app umi-ocr
 ```
 
 ## Documentation Map
 
 - [current roadmap](E:\IdeaProject\git\xingce_v3_lab\docs\roadmap.md)
 - [ops notes](E:\IdeaProject\git\xingce_v3_lab\docs\ops-notes.md)
+- [OCR WeChat runbook](E:\IdeaProject\git\xingce_v3_lab\docs\runbook-ocr-wechat.md)
 - [v3.1 integration plan](E:\IdeaProject\git\xingce_v3_lab\docs\v3.1-integration-plan.md)
 - [v3.1 rollout notes](E:\IdeaProject\git\xingce_v3_lab\docs\v3.1-rollout-notes-2026-03-26.md)
 - [shenlun workbench plan](E:\IdeaProject\git\xingce_v3_lab\docs\shenlun-workbench-plan.md)

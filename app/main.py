@@ -66,6 +66,14 @@ ALLOWED_ENTRY_TYPES = {
     "其他",
 }
 OCR_MAX_BYTES = 5 * 1024 * 1024
+OCR_BACKEND = os.getenv("OCR_BACKEND", "tesseract").strip().lower() or "tesseract"
+OCR_TESSERACT_FALLBACK = os.getenv("OCR_TESSERACT_FALLBACK", "true").strip().lower() not in {
+    "0",
+    "false",
+    "no",
+    "off",
+}
+UMI_OCR_URL = os.getenv("UMI_OCR_URL", "http://umi-ocr:1224/api/ocr").strip()
 
 
 def utcnow() -> datetime:
@@ -674,7 +682,7 @@ def call_analyze_entry(payload: AnalyzeEntryPayload) -> dict[str, Any]:
     return cleaned
 
 
-def run_ocr_bytes(image_bytes: bytes) -> dict[str, Any]:
+def run_ocr_bytes_legacy(image_bytes: bytes) -> dict[str, Any]:
     if not image_bytes:
         raise HTTPException(status_code=400, detail="empty image body")
     if len(image_bytes) > OCR_MAX_BYTES:
@@ -762,7 +770,7 @@ def run_ocr_bytes(image_bytes: bytes) -> dict[str, Any]:
     }
 
 
-def run_ocr_bytes(image_bytes: bytes) -> dict[str, Any]:
+def run_tesseract_ocr_bytes(image_bytes: bytes) -> dict[str, Any]:
     if not image_bytes:
         raise HTTPException(status_code=400, detail="empty image body")
     if len(image_bytes) > OCR_MAX_BYTES:
@@ -1203,6 +1211,102 @@ def run_ocr_bytes(image_bytes: bytes) -> dict[str, Any]:
         "alternatives": alternative_items,
         "hint": low_text_hint,
     }
+
+
+def run_umi_ocr_bytes(image_bytes: bytes) -> dict[str, Any]:
+    if not UMI_OCR_URL:
+        raise HTTPException(status_code=500, detail="UMI_OCR_URL not configured")
+
+    payload = {
+        "base64": base64.b64encode(image_bytes).decode("ascii"),
+        "options": {
+            "ocr.cls": True,
+            "ocr.limit_side_len": 2880,
+            "tbpu.parser": "multi_none",
+            "data.format": "dict",
+        },
+    }
+    request = urllib.request.Request(
+        UMI_OCR_URL,
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=90) as response:
+            raw = response.read().decode("utf-8", errors="replace")
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise HTTPException(status_code=502, detail=f"umi-ocr request failed: {detail}") from exc
+    except urllib.error.URLError as exc:
+        reason = getattr(exc, "reason", exc)
+        raise HTTPException(status_code=502, detail=f"umi-ocr unavailable: {reason}") from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"umi-ocr request failed: {exc}") from exc
+
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        repaired = raw.replace("\r\n", "\\n").replace("\n", "\\n")
+        try:
+            parsed = json.loads(repaired)
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=502, detail="umi-ocr returned invalid JSON") from exc
+
+    code = int(parsed.get("code") or 0)
+    if code not in {100, 101}:
+        detail = str(parsed.get("data") or parsed.get("message") or "umi-ocr failed").strip()
+        raise HTTPException(status_code=502, detail=f"umi-ocr failed: {detail}")
+
+    raw_data = parsed.get("data")
+    lines: list[dict[str, Any]] = []
+    text = ""
+    if isinstance(raw_data, list):
+        text_parts: list[str] = []
+        for item in raw_data:
+            if not isinstance(item, dict):
+                continue
+            line_text = str(item.get("text") or "").strip()
+            line_end = str(item.get("end") or "")
+            score = float(item.get("score") or 0.0)
+            box = item.get("box") or [[0, 0], [0, 0], [0, 0], [0, 0]]
+            if line_text:
+                lines.append(
+                    {
+                        "text": line_text,
+                        "score": round(score, 4),
+                        "box": box,
+                    }
+                )
+                text_parts.append(f"{line_text}{line_end}")
+        text = "".join(text_parts).strip()
+    else:
+        text = str(raw_data or "").strip()
+
+    return {
+        "engine": "umi-ocr",
+        "variant": "remote-http",
+        "lineCount": len(lines),
+        "text": text,
+        "lines": lines,
+        "alternatives": [],
+        "hint": "",
+        "elapsedSeconds": float(parsed.get("time") or 0.0),
+    }
+
+
+def run_ocr_bytes(image_bytes: bytes) -> dict[str, Any]:
+    backend = OCR_BACKEND
+    if backend == "umi":
+        try:
+            return run_umi_ocr_bytes(image_bytes)
+        except HTTPException:
+            if not OCR_TESSERACT_FALLBACK:
+                raise
+        except Exception:
+            if not OCR_TESSERACT_FALLBACK:
+                raise
+    return run_tesseract_ocr_bytes(image_bytes)
 
 
 def cleanup_old_ops(user_id: str, conn: sqlite3.Connection) -> None:
