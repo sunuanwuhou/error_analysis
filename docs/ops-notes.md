@@ -215,3 +215,12 @@ Do not manually rewrite these copies as product content. Product-facing structur
   3. verify the live app code and env inside the container
   4. run a real OCR request through the app endpoint
   5. only then declare the OCR switch complete
+
+## 2026-03-26 Legacy HTML Triage Rule
+
+- `xingce_v3.html` is not safe for casual localized patching when mojibake is already present inside quoted strings.
+- A single damaged literal near the top of the inline script can break the whole page and make unrelated features such as the question list appear broken.
+- Before pushing any HTML change to `main`, extract the inline script and run a syntax check against the served file, not only the source diff.
+- If the file shows chained syntax failures, stop layering more local fixes and fall back to one of these paths:
+  1. restore the last known good HTML baseline
+  2. move the risky logic into an external module before changing behavior
