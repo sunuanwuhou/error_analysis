@@ -1090,13 +1090,17 @@ def get_backup(request: Request, xingce_session: Optional[str] = Cookie(default=
         return {
             "exists": False,
             "currentOrigin": current_origin,
+            "payload": None,
+            "backup": None,
             "origins": list_origin_statuses(user["id"]),
         }
+    backup = json.loads(row["payload_json"])
     return {
         "exists": True,
         "currentOrigin": current_origin,
         "updatedAt": row["updated_at"],
-        "backup": json.loads(row["payload_json"]),
+        "payload": backup,
+        "backup": backup,
         "origins": list_origin_statuses(user["id"]),
     }
 
