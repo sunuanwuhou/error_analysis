@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>错题分析</title>
+<title>Ashore</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;background:#f0f2f5;color:#333;display:flex;height:100vh;overflow:hidden}
@@ -986,6 +986,98 @@ body{
     padding:10px 14px!important;
   }
 }
+@media (max-width: 640px){
+  body{
+    overflow:auto;
+  }
+  .main-area{
+    padding:8px;
+    gap:10px;
+  }
+  .top-bar{
+    padding:12px;
+    row-gap:8px;
+  }
+  .top-bar h1{
+    font-size:17px;
+  }
+  .top-bar .btn,
+  .cloud-controls > .btn{
+    width:100%;
+    min-width:0;
+  }
+  .view-mode-switch{
+    width:100%;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+  }
+  .view-mode-switch .btn{
+    width:100%;
+  }
+  .cloud-controls{
+    width:100%;
+    justify-content:stretch;
+  }
+  .cloud-meta{
+    width:100%;
+    padding-right:0;
+  }
+  .date-filter-bar{
+    padding:10px 12px;
+    gap:8px;
+  }
+  .date-filter-bar > *{
+    flex:1 1 calc(50% - 8px);
+    min-width:0;
+  }
+  .date-filter-bar span{
+    flex:0 0 auto;
+  }
+  .content-header,
+  .errors-header,
+  .notes-header{
+    padding-left:12px;
+    padding-right:12px;
+  }
+  .errors-list{
+    padding:10px 8px 14px;
+  }
+  .error-card{
+    padding:12px 14px 12px 18px;
+    border-radius:14px;
+  }
+  .card-actions{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+  .card-actions .btn,
+  .card-actions select,
+  .card-actions .del-btn{
+    width:100%;
+  }
+  .knowledge-workspace-bar,
+  .note-split-area,
+  .note-type-tabs{
+    padding-left:12px;
+    padding-right:12px;
+  }
+  .note-split-editor,
+  .note-split-preview{
+    min-height:300px;
+  }
+  .modal{
+    width:min(100vw - 16px, 760px);
+    max-height:calc(100vh - 16px);
+    border-radius:18px;
+  }
+  #aiWorkbenchBtn{
+    width:auto!important;
+    min-width:0!important;
+    padding:10px 12px!important;
+    font-size:13px!important;
+  }
+}
 /* ===== @media print ===== */
 @media print{
   body{background:#fff!important;overflow:visible!important}
@@ -1009,7 +1101,7 @@ body{
 
 <!-- ===== 左侧菜单栏 ===== -->
 <div class="sidebar">
-  <div class="sidebar-logo">📚 错题分析</div>
+  <div class="sidebar-logo">Ashore</div>
   <div class="quiz-block">
     <button class="quiz-btn" id="quizBtn" onclick="startQuiz()">
       <span>📝 今日复习</span>
@@ -1032,8 +1124,8 @@ body{
 
   <!-- 顶部操作栏 -->
 <div class="top-bar">
-    <h1>📚 错题分析</h1>
-        <h1>馃摎 閿欓鍒嗘瀽</h1>
+    <h1>Ashore</h1>
+        <h1>Ashore</h1>
       <div class="view-mode-switch">
       <button class="btn btn-secondary" id="viewModeErrors" onclick="switchTab('errors')">题目列表</button>
       <button class="btn btn-secondary" id="viewModeNotes" onclick="switchTab('notes')">学习笔记</button>

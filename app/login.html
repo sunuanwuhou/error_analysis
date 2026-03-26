@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>xingce Login</title>
+  <title>Ashore</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -141,24 +141,31 @@
       .shell { grid-template-columns: 1fr; }
       .hero { border-right: none; border-bottom: 1px solid rgba(190, 30, 45, 0.08); }
     }
+    @media (max-width: 560px) {
+      body { padding: 14px; }
+      .hero, .form-wrap { padding: 26px 20px; }
+      .hero h1 { font-size: 28px; }
+      .actions { flex-direction: column; }
+      .btn { width: 100%; }
+    }
   </style>
 </head>
 <body>
   <div class="shell">
     <section class="hero">
-      <h1>xingce 云端工作台</h1>
-      <p>先登录，再进入录题工作台。题目、笔记、图片和分析结果都按用户隔离，并同步到云端备份。</p>
+      <h1>Ashore</h1>
+      <p>登录后可继续访问你的个人空间、同步内容与历史记录。</p>
       <div class="points">
-        <div class="point">登录后才能录入错题，避免本机数据和他人数据混在一起。</div>
-        <div class="point">当前登录入口会自动兼容本地地址和 Cloudflare 外网地址，不需要手动改配置。</div>
-        <div class="point">这版只做“手动录入 + 整包同步”，不做 Excel 解析，先把录题闭环跑稳。</div>
+        <div class="point">账号数据按用户隔离保存，避免不同设备或不同用户内容混在一起。</div>
+        <div class="point">同一账号可在不同入口继续访问个人内容，并保持云端同步能力。</div>
+        <div class="point">当前入口默认用于受控访问，不在登录前展示具体系统用途。</div>
       </div>
     </section>
 
     <section class="form-wrap">
       <div>
-        <h2 class="card-title">登录 / 注册</h2>
-        <p class="sub">同一个账号在不同设备登录后，可以直接恢复你自己的工作台数据。</p>
+        <h2 class="card-title">Sign In / Register</h2>
+        <p class="sub">使用同一账号可继续访问你自己的个人数据与同步记录。</p>
       </div>
 
       <div class="form-group">
@@ -175,7 +182,7 @@
 
       <div class="actions">
         <button class="btn btn-secondary" id="registerBtn" type="button">注册</button>
-        <button class="btn btn-primary" id="loginBtn" type="button">登录并进入</button>
+        <button class="btn btn-primary" id="loginBtn" type="button">登录</button>
       </div>
     </section>
   </div>
@@ -225,7 +232,7 @@
         if (!res.ok) {
           throw new Error(data.detail || data.error || '请求失败');
         }
-        setHint(action === 'login' ? '登录成功，正在进入工作台...' : '注册成功，正在进入工作台...', true);
+        setHint(action === 'login' ? '登录成功，正在进入...' : '注册成功，正在进入...', true);
         window.location.replace('/');
       } catch (error) {
         setHint(error.message || '请求失败');
