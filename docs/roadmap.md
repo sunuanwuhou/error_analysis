@@ -1,95 +1,83 @@
-﻿# xingce_v3_lab Roadmap
+# xingce_v3_lab Roadmap
 
-## Current Goal
+## Current Baseline
 
-Keep `xingce_v3_lab` focused on one thing:
+The current baseline is no longer the original single-user local page.
 
-1. manual question entry
-2. manual analysis storage
-3. knowledge-tree-based note taking
-4. per-user cloud-backed sync
+It now includes:
 
-This project is no longer on the Excel/OCR-first path.
-
-## Fixed Product Rules
-
-1. Keep the knowledge tree as the single study structure.
-2. A knowledge node itself can hold Markdown.
-3. Errors can bind directly to any knowledge node.
-4. The left panel is navigation, not an admin console.
-5. The center panel is always the current knowledge node workspace.
-6. The right panel is always the current node's related errors.
-7. Legacy compatibility data may stay in storage, but it must not drive the main UI anymore.
+1. authenticated workbench
+2. knowledge-tree-centered main workspace
+3. hybrid sync
+4. backend image storage
+5. DeepSeek-first AI integration
+6. stable public domain deployment
+7. first-wave layout cleanup with the right rail removed
 
 ## What Is Done
 
-### Phase 1: Cloud-backed workbench
+### v3.1 Mainline
 
-- dedicated login page
-- per-user backup storage
-- Docker + Cloudflare entry
-- local/cloud backup restore flow
+Completed:
 
-### Phase 2: Knowledge tree foundation
+1. CORS whitelist from env
+2. DeepSeek-first unified AI routing with MiniMax fallback
+3. safer cloud save behavior and local storage error visibility
+4. search expansion and mastery-level UI
+5. UUID migration and per-error incremental sync
+6. backend image storage and cleanup tooling
+7. AI and practice APIs
+8. stable Cloudflare named tunnel on `erroranaly.qzz.io`
+9. login-page simplification and layout polish
 
-- knowledge tree became the main note structure
-- `errors[].noteNodeId` added
-- node itself can now store `contentMd`
-- error-to-node binding and drag reassignment work
-- node delete / move / rename are supported
+### Product Direction Stabilized
 
-### Phase 3: Tree interaction cleanup
+The active product shape is now:
 
-- left tree now defaults to collapsed navigation
-- noisy per-node action buttons removed from the tree
-- node create / rename / move moved into a unified modal
-- selected node path auto-expands
+1. left navigation
+2. center workspace
+3. focused editing and review
+
+Not the old:
+
+1. three-panel permanent admin-style layout
+2. Excel-first ingestion path
+3. prototype-only local page
 
 ## Current Priority
 
-1. Make the right related-errors panel semantically clear:
-   - direct errors
-   - descendants-included errors
-2. Remove remaining active old compatibility UI paths from the main experience.
-3. Continue reducing 鈥減rototype/admin鈥?feel without changing core behavior.
+### P1: Frontend consolidation
 
-## Still Open
+1. continue cleaning duplicated legacy CSS in `xingce_v3.html`
+2. keep removing stale compatibility UI from active paths
+3. prepare module split around the now-stable two-pane layout
 
-### P0
+### P2: Shenlun workbench
 
-- add explicit right-panel relation mode switching
-- align header counts with the selected relation mode
-- make the right panel self-sufficient for reading
-  - full question details stay in the right panel
-  - remove jump-to-note / jump-to-list as primary actions
+1. add Shenlun entry and data model
+2. import papers, questions, answers, and notes
+3. support AI answer comparison
+4. connect personal Shenlun notes with structured question context
 
-### P1
+### P3: Knowledge-source retrieval
 
-- reduce legacy compatibility rendering paths in `xingce_v3.html`
-- hide or retire old note-type UI from active flow
-- make right-panel and workspace wording fully consistent
+1. index imported Shenlun source materials
+2. support source-tagged search
+3. later add embedding retrieval if keyword/tag search becomes insufficient
 
-### P2
+## Deferred But Intentional
 
-- split the giant single HTML page into maintainable modules
-- keep FastAPI backend unchanged while moving the frontend to structured modules
+These are not blocked, but they are not the current first move:
 
-## Acceptance Standard
+1. full fine-grained sync for all note content types
+2. complete HTML-to-modules frontend rewrite
+3. generalized AI knowledge-base product layer before Shenlun workflow exists
 
-The current stage is only 鈥渄one鈥?when:
+## Acceptance Standard For The Next Phase
 
-1. left tree is readable at a glance
-2. current node can always be edited directly in the center
-3. right panel clearly tells whether it shows direct errors or descendants
-4. right panel can show a full related error without forced navigation
-5. node operations no longer rely on prompt-driven flows
-6. users do not need to understand the internal data model to use the UI
-## Current Baseline
+The next stage is considered successful when:
 
-- latest baseline commit when this roadmap was refreshed: `d407f5d`
-
-## Next Working Order
-
-1. right-panel relation mode
-2. compatibility cleanup on active paths
-3. module split preparation
+1. Shenlun materials are stable inside this repo
+2. docs reflect the real runtime and deployment situation
+3. Shenlun data model is defined before UI coding starts
+4. AI comparison is designed around structured answer review, not generic chat first
