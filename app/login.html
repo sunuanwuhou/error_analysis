@@ -81,51 +81,6 @@
       color: #6b7280;
       line-height: 1.7;
     }
-    .origin-box {
-      border-radius: 16px;
-      background: #f8fafc;
-      border: 1px solid #e5e7eb;
-      padding: 14px 16px;
-    }
-    .origin-stack {
-      display: grid;
-      gap: 12px;
-    }
-    .origin-label {
-      font-size: 12px;
-      color: #6b7280;
-      margin-bottom: 6px;
-    }
-    .origin-value {
-      word-break: break-all;
-      font-size: 14px;
-      font-weight: 700;
-      color: #0f172a;
-    }
-    .origin-row {
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
-      justify-content: space-between;
-    }
-    .origin-copy {
-      border: 1px solid #d1d5db;
-      background: #fff;
-      color: #374151;
-      border-radius: 10px;
-      padding: 7px 10px;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      flex-shrink: 0;
-    }
-    .origin-copy:hover {
-      background: #f9fafb;
-    }
-    .origin-muted {
-      font-size: 12px;
-      color: #9ca3af;
-    }
     .form-group {
       display: grid;
       gap: 8px;
@@ -206,26 +161,6 @@
         <p class="sub">同一个账号在不同设备登录后，可以直接恢复你自己的工作台数据。</p>
       </div>
 
-      <div class="origin-box">
-        <div class="origin-stack">
-          <div>
-            <div class="origin-label">当前访问地址</div>
-            <div class="origin-row">
-              <div class="origin-value" id="originValue"></div>
-              <button class="origin-copy" id="copyOriginBtn" type="button">复制</button>
-            </div>
-          </div>
-          <div>
-            <div class="origin-label">当前外网地址</div>
-            <div class="origin-row">
-              <div class="origin-value" id="tunnelValue">未检测到外网地址</div>
-              <button class="origin-copy" id="copyTunnelBtn" type="button">复制</button>
-            </div>
-            <div class="origin-muted" id="tunnelHint">启动 Cloudflare Tunnel 后，这里会显示 trycloudflare.com 域名。</div>
-          </div>
-        </div>
-      </div>
-
       <div class="form-group">
         <label for="username">用户名</label>
         <input id="username" type="text" placeholder="至少 2 个字符">
@@ -246,58 +181,11 @@
   </div>
 
   <script>
-    const originEl = document.getElementById('originValue');
     const hintEl = document.getElementById('hint');
-    const tunnelEl = document.getElementById('tunnelValue');
-    const tunnelHintEl = document.getElementById('tunnelHint');
     const usernameEl = document.getElementById('username');
     const passwordEl = document.getElementById('password');
     const loginBtn = document.getElementById('loginBtn');
     const registerBtn = document.getElementById('registerBtn');
-    const copyOriginBtn = document.getElementById('copyOriginBtn');
-    const copyTunnelBtn = document.getElementById('copyTunnelBtn');
-
-    originEl.textContent = window.location.origin;
-
-    async function copyText(text, button) {
-      if (!text) return;
-      try {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          await navigator.clipboard.writeText(text);
-        } else {
-          const ta = document.createElement('textarea');
-          ta.value = text;
-          ta.style.position = 'fixed';
-          ta.style.opacity = '0';
-          document.body.appendChild(ta);
-          ta.select();
-          document.execCommand('copy');
-          document.body.removeChild(ta);
-        }
-        const prev = button.textContent;
-        button.textContent = '已复制';
-        setTimeout(() => { button.textContent = prev; }, 1200);
-      } catch (_) {}
-    }
-
-    async function loadPublicEntry() {
-      try {
-        const res = await fetch('/api/public-entry', { credentials: 'include' });
-        const data = await res.json();
-        if (data.origin) {
-          originEl.textContent = data.origin;
-        }
-        if (data.tunnelUrl) {
-          tunnelEl.textContent = data.tunnelUrl;
-          tunnelHintEl.textContent = '当前 Quick Tunnel 外网入口。重启 tunnel 后域名会变化。';
-        } else {
-          tunnelEl.textContent = '未检测到外网地址';
-          tunnelHintEl.textContent = '启动 Cloudflare Tunnel 后，这里会显示 trycloudflare.com 域名。';
-        }
-      } catch (_) {
-        tunnelEl.textContent = '外网地址读取失败';
-      }
-    }
 
     async function checkSession() {
       try {
@@ -349,17 +237,11 @@
 
     loginBtn.addEventListener('click', () => submitAuth('login'));
     registerBtn.addEventListener('click', () => submitAuth('register'));
-    copyOriginBtn.addEventListener('click', () => copyText(originEl.textContent, copyOriginBtn));
-    copyTunnelBtn.addEventListener('click', () => {
-      if (!tunnelEl.textContent || tunnelEl.textContent.indexOf('http') !== 0) return;
-      copyText(tunnelEl.textContent, copyTunnelBtn);
-    });
     passwordEl.addEventListener('keydown', event => {
       if (event.key === 'Enter') submitAuth('login');
     });
 
     checkSession();
-    loadPublicEntry();
   </script>
 </body>
 </html>
