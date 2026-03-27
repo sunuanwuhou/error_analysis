@@ -259,6 +259,23 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .error-card:last-child{border-bottom:none}
 .error-card:hover{background:#fffaf9}
 .card-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.card-drag-handle{
+  margin-left:auto;
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  padding:4px 8px;
+  border:1px dashed #d7dee8;
+  border-radius:999px;
+  background:#fff;
+  color:#7b8794;
+  font-size:11px;
+  line-height:1;
+  cursor:grab;
+  user-select:none;
+}
+.card-drag-handle:hover{border-color:#b8c4d1;color:#475569;background:#f8fafc}
+.card-drag-handle:active{cursor:grabbing}
 .card-num{font-size:11px;color:#bbb;font-weight:600}
 .status-tag{padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
 .status-tag.focus{background:#fff0f0;color:#e74c3c}
@@ -630,6 +647,43 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .toast.success{border-left-color:#52c41a}
 .toast.warning{border-left-color:#faad14}
 .toast.error{border-left-color:#e74c3c}
+.codex-inbox-layout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:16px;min-height:62vh}
+.codex-thread-panel,.codex-chat-panel{border:1px solid #e8edf3;border-radius:18px;background:linear-gradient(180deg,#fff,#fcfcfd)}
+.codex-thread-panel{display:flex;flex-direction:column;overflow:hidden}
+.codex-thread-toolbar,.codex-chat-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;border-bottom:1px solid #eef2f6}
+.codex-thread-list{padding:10px;display:flex;flex-direction:column;gap:8px;max-height:56vh;overflow:auto}
+.codex-thread-item{width:100%;text-align:left;padding:12px 13px;border:1px solid #e7ebf1;border-radius:14px;background:#fff;cursor:pointer;transition:.16s}
+.codex-thread-item:hover{border-color:#d3dbe6;background:#fffaf8}
+.codex-thread-item.active{border-color:#f0b9ad;background:#fff7f4;box-shadow:0 8px 20px rgba(216,91,67,.08)}
+.codex-thread-title{font-size:13px;font-weight:700;color:#243041;margin-bottom:4px}
+.codex-thread-meta{font-size:11px;color:#8a94a6;line-height:1.6}
+.codex-pending-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 6px;border-radius:999px;background:#fff1f0;color:#cf1322;font-size:11px;font-weight:700}
+.codex-chat-panel{display:flex;flex-direction:column;overflow:hidden}
+.codex-chat-note{font-size:12px;color:#8a6d3b;background:#fff8e6;border:1px solid #ffe58f;border-radius:10px;padding:10px 12px}
+.codex-context-line{font-size:12px;color:#667085;padding:0 16px 10px}
+.codex-message-list{padding:16px;display:flex;flex-direction:column;gap:12px;max-height:46vh;overflow:auto;background:linear-gradient(180deg,#fffdfb,#fcfcfd)}
+.codex-message{max-width:84%;padding:12px 14px;border-radius:16px;box-shadow:0 10px 24px rgba(15,23,42,.06);border:1px solid #ebedf2}
+.codex-message.user{align-self:flex-end;background:#fff7f4;border-color:#ffd8cf}
+.codex-message.assistant{align-self:flex-start;background:#fff;border-color:#e8edf3}
+.codex-message-meta{display:flex;align-items:center;gap:8px;font-size:11px;color:#8a94a6;margin-bottom:6px}
+.codex-message-role{font-weight:700;color:#475467}
+.codex-message-body{font-size:13px;line-height:1.75;color:#243041;white-space:pre-wrap;word-break:break-word}
+.codex-message-status{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}
+.codex-message-status.pending{background:#fff7e6;color:#d48806}
+.codex-message-status.processing{background:#e6f4ff;color:#1677ff}
+.codex-message-status.done{background:#f6ffed;color:#389e0d}
+.codex-message-status.failed{background:#fff1f0;color:#cf1322}
+.codex-message-context{margin-top:8px;padding-top:8px;border-top:1px dashed #e6ebf2;font-size:11px;color:#667085;line-height:1.7}
+.codex-chat-composer{padding:14px 16px;border-top:1px solid #eef2f6;background:#fff}
+.codex-chat-composer textarea{min-height:108px;resize:vertical}
+.codex-chat-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;flex-wrap:wrap}
+.codex-chat-actions label{font-size:12px;color:#667085;display:inline-flex;align-items:center;gap:6px}
+.codex-empty{padding:18px;color:#8a94a6;font-size:12px;line-height:1.7}
+@media (max-width: 980px){
+  .codex-inbox-layout{grid-template-columns:1fr;min-height:auto}
+  .codex-thread-list{max-height:180px}
+  .codex-message-list{max-height:40vh}
+}
 /* ===== 笔记分栏编辑器 ===== */
 .note-split-area{flex:1;display:flex;overflow:hidden;min-height:0}
 .note-split-editor{flex:1;display:flex;flex-direction:column;padding:10px 12px;border-right:1px solid #f0f0f0;min-width:0;overflow:hidden}
@@ -1201,6 +1255,7 @@ body{
         <button class="btn btn-secondary" onclick="closeMoreMenu();clearAllErrorsData()">🗑 清空全部题目</button>
         <button class="btn btn-secondary" onclick="closeMoreMenu();resetAllStudyData()">♻ 重置全部学习数据</button>
         <button class="btn btn-secondary" onclick="closeMoreMenu();openDashboard()">📊 统计</button>
+        <button class="btn btn-secondary" onclick="closeMoreMenu();openCodexInboxModal()">🧾 Codex</button>
         <button class="btn btn-secondary" onclick="closeMoreMenu();openModal('claudeModal')">🤖 Claude</button>
         <button class="btn btn-secondary" onclick="closeMoreMenu();printList()">🖨 打印</button>
       </div>
@@ -1223,7 +1278,45 @@ body{
   </div>
 
   <div class="toast-stack" id="toastStack"></div>
-  <button id="aiWorkbenchBtn" class="btn btn-secondary" style="position:fixed;right:18px;bottom:18px;z-index:1200;box-shadow:0 10px 24px rgba(15,23,42,.18)" onclick="openAIToolsModal()">AI 工具台</button>
+  <button id="codexInboxBtn" class="btn btn-secondary" style="position:fixed;right:18px;bottom:18px;z-index:1200;box-shadow:0 10px 24px rgba(15,23,42,.18)" onclick="openCodexInboxModal()">Codex 留言</button>
+
+  <div class="modal-mask" id="codexInboxModal">
+    <div class="modal" style="width:1120px;max-width:96vw;max-height:92vh;overflow-y:auto">
+      <button class="modal-close" onclick="closeModal('codexInboxModal')">✕</button>
+      <h2 style="margin-bottom:6px">Codex 留言箱</h2>
+      <div class="codex-chat-note" style="margin-bottom:14px">这是异步留言，不是实时聊天。你发出去后会先进入待处理队列，Codex 默认每小时扫描一次并把回复写回这里。</div>
+      <div class="codex-inbox-layout">
+        <div class="codex-thread-panel">
+          <div class="codex-thread-toolbar">
+            <strong style="font-size:14px">会话列表</strong>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-sm btn-secondary" onclick="refreshCodexInbox()">刷新</button>
+              <button class="btn btn-sm btn-primary" onclick="createCodexThread()">新建</button>
+            </div>
+          </div>
+          <div id="codexThreadList" class="codex-thread-list"></div>
+        </div>
+        <div class="codex-chat-panel">
+          <div class="codex-chat-toolbar">
+            <div>
+              <div id="codexThreadTitle" style="font-size:15px;font-weight:700;color:#243041">Codex 收件箱</div>
+              <div id="codexThreadHint" style="font-size:12px;color:#8a94a6;margin-top:4px">等待加载会话…</div>
+            </div>
+            <button class="btn btn-sm btn-secondary" onclick="refreshCodexInbox()">手动刷新</button>
+          </div>
+          <div id="codexContextLine" class="codex-context-line"></div>
+          <div id="codexMessageList" class="codex-message-list"></div>
+          <div class="codex-chat-composer">
+            <textarea id="codexMessageInput" placeholder="直接留言给 Codex。可以让它分析当前筛选结果、当前知识点、最近录入的问题。"></textarea>
+            <div class="codex-chat-actions">
+              <label><input type="checkbox" id="codexIncludeContext" checked> 附带当前页面上下文</label>
+              <button class="btn btn-primary" id="codexSendBtn" onclick="submitCodexMessage()">发送到队列</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Tab内容区域 -->
   <div class="tab-content" id="tabContentErrors">
@@ -2012,6 +2105,11 @@ function renderAnalysis(text, kw) {
 function newId() { return crypto.randomUUID(); }
 function idArg(id) { return JSON.stringify(String(id)); }
 function noteNodeArg(id) { return JSON.stringify(String(id || '')); }
+function normalizeErrorId(id) { return String(id); }
+function findErrorById(id) {
+  const targetId = normalizeErrorId(id);
+  return errors.find(x => normalizeErrorId(x.id) === targetId) || null;
+}
 
 // ============================================================
 // 持久化（IndexedDB）
@@ -2859,6 +2957,11 @@ let _history = [];
 function loadHistory(){ return _history; }
 function pushHistory(rec){ _history.unshift(rec); if(_history.length>30)_history.length=30; queuePersist(KEY_HISTORY, _history, 220); scheduleCloudSave(); }
 let aiChatHistory = [];
+let codexThreads = [];
+let codexMessages = [];
+let codexActiveThreadId = null;
+let codexInboxBusy = false;
+let codexMessageBusy = false;
 
 async function fetchJsonWithAuth(url, options){
   const res = await fetch(url, { credentials:'include', ...(options||{}) });
@@ -2868,6 +2971,253 @@ async function fetchJsonWithAuth(url, options){
     throw new Error((data && (data.detail || data.error)) || `Request failed: ${res.status}`);
   }
   return data;
+}
+
+function formatCodexTime(raw){
+  if(!raw) return '';
+  const d = new Date(raw);
+  if(Number.isNaN(d.getTime())) return raw;
+  return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function getCurrentAppTab(){
+  return document.body.classList.contains('tab-notes-active') ? 'notes' : 'errors';
+}
+
+function summarizeCodexContext(context){
+  if(!context || typeof context !== 'object') return '未附带上下文';
+  const parts = [];
+  if(context.currentTab) parts.push(`当前页：${context.currentTab === 'notes' ? '知识工作区' : '错题列表'}`);
+  if(context.selectedKnowledgeNode && context.selectedKnowledgeNode.path){
+    parts.push(`知识点：${context.selectedKnowledgeNode.path}`);
+  }
+  if(context.filteredCount !== undefined) parts.push(`当前筛选题数：${context.filteredCount}`);
+  if(context.focusCount !== undefined) parts.push(`重点复习：${context.focusCount}`);
+  return parts.length ? parts.join(' | ') : '未附带上下文';
+}
+
+function buildCodexContextSnapshot(){
+  const filtered = getFiltered();
+  const currentNode = getCurrentKnowledgeNodeSummary();
+  return {
+    generatedAt: new Date().toISOString(),
+    currentTab: getCurrentAppTab(),
+    selectedKnowledgeNode: currentNode ? {
+      id: currentNode.id,
+      title: currentNode.title,
+      path: currentNode.path
+    } : null,
+    filters: {
+      status: statusFilter || 'all',
+      reason: reasonFilter || '',
+      typeFilter: typeFilter || null,
+      dateFrom: dateFrom || '',
+      dateTo: dateTo || '',
+      search: searchKw || ''
+    },
+    totalErrors: errors.length,
+    filteredCount: filtered.length,
+    focusCount: filtered.filter(item=>item.status==='focus').length,
+    sampleErrors: filtered.slice(0, 8).map(item=>({
+      id: item.id,
+      type: item.type || '',
+      subtype: item.subtype || '',
+      subSubtype: item.subSubtype || '',
+      question: (item.question || '').slice(0, 120),
+      status: item.status || '',
+      noteNodeId: item.noteNodeId || ''
+    }))
+  };
+}
+
+function renderCodexThreads(){
+  const list = document.getElementById('codexThreadList');
+  if(!list) return;
+  if(!codexThreads.length){
+    list.innerHTML = '<div class="codex-empty">还没有会话。点右上角“新建”，或者直接发送第一条留言。</div>';
+    return;
+  }
+  list.innerHTML = codexThreads.map(thread => `
+    <button class="codex-thread-item ${thread.id===codexActiveThreadId?'active':''}" onclick="selectCodexThread('${thread.id}')">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <div class="codex-thread-title">${escapeHtml(thread.title || 'Codex 收件箱')}</div>
+        ${thread.pendingCount ? `<span class="codex-pending-badge">${thread.pendingCount}</span>` : ''}
+      </div>
+      <div class="codex-thread-meta">
+        <div>${escapeHtml(thread.lastMessagePreview || '暂无留言')}</div>
+        <div style="margin-top:4px">更新于 ${escapeHtml(formatCodexTime(thread.updatedAt) || '—')} · 共 ${thread.messageCount || 0} 条</div>
+      </div>
+    </button>
+  `).join('');
+}
+
+function renderCodexMessages(){
+  const titleEl = document.getElementById('codexThreadTitle');
+  const hintEl = document.getElementById('codexThreadHint');
+  const list = document.getElementById('codexMessageList');
+  if(!titleEl || !hintEl || !list) return;
+  const thread = codexThreads.find(item=>item.id===codexActiveThreadId);
+  titleEl.textContent = thread ? (thread.title || 'Codex 收件箱') : 'Codex 收件箱';
+  hintEl.textContent = thread
+    ? `最近更新 ${formatCodexTime(thread.updatedAt) || '—'} · 待处理 ${thread.pendingCount || 0} 条`
+    : '还没有会话';
+  if(!codexMessages.length){
+    list.innerHTML = '<div class="codex-empty">这条会话里还没有消息。可以直接给 Codex 留言，比如“根据当前筛选题帮我出 3 天复习方案”。</div>';
+    return;
+  }
+  list.innerHTML = codexMessages.map(message => {
+    const statusLabel = {
+      pending:'待扫描',
+      processing:'处理中',
+      done:'已回写',
+      failed:'失败'
+    }[message.status] || message.status || '';
+    const contextLine = message.role === 'user' && message.context && Object.keys(message.context).length
+      ? `<div class="codex-message-context">${escapeHtml(summarizeCodexContext(message.context))}</div>`
+      : (message.errorText ? `<div class="codex-message-context" style="color:#cf1322">失败原因：${escapeHtml(message.errorText)}</div>` : '');
+    return `
+      <div class="codex-message ${message.role === 'assistant' ? 'assistant' : 'user'}">
+        <div class="codex-message-meta">
+          <span class="codex-message-role">${message.role === 'assistant' ? 'Codex' : '我'}</span>
+          <span>${escapeHtml(formatCodexTime(message.createdAt) || '—')}</span>
+          ${message.role === 'user' ? `<span class="codex-message-status ${escapeHtml(message.status || 'done')}">${escapeHtml(statusLabel || '已发送')}</span>` : ''}
+        </div>
+        <div class="codex-message-body">${escapeHtml(message.content || '')}</div>
+        ${contextLine}
+      </div>
+    `;
+  }).join('');
+  list.scrollTop = list.scrollHeight;
+}
+
+function renderCodexContextLine(){
+  const line = document.getElementById('codexContextLine');
+  if(!line) return;
+  const snapshot = buildCodexContextSnapshot();
+  line.textContent = '默认附带上下文：' + summarizeCodexContext(snapshot);
+}
+
+async function loadCodexThreads(opts){
+  if(codexInboxBusy) return;
+  codexInboxBusy = true;
+  try{
+    const data = await fetchJsonWithAuth('/api/codex/threads');
+    codexThreads = Array.isArray(data.threads) ? data.threads : [];
+    if(!codexThreads.length && (!opts || opts.createDefault !== false)){
+      const created = await fetchJsonWithAuth('/api/codex/threads', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ title:'Codex 收件箱' })
+      });
+      codexThreads = created.thread ? [created.thread] : [];
+    }
+    if(codexThreads.length){
+      if(!codexActiveThreadId || !codexThreads.some(item=>item.id===codexActiveThreadId)){
+        codexActiveThreadId = codexThreads[0].id;
+      }
+      renderCodexThreads();
+      await loadCodexThread(codexActiveThreadId);
+    }else{
+      codexActiveThreadId = null;
+      codexMessages = [];
+      renderCodexThreads();
+      renderCodexMessages();
+    }
+  }catch(e){
+    showToast(e.message || 'Codex 留言加载失败', 'error');
+  }finally{
+    codexInboxBusy = false;
+  }
+}
+
+async function loadCodexThread(threadId){
+  if(!threadId) return;
+  const data = await fetchJsonWithAuth(`/api/codex/threads/${encodeURIComponent(threadId)}`);
+  codexActiveThreadId = threadId;
+  codexMessages = Array.isArray(data.messages) ? data.messages : [];
+  if(data.thread){
+    codexThreads = codexThreads.map(item=>item.id===data.thread.id ? data.thread : item);
+  }
+  renderCodexThreads();
+  renderCodexMessages();
+}
+
+async function refreshCodexInbox(){
+  await loadCodexThreads({ createDefault:false });
+  renderCodexContextLine();
+}
+
+async function openCodexInboxModal(){
+  openModal('codexInboxModal');
+  renderCodexContextLine();
+  await loadCodexThreads();
+}
+
+async function createCodexThread(){
+  const raw = prompt('给这次会话起个标题（可留空）', '');
+  if(raw === null) return;
+  try{
+    const created = await fetchJsonWithAuth('/api/codex/threads', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ title: raw || 'Codex 收件箱' })
+    });
+    if(created.thread){
+      codexActiveThreadId = created.thread.id;
+      await refreshCodexInbox();
+    }
+  }catch(e){
+    showToast(e.message || '创建 Codex 会话失败', 'error');
+  }
+}
+
+async function selectCodexThread(threadId){
+  try{
+    await loadCodexThread(threadId);
+  }catch(e){
+    showToast(e.message || '加载会话失败', 'error');
+  }
+}
+
+async function submitCodexMessage(){
+  if(codexMessageBusy) return;
+  const input = document.getElementById('codexMessageInput');
+  const includeContext = document.getElementById('codexIncludeContext');
+  const sendBtn = document.getElementById('codexSendBtn');
+  const content = (input && input.value || '').trim();
+  if(!content){
+    showToast('请先输入留言内容', 'warning');
+    return;
+  }
+  codexMessageBusy = true;
+  if(sendBtn) sendBtn.disabled = true;
+  try{
+    if(!codexActiveThreadId){
+      const created = await fetchJsonWithAuth('/api/codex/threads', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ title:'Codex 收件箱' })
+      });
+      codexActiveThreadId = created.thread && created.thread.id;
+    }
+    const payload = {
+      content,
+      context: includeContext && includeContext.checked ? buildCodexContextSnapshot() : {}
+    };
+    await fetchJsonWithAuth(`/api/codex/threads/${encodeURIComponent(codexActiveThreadId)}/messages`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if(input) input.value = '';
+    await refreshCodexInbox();
+    showToast('留言已进入待处理队列', 'success');
+  }catch(e){
+    showToast(e.message || '留言发送失败', 'error');
+  }finally{
+    codexMessageBusy = false;
+    if(sendBtn) sendBtn.disabled = false;
+  }
 }
 
 function getCurrentKnowledgeNodeSummary(){
@@ -4431,6 +4781,9 @@ function renderAll(){
   renderStats(list);
   if(!list.length){
     document.getElementById('errorList').innerHTML=`<div class="empty"><div class="emoji">${searchKw?'🔍':'📭'}</div><p>${searchKw?'未找到匹配题目':'暂无错题，点击"＋ 添加"'}</p></div>`;
+    if (typeof window.refreshKnowledgeWorkspaceCards === 'function') {
+      window.refreshKnowledgeWorkspaceCards();
+    }
     return;
   }
   const typeMap={};
@@ -4502,6 +4855,9 @@ function renderAll(){
   const el = document.getElementById('errorList');
   el.innerHTML = html;
   el.classList.toggle('batch-mode-on', batchMode);
+  if (typeof window.refreshKnowledgeWorkspaceCards === 'function') {
+    window.refreshKnowledgeWorkspaceCards();
+  }
 }
 
 function toggleMain(t){ if(expMain.has(t))expMain.delete(t);else expMain.add(t);saveExpMain();renderAll(); }
@@ -4535,8 +4891,9 @@ function collapseAll(){
 // ============================================================
 function renderCard(e){
   const statusMap={focus:'重点复习',review:'待复习',mastered:'已掌握'};
-  const opts=e.options?e.options.split(/\n|\|/).map(o=>`<p>${hl(o.trim(),searchKw)}</p>`).join(''):'';
-  const isRev=revealed.has(e.id);
+  const opts=e.options?e.options.split(/\n|\|/).map(o=>`<p>${hl(o.trim(),searchKw)}</p>`).join(''):'';  
+  const normalizedId = normalizeErrorId(e.id);
+  const isRev=revealed.has(normalizedId);
   const idLit = idArg(e.id);
   const noteNodeLit = noteNodeArg(e.noteNodeId || '');
   const notePath = e.noteNodeId ? collapseKnowledgePathTitles(getKnowledgePathTitles(e.noteNodeId)).join(' > ') : '未关联知识点';
@@ -4579,10 +4936,10 @@ function renderCard(e){
   const imgTag = e.imgData ? `<img src="${escapeHtml(e.imgData)}" class="cuoti-img" onclick="this.classList.toggle('expanded')" title="点击放大/缩小">` : '';
   const noteArea = isRev ? `<div class="card-note-area">
     <div class="card-note-label">📝 我的笔记</div>
-    <textarea class="card-note-ta" placeholder="添加笔记..." onblur="saveCardNote(${idLit},this.value)">${escapeHtml(e.note||'')}</textarea>
+    <textarea class="card-note-ta" placeholder="添加笔记..." onblur='saveCardNote(${idLit},this.value)'>${escapeHtml(e.note||'')}</textarea>
   </div>` : '';
   // 内联做题区渲染
-  const iqState = inlineQuizState[e.id];
+  const iqState = inlineQuizState[normalizedId];
   let iqHtml = '';
   if (iqState) {
     const opts2 = e.options ? e.options.split(/\n|\|/).map(o=>o.trim()).filter(Boolean) : [];
@@ -4590,14 +4947,14 @@ function renderCard(e){
       const optBtns = opts2.length
         ? opts2.map((o,i)=>{
             const letter=String.fromCharCode(65+i);
-            return `<button class="iq-opt" id="iqopt_${e.id}_${letter}" onclick="selectInlineAnswer(${idLit},'${letter}')">${escapeHtml(o)}</button>`;
+            return `<button class="iq-opt" id="iqopt_${e.id}_${letter}" onclick='selectInlineAnswer(${idLit},"${letter}")'>${escapeHtml(o)}</button>`;
           }).join('')
-        : ['A','B','C','D'].map(l=>`<button class="iq-opt" id="iqopt_${e.id}_${l}" onclick="selectInlineAnswer(${idLit},'${l}')" style="text-align:center;font-weight:700">${l}</button>`).join('');
+        : ['A','B','C','D'].map(l=>`<button class="iq-opt" id="iqopt_${e.id}_${l}" onclick='selectInlineAnswer(${idLit},"${l}")' style="text-align:center;font-weight:700">${l}</button>`).join('');
       iqHtml = `<div class="iq-area">
         <div class="iq-hint">📝 选择你的答案：</div>
         <div class="iq-opts">${optBtns}</div>
         <div class="iq-actions">
-          <button class="btn btn-sm btn-secondary" onclick="closeInlineQuiz(${idLit})">取消</button>
+          <button class="btn btn-sm btn-secondary" onclick='closeInlineQuiz(${idLit})'>取消</button>
         </div>
       </div>`;
     } else {
@@ -4608,8 +4965,8 @@ function renderCard(e){
         <div class="iq-result ${cls}">${icon} 你选了 <strong>${escapeHtml(iqState.userAnswer)}</strong>，正确答案 <strong>${escapeHtml(e.answer||'—')}</strong></div>
         ${anaHtml}
         <div class="iq-actions" style="margin-top:8px">
-          <button class="btn btn-sm btn-primary" onclick="saveInlineResult(${idLit})">💾 保存记录</button>
-          <button class="btn btn-sm btn-secondary" onclick="closeInlineQuiz(${idLit})">关闭</button>
+          <button class="btn btn-sm btn-primary" onclick='saveInlineResult(${idLit})'>💾 保存记录</button>
+          <button class="btn btn-sm btn-secondary" onclick='closeInlineQuiz(${idLit})'>关闭</button>
         </div>
       </div>`;
     }
@@ -4617,11 +4974,11 @@ function renderCard(e){
 
   // 难度星显示
   const diff = e.difficulty || 0;
-  const starHtml = `<span class="star-disp" title="点击修改难度">${[1,2,3].map(i=>`<span class="s${i<=diff?' on':''}" onclick="setCardDifficulty(${idLit},${i},event)">★</span>`).join('')}</span>`;
+  const starHtml = `<span class="star-disp" title="点击修改难度">${[1,2,3].map(i=>`<span class="s${i<=diff?' on':''}" onclick='setCardDifficulty(${idLit},${i},event)'>★</span>`).join('')}</span>`;
   // 批量复选框
-  const cbHtml = batchMode ? `<input type="checkbox" class="batch-cb" id="bcb_${e.id}" ${batchSelected.has(e.id)?'checked':''} onclick="toggleBatchSelect(${idLit},event)">` : '';
+  const cbHtml = batchMode ? `<input type="checkbox" class="batch-cb" id="bcb_${e.id}" ${batchSelected.has(e.id)?'checked':''} onclick='toggleBatchSelect(${idLit},event)'>` : '';
 
-  return `<div class="error-card" id="card-${e.id}" draggable="true" ondragstart="startErrorDrag(${idLit}, event)" ondragend="endErrorDrag()" ${isRev?`onmouseleave="collapseCard(${idLit})"`:''} >
+  return `<div class="error-card" id="card-${e.id}" ${isRev?`onmouseleave='collapseCard(${idLit})'`:''} >
     ${cbHtml}
     <div class="card-top">
       <span class="card-num">#${e.id}</span>
@@ -4630,20 +4987,21 @@ function renderCard(e){
       ${starHtml}
       ${(e.srcYear||e.srcProvince||e.srcOrigin)?`<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#f6ffed;color:#52c41a;border:1px solid #b7eb8f" title="出处">📌 ${[e.srcYear,e.srcProvince,e.srcOrigin].filter(Boolean).join(' · ')}</span>`:''}
       ${e.addDate?`<span style="font-size:11px;color:#999">${e.addDate}</span>`:''}
+      <span class="card-drag-handle" title="拖到左侧知识点可改挂载" draggable="true" ondragstart='startErrorDrag(${idLit}, event)' ondragend="endErrorDrag()" onclick="event.preventDefault();event.stopPropagation()">⋮⋮ 拖挂载</span>
     </div>
     <div class="card-question">${hl(e.question,searchKw)}</div>
     <div style="font-size:11px;color:#888;line-height:1.6;margin-bottom:8px">知识点：${escapeHtml(notePath)}</div>
     ${imgTag}
     ${opts?`<div class="card-options">${opts}</div>`:''}
     ${isRev ? detailHtml+noteArea : ''}
-    <button class="card-reveal-btn" onclick="revealCard(${idLit})" style="${isRev?'color:#bbb;border-color:#eee;font-size:11px;margin-top:6px':''}">
+    <button class="card-reveal-btn" onclick='revealCard(${idLit})' style="${isRev?'color:#bbb;border-color:#eee;font-size:11px;margin-top:6px':''}">
       ${isRev ? '▲ 收起' : '👁 查看答案与解析'}
     </button>
     ${iqHtml}
     <div class="card-actions">
-      <button class="btn btn-sm btn-secondary" onclick="openKnowledgeForError(${idLit})">知识点</button>
-      <button class="btn btn-sm btn-secondary" onclick="moveErrorToKnowledgeNode(${idLit}, ${noteNodeLit})">改挂载</button>
-      <select class="status-select" onchange="updateStatus(${idLit},this.value)">
+      <button class="btn btn-sm btn-secondary" onclick='openKnowledgeForError(${idLit})'>知识点</button>
+      <button class="btn btn-sm btn-secondary" onclick='moveErrorToKnowledgeNode(${idLit}, ${noteNodeLit})'>改挂载</button>
+      <select class="status-select" onchange='updateStatus(${idLit},this.value)'>
         <option value="focus" ${e.status==='focus'?'selected':''}>重点复习</option>
         <option value="review" ${e.status==='review'?'selected':''}>待复习</option>
         <option value="mastered" ${e.status==='mastered'?'selected':''}>已掌握</option>
@@ -4652,33 +5010,35 @@ function renderCard(e){
         const ml=e.masteryLevel||'not_mastered';
         const cfg={not_mastered:{label:'未掌握',color:'#ff7875',bg:'#fff2f0',border:'#ffa39e'},fuzzy:{label:'模糊',color:'#fa8c16',bg:'#fff7e6',border:'#ffd591'},mastered:{label:'已掌握',color:'#52c41a',bg:'#f6ffed',border:'#b7eb8f'}};
         const c=cfg[ml]||cfg.not_mastered;
-        return `<button class="btn btn-sm" style="color:${c.color};background:${c.bg};border:1px solid ${c.border}" onclick="cyclemastery(${idLit})" title="点击切换掌握状态">◎ ${c.label}</button>`;
+        return `<button class="btn btn-sm" style="color:${c.color};background:${c.bg};border:1px solid ${c.border}" onclick='cyclemastery(${idLit})' title="点击切换掌握状态">◎ ${c.label}</button>`;
       })()}
-      <button class="btn btn-sm btn-secondary" onclick="openEditModal(${idLit})">✏ 编辑</button>
-      <button class="btn btn-sm btn-secondary" style="color:#4e8ef7;border-color:#adc6ff" onclick="startInlineQuiz(${idLit})">📝 做题</button>
-      <button class="del-btn" onclick="deleteError(${idLit})">🗑</button>
+      <button class="btn btn-sm btn-secondary" onclick='openEditModal(${idLit})'>✏ 编辑</button>
+      <button class="btn btn-sm btn-secondary" style="color:#4e8ef7;border-color:#adc6ff" onclick='startInlineQuiz(${idLit})'>📝 做题</button>
+      <button class="del-btn" onclick='deleteError(${idLit})'>🗑</button>
     </div>
   </div>`;
 }
 
 function revealCard(id){
-  if(revealed.has(id)) revealed.delete(id);
+  const targetId = normalizeErrorId(id);
+  if(revealed.has(targetId)) revealed.delete(targetId);
   else {
-    revealed.add(id);
+    revealed.add(targetId);
     // 展开时高亮右侧面板对应章节
-    const e = errors.find(x => x.id === id);
+    const e = findErrorById(targetId);
     if (e) highlightNoteChapter(e.type, e.subtype, e.subSubtype);
   }
   saveReveal();renderAll();
 }
 function collapseCard(id){
+  const targetId = normalizeErrorId(id);
   // 先把笔记 textarea 的内容存下来（mouseleave 时 blur 可能还没触发）
-  const ta=document.querySelector('#card-'+id+' .card-note-ta');
-  if(ta) saveCardNote(id,ta.value);
-  revealed.delete(id);saveReveal();renderAll();
+  const ta=document.querySelector('#card-'+targetId+' .card-note-ta');
+  if(ta) saveCardNote(targetId,ta.value);
+  revealed.delete(targetId);saveReveal();renderAll();
   // 强制刷新图片，避免某些浏览器缓存导致不显示
   setTimeout(() => {
-    const el = document.getElementById('card-' + id);
+    const el = document.getElementById('card-' + targetId);
     if (el) {
       const img = el.querySelector('.cuoti-img');
       if (img && img.src) img.src = img.src; // 触发重载
@@ -4686,15 +5046,15 @@ function collapseCard(id){
   }, 50);
 }
 function saveCardNote(id, val) {
-  const e=errors.find(x=>x.id===id);if(!e)return;
+  const e=findErrorById(id);if(!e)return;
   e.note=val;
   e.updatedAt=new Date().toISOString();
   recordErrorUpsert(e);
   saveData();
 }
-function updateStatus(id,s){ const e=errors.find(x=>x.id===id);if(e){e.status=s;e.updatedAt=new Date().toISOString();recordErrorUpsert(e);saveData();renderSidebar();renderAll();} }
+function updateStatus(id,s){ const e=findErrorById(id);if(e){e.status=s;e.updatedAt=new Date().toISOString();recordErrorUpsert(e);saveData();renderSidebar();renderAll();} }
 function cyclemastery(id){
-  const e=errors.find(x=>x.id===id);if(!e)return;
+  const e=findErrorById(id);if(!e)return;
   const cycle={not_mastered:'fuzzy',fuzzy:'mastered',mastered:'not_mastered'};
   e.masteryLevel=cycle[e.masteryLevel||'not_mastered']||'not_mastered';
   e.masteryUpdatedAt=new Date().toISOString();
@@ -4703,8 +5063,9 @@ function cyclemastery(id){
   saveData();renderAll();
 }
 function deleteError(id){
-  if(!confirm(`确认删除 #${id}？`))return;
-  errors=errors.filter(e=>e.id!==id);revealed.delete(id);
+  const targetId = normalizeErrorId(id);
+  if(!confirm(`确认删除 #${targetId}？`))return;
+  errors=errors.filter(e=>normalizeErrorId(e.id)!==targetId);revealed.delete(targetId);
   saveData();saveReveal();renderSidebar();renderAll();
   syncNotesWithErrors(); // 同步笔记与错题
 }
@@ -4742,8 +5103,8 @@ function openAddModal(){
   focusPrimaryEntryField();
 }
 function openEditModal(id){
-  const e=errors.find(x=>x.id===id);if(!e)return;
-  editingId=id; editImgBase64=null; editImgDeleted=false; editAnalysisImgBase64=null; editAnalysisImgDeleted=false;
+  const e=findErrorById(id);if(!e)return;
+  editingId=normalizeErrorId(id); editImgBase64=null; editImgDeleted=false; editAnalysisImgBase64=null; editAnalysisImgDeleted=false;
   modalKnowledgeNodeId = null;
   resetAIAnalyzeState();
   document.getElementById('addModalTitle').textContent='编辑错题';
@@ -4917,14 +5278,20 @@ function openQuickImportModal() {
 }
 
 function normalizeImportedErrorsForCurrentKnowledge(list) {
-  if (!importKnowledgeNodeId) return list;
-  const context = getKnowledgeContextForEntry(importKnowledgeNodeId);
-  return list.map(item => ({
+  const context = importKnowledgeNodeId ? getKnowledgeContextForEntry(importKnowledgeNodeId) : null;
+  return (list || []).map(item => ({
     ...item,
-    type: item.type || context.type,
-    subtype: item.subtype || context.subtype,
-    subSubtype: item.subSubtype || context.subSubtype,
-    noteNodeId: importKnowledgeNodeId
+    id: item.id ? normalizeErrorId(item.id) : newId(),
+    type: item.type || context?.type || '其他',
+    subtype: item.subtype || context?.subtype || '未分类',
+    subSubtype: item.subSubtype || context?.subSubtype || '',
+    noteNodeId: item.noteNodeId || importKnowledgeNodeId || '',
+    addDate: item.addDate || today(),
+    quiz: item.quiz || null,
+    status: item.status || 'focus',
+    masteryLevel: item.masteryLevel || 'not_mastered',
+    masteryUpdatedAt: item.masteryUpdatedAt || null,
+    lastPracticedAt: item.lastPracticedAt || null
   }));
 }
 
@@ -4939,16 +5306,45 @@ function tryParseJson(text){
 }
 function mergeImport(data){
   const key=q=>(q||'').trim().slice(0,100);
-  const map={};errors.forEach((e,i)=>{map[key(e.question)]=i;});
+  const questionMap={};
+  const idMap={};
+  errors.forEach((e,i)=>{
+    questionMap[key(e.question)]=i;
+    if (e && e.id !== undefined && e.id !== null && e.id !== '') {
+      idMap[normalizeErrorId(e.id)] = i;
+    }
+  });
   let added=0,updated=0;
-  let maxId=errors.length?Math.max(...errors.map(e=>e.id)):0;
-  data.forEach(imp=>{
+  data.forEach(raw=>{
+    const imp = {
+      ...raw,
+      id: raw.id ? normalizeErrorId(raw.id) : newId(),
+      addDate: raw.addDate || today(),
+      quiz: raw.quiz || null,
+      status: raw.status || 'focus',
+      masteryLevel: raw.masteryLevel || 'not_mastered',
+      masteryUpdatedAt: raw.masteryUpdatedAt || null,
+      lastPracticedAt: raw.lastPracticedAt || null
+    };
     const k=key(imp.question);
-    if(map[k]!==undefined){
-      const old=errors[map[k]];
-      errors[map[k]]={...imp,id:old.id,quiz:old.quiz,addDate:old.addDate};updated++;
+    const targetIndex = idMap[imp.id] !== undefined ? idMap[imp.id] : questionMap[k];
+    if(targetIndex!==undefined){
+      const old=errors[targetIndex];
+      errors[targetIndex]={
+        ...old,
+        ...imp,
+        id: old.id ? normalizeErrorId(old.id) : imp.id,
+        quiz: old.quiz || imp.quiz,
+        addDate: old.addDate || imp.addDate
+      };
+      questionMap[k] = targetIndex;
+      idMap[errors[targetIndex].id] = targetIndex;
+      updated++;
     }else{
-      maxId++;errors.push({id:maxId,addDate:imp.addDate||today(),quiz:null,status:'focus',...imp});added++;
+      const newIndex = errors.push(imp) - 1;
+      questionMap[k] = newIndex;
+      idMap[imp.id] = newIndex;
+      added++;
     }
   });
   return{added,updated};
@@ -4966,7 +5362,16 @@ function doImport(){
   data = normalizeImportedErrorsForCurrentKnowledge(data);
   if(importMode==='replace'){
     if(!confirm(`清空现有 ${errors.length} 条，替换为 ${data.length} 条？`))return;
-    errors=data.map((e,i)=>({id:i+1,addDate:e.addDate||today(),quiz:e.quiz||null,status:e.status||'focus',...e}));
+    errors=data.map(e=>({
+      id:e.id ? normalizeErrorId(e.id) : newId(),
+      addDate:e.addDate||today(),
+      quiz:e.quiz||null,
+      status:e.status||'focus',
+      masteryLevel:e.masteryLevel||'not_mastered',
+      masteryUpdatedAt:e.masteryUpdatedAt||null,
+      lastPracticedAt:e.lastPracticedAt||null,
+      ...e
+    }));
     saveData();closeModal('importModal');renderSidebar();renderAll();
     showToast(`已替换，共 ${errors.length} 条`, 'success');
   }else{
@@ -6194,7 +6599,9 @@ function setCurrentKnowledgeNode(nodeId, opts) {
   const options = opts || {};
   if (!nodeId) return;
   const resolvedId = resolveKnowledgeDisplayNodeId(nodeId);
-  expandKnowledgePath(resolvedId);
+  if (options.expandPath !== false) {
+    expandKnowledgePath(resolvedId);
+  }
   selectedKnowledgeNodeId = resolvedId;
   knowledgeNodeFilter = options.applyFilter === false ? knowledgeNodeFilter : resolvedId;
   typeFilter = null;
@@ -6217,6 +6624,12 @@ function selectKnowledgeLeaf(nodeId) {
   if (!nodeId) return;
   saveNoteTypeContent();
   setCurrentKnowledgeNode(nodeId, { switchTab: false });
+}
+function selectKnowledgeBranch(nodeId, event) {
+  if (event) event.stopPropagation();
+  if (!nodeId) return;
+  saveNoteTypeContent();
+  setCurrentKnowledgeNode(nodeId, { switchTab: false, expandPath: false });
 }
 function addKnowledgeLeafUnderSelected() {
   ensureKnowledgeState();
@@ -6572,9 +6985,10 @@ function handleKnowledgeDrop(nodeId, event) {
   }
 }
 function moveErrorToKnowledgeNode(errorId, preferredNodeId) {
-  const errorItem = errors.find(item => item.id === errorId);
+  const targetId = normalizeErrorId(errorId);
+  const errorItem = findErrorById(targetId);
   if (!errorItem) return;
-  pendingKnowledgeMoveErrorId = errorId;
+  pendingKnowledgeMoveErrorId = targetId;
   pendingKnowledgeMoveTargetId = preferredNodeId || errorItem.noteNodeId || null;
   const currentText = errorItem.noteNodeId
     ? collapseKnowledgePathTitles(getKnowledgePathTitles(errorItem.noteNodeId)).join(' > ')
@@ -6638,7 +7052,7 @@ function applyKnowledgeMove() {
   assignErrorToKnowledgeNode(errorItem.id, targetNode.id, { focusNode: true });
 }
 function openKnowledgeForError(errorId) {
-  const errorItem = errors.find(item => item.id === errorId);
+  const errorItem = findErrorById(errorId);
   if (!errorItem || !errorItem.noteNodeId) {
     showToast('当前题目还没有关联知识点', 'warning');
     return;
@@ -6745,27 +7159,30 @@ function updateSub2Options() {
 // 内联做题
 // ============================================================
 function startInlineQuiz(id) {
-  inlineQuizState[id] = {answered:false, userAnswer:'', correct:false};
+  const targetId = normalizeErrorId(id);
+  inlineQuizState[targetId] = {answered:false, userAnswer:'', correct:false};
   renderAll();
   // 滚动到卡片
-  const el = document.getElementById('card-'+id);
+  const el = document.getElementById('card-'+targetId);
   if (el) el.scrollIntoView({behavior:'smooth', block:'nearest'});
 }
 function closeInlineQuiz(id) {
-  delete inlineQuizState[id];
+  delete inlineQuizState[normalizeErrorId(id)];
   renderAll();
 }
 function selectInlineAnswer(id, letter) {
-  const e = errors.find(x=>x.id===id);
+  const targetId = normalizeErrorId(id);
+  const e = findErrorById(targetId);
   if (!e) return;
   const correct = (e.answer||'').trim().toUpperCase();
   const isRight = letter.toUpperCase() === correct;
-  inlineQuizState[id] = {answered:true, userAnswer:letter, correct:isRight};
+  inlineQuizState[targetId] = {answered:true, userAnswer:letter, correct:isRight};
   renderAll();
 }
 function saveInlineResult(id) {
-  const e = errors.find(x=>x.id===id);
-  const st = inlineQuizState[id];
+  const targetId = normalizeErrorId(id);
+  const e = findErrorById(targetId);
+  const st = inlineQuizState[targetId];
   if (!e || !st || !st.answered) return;
   // 更新复习记录（与 saveQuizResults 逻辑一致）
   if (!e.quiz) e.quiz = {streak:0,wrongCount:0,reviewCount:0,lastReview:null,nextReview:null};
@@ -6790,7 +7207,7 @@ function saveInlineResult(id) {
   saveTodayDone();
   recordErrorUpsert(e);
   saveData();
-  delete inlineQuizState[id];
+  delete inlineQuizState[targetId];
   renderSidebar();
   renderAll();
 }
@@ -7145,6 +7562,7 @@ function renderKnowledgeTreeHtml(nodes, depth) {
   return list.map(node => {
     const count = countErrorsForKnowledgeNode(node.id, true);
     const pad = 10 + depth * 16;
+    const hasChildren = !!(node.children && node.children.length);
     if (node.isLeaf) {
       const active = node.id === selectedKnowledgeNodeId;
       return `<div class="note-heading-item${active ? ' active' : ''}" style="padding-left:${pad}px;display:flex;align-items:center;justify-content:space-between" onclick="selectKnowledgeLeaf('${node.id}')">
@@ -7152,12 +7570,15 @@ function renderKnowledgeTreeHtml(nodes, depth) {
         <span style="font-size:10px;color:${active ? '#e74c3c' : '#aaa'}">${count}题</span>
       </div>`;
     }
+    const expanded = isKnowledgeExpanded(node);
+    const active = node.id === selectedKnowledgeNodeId;
     return `<div>
-      <div class="note-panel-item-header" style="padding-left:${pad}px">
-        <span class="note-panel-title">${escapeHtml(node.title)}</span>
+      <div class="note-panel-item-header${active ? ' active' : ''}" style="padding-left:${pad}px">
+        <button type="button" class="knowledge-tree-toggle${hasChildren ? '' : ' placeholder'}" onclick="toggleKnowledgeExpanded('${node.id}', event)" aria-label="${hasChildren ? '切换展开' : '无下级'}">${hasChildren ? (expanded ? '▾' : '▸') : '•'}</button>
+        <button type="button" class="note-panel-title" style="background:none;border:none;padding:0;cursor:pointer;text-align:left" onclick="selectKnowledgeBranch('${node.id}', event)">${escapeHtml(node.title)}</button>
         <span style="font-size:11px;color:#aaa;margin-left:auto">${count}题</span>
       </div>
-      ${(node.children && node.children.length) ? renderKnowledgeTreeHtml(node.children, depth + 1) : `<div style="padding:4px 0 8px ${pad + 16}px;color:#bbb;font-size:11px">暂无叶子节点</div>`}
+      ${expanded ? ((node.children && node.children.length) ? renderKnowledgeTreeHtml(node.children, depth + 1) : `<div style="padding:4px 0 8px ${pad + 16}px;color:#bbb;font-size:11px">暂无叶子节点</div>`) : ''}
     </div>`;
   }).join('');
 }
@@ -7964,10 +8385,10 @@ async function saveError(){
   if(!subtype){ showToast('子类型不能为空', 'warning'); document.getElementById('editSubtype').focus(); return; }
   if(!answer){ showToast('正确答案不能为空', 'warning'); document.getElementById('editAnswer').focus(); return; }
 
-  const id = editingId; // JS 变量，openAddModal/openEditModal 时设置
+  const id = editingId ? normalizeErrorId(editingId) : null; // JS 变量，openAddModal/openEditModal 时设置
 
   // 图片：有新图用新图；主动删除置 null；否则保留原图
-  const existing = id ? errors.find(e=>e.id===id) : null;
+  const existing = id ? findErrorById(id) : null;
   const prevImgData = existing?.imgData || null;
   const prevAnalysisImgData = existing?.analysisImgData || null;
 
@@ -7997,8 +8418,10 @@ async function saveError(){
     type, subtype, subSubtype, question, options, answer, myAnswer, rootReason, errorReason, analysis, status, difficulty,
     imgData, analysisImgData, srcYear, srcProvince, srcOrigin, noteNodeId
   };
-  if(id){
-    const old = errors.find(e=>e.id===id);
+  if(existing){
+    const old = existing;
+    if (!old.id) old.id = newId();
+    old.id = normalizeErrorId(old.id);
     const oldType = old ? old.type : null;
     Object.assign(old, data);
     old.updatedAt = new Date().toISOString();
@@ -8035,16 +8458,17 @@ async function saveError(){
 
 // 修改删除错题函数，增加联动
 function deleteError(id){
-  if(!confirm(`确认删除 #${id}？`))return;
+  const targetId = normalizeErrorId(id);
+  if(!confirm(`确认删除 #${targetId}？`))return;
 
-  const error = errors.find(e => e.id === id);
+  const error = findErrorById(targetId);
   if (!error) return;
 
   unrefImageValue(error.imgData);
   unrefImageValue(error.analysisImgData);
-  errors = errors.filter(e => e.id !== id);
-  revealed.delete(id);
-  recordErrorDelete(id);
+  errors = errors.filter(e => normalizeErrorId(e.id) !== targetId);
+  revealed.delete(targetId);
+  recordErrorDelete(targetId);
   saveData();saveReveal();renderSidebar();renderAll();
 
   // 题型整体为空时，询问是否删除对应笔记（notesByType 是扁平结构，key 为题型名）
@@ -8058,7 +8482,7 @@ function deleteError(id){
 
   syncNotesWithErrors();
   renderNotesByType();
-  showToast(`Question #${id} deleted`, 'success');
+  showToast(`Question #${targetId} deleted`, 'success');
 }
 
 // 修改添加错题时的联动
@@ -8189,6 +8613,7 @@ function fallbackCopy(text) {
   renderSidebar();
   renderAll();
   renderNotesByType();
+  renderCodexContextLine();
   checkStorageUsage();
 
   window.addEventListener('beforeunload', () => {

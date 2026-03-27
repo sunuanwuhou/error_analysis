@@ -231,6 +231,13 @@
     }
   }
 
+  function refreshKnowledgeWorkspaceCards() {
+    var content = document.getElementById("notesContent");
+    if (!content) return;
+    if (!content.querySelector(".knowledge-workspace-shell")) return;
+    renderKnowledgeNotesViewV2();
+  }
+
   function setKnowledgeWorkspaceMode(mode, editing) {
     setWorkspaceMode(mode);
     noteEditing = !!editing && mode === "note";
@@ -247,6 +254,7 @@
   window.liveNotePreview = liveNotePreview;
   window.saveNoteTypeContent = saveNoteTypeContent;
   window.setKnowledgeWorkspaceMode = setKnowledgeWorkspaceMode;
+  window.refreshKnowledgeWorkspaceCards = refreshKnowledgeWorkspaceCards;
   window.renderNotesByType = function () {
     renderKnowledgeNotesViewV2();
   };

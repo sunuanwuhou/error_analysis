@@ -169,6 +169,40 @@ def init_db() -> None:
 
             CREATE INDEX IF NOT EXISTS idx_plog_user_date
               ON practice_log(user_id, date);
+
+            CREATE TABLE IF NOT EXISTS codex_threads (
+              id TEXT PRIMARY KEY,
+              user_id TEXT NOT NULL,
+              title TEXT NOT NULL DEFAULT '',
+              archived INTEGER NOT NULL DEFAULT 0,
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL,
+              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_codex_threads_user_updated
+              ON codex_threads(user_id, updated_at DESC);
+
+            CREATE TABLE IF NOT EXISTS codex_messages (
+              id TEXT PRIMARY KEY,
+              thread_id TEXT NOT NULL,
+              user_id TEXT NOT NULL,
+              role TEXT NOT NULL,
+              content TEXT NOT NULL,
+              context_json TEXT NOT NULL DEFAULT '{}',
+              status TEXT NOT NULL DEFAULT 'done',
+              error_text TEXT NOT NULL DEFAULT '',
+              created_at TEXT NOT NULL,
+              replied_at TEXT NOT NULL DEFAULT '',
+              FOREIGN KEY (thread_id) REFERENCES codex_threads(id) ON DELETE CASCADE,
+              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_codex_messages_thread_time
+              ON codex_messages(thread_id, created_at);
+
+            CREATE INDEX IF NOT EXISTS idx_codex_messages_pending
+              ON codex_messages(status, created_at);
             """
         )
 
@@ -269,6 +303,15 @@ class OriginStatusPayload(BaseModel):
     lastLoadedAt: Optional[str] = None
     lastSavedAt: Optional[str] = None
     lastBackupUpdatedAt: Optional[str] = None
+
+
+class CodexThreadCreatePayload(BaseModel):
+    title: str = Field(default="", max_length=80)
+
+
+class CodexMessageCreatePayload(BaseModel):
+    content: str = Field(min_length=1, max_length=8000)
+    context: dict[str, Any] = Field(default_factory=dict)
 
 
 class AnalyzeEntryPayload(BaseModel):
@@ -393,6 +436,73 @@ def require_user(token: Optional[str]) -> dict[str, Any]:
     if not user:
         raise HTTPException(status_code=401, detail="unauthorized")
     return user
+
+
+def parse_context_json(raw: str) -> dict[str, Any]:
+    if not raw:
+        return {}
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def normalize_codex_title(title: str) -> str:
+    cleaned = re.sub(r"\s+", " ", (title or "").strip())
+    return cleaned[:80] if cleaned else "Codex 收件箱"
+
+
+def build_codex_thread_summary(conn: sqlite3.Connection, row: sqlite3.Row) -> dict[str, Any]:
+    last_message = conn.execute(
+        """
+        SELECT role, content, created_at, status
+        FROM codex_messages
+        WHERE thread_id = ?
+        ORDER BY created_at DESC
+        LIMIT 1
+        """,
+        (row["id"],),
+    ).fetchone()
+    counts = conn.execute(
+        """
+        SELECT
+          COUNT(*) AS total_count,
+          SUM(CASE WHEN role = 'user' AND status = 'pending' THEN 1 ELSE 0 END) AS pending_count,
+          SUM(CASE WHEN role = 'assistant' THEN 1 ELSE 0 END) AS reply_count
+        FROM codex_messages
+        WHERE thread_id = ?
+        """,
+        (row["id"],),
+    ).fetchone()
+    return {
+        "id": row["id"],
+        "title": row["title"],
+        "archived": bool(row["archived"]),
+        "createdAt": row["created_at"],
+        "updatedAt": row["updated_at"],
+        "lastMessagePreview": clean_multiline_text(last_message["content"], 120) if last_message else "",
+        "lastMessageRole": last_message["role"] if last_message else "",
+        "lastMessageAt": last_message["created_at"] if last_message else "",
+        "lastMessageStatus": last_message["status"] if last_message else "",
+        "messageCount": int(counts["total_count"] or 0),
+        "pendingCount": int(counts["pending_count"] or 0),
+        "replyCount": int(counts["reply_count"] or 0),
+    }
+
+
+def ensure_codex_thread_owner(conn: sqlite3.Connection, thread_id: str, user_id: str) -> sqlite3.Row:
+    row = conn.execute(
+        """
+        SELECT id, user_id, title, archived, created_at, updated_at
+        FROM codex_threads
+        WHERE id = ? AND user_id = ?
+        """,
+        (thread_id, user_id),
+    ).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="codex thread not found")
+    return row
 
 
 def upsert_origin_status(user_id: str, origin: str, **fields: str) -> None:
@@ -2326,3 +2436,132 @@ def knowledge_search(
                 break
 
     return {"ok": True, "nodes": node_hits, "errors": error_hits}
+
+
+@app.get("/api/codex/threads")
+def list_codex_threads(xingce_session: Optional[str] = Cookie(default=None)) -> dict[str, Any]:
+    user = require_user(xingce_session)
+    with get_conn() as conn:
+        rows = conn.execute(
+            """
+            SELECT id, user_id, title, archived, created_at, updated_at
+            FROM codex_threads
+            WHERE user_id = ? AND archived = 0
+            ORDER BY updated_at DESC, created_at DESC
+            """,
+            (user["id"],),
+        ).fetchall()
+        threads = [build_codex_thread_summary(conn, row) for row in rows]
+    return {"ok": True, "threads": threads}
+
+
+@app.post("/api/codex/threads")
+def create_codex_thread(
+    payload: CodexThreadCreatePayload,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    user = require_user(xingce_session)
+    now = utcnow().isoformat()
+    thread_id = f"ctx_{secrets.token_hex(10)}"
+    title = normalize_codex_title(payload.title)
+    with get_conn() as conn:
+        conn.execute(
+            """
+            INSERT INTO codex_threads(id, user_id, title, archived, created_at, updated_at)
+            VALUES (?, ?, ?, 0, ?, ?)
+            """,
+            (thread_id, user["id"], title, now, now),
+        )
+        conn.commit()
+        row = ensure_codex_thread_owner(conn, thread_id, user["id"])
+        thread = build_codex_thread_summary(conn, row)
+    return {"ok": True, "thread": thread}
+
+
+@app.get("/api/codex/threads/{thread_id}")
+def get_codex_thread(thread_id: str, xingce_session: Optional[str] = Cookie(default=None)) -> dict[str, Any]:
+    user = require_user(xingce_session)
+    with get_conn() as conn:
+        row = ensure_codex_thread_owner(conn, thread_id, user["id"])
+        messages = conn.execute(
+            """
+            SELECT id, thread_id, user_id, role, content, context_json, status, error_text, created_at, replied_at
+            FROM codex_messages
+            WHERE thread_id = ?
+            ORDER BY created_at ASC
+            """,
+            (thread_id,),
+        ).fetchall()
+        thread = build_codex_thread_summary(conn, row)
+    return {
+        "ok": True,
+        "thread": thread,
+        "messages": [
+            {
+                "id": item["id"],
+                "threadId": item["thread_id"],
+                "userId": item["user_id"],
+                "role": item["role"],
+                "content": item["content"],
+                "context": parse_context_json(item["context_json"]),
+                "status": item["status"],
+                "errorText": item["error_text"],
+                "createdAt": item["created_at"],
+                "repliedAt": item["replied_at"],
+            }
+            for item in messages
+        ],
+    }
+
+
+@app.post("/api/codex/threads/{thread_id}/messages")
+def create_codex_message(
+    thread_id: str,
+    payload: CodexMessageCreatePayload,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    user = require_user(xingce_session)
+    now = utcnow().isoformat()
+    content = clean_multiline_text(payload.content, 8000)
+    if not content:
+        raise HTTPException(status_code=400, detail="message content is empty")
+    context_payload = payload.context if isinstance(payload.context, dict) else {}
+    message_id = f"cm_{secrets.token_hex(10)}"
+    with get_conn() as conn:
+        thread = ensure_codex_thread_owner(conn, thread_id, user["id"])
+        existing_user_count = conn.execute(
+            "SELECT COUNT(*) AS count FROM codex_messages WHERE thread_id = ? AND role = 'user'",
+            (thread_id,),
+        ).fetchone()["count"]
+        conn.execute(
+            """
+            INSERT INTO codex_messages(
+              id, thread_id, user_id, role, content, context_json, status, error_text, created_at, replied_at
+            )
+            VALUES (?, ?, ?, 'user', ?, ?, 'pending', '', ?, '')
+            """,
+            (message_id, thread_id, user["id"], content, json.dumps(context_payload, ensure_ascii=False), now),
+        )
+        updated_title = thread["title"]
+        if existing_user_count == 0 and (thread["title"] == "Codex 收件箱" or not thread["title"].strip()):
+            updated_title = normalize_codex_title(content[:40])
+        conn.execute(
+            "UPDATE codex_threads SET title = ?, updated_at = ? WHERE id = ?",
+            (updated_title, now, thread_id),
+        )
+        conn.commit()
+    return {
+        "ok": True,
+        "message": {
+            "id": message_id,
+            "threadId": thread_id,
+            "userId": user["id"],
+            "role": "user",
+            "content": content,
+            "context": context_payload,
+            "status": "pending",
+            "errorText": "",
+            "createdAt": now,
+            "repliedAt": "",
+        },
+    }
