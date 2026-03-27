@@ -66,14 +66,6 @@ ALLOWED_ENTRY_TYPES = {
     "其他",
 }
 OCR_MAX_BYTES = 5 * 1024 * 1024
-OCR_BACKEND = (os.getenv("OCR_BACKEND", "tesseract") or "tesseract").strip().lower()
-OCR_TESSERACT_FALLBACK = (os.getenv("OCR_TESSERACT_FALLBACK", "true") or "true").strip().lower() not in {
-    "0",
-    "false",
-    "no",
-    "off",
-}
-UMI_OCR_URL = (os.getenv("UMI_OCR_URL", "http://umi-ocr:1224/api/ocr") or "http://umi-ocr:1224/api/ocr").strip()
 
 
 def utcnow() -> datetime:
@@ -682,7 +674,7 @@ def call_analyze_entry(payload: AnalyzeEntryPayload) -> dict[str, Any]:
     return cleaned
 
 
-def run_tesseract_ocr_bytes_legacy(image_bytes: bytes) -> dict[str, Any]:
+def run_ocr_bytes(image_bytes: bytes) -> dict[str, Any]:
     if not image_bytes:
         raise HTTPException(status_code=400, detail="empty image body")
     if len(image_bytes) > OCR_MAX_BYTES:
@@ -770,7 +762,7 @@ def run_tesseract_ocr_bytes_legacy(image_bytes: bytes) -> dict[str, Any]:
     }
 
 
-def run_tesseract_ocr_bytes(image_bytes: bytes) -> dict[str, Any]:
+def run_ocr_bytes(image_bytes: bytes) -> dict[str, Any]:
     if not image_bytes:
         raise HTTPException(status_code=400, detail="empty image body")
     if len(image_bytes) > OCR_MAX_BYTES:
@@ -1213,98 +1205,6 @@ def run_tesseract_ocr_bytes(image_bytes: bytes) -> dict[str, Any]:
     }
 
 
-def run_umi_ocr_bytes(image_bytes: bytes) -> dict[str, Any]:
-    if not image_bytes:
-        raise HTTPException(status_code=400, detail="empty image body")
-    if len(image_bytes) > OCR_MAX_BYTES:
-        raise HTTPException(status_code=413, detail="image too large (max 5MB)")
-
-    body = {
-        "base64": base64.b64encode(image_bytes).decode("ascii"),
-        "options": {
-            "data.format": "dict",
-            "ocr.language": "models/config_chinese.txt",
-            "tbpu.parser": "multi_para",
-        },
-    }
-    request = urllib.request.Request(
-        UMI_OCR_URL,
-        data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=60) as response:
-            raw = response.read().decode("utf-8")
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")
-        raise HTTPException(status_code=502, detail=f"umi ocr request failed: {detail}") from exc
-    except urllib.error.URLError as exc:
-        raise HTTPException(status_code=502, detail=f"umi ocr unavailable: {exc.reason}") from exc
-
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise HTTPException(status_code=502, detail=f"umi ocr invalid response: {raw[:200]}") from exc
-
-    if int(data.get("code") or 0) != 100:
-        raise HTTPException(status_code=502, detail=f"umi ocr failed: {data.get('data') or data.get('message') or data}")
-
-    items = data.get("data") or []
-    lines: list[dict[str, Any]] = []
-    texts: list[str] = []
-    alternatives = [
-        {
-            "variant": "remote-http",
-            "text": "\n".join(str(item.get("text") or "").strip() for item in items if str(item.get("text") or "").strip()).strip(),
-            "lineCount": len(items),
-            "quality": round(float(data.get("score") or 0.0), 4),
-        }
-    ]
-    for item in items:
-        text = str(item.get("text") or "").strip()
-        if not text:
-            continue
-        texts.append(text)
-        lines.append(
-            {
-                "text": text,
-                "score": round(float(item.get("score") or 0.0), 4),
-                "box": item.get("box") or [[0, 0], [0, 0], [0, 0], [0, 0]],
-            }
-        )
-
-    merged_text = "\n".join(texts).strip()
-    hint = ""
-    text_token_count = len(re.findall(r"-?\d+(?:\.\d+)?", merged_text)) + len(re.findall(r"[\u4e00-\u9fff]", merged_text))
-    if text_token_count <= 6 and len(merged_text) <= 24:
-        hint = "检测到图片里的可识别文字较少，像图形推理或纯图题这类内容更适合保留题图并手动补题干。"
-
-    return {
-        "engine": "umi-ocr",
-        "variant": "remote-http",
-        "lineCount": len(lines),
-        "text": merged_text,
-        "lines": lines,
-        "alternatives": alternatives,
-        "hint": hint,
-    }
-
-
-def run_ocr_bytes(image_bytes: bytes) -> dict[str, Any]:
-    backend = OCR_BACKEND or "tesseract"
-    if backend == "umi":
-        try:
-            return run_umi_ocr_bytes(image_bytes)
-        except HTTPException:
-            if not OCR_TESSERACT_FALLBACK:
-                raise
-        except Exception as exc:
-            if not OCR_TESSERACT_FALLBACK:
-                raise HTTPException(status_code=502, detail=f"umi ocr failed: {exc}") from exc
-    return run_tesseract_ocr_bytes(image_bytes)
-
-
 def cleanup_old_ops(user_id: str, conn: sqlite3.Connection) -> None:
     conn.execute(
         "DELETE FROM operations WHERE user_id = ? AND created_at < datetime('now', '-30 days')",
@@ -1400,6 +1300,7 @@ def summarize_error(error: dict[str, Any]) -> dict[str, Any]:
         "subtype": str(error.get("subtype") or ""),
         "subSubtype": str(error.get("subSubtype") or ""),
         "question": clean_multiline_text(error.get("question"), 280),
+        "options": clean_multiline_text(error.get("options"), 400),
         "answer": clean_short_text(error.get("answer"), 20),
         "myAnswer": clean_short_text(error.get("myAnswer"), 20),
         "status": clean_short_text(error.get("status"), 20),
@@ -1410,6 +1311,7 @@ def summarize_error(error: dict[str, Any]) -> dict[str, Any]:
         "masteryLevel": clean_short_text(error.get("masteryLevel"), 30),
         "updatedAt": clean_short_text(error.get("updatedAt") or error.get("addDate"), 40),
         "noteNodeId": clean_short_text(error.get("noteNodeId"), 60),
+        "imgData": str(error["imgData"]) if error.get("imgData") else None,
     }
 
 
@@ -2029,8 +1931,20 @@ def get_practice_daily(
 ) -> dict[str, Any]:
     user = require_user(xingce_session)
     errors = get_backup_errors(user["id"])
-    queue = compute_daily_practice(errors, max(1, min(limit, 30)))
-    return {"ok": True, "items": queue, "recentLogs": read_recent_practice_logs(user["id"], 14)}
+    recent_logs = read_recent_practice_logs(user["id"], 14)
+    # 过滤今日已练习的题目，避免重复刷
+    today_str = utcnow().date().isoformat()
+    practiced_today: set[str] = set()
+    for log in recent_logs:
+        if str(log.get("date", ""))[:10] == today_str:
+            for eid in (log.get("errorIds") or []):
+                practiced_today.add(str(eid))
+    # 如果今日已练习的题超过一半队列，不过滤（避免题库太小时无题可练）
+    filtered_errors = [e for e in errors if str(e.get("id", "")) not in practiced_today]
+    if len(filtered_errors) < max(3, limit // 2):
+        filtered_errors = errors  # 回退到全量
+    queue = compute_daily_practice(filtered_errors, max(1, min(limit, 30)))
+    return {"ok": True, "items": queue, "recentLogs": recent_logs, "practicedTodayCount": len(practiced_today)}
 
 
 @app.post("/api/ai/evaluate-answer")
@@ -2077,9 +1991,11 @@ def generate_question(
         {
             "role": "system",
             "content": (
-                "Generate similar practice questions. "
-                "Return JSON only as an array. "
-                "Each item must contain question, options, answer, analysis."
+                "你是公务员行测出题专家。根据提供的知识点和参考错题，出原创练习题。"
+                "只返回JSON数组，每项包含：question（题干）、options（选项，用|分隔，如A.xxx|B.xxx|C.xxx|D.xxx）、"
+                "answer（正确答案字母，如B）、analysis（解析，先给解题思路再给正确答案原因，100字内）。"
+                "难度比参考错题高一档，考查同一能力短板，不要重复参考题的内容。"
+                "只返回JSON数组，不要任何其他文字。"
             ),
         },
         {
@@ -2120,9 +2036,12 @@ def diagnose(
         {
             "role": "system",
             "content": (
-                "You are a study diagnosis assistant. "
-                "Return JSON only with keys: summary and weakPoints. "
-                "weakPoints must be an array of {area, description, priority, suggestion}."
+                "你是公务员行测学习诊断专家。分析用户错题数据，找出真实短板。"
+                "只返回JSON，格式：{summary: string, weakPoints: [{area, description, priority, suggestion}]}。"
+                "summary：100字内，直接说最需要攻克的2-3个问题，数据支撑。"
+                "weakPoints最多5条，每条：area=弱点名称，description=具体表现（引用数据），"
+                "priority=high/medium，suggestion=本周可执行的具体行动（1-2句话）。"
+                "不要废话，不要鼓励，只给诊断和行动。"
             ),
         },
         {"role": "user", "content": json.dumps({"errors": condensed}, ensure_ascii=False)},
@@ -2171,25 +2090,44 @@ def ai_chat(
         if reason:
             context["topRootReasons"][reason] = context["topRootReasons"].get(reason, 0) + 1
     top_roots = sorted(context["topRootReasons"].items(), key=lambda item: (-item[1], item[0]))[:8]
+    # 取最近20条错题做上下文（只要关键字段）
+    recent_errors = sorted(
+        errors,
+        key=lambda e: str(e.get("updatedAt") or e.get("addDate") or ""),
+        reverse=True,
+    )[:20]
+    error_snippets = [
+        {
+            "type": e.get("type", ""),
+            "subtype": e.get("subtype", ""),
+            "rootReason": clean_short_text(e.get("rootReason"), 60),
+            "errorReason": clean_short_text(e.get("errorReason"), 30),
+            "status": e.get("status", ""),
+            "question": clean_multiline_text(e.get("question"), 80),
+        }
+        for e in recent_errors
+        if e.get("rootReason")
+    ]
     messages = [
         {
             "role": "system",
             "content": (
-                "You are a study copilot for a Chinese error-analysis notebook. "
-                "Answer concisely, ground advice in the provided user data, and avoid invented claims."
+                "你是公务员行测备考助手，用中文回答，简洁直接，300字以内。"
+                "你能看到用户的真实错题数据（rootReason=深层原因，errorReason=表象原因，status=复习状态）。"
+                "回答要基于数据，给出可操作的具体建议，不要泛泛而谈。"
+                "格式：直接给结论，再给1-3个具体行动，不要废话。"
             ),
         },
         {
             "role": "user",
             "content": json.dumps(
                 {
-                    "context": {
-                        "errorCount": context["errorCount"],
-                        "topRootReasons": top_roots,
-                        "knowledgeNodes": context["knowledgeNodes"],
-                    },
-                    "history": payload.history[-6:],
-                    "message": payload.message,
+                    "总错题数": context["errorCount"],
+                    "高频根因top8": top_roots,
+                    "最近20条错题": error_snippets,
+                    "知识节点": [item["title"] for item in tree[:20]],
+                    "对话历史": payload.history[-4:],
+                    "我的问题": payload.message,
                 },
                 ensure_ascii=False,
             ),

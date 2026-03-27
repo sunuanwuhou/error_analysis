@@ -85,11 +85,11 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .btn-sm{padding:4px 9px;font-size:12px}
 
 /* ===== Tab切换栏 ===== */
-.tab-header{display:none}
+.tab-header{display:none!important}
 .tab-btn{flex:1;padding:12px 16px;text-align:center;font-size:14px;font-weight:600;color:#666;border:none;background:none;cursor:pointer;position:relative;border-bottom:2px solid transparent;transition:.2s}
 .tab-btn:hover{background:#fafafa;color:#333}
 .tab-btn.active{color:#e74c3c;border-bottom-color:#e74c3c;background:#fff2f0}
-.view-mode-switch{display:flex;gap:6px}
+.view-mode-switch{display:none!important}
 .view-mode-switch .btn.active{background:#e74c3c;color:#fff;border-color:#e74c3c}
 .tab-content{display:none;flex:1;overflow:hidden;min-width:0}
 .tab-content.active{display:flex}
@@ -131,7 +131,7 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .nav-sub2.active .nav-count{background:#ffe4e1;color:#e74c3c}
 
 /* ===== 中间笔记区域 ===== */
-.notes-area{flex:1;overflow:hidden;display:flex;flex-direction:column;padding-right:0}
+.notes-area{flex:1;overflow:hidden;display:flex;flex-direction:column;padding-right:0;width:100%}
 .notes-header{display:none}
 .notes-header h2{font-size:16px;margin:0;color:#2c3e50}
 .notes-header .btn{font-size:12px;padding:6px 12px}
@@ -669,12 +669,12 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .note-toc-item.lv3{padding-left:24px}
 .note-toc-item.lv4{padding-left:34px}
 .note-toc-inline{margin:10px 14px 0}
-.note-preview-layout{display:grid;grid-template-columns:minmax(180px,220px) minmax(0,1fr);gap:24px;align-items:start;min-height:100%;width:100%}
-.note-preview-layout.no-toc{display:block}
-.note-preview-article{min-width:0;max-width:none;width:100%}
-.note-preview-toc{display:block!important;position:sticky;top:0;align-self:start;max-height:calc(100vh - 240px);overflow:auto}
+.note-preview-layout{display:grid;grid-template-columns:minmax(180px,220px) minmax(0,1fr);gap:28px;align-items:start;min-height:100%}
+.note-preview-layout-no-toc{display:block}
+.note-preview-article{min-width:0;max-width:none}
+.note-preview-toc{display:block!important;position:sticky;top:0;align-self:start;max-height:calc(100vh - 260px);overflow:auto;padding:4px 0 12px}
 .note-preview-toc .note-toc-floating{padding:12px 14px;border:1px solid #f1e2ce;border-radius:16px;background:linear-gradient(180deg,#fffdf8 0%,#fffaf2 100%);box-shadow:none}
-.global-note-toc-dock{position:fixed;top:118px;right:18px;z-index:1200;width:240px;max-height:calc(100vh - 142px);overflow:auto;display:none}
+.global-note-toc-dock{display:none!important}
 .note-toc-floating{position:relative;z-index:3;display:block;width:100%;max-width:100%;margin:0;border-color:#f3d6b8;box-shadow:0 8px 24px rgba(180,83,9,.08)}
 .note-toc-floating .note-toc-title{display:flex;align-items:center;justify-content:space-between}
 @media (max-width: 980px){
@@ -684,6 +684,13 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
   .note-preview-layout{display:block}
   .note-preview-toc{position:static;max-height:none;width:auto;max-width:none;margin-bottom:12px}
 }
+/* ===== AI 工具台 Tab 样式 ===== */
+.ai-tab-btn{padding:7px 14px;border:none;background:none;cursor:pointer;font-size:13px;color:#666;border-bottom:2px solid transparent;margin-bottom:-1px;transition:.15s;font-weight:500}
+.ai-tab-btn:hover{color:#333;background:#fafafa;border-radius:6px 6px 0 0}
+.ai-tab-btn.active{color:#e74c3c;border-bottom-color:#e74c3c;font-weight:700}
+.ai-tab-content{animation:fadeIn .15s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(2px)}to{opacity:1;transform:none}}
+/* ===== 复习完成页快捷按钮 ===== */
 /* ===== Layout Refresh v3.1 ===== */
 body{
   background:
@@ -735,10 +742,9 @@ body{
   letter-spacing:.02em;
 }
 .top-bar-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.view-mode-switch{display:none!important;padding:4px;border-radius:999px;background:#f6f1eb;border:1px solid #eadfd4}
+.view-mode-switch{padding:4px;border-radius:999px;background:#f6f1eb;border:1px solid #eadfd4}
 .view-mode-switch .btn{border-radius:999px}
 .toolbar-spacer{flex:1 1 auto}
-.top-bar > .view-mode-switch{margin-right:2px}
 .top-bar > .btn-primary,
 .top-bar > .more-menu,
 .top-bar > .cloud-controls{justify-self:start}
@@ -756,7 +762,7 @@ body{
 }
 .errors-header,.notes-header,.notes-panel-right-header,.date-filter-bar,.content-header{background:rgba(255,255,255,.92)}
 .errors-header,.notes-header,.notes-panel-right-header{padding:14px 18px}
-.notes-header{display:none!important}
+.notes-header{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #eef1f5}
 .notes-header h2,.errors-header h2,.notes-panel-right-header h3{font-size:17px;letter-spacing:.2px}
 .search-box input{height:40px;border-radius:14px;background:#faf7f2;border-color:#ebe2d8}
 .date-filter-bar{padding:10px 16px;flex-wrap:wrap}
@@ -775,33 +781,17 @@ body{
 .notes-content{
   background:transparent;
   overflow:auto;
-  padding:0 18px 18px;
+  padding:0 24px 24px;
 }
 #notesContent > *{
   width:100%;
   max-width:none;
-  margin-left:auto;
-  margin-right:auto;
+  margin-left:0;
+  margin-right:0;
 }
-.knowledge-workspace-shell{display:flex;flex-direction:column;gap:14px;padding-top:12px}
-.knowledge-workspace-shell-header{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 16px;align-items:start;padding:12px 14px;border:1px solid #ebe5dc;border-radius:18px;background:linear-gradient(180deg,#fffaf4 0%,#fff 100%)}
-.knowledge-workspace-shell-meta{min-width:0}
-.knowledge-workspace-shell-title{font-size:18px;line-height:1.2;font-weight:700;color:#233044;word-break:break-word}
-.knowledge-workspace-shell-path{margin-top:4px;font-size:11px;line-height:1.6;color:#8b735d;word-break:break-word}
-.knowledge-workspace-shell-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
-.knowledge-workspace-mode-switch{display:flex;align-items:center;gap:6px;padding:4px;border:1px solid #eadfd4;border-radius:999px;background:#faf6ef}
-.knowledge-workspace-count{display:inline-flex;align-items:center;padding:0 10px;height:32px;border-radius:999px;background:#fff7ed;border:1px solid #f6d3b1;color:#b45309;font-size:12px;font-weight:700}
-.knowledge-workspace-shell-stats{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.knowledge-workspace-stat{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;background:#fff;border:1px solid #e8e0d7;color:#8b5e34;font-size:11px}
-.knowledge-workspace-list-wrap,.knowledge-workspace-note-wrap{display:flex;flex-direction:column;gap:10px}
-.knowledge-workspace-list-head{font-size:12px;font-weight:700;color:#9a6b57;letter-spacing:.04em}
-.knowledge-workspace-list{display:flex;flex-direction:column;gap:12px}
-.knowledge-workspace-list .error-card{padding:16px 18px 16px 24px}
-.knowledge-workspace-empty{padding:48px 24px;border:1px dashed #e7ddd0;border-radius:18px;background:#fffdf9;color:#9b8b77;font-size:13px;line-height:1.8;text-align:center}
-.knowledge-workspace-note-wrap .note-preview-scroll{overflow:visible}
-.notes-panel-right{display:none!important;width:0!important;min-width:0!important;flex:0 0 0!important;overflow:hidden!important}
-.notes-panel-right-header{border-bottom:1px solid #eef1f5}
-.notes-panel-right-body{padding:12px}
+.notes-panel-right{display:none!important}
+.notes-panel-right-header{display:none!important}
+.notes-panel-right-body{display:none!important}
 .notes-panel-right .error-card{border-radius:16px;margin-bottom:10px}
 .related-errors-summary{padding:10px 4px 12px}
 .quiz-block{
@@ -827,9 +817,17 @@ body{
 .note-type-tabs{padding:12px 18px;background:linear-gradient(180deg,#fffdfa,#fff)}
 .note-type-tab{border-radius:999px;padding:6px 14px}
 .note-split-area{
+  width:100%;
   gap:18px;
   padding:16px 20px 20px;
   background:linear-gradient(180deg,#fcfcfd,#fff);
+}
+.knowledge-workspace-bar,
+.note-page-intro,
+.note-split-editor,
+.note-split-preview{
+  width:100%;
+  max-width:none;
 }
 .note-split-editor,.note-split-preview{
   border:1px solid #edf0f4;
@@ -880,7 +878,7 @@ body{
   max-width:none;
 }
 .top-bar{
-  grid-template-columns:minmax(220px,1fr) auto auto minmax(16px,1fr) minmax(240px,auto);
+  grid-template-columns:minmax(220px,1.2fr) auto auto auto minmax(16px,1fr) minmax(320px,auto);
 }
 .top-bar .btn{
   min-height:40px;
@@ -903,39 +901,18 @@ body{
   padding:8px 12px;
 }
 .cloud-controls{
-  display:grid;
-  grid-template-columns:repeat(3,auto);
-  gap:6px;
-  justify-content:end;
-  align-items:center;
+  gap:8px;
+  justify-content:flex-end;
   padding:8px 10px;
-  max-width:240px;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.7);
 }
 .cloud-controls > .btn{
-  min-width:68px;
-  min-height:34px;
-  padding:6px 10px;
-  font-size:12px;
+  min-width:92px;
+  min-height:38px;
+  padding:8px 12px;
 }
 .cloud-meta{
-  grid-column:1 / -1;
-  width:100%;
-  max-width:none;
-  padding-right:0;
-}
-.cloud-status-line{
-  gap:4px;
-}
-.cloud-status-hint{
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  max-width:100%;
-}
-.cloud-details-toggle,
-.cloud-origin-list{
-  display:none!important;
+  padding-right:2px;
 }
 .tab-header{
   display:none!important;
@@ -1052,12 +1029,6 @@ body{
   .cloud-controls{justify-content:flex-start}
   .cloud-meta{min-width:0}
   .cloud-origin-list{max-width:none}
-  .knowledge-workspace-shell-header{
-    grid-template-columns:1fr;
-  }
-  .knowledge-workspace-shell-actions{
-    justify-content:flex-start;
-  }
   .errors-header,
   .content-header{
     grid-template-columns:1fr;
@@ -1096,11 +1067,6 @@ body{
   .top-bar h1{
     font-size:17px;
   }
-  .knowledge-workspace-shell-actions .btn,
-  .knowledge-workspace-mode-switch,
-  .knowledge-workspace-count{
-    width:100%;
-  }
   .top-bar .btn,
   .cloud-controls > .btn{
     width:100%;
@@ -1114,12 +1080,10 @@ body{
   .view-mode-switch .btn{
     width:100%;
   }
-    .cloud-controls{
-      width:100%;
-      display:flex;
-      justify-content:stretch;
-      max-width:none;
-    }
+  .cloud-controls{
+    width:100%;
+    justify-content:stretch;
+  }
   .cloud-meta{
     width:100%;
     padding-right:0;
@@ -1245,27 +1209,21 @@ body{
     <div class="cloud-controls">
       <div class="cloud-meta">
         <div class="cloud-status-line">
-          <span id="cloudUserBadge" style="font-size:12px;color:#666">云端: 未登录</span>
+          <span id="cloudUserBadge" style="font-size:12px;color:#666">Cloud: offline</span>
           <span id="cloudSyncBadge" class="cloud-status-badge">idle</span>
           <button type="button" id="cloudDetailsToggle" class="cloud-details-toggle" onclick="toggleCloudDetails()">详情</button>
         </div>
-        <div id="cloudSyncHint" class="cloud-status-hint">等待同步</div>
+        <div id="cloudSyncHint" class="cloud-status-hint">Local cache is per origin.</div>
         <div id="cloudOriginStatus" class="cloud-origin-list"></div>
       </div>
-      <button class="btn btn-secondary" onclick="loadCloudBackup()">载入</button>
-      <button class="btn btn-secondary" onclick="saveCloudBackup()">保存</button>
-      <button class="btn btn-secondary" id="cloudLogoutBtn" onclick="logoutCloud()">退出</button>
+      <button class="btn btn-secondary" onclick="loadCloudBackup()">Cloud Load</button>
+      <button class="btn btn-secondary" onclick="saveCloudBackup()">Cloud Save</button>
+      <button class="btn btn-secondary" id="cloudLogoutBtn" onclick="logoutCloud()">Logout</button>
     </div>
   </div>
 
   <div class="toast-stack" id="toastStack"></div>
   <button id="aiWorkbenchBtn" class="btn btn-secondary" style="position:fixed;right:18px;bottom:18px;z-index:1200;box-shadow:0 10px 24px rgba(15,23,42,.18)" onclick="openAIToolsModal()">AI 工具台</button>
-
-  <!-- Tab切换栏 -->
-  <div class="tab-header">
-    <button class="tab-btn" onclick="switchTab('errors')" id="tabErrors">错题列表</button>
-    <button class="tab-btn active" onclick="switchTab('notes')" id="tabNotes">学习笔记</button>
-  </div>
 
   <!-- Tab内容区域 -->
   <div class="tab-content" id="tabContentErrors">
@@ -1313,7 +1271,6 @@ body{
       <div class="notes-content" id="notesContent"></div>
     </div>
   </div>
-
 </div>
 
 <!-- ===== 添加/编辑弹窗 ===== -->
@@ -1594,47 +1551,87 @@ body{
   </div>
 </div>
 
-<!-- ===== 题型自动识别规则弹窗 ===== -->
+<!-- ===== AI 工具台弹窗（重构版）===== -->
 <div class="modal-mask" id="aiToolsModal">
-  <div class="modal" style="width:820px;max-width:96vw;max-height:92vh">
+  <div class="modal" style="width:860px;max-width:96vw;max-height:92vh;overflow-y:auto">
     <button class="modal-close" onclick="closeModal('aiToolsModal')">✕</button>
-    <h2>✨ AI 工具台</h2>
-    <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:14px;align-items:start">
-      <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
-        <div style="padding:12px;border:1px solid #eee;border-radius:12px;background:#fafafa">
-          <div style="font-size:13px;font-weight:700;color:#333;margin-bottom:8px">AI 助手</div>
-          <textarea id="aiChatInput" rows="5" placeholder="例如：根据我当前的错题情况，告诉我这周最应该先补哪一块。" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;resize:vertical;font:inherit"></textarea>
-          <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
-            <button class="btn btn-primary" onclick="submitAIChat()">发送</button>
-            <button class="btn btn-secondary" onclick="clearAIChat()">清空</button>
-            <span id="aiChatStatus" style="font-size:12px;color:#888"></span>
-          </div>
-          <div id="aiChatOutput" style="margin-top:10px;min-height:120px;padding:12px;border-radius:10px;background:#fff;border:1px solid #eceff3;white-space:pre-wrap;line-height:1.75;color:#334155"></div>
-        </div>
-        <div style="padding:12px;border:1px solid #eee;border-radius:12px;background:#fafafa">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
-            <div style="font-size:13px;font-weight:700;color:#333">AI 诊断</div>
-            <button class="btn btn-secondary btn-sm" onclick="runAIDiagnosis()">刷新诊断</button>
-          </div>
-          <div id="aiDiagnoseOutput" style="min-height:140px;padding:12px;border-radius:10px;background:#fff;border:1px solid #eceff3;white-space:pre-wrap;line-height:1.75;color:#334155"></div>
-        </div>
+    <h2 style="margin-bottom:4px">🧠 AI 工具台</h2>
+    <p style="font-size:12px;color:#888;margin-bottom:14px">基于你的真实错题数据，不是通用建议</p>
+
+    <!-- Tab 切换 -->
+    <div style="display:flex;gap:4px;margin-bottom:14px;border-bottom:1px solid #eee;padding-bottom:0">
+      <button class="ai-tab-btn active" id="aiTab_diagnose" onclick="switchAITab('diagnose')">📊 弱点诊断</button>
+      <button class="ai-tab-btn" id="aiTab_chat" onclick="switchAITab('chat')">💬 问AI</button>
+      <button class="ai-tab-btn" id="aiTab_generate" onclick="switchAITab('generate')">🎯 针对出题</button>
+      <button class="ai-tab-btn" id="aiTab_summary" onclick="switchAITab('summary')">📋 摘要导出</button>
+    </div>
+
+    <!-- 弱点诊断 Tab -->
+    <div id="aiTabContent_diagnose" class="ai-tab-content">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:13px;color:#555">分析当前筛选范围内的错题，找出真实短板</div>
+        <button class="btn btn-primary btn-sm" onclick="runAIDiagnosis()" id="diagnoseBtnMain">🔍 立即诊断</button>
       </div>
-      <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
-        <div style="padding:12px;border:1px solid #eee;border-radius:12px;background:#fafafa">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
-            <div style="font-size:13px;font-weight:700;color:#333">Claude 摘要桥接</div>
-            <button class="btn btn-secondary btn-sm" onclick="buildClaudeSummary()">生成</button>
-          </div>
-          <textarea id="aiModuleSummaryOutput" rows="10" readonly style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;resize:vertical;font:12px/1.6 Consolas,monospace;background:#fff"></textarea>
-        </div>
-        <div style="padding:12px;border:1px solid #eee;border-radius:12px;background:#fafafa">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
-            <div style="font-size:13px;font-weight:700;color:#333">相似题生成</div>
-            <button class="btn btn-secondary btn-sm" onclick="generateNodePractice()">生成 3 题</button>
-          </div>
-          <div id="aiGenerateOutput" style="min-height:180px;padding:12px;border-radius:10px;background:#fff;border:1px solid #eceff3;white-space:pre-wrap;line-height:1.75;color:#334155"></div>
-        </div>
+      <!-- 本地统计卡片（不需要AI，秒出） -->
+      <div id="localStatsCards" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px"></div>
+      <!-- AI深度分析 -->
+      <div id="aiDiagnoseOutput" style="min-height:100px;padding:12px;border-radius:10px;background:#f8faff;border:1px solid #dbeafe;line-height:1.8;color:#1e3a5f;font-size:13px;white-space:pre-wrap">点击「立即诊断」获取基于你错题数据的深度分析。</div>
+    </div>
+
+    <!-- 问AI Tab -->
+    <div id="aiTabContent_chat" class="ai-tab-content" style="display:none">
+      <!-- 快捷问法 -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+        <button class="btn btn-secondary btn-sm" onclick="quickAsk('这周我应该优先复习哪个题型？')">这周先攻哪块？</button>
+        <button class="btn btn-secondary btn-sm" onclick="quickAsk('我的言语理解错题有什么共同规律？')">言语规律？</button>
+        <button class="btn btn-secondary btn-sm" onclick="quickAsk('判断推理最高频的错误原因是什么，怎么针对性练习？')">判断推理怎么练？</button>
+        <button class="btn btn-secondary btn-sm" onclick="quickAsk('根据我的错题，给我制定一个3天专项复习计划')">制定3天计划</button>
       </div>
+      <textarea id="aiChatInput" rows="3" placeholder="例如：我的逻辑判断错了很多，有什么规律？怎么在2周内提升？" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;resize:vertical;font:inherit;margin-bottom:8px"></textarea>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+        <button class="btn btn-primary" onclick="submitAIChat()">发送</button>
+        <button class="btn btn-secondary" onclick="clearAIChat()">清空对话</button>
+        <span id="aiChatStatus" style="font-size:12px;color:#888"></span>
+      </div>
+      <div id="aiChatOutput" style="min-height:120px;padding:12px;border-radius:10px;background:#f8faff;border:1px solid #dbeafe;line-height:1.8;color:#1e3a5f;font-size:13px;white-space:pre-wrap">AI会结合你的错题数据来回答，不是通用建议。</div>
+    </div>
+
+    <!-- 针对出题 Tab -->
+    <div id="aiTabContent_generate" class="ai-tab-content" style="display:none">
+      <div style="font-size:13px;color:#555;margin-bottom:10px">
+        针对你的弱点生成原创练习题。先在左侧知识树选中一个节点，或在下方指定题型。
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+        <select id="genTypeSelect" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;flex:1;min-width:140px">
+          <option value="">-- 选题型 --</option>
+          <option>言语理解与表达</option>
+          <option>判断推理</option>
+          <option>数量关系</option>
+          <option>资料分析</option>
+          <option>常识判断</option>
+        </select>
+        <select id="genSubtypeSelect" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;flex:1;min-width:140px">
+          <option value="">-- 选子题型（可选）--</option>
+          <option>逻辑填空</option><option>片段阅读</option>
+          <option>逻辑判断</option><option>图形推理</option><option>定义判断</option><option>类比推理</option>
+          <option>数学运算</option><option>综合分析</option>
+        </select>
+        <button class="btn btn-primary" onclick="generateFromWeakpoint()">🎲 出3题</button>
+      </div>
+      <div id="aiGenerateOutput" style="min-height:100px;padding:12px;border-radius:10px;background:#f8faff;border:1px solid #dbeafe;line-height:1.8;color:#1e3a5f;font-size:13px"></div>
+    </div>
+
+    <!-- 摘要导出 Tab（发给Claude用）-->
+    <div id="aiTabContent_summary" class="ai-tab-content" style="display:none">
+      <div style="font-size:13px;color:#555;margin-bottom:8px">
+        生成一段结构化摘要，复制后直接发给 Claude（本产品外的AI对话窗口），让它帮你出题、制定计划、或分析某个专项。
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+        <button class="btn btn-secondary btn-sm" onclick="buildClaudeSummary()">📦 生成全量摘要</button>
+        <button class="btn btn-secondary btn-sm" onclick="buildClaudeSummaryFiltered()">🔍 仅当前筛选</button>
+        <button class="btn btn-secondary btn-sm" id="copySummaryBtn" onclick="copyAISummary()" style="display:none">📋 一键复制</button>
+      </div>
+      <textarea id="aiModuleSummaryOutput" rows="14" readonly placeholder="点击上方按钮生成..." style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font:12px/1.6 Consolas,monospace;background:#fff;resize:vertical"></textarea>
     </div>
   </div>
 </div>
@@ -1796,9 +1793,7 @@ const KEY_KNOWLEDGE_NOTES = 'xc_knowledge_notes';
 let notesByType = {}; // { type: {title,content,children:{subtype:{title,content,children:{sub2:{title,content,children:{}}}}}}}
 let notesPanelOpen = true;
 let globalNoteEditing = false; // 笔记编辑模式状态
-let selectedNoteType = null; // 当前选中的笔记题型
 let noteEditing = false;    // 笔记是否处于编辑模式（默认预览）
-let notesViewMode = 'knowledge';
 let knowledgeTree = null;
 let knowledgeNotes = {};
 let selectedKnowledgeNodeId = null;
@@ -1996,6 +1991,23 @@ function hl(s, kw) {
   const e = escapeHtml(s);
   const ek = escapeHtml(kw).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   return e.replace(new RegExp(ek,'gi'), m=>`<span class="highlight">${escapeHtml(m)}</span>`);
+}
+function renderAnalysis(text, kw) {
+  if (!text) return '';
+  const processBlock = (block) => {
+    const escaped = kw ? hl(block, kw) : escapeHtml(block);
+    return escaped.replace(/【([^】]+)】/g, '<strong style="color:#2c3e50;display:block;margin-bottom:2px">【$1】</strong>');
+  };
+  const paragraphs = text.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
+  if (paragraphs.length <= 1) {
+    const lines = text.split(/\n/).map(l => l.trim()).filter(Boolean);
+    if (!lines.length) return escapeHtml(text);
+    return lines.map(l => `<p style="margin:0 0 4px">${processBlock(l)}</p>`).join('');
+  }
+  return paragraphs.map(p => {
+    const lines = p.split(/\n/).map(l => l.trim()).filter(Boolean);
+    return `<p style="margin:0 0 8px">${lines.map(l => processBlock(l)).join('<br>')}</p>`;
+  }).join('');
 }
 function newId() { return crypto.randomUUID(); }
 function idArg(id) { return JSON.stringify(String(id)); }
@@ -2204,7 +2216,6 @@ async function clearWorkspaceStorageForRemoteRestore() {
   knowledgeNotes = {};
   selectedKnowledgeNodeId = null;
   knowledgeNodeFilter = null;
-  selectedNoteType = null;
   noteEditing = false;
   await Promise.all([
     DB.set(KEY_ERRORS, '[]'),
@@ -2419,29 +2430,50 @@ function renderCloudUi() {
   const logoutBtn = document.getElementById('cloudLogoutBtn');
   if (!badge || !logoutBtn || !syncBadge || !syncHint || !originStatus || !detailsToggle) return;
   if (cloudUser) {
-    badge.textContent = '云端: ' + cloudUser.username;
+    badge.textContent = 'Cloud: ' + cloudUser.username;
     logoutBtn.style.display = '';
   } else {
-    badge.textContent = '云端: 未登录';
+    badge.textContent = 'Cloud: offline';
     logoutBtn.style.display = '';
   }
   syncBadge.className = `cloud-status-badge ${cloudSyncState}`;
   syncBadge.textContent = ({
-    idle: '待机',
-    dirty: '本地改动',
-    saving: '同步中',
-    synced: '已同步',
-    error: '失败'
+    idle: 'idle',
+    dirty: 'local changed',
+    saving: 'syncing',
+    synced: 'synced',
+    error: 'sync failed'
   })[cloudSyncState] || cloudSyncState;
   const currentOrigin = mergeCurrentOriginStatus();
+  const originText = currentOrigin.origin || getCloudOriginKey();
+  const timeText = formatCloudTime(cloudSyncUpdatedAt || cloudMeta.lastSavedAt || cloudMeta.lastLoadedAt || '');
   const cloudUpdatedText = formatCloudTime(cloudMeta.lastSeenBackupAt || currentOrigin.lastBackupUpdatedAt || '');
   const localUpdatedText = formatCloudTime(currentOrigin.lastLocalChangeAt || currentOrigin.lastSavedAt || currentOrigin.lastLoadedAt || '');
   syncHint.textContent = [
-    localUpdatedText ? `最后同步 ${localUpdatedText}` : '',
-    cloudUpdatedText ? `云端 ${cloudUpdatedText}` : '',
-    cloudSyncMessage || ''
-  ].filter(Boolean).join(' | ') || '等待同步';
-  originStatus.innerHTML = '';
+    `账号: ${cloudUser ? cloudUser.username : 'offline'}`,
+    `当前域名: ${originText}`,
+    cloudSyncMessage || '',
+    timeText ? `Last event: ${timeText}` : '',
+    localUpdatedText ? `当前最后修改: ${localUpdatedText}` : '',
+    cloudUpdatedText ? `云端备份: ${cloudUpdatedText}` : '',
+    'Local cache is per origin.'
+  ].filter(Boolean).join(' | ');
+  const currentMs = toCloudTimeMs(getOriginDisplayTime(currentOrigin));
+  const newerOrigins = (cloudOriginStatuses || []).filter(item => item.origin !== originText).filter(item => currentMs && currentMs > toCloudTimeMs(getOriginDisplayTime(item)));
+  const lines = [];
+  if (newerOrigins.length) lines.push(`<div class="cloud-origin-alert">当前域名修改时间更新，已晚于其他 ${newerOrigins.length} 个入口</div>`);
+  const mergedItems = [currentOrigin].concat((cloudOriginStatuses || []).filter(item => item.origin !== originText));
+  mergedItems.forEach(item => {
+    const label = item.origin === originText ? '当前' : '其他';
+    const localText = formatCloudTime(item.lastLocalChangeAt || item.lastSavedAt || item.lastLoadedAt || '');
+    const cloudText = formatCloudTime(item.lastBackupUpdatedAt || '');
+    const suffix = [
+      localText ? `本地: ${localText}` : '',
+      cloudText ? `云端: ${cloudText}` : ''
+    ].filter(Boolean).join(' | ');
+    lines.push(`<div>${escapeHtml(label)} ${escapeHtml(item.origin)}${suffix ? ` | ${escapeHtml(suffix)}` : ''}</div>`);
+  });
+  originStatus.innerHTML = lines.join('');
 }
 renderCloudUi = function() {
   const badge = document.getElementById('cloudUserBadge');
@@ -2452,19 +2484,19 @@ renderCloudUi = function() {
   const logoutBtn = document.getElementById('cloudLogoutBtn');
   if (!badge || !logoutBtn || !syncBadge || !syncHint || !originStatus || !detailsToggle) return;
   if (cloudUser) {
-    badge.textContent = '云端: ' + cloudUser.username;
+    badge.textContent = 'Cloud: ' + cloudUser.username;
     logoutBtn.style.display = '';
   } else {
-    badge.textContent = '云端: 未登录';
+    badge.textContent = 'Cloud: offline';
     logoutBtn.style.display = '';
   }
   syncBadge.className = `cloud-status-badge ${cloudSyncState}`;
   syncBadge.textContent = ({
-    idle: '待机',
-    dirty: '本地改动',
-    saving: '同步中',
-    synced: '已同步',
-    error: '失败'
+    idle: 'idle',
+    dirty: 'local changed',
+    saving: 'syncing',
+    synced: 'synced',
+    error: 'sync failed'
   })[cloudSyncState] || cloudSyncState;
   const currentOrigin = mergeCurrentOriginStatus();
   const originText = currentOrigin.origin || getCloudOriginKey();
@@ -2497,41 +2529,6 @@ renderCloudUi = function() {
   detailsToggle.textContent = cloudDetailsExpanded ? '收起' : '详情';
   originStatus.classList.toggle('expanded', cloudDetailsExpanded);
   originStatus.innerHTML = lines.join('');
-};
-renderCloudUi = function() {
-  const badge = document.getElementById('cloudUserBadge');
-  const syncBadge = document.getElementById('cloudSyncBadge');
-  const syncHint = document.getElementById('cloudSyncHint');
-  const originStatus = document.getElementById('cloudOriginStatus');
-  const detailsToggle = document.getElementById('cloudDetailsToggle');
-  const logoutBtn = document.getElementById('cloudLogoutBtn');
-  if (!badge || !logoutBtn || !syncBadge || !syncHint || !originStatus || !detailsToggle) return;
-  if (cloudUser) {
-    badge.textContent = '云端: ' + cloudUser.username;
-    logoutBtn.style.display = '';
-  } else {
-    badge.textContent = '云端: 未登录';
-    logoutBtn.style.display = '';
-  }
-  syncBadge.className = `cloud-status-badge ${cloudSyncState}`;
-  syncBadge.textContent = ({
-    idle: '待机',
-    dirty: '本地改动',
-    saving: '同步中',
-    synced: '已同步',
-    error: '失败'
-  })[cloudSyncState] || cloudSyncState;
-  const currentOrigin = mergeCurrentOriginStatus();
-  const cloudUpdatedText = formatCloudTime(cloudMeta.lastSeenBackupAt || currentOrigin.lastBackupUpdatedAt || '');
-  const localUpdatedText = formatCloudTime(currentOrigin.lastLocalChangeAt || currentOrigin.lastSavedAt || currentOrigin.lastLoadedAt || '');
-  syncHint.textContent = [
-    localUpdatedText ? `最后同步 ${localUpdatedText}` : '',
-    cloudUpdatedText ? `云端 ${cloudUpdatedText}` : '',
-    cloudSyncMessage || ''
-  ].filter(Boolean).join(' | ') || '等待同步';
-  detailsToggle.textContent = '详情';
-  originStatus.classList.remove('expanded');
-  originStatus.innerHTML = '';
 };
 async function refreshCloudSession() {
   try {
@@ -2769,7 +2766,6 @@ function applyOps(ops) {
     renderSidebar();
     renderAll();
     renderNotesByType();
-    renderNotesPanelRight();
   }
 }
 async function syncWithServer() {
@@ -2887,16 +2883,212 @@ function getCurrentKnowledgeNodeSummary(){
   };
 }
 
+// ============================================================
+// AI 工具台增强函数
+// ============================================================
+function switchAITab(tab) {
+  ['diagnose','chat','generate','summary'].forEach(t => {
+    document.getElementById('aiTabContent_'+t).style.display = t===tab ? '' : 'none';
+    const btn = document.getElementById('aiTab_'+t);
+    if (btn) btn.classList.toggle('active', t===tab);
+  });
+  // 打开诊断tab时自动渲染本地统计
+  if (tab === 'diagnose') renderLocalStatsCards();
+}
+
+function renderLocalStatsCards() {
+  const el = document.getElementById('localStatsCards');
+  if (!el) return;
+  const list = getFiltered().length ? getFiltered() : errors;
+  if (!list.length) { el.innerHTML = ''; return; }
+  // 统计 rootReason 频次
+  const reasonMap = {};
+  list.forEach(e => {
+    const r = e.rootReason || e.errorReason || '';
+    if (r) reasonMap[r] = (reasonMap[r]||0)+1;
+  });
+  const top3 = Object.entries(reasonMap).sort((a,b)=>b[1]-a[1]).slice(0,3);
+  // 统计题型
+  const typeMap = {};
+  list.forEach(e => { const t=e.type||'未知'; typeMap[t]=(typeMap[t]||0)+1; });
+  const topType = Object.entries(typeMap).sort((a,b)=>b[1]-a[1])[0] || ['—',0];
+  // focus状态数量
+  const focusN = list.filter(e=>e.status==='focus').length;
+  const total = list.length;
+  el.innerHTML = `
+    <div style="padding:10px 12px;background:#fff3cd;border-radius:10px;border:1px solid #ffd666">
+      <div style="font-size:11px;color:#856404;font-weight:700;margin-bottom:4px">🔴 重点待复习</div>
+      <div style="font-size:22px;font-weight:800;color:#b45309">${focusN}</div>
+      <div style="font-size:11px;color:#92400e">共${total}题中</div>
+    </div>
+    <div style="padding:10px 12px;background:#fef2f2;border-radius:10px;border:1px solid #fca5a5">
+      <div style="font-size:11px;color:#991b1b;font-weight:700;margin-bottom:4px">📌 最高频根因</div>
+      <div style="font-size:13px;font-weight:700;color:#7f1d1d;line-height:1.4">${escapeHtml(top3[0]?top3[0][0]:'暂无数据')}</div>
+      <div style="font-size:11px;color:#b91c1c">${top3[0]?top3[0][1]+'次':''}</div>
+    </div>
+    <div style="padding:10px 12px;background:#f0fdf4;border-radius:10px;border:1px solid #86efac">
+      <div style="font-size:11px;color:#166534;font-weight:700;margin-bottom:4px">📚 最多错误题型</div>
+      <div style="font-size:13px;font-weight:700;color:#14532d;line-height:1.4">${escapeHtml(topType[0])}</div>
+      <div style="font-size:11px;color:#16a34a">${topType[1]}题</div>
+    </div>`;
+  // 渲染Top5根因列表
+  if (top3.length) {
+    const listHtml = Object.entries(reasonMap).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([r,c]) => {
+      const pct = Math.round(c/total*100);
+      const bar = `<div style="height:4px;background:#e5e7eb;border-radius:2px;margin-top:3px"><div style="height:4px;background:#e74c3c;border-radius:2px;width:${pct}%"></div></div>`;
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f3f4f6">
+        <span style="font-size:12px;color:#374151;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(r)}</span>
+        <span style="font-size:12px;font-weight:700;color:#e74c3c;margin-left:8px;flex-shrink:0">${c}次</span>
+      </div>`;
+    }).join('');
+    el.insertAdjacentHTML('afterend', `<div style="margin-top:10px;padding:10px 12px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;grid-column:1/-1">
+      <div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:6px">根因频次（即你的真实弱点清单）</div>
+      ${listHtml}
+    </div>`);
+  }
+}
+
+function quickAsk(msg) {
+  switchAITab('chat');
+  const input = document.getElementById('aiChatInput');
+  if (input) { input.value = msg; submitAIChat(); }
+}
+
+function markAllWrongAsFocus() {
+  const wrongIds = quizAnswers.filter(a=>!a.correct&&!a.skipped).map(a=>a.id);
+  if (!wrongIds.length) { showToast('没有答错的题', 'info'); return; }
+  wrongIds.forEach(id => {
+    const e = errors.find(x=>x.id===id);
+    if (e) e.status = 'focus';
+  });
+  saveData();
+  showToast(`已将 ${wrongIds.length} 道错题标为重点复习`, 'success');
+}
+
+async function runPostQuizAI() {
+  const btn = document.getElementById('postQuizAiBtn');
+  const output = document.getElementById('postQuizAiOutput');
+  if (!btn || !output) return;
+  btn.disabled = true; btn.textContent = '分析中...';
+  const wrongItems = quizAnswers.filter(a=>!a.correct&&!a.skipped).map(a=>{
+    const e = errors.find(x=>x.id===a.id);
+    return e ? {type:e.type,subtype:e.subtype,rootReason:e.rootReason,errorReason:e.errorReason} : null;
+  }).filter(Boolean);
+  const correctN = quizAnswers.filter(a=>a.correct).length;
+  const total = quizAnswers.filter(a=>!a.skipped).length;
+  try {
+    const data = await fetchJsonWithAuth('/api/ai/chat', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        message: `我刚完成了一次练习，${total}题答对${correctN}题。答错的题如下：${JSON.stringify(wrongItems)}。请用3-4句话分析这次练习暴露的主要问题，并给出今天接下来应该做的1件具体的事。`,
+        history: []
+      })
+    });
+    output.textContent = data.reply || '暂无分析';
+  } catch(e) {
+    output.textContent = '分析失败，请重试';
+  }
+  btn.disabled = false; btn.textContent = '重新生成';
+}
+
+async function generateFromWeakpoint() {
+  const output = document.getElementById('aiGenerateOutput');
+  const type = document.getElementById('genTypeSelect').value;
+  const subtype = document.getElementById('genSubtypeSelect').value;
+  // 找该题型下的错题做参考
+  const refErrors = errors.filter(e =>
+    (!type || e.type===type) && (!subtype || e.subtype===subtype) && e.status==='focus'
+  ).slice(0,3);
+  if (!type && !refErrors.length) { showToast('请先选择题型', 'warning'); return; }
+  if (output) output.innerHTML = '<span style="color:#888">出题中...</span>';
+  // 优先用当前选中的知识节点
+  const node = getCurrentKnowledgeNodeSummary && getCurrentKnowledgeNodeSummary();
+  try {
+    const data = await fetchJsonWithAuth('/api/ai/generate-question', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        nodeTitle: node ? node.title : (subtype || type || '行测'),
+        nodeSummary: node ? (node.contentMd||'') : '',
+        referenceError: refErrors[0] || {},
+        count: 3
+      })
+    });
+    const items = data.items || [];
+    if (!items.length) { if(output) output.textContent='未能生成题目，请重试'; return; }
+    if (output) output.innerHTML = items.map((item,i) => {
+      const opts = (item.options||'').split('|').map(o=>o.trim()).filter(Boolean);
+      const optHtml = opts.map(o=>`<div style="padding:3px 0;color:#374151">${escapeHtml(o)}</div>`).join('');
+      return `<div style="margin-bottom:16px;padding:12px;border:1px solid #e5e7eb;border-radius:8px;background:#fff">
+        <div style="font-size:12px;color:#6b7280;margin-bottom:6px">第${i+1}题</div>
+        <div style="font-size:13px;color:#111827;line-height:1.7;margin-bottom:8px">${escapeHtml(item.question||'')}</div>
+        <div style="margin-bottom:8px">${optHtml}</div>
+        <div style="font-size:12px;padding:6px 10px;background:#f0fdf4;border-radius:6px;color:#166534">
+          答案：${escapeHtml(item.answer||'—')}
+        </div>
+        <div style="font-size:12px;padding:6px 10px;background:#f8faff;border-radius:6px;color:#1e40af;margin-top:6px;line-height:1.6" id="genAnalysis_${i}" style="display:none">
+          ${renderAnalysis(item.analysis||'')}
+        </div>
+        <button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="this.style.display='none';document.getElementById('genAnalysis_${i}').style.display='block'">查看解析</button>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    if(output) output.textContent = '出题失败：'+e.message;
+  }
+}
+
+function copyAISummary() {
+  const ta = document.getElementById('aiModuleSummaryOutput');
+  if (!ta || !ta.value) return;
+  navigator.clipboard.writeText(ta.value).then(()=>showToast('已复制，去粘贴给Claude吧', 'success')).catch(()=>{
+    ta.select(); document.execCommand('copy'); showToast('已复制', 'success');
+  });
+}
+
+async function buildClaudeSummaryFiltered() {
+  // 用当前筛选状态生成摘要
+  const output = document.getElementById('aiModuleSummaryOutput');
+  const copyBtn = document.getElementById('copySummaryBtn');
+  if(output) output.value = '生成中...';
+  try {
+    const data = await fetchJsonWithAuth('/api/ai/module-summary-for-claude', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        type: typeFilter && typeFilter.level==='type' ? typeFilter.value : '',
+        subtype: typeFilter && typeFilter.level==='subtype' ? typeFilter.value : '',
+        rootReason: reasonFilter||'',
+        status: statusFilter && statusFilter!=='all' ? statusFilter : '',
+        masteryLevel:'', dateFrom:dateFrom||'', dateTo:dateTo||'', limit:60
+      })
+    });
+    const result = data.result||{};
+    const text = [
+      '# 我的行测错题摘要（发给AI用）',
+      '',
+      result.overview||'',
+      '',
+      '## 弱点标签',
+      (result.weaknessTags||[]).join('、'),
+      '',
+      '## 建议你这样提问',
+      result.recommendedPrompt||'',
+      '',
+      '## 错题详情',
+      JSON.stringify(result.items||[], null, 2)
+    ].join('\n');
+    if(output) output.value = text;
+    if(copyBtn) copyBtn.style.display='';
+  } catch(e) {
+    if(output) output.value = '生成失败：'+e.message;
+  }
+}
+
 function openAIToolsModal(){
   openModal('aiToolsModal');
-  const diagnoseOutput = document.getElementById('aiDiagnoseOutput');
-  const chatOutput = document.getElementById('aiChatOutput');
-  const summaryOutput = document.getElementById('aiModuleSummaryOutput');
-  const genOutput = document.getElementById('aiGenerateOutput');
-  if(diagnoseOutput && !diagnoseOutput.textContent.trim()) diagnoseOutput.textContent = '点击“刷新诊断”生成当前阶段诊断。';
-  if(chatOutput && !chatOutput.textContent.trim()) chatOutput.textContent = '在上方输入你的问题，AI 会结合当前账号数据回答。';
-  if(summaryOutput && !summaryOutput.value.trim()) summaryOutput.value = '点击“生成”后，这里会产出可以直接发给 Claude 的摘要。';
-  if(genOutput && !genOutput.textContent.trim()) genOutput.textContent = '选中一个知识点后，可为当前知识点生成 3 道相似题。';
+  switchAITab('diagnose');
+  renderLocalStatsCards();
 }
 
 function clearAIChat(){
@@ -2985,6 +3177,8 @@ async function buildClaudeSummary(){
       JSON.stringify(result.items || [], null, 2)
     ].join('\n');
     if(output) output.value = text.trim();
+    const copyBtn = document.getElementById('copySummaryBtn');
+    if(copyBtn) copyBtn.style.display='';
   }catch(e){
     if(output) output.value = e.message || '生成失败';
     showToast(e.message || '生成 Claude 摘要失败', 'error');
@@ -3464,9 +3658,6 @@ function makeStableDomId(prefix, seed) {
   }
   return `${prefix}-${Math.abs(hash)}`;
 }
-function getLegacyNoteAnchorPrefix(type) {
-  return makeStableDomId('legacy-note', type || 'default');
-}
 function getKnowledgeNoteAnchorPrefix(nodeId) {
   return makeStableDomId('knowledge-note', nodeId || 'default');
 }
@@ -3492,9 +3683,6 @@ function scrollToRenderedAnchor(anchorId, opts) {
 }
 function jumpToRenderedAnchor(anchorId) {
   scrollToRenderedAnchor(anchorId, { behavior: 'smooth' });
-}
-function jumpToNoteHeadingByEncoded(encodedType, headingIdx) {
-  jumpToNoteHeading(decodeURIComponent(encodedType), headingIdx);
 }
 function renderMd(raw, opts) {
   if (!raw||!raw.trim()) return '';
@@ -3921,7 +4109,7 @@ function renderQuizReview() {
         <span class="my-ans ${a.correct?'ok':''}">我选：${escapeHtml(a.userAnswer)}</span>
         <span class="correct-ans">正确：${escapeHtml(e.answer||'—')}</span>
       </div>
-      ${e.analysis ? `<div class="review-analysis">📌 ${escapeHtml(e.analysis)}</div>` : ''}
+      ${e.analysis ? `<div class="review-analysis">📌 ${renderAnalysis(e.analysis)}</div>` : ''}
     </div>`;
   }).join('');
 
@@ -3935,9 +4123,20 @@ function renderQuizReview() {
     </div>
     ${chapterStats?`<div style="margin-bottom:16px"><div style="font-size:12px;font-weight:700;color:#555;margin-bottom:8px">📊 章节统计</div>${chapterStats}</div>`:''}
     ${items}
-    <div style="margin-top:16px;display:flex;gap:10px;justify-content:center">
-      <button class="btn btn-primary" onclick="saveQuizResults()">💾 保存记录</button>
-      <button class="btn btn-secondary" onclick="closeModal('quizModal');renderSidebar();renderAll()">关闭</button>
+    <div style="margin-top:16px;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;gap:8px;justify-content:center">
+        <button class="btn btn-primary" onclick="saveQuizResults()">💾 保存并关闭</button>
+        <button class="btn btn-secondary" onclick="markAllWrongAsFocus()">🔴 错题全标重点</button>
+        <button class="btn btn-secondary" onclick="closeModal('quizModal');switchTab('notes');renderSidebar();renderAll()">📚 去知识树</button>
+      </div>
+      <div id="quizPostAiArea" style="padding:10px 12px;border-radius:10px;background:#f0f5ff;border:1px solid #bfdbfe;display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:12px;font-weight:700;color:#1d4ed8">🤖 本次练习AI分析</span>
+          <button class="btn btn-sm btn-secondary" onclick="runPostQuizAI()" id="postQuizAiBtn">生成分析</button>
+        </div>
+        <div id="postQuizAiOutput" style="font-size:13px;color:#334155;line-height:1.7;white-space:pre-wrap;min-height:40px"></div>
+      </div>
+      <button class="btn btn-secondary btn-sm" style="align-self:center;color:#888" onclick="document.getElementById('quizPostAiArea').style.display='block';document.getElementById('postQuizAiBtn').click()" id="showPostQuizAiBtn">✨ AI分析本次练习</button>
     </div>`;
 }
 
@@ -4371,7 +4570,7 @@ function renderCard(e){
     const hist='';
     detailHtml=`<div class="card-detail">
       <div class="detail-meta-row">${pills.join('')}</div>
-      ${e.analysis?`<div class="detail-analysis">${hl(e.analysis,searchKw)}</div>`:''}
+      ${e.analysis?`<div class="detail-analysis">${renderAnalysis(e.analysis,searchKw)}</div>`:''}
       ${e.analysisImgData?`<img src="${escapeHtml(e.analysisImgData)}" class="cuoti-img" onclick="this.classList.toggle('expanded')" title="点击放大/缩小" style="border:1px solid #e0e4ff;margin-top:6px">`:''}
       ${hist}
     </div>`;
@@ -4404,7 +4603,7 @@ function renderCard(e){
     } else {
       const cls = iqState.correct ? 'ok' : 'fail';
       const icon = iqState.correct ? '✅' : '❌';
-      const anaHtml = e.analysis ? `<div style="margin-top:6px;font-size:12px;color:#555;padding:6px 10px;background:#f6f8ff;border-radius:6px;border-left:3px solid #4e8ef7">${escapeHtml(e.analysis)}</div>` : '';
+      const anaHtml = e.analysis ? `<div style="margin-top:6px;font-size:12px;color:#555;padding:6px 10px;background:#f6f8ff;border-radius:6px;border-left:3px solid #4e8ef7">${renderAnalysis(e.analysis)}</div>` : '';
       iqHtml = `<div class="iq-area">
         <div class="iq-result ${cls}">${icon} 你选了 <strong>${escapeHtml(iqState.userAnswer)}</strong>，正确答案 <strong>${escapeHtml(e.answer||'—')}</strong></div>
         ${anaHtml}
@@ -4690,7 +4889,7 @@ function openAddModalForCurrentKnowledge() {
 
 function openQuickAddModal() {
   const notesTab = document.getElementById('tabContentNotes');
-  if (notesTab && notesTab.classList.contains('active') && notesViewMode === 'knowledge' && selectedKnowledgeNodeId) {
+  if (notesTab && notesTab.classList.contains('active') && selectedKnowledgeNodeId) {
     openAddModalForCurrentKnowledge();
     return;
   }
@@ -4710,7 +4909,7 @@ function openImportModalForCurrentKnowledge() {
 
 function openQuickImportModal() {
   const notesTab = document.getElementById('tabContentNotes');
-  if (notesTab && notesTab.classList.contains('active') && notesViewMode === 'knowledge' && selectedKnowledgeNodeId) {
+  if (notesTab && notesTab.classList.contains('active') && selectedKnowledgeNodeId) {
     openImportModalForCurrentKnowledge();
     return;
   }
@@ -5340,7 +5539,7 @@ function doPrintExport(list, mode) {
         const imgTag = e.imgData ? `<img src="${e.imgData}" style="max-width:100%;max-height:400px;object-fit:contain;border-radius:4px;margin:6px 0;display:block">` : '';
         const ansLine = (mode==='qa'||mode==='qaa') ? `<div style="margin-top:6px;font-size:12px"><span style="background:#e6f7ff;padding:1px 8px;border-radius:3px;color:#1890ff">答案：${escapeHtml(e.answer||'—')}</span></div>` : '';
         const anaImgTag = (mode==='qaa') && e.analysisImgData ? `<img src="${e.analysisImgData}" style="max-width:100%;max-height:400px;object-fit:contain;border-radius:4px;margin-top:6px;display:block">` : '';
-        const anaLine = (mode==='qaa') && e.analysis ? `<div style="margin-top:6px;font-size:12px;color:#555;padding:6px 10px;background:#f6f8ff;border-left:3px solid #4e8ef7">${escapeHtml(e.analysis)}</div>` : '';
+        const anaLine = (mode==='qaa') && e.analysis ? `<div style="margin-top:6px;font-size:12px;color:#555;padding:6px 10px;background:#f6f8ff;border-left:3px solid #4e8ef7">${renderAnalysis(e.analysis)}</div>` : '';
         body += `<div style="margin-bottom:12px;padding:10px 12px;border:1px solid #eee;border-radius:6px;page-break-inside:avoid">
           <div style="font-size:11px;color:#aaa;margin-bottom:4px">#${num++} ${escapeHtml(e.type)} · ${escapeHtml(e.subtype||'')}</div>
           <div style="font-size:14px;color:#333;line-height:1.7">${escapeHtml(e.question)}</div>
@@ -6006,7 +6205,6 @@ function setCurrentKnowledgeNode(nodeId, opts) {
     renderSidebar();
     renderAll();
     renderNotesByType();
-    renderNotesPanelRight();
   }
 }
 function filterByKnowledgeNode(nodeId) {
@@ -6015,18 +6213,9 @@ function filterByKnowledgeNode(nodeId) {
 function selectKnowledgeNodeFromSidebar(nodeId) {
   setCurrentKnowledgeNode(nodeId, { switchTab: true });
 }
-function setNotesViewMode(mode) {
-  if (notesViewMode === mode) return;
-  saveNoteTypeContent();
-  notesViewMode = mode;
-  noteEditing = false;
-  renderNotesByType();
-  renderNotesPanelRight();
-}
 function selectKnowledgeLeaf(nodeId) {
   if (!nodeId) return;
   saveNoteTypeContent();
-  notesViewMode = 'knowledge';
   setCurrentKnowledgeNode(nodeId, { switchTab: false });
 }
 function addKnowledgeLeafUnderSelected() {
@@ -6192,7 +6381,6 @@ function submitKnowledgeNodeModal() {
     showToast('节点已重命名', 'success');
     renderSidebar();
     renderNotesByType();
-    renderNotesPanelRight();
     return;
   }
   if (state.mode === 'move') {
@@ -6305,7 +6493,6 @@ function deleteKnowledgeNode(nodeId) {
   renderSidebar();
   renderAll();
   renderNotesByType();
-  renderNotesPanelRight();
   showToast(`已删除知识点：${node.title}`, 'success');
 }
 function assignErrorToKnowledgeNode(errorId, targetNodeId, opts) {
@@ -6324,7 +6511,6 @@ function assignErrorToKnowledgeNode(errorId, targetNodeId, opts) {
     renderSidebar();
     renderAll();
     renderNotesByType();
-    renderNotesPanelRight();
   }
   if (!opts || !opts.silent) {
     if (previousNodeId && knowledgeNodeFilter === previousNodeId && previousNodeId !== targetNode.id) {
@@ -6506,9 +6692,7 @@ function setKnowledgeRelatedMode(mode) {
   if (mode !== 'direct' && mode !== 'all') return;
   if (knowledgeRelatedMode === mode) return;
   knowledgeRelatedMode = mode;
-  renderNotesPanelRight();
-  const currentNode = getCurrentKnowledgeNode();
-  updateKnowledgeWorkspaceChrome(currentNode, currentNode ? countErrorsForKnowledgeNode(currentNode.id, true) : 0);
+  renderKnowledgeNotesViewV2();
 }
 
 // 获取某题型下所有子类型（供添加弹窗下拉用）
@@ -6823,27 +7007,23 @@ function groupByType(displayData) {
 
 // Tab切换函数
 function switchTab(tabName) {
-  document.body.classList.toggle('tab-errors-active', tabName === 'errors');
-  document.body.classList.toggle('tab-notes-active', tabName === 'notes');
-  // 更新Tab按钮状态
-  document.getElementById('tabErrors').classList.toggle('active', tabName === 'errors');
-  document.getElementById('tabNotes').classList.toggle('active', tabName === 'notes');
-  const viewModeErrors = document.getElementById('viewModeErrors');
-  const viewModeNotes = document.getElementById('viewModeNotes');
-  if (viewModeErrors) viewModeErrors.classList.toggle('active', tabName === 'errors');
-  if (viewModeNotes) viewModeNotes.classList.toggle('active', tabName === 'notes');
+  const activeTab = tabName === 'errors' ? 'errors' : 'notes';
+  document.body.classList.toggle('tab-errors-active', activeTab === 'errors');
+  document.body.classList.toggle('tab-notes-active', activeTab === 'notes');
+  const tabErrors = document.getElementById('tabErrors');
+  const tabNotes = document.getElementById('tabNotes');
+  const tabContentErrors = document.getElementById('tabContentErrors');
+  const tabContentNotes = document.getElementById('tabContentNotes');
+  if (tabErrors) tabErrors.classList.toggle('active', activeTab === 'errors');
+  if (tabNotes) tabNotes.classList.toggle('active', activeTab === 'notes');
+  if (tabContentErrors) tabContentErrors.classList.toggle('active', activeTab === 'errors');
+  if (tabContentNotes) tabContentNotes.classList.toggle('active', activeTab === 'notes');
 
-  // 显示对应的Tab内容
-  document.getElementById('tabContentErrors').classList.toggle('active', tabName === 'errors');
-  document.getElementById('tabContentNotes').classList.toggle('active', tabName === 'notes');
-
-  // 重新渲染导航和内容
   renderSidebar();
   renderAll();
-  renderNotesByType();
-
-  // 刷新右侧笔记面板
-  renderNotesPanelRight();
+  if (activeTab === 'notes') {
+    renderNotesByType();
+  }
 }
 
 // 检查章节是否可以删除
@@ -6898,24 +7078,15 @@ function deleteEmptyNoteChapter(type, subtype, subSubtype) {
 
 // 清空笔记
 function clearNotes() {
-  if (notesViewMode === 'knowledge') {
-    if (!selectedKnowledgeNodeId) return;
-    const node = getKnowledgeNodeById(selectedKnowledgeNodeId);
-    if (!node) return;
-    if (!confirm(`确认清空知识点「${node.title}」的 Markdown 笔记吗？此操作不可恢复！`)) return;
-    node.contentMd = '';
-    node.updatedAt = new Date().toISOString();
-    saveKnowledgeState();
-    renderNotesByType();
-    showToast('当前知识点笔记已清空', 'success');
-    return;
-  }
-
-  if (!confirm('确认清空所有旧题型笔记吗？此操作不可恢复！')) return;
-  notesByType = {};
-  saveNotesByType();
+  if (!selectedKnowledgeNodeId) return;
+  const node = getKnowledgeNodeById(selectedKnowledgeNodeId);
+  if (!node) return;
+  if (!confirm(`确认清空知识点「${node.title}」的 Markdown 笔记吗？此操作不可恢复！`)) return;
+  node.contentMd = '';
+  node.updatedAt = new Date().toISOString();
+  saveKnowledgeState();
   renderNotesByType();
-  showToast('旧题型笔记已清空', 'success');
+  showToast('当前知识点笔记已清空', 'success');
 }
 
 // 过滤笔记Tab中的错题列表
@@ -6966,50 +7137,7 @@ function highlightNoteChapter(type, subtype, subSubtype) {
 
 // 手动同步题型：新增题型、追加缺失子类型标题、提示孤儿笔记
 function syncNoteTypesManual() {
-  const types = [...new Set(errors.map(e => e.type).filter(Boolean))];
-  let added = 0, appended = 0;
-
-  types.forEach(t => {
-    const subtypes = [...new Set(errors.filter(e => e.type === t).map(e => e.subtype).filter(Boolean))];
-    if (!notesByType[t] || !notesByType[t].content) {
-      // 新建：自动填充子类型标题
-      notesByType[t] = { content: subtypes.map(s => `## ${s}\n\n`).join(''), updatedAt: '' };
-      added++;
-    } else {
-      // 追加缺失的子类型标题
-      const existing = notesByType[t].content;
-      const missing = subtypes.filter(s => !existing.includes(`## ${s}`));
-      if (missing.length > 0) {
-        notesByType[t].content = existing.trimEnd() + '\n\n' + missing.map(s => `## ${s}\n\n`).join('');
-        appended++;
-      }
-    }
-  });
-
-  // 孤儿笔记检测（有内容但已无对应错题）
-  const orphans = Object.keys(notesByType).filter(
-    t => !types.includes(t) && notesByType[t] && notesByType[t].content && notesByType[t].content.trim()
-  );
-
-  saveNotesByType();
-
-  let msg = `同步完成`;
-  if (added > 0) msg += `\n✅ 新增 ${added} 个题型`;
-  if (appended > 0) msg += `\n📝 补充 ${appended} 个题型的子类型标题`;
-  if (added === 0 && appended === 0) msg += `\n已是最新，无需更新`;
-
-  if (orphans.length > 0) {
-    msg += `\n\n⚠️ 发现 ${orphans.length} 个孤儿笔记（已无对应错题）：\n${orphans.join('、')}\n\n是否清理？`;
-    if (confirm(msg)) {
-      orphans.forEach(t => delete notesByType[t]);
-      saveNotesByType();
-    }
-  } else {
-    alert(msg);
-  }
-
-  renderNotesByType();
-  renderNotesPanelRight();
+  showToast('旧题型笔记同步已下线，当前只保留知识工作区。', 'info');
 }
 
 function renderKnowledgeTreeHtml(nodes, depth) {
@@ -7209,7 +7337,6 @@ function renderKnowledgeNotesViewV2() {
         if ((ev.ctrlKey || ev.metaKey) && ev.key === 's') {
           ev.preventDefault();
           saveNoteTypeContent();
-          renderNotesPanelRight();
         }
       });
     }
@@ -7217,127 +7344,14 @@ function renderKnowledgeNotesViewV2() {
   updateKnowledgeWorkspaceChrome(currentNode, linkedCount);
 }
 function renderNotesByType() {
-  if (notesViewMode === 'legacy') {
-    renderLegacyNotesView();
-    return;
-  }
   renderKnowledgeNotesViewV2();
 }
 
-// 渲染笔记Tab：题型标签 + Markdown 文本框
 function renderLegacyNotesView() {
-  const content = document.getElementById('notesContent');
-  if (!content) return;
-
-  // 从错题中获取所有题型
-  const types = [...new Set(errors.map(e => e.type).filter(Boolean))];
-  if (types.length === 0) {
-    content.innerHTML = '<div class="note-placeholder" style="padding:40px;text-align:center;color:#999">暂无错题，添加错题后自动生成笔记章节</div>';
-    renderNotesPanelRight();
-    return;
-  }
-
-  // 确保选中有效题型
-  if (!selectedNoteType || !types.includes(selectedNoteType)) {
-    selectedNoteType = types[0];
-  }
-
-  // 渲染题型标签 + 同步按钮
-  const legacyTabs = types.map(t => {
-    const hasContent = notesByType[t] && notesByType[t].content && notesByType[t].content.trim();
-    return `<div class="note-type-tab${t === selectedNoteType ? ' active' : ''}${hasContent ? ' has-content' : ''}" onclick="selectNoteType('${escapeHtml(t)}')">${escapeHtml(t)}</div>`;
-  }).join('');
-  const tabsHtml =
-    `<div class="note-type-tab" onclick="setNotesViewMode('knowledge')">知识树笔记</div>` +
-    `<div class="note-type-tab active">旧题型笔记</div>` +
-    legacyTabs +
-    `<div class="note-type-tab" onclick="syncNoteTypesManual()" style="margin-left:auto;background:#f0f9f0;border-color:#52c41a;color:#52c41a;flex-shrink:0" title="同步错题题型到笔记">↻ 同步</div>`;
-
-  // 当前题型的笔记内容
-  const currentContent = (notesByType[selectedNoteType] && notesByType[selectedNoteType].content) || '';
-  const noteAnchorPrefix = getLegacyNoteAnchorPrefix(selectedNoteType);
-  const noteHeadings = extractMdHeadings(currentContent);
-  const tocHtml = renderFloatingHeadingPanel(noteHeadings, noteAnchorPrefix);
-
-  const previewHtml = currentContent
-    ? renderMd(currentContent, { anchorPrefix: noteAnchorPrefix })
-    : '<div style="color:#ccc;font-size:13px;font-style:italic;padding:20px;text-align:center">暂无笔记，点击右上角「✏ 编辑」开始记录</div>';
-
-  let bodyHtml;
-  if (noteEditing) {
-    // 编辑模式：左编辑 + 右预览
-    bodyHtml = `
-      <div class="note-split-area">
-        <div class="note-split-editor">
-          <div class="note-split-label">✏ 编辑
-            <button onclick="saveNoteTypeContent();noteEditing=false;renderNotesByType()" style="float:right;background:#52c41a;color:#fff;border:none;border-radius:4px;padding:2px 10px;cursor:pointer;font-size:12px">👁 完成</button>
-          </div>
-          <textarea id="noteTypeTextarea" class="note-md-textarea"
-            placeholder="# 知识点标题&#10;## 题型技巧&#10;- 要点1&#10;- 要点2&#10;&#10;**加粗** \`代码\`"
-            oninput="liveNotePreview()">${escapeHtml(currentContent)}</textarea>
-          <div class="note-btn-bar">
-            <button class="btn btn-primary btn-sm" onclick="saveNoteTypeContent()">💾 保存</button>
-            <button class="btn btn-secondary btn-sm" onclick="openAddModal()">+ 录入错题</button>
-            <button class="btn btn-secondary btn-sm" onclick="openImportModal()">JSON导入</button>
-            <div style="position:relative;display:inline-block">
-              <button class="btn btn-secondary btn-sm" onclick="toggleTablePicker()" id="tablePickerBtn">⊞ 表格</button>
-              <div id="tablePickerPanel" style="display:none;position:absolute;bottom:32px;left:0;background:#fff;border:1px solid #ddd;border-radius:8px;padding:12px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:100;white-space:nowrap">
-                <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:8px">插入表格</div>
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-                  <label style="font-size:12px;color:#666">行</label>
-                  <input id="tblRows" type="number" min="1" max="20" value="3" style="width:48px;padding:2px 6px;border:1px solid #ddd;border-radius:4px;font-size:13px;text-align:center">
-                  <label style="font-size:12px;color:#666">列</label>
-                  <input id="tblCols" type="number" min="1" max="10" value="3" style="width:48px;padding:2px 6px;border:1px solid #ddd;border-radius:4px;font-size:13px;text-align:center">
-                </div>
-                <button class="btn btn-primary btn-sm" onclick="insertMdTable()" style="width:100%">确认插入</button>
-              </div>
-            </div>
-            <span class="save-hint">Ctrl+S 快捷保存 · Ctrl+V 粘贴图片</span>
-          </div>
-        </div>
-        <div class="note-split-preview">
-          <div class="note-split-label">👁 预览</div>
-          <div class="note-preview-scroll notes-content" id="noteSplitPreview">${renderNotePreviewLayout(previewHtml, tocHtml)}</div>
-        </div>
-      </div>`;
-  } else {
-    // 预览模式：全宽预览 + 编辑按钮
-    bodyHtml = `
-      <div class="note-split-area">
-        <div class="note-split-preview" style="flex:1">
-          <div class="note-split-label">👁 预览
-            <button onclick="noteEditing=true;renderNotesByType()" style="float:right;background:#e74c3c;color:#fff;border:none;border-radius:4px;padding:2px 10px;cursor:pointer;font-size:12px">✏ 编辑</button>
-          </div>
-          <div class="note-btn-bar" style="margin-bottom:10px">
-            <button class="btn btn-secondary btn-sm" onclick="openAddModal()">+ 录入错题</button>
-            <button class="btn btn-secondary btn-sm" onclick="openImportModal()">JSON导入</button>
-          </div>
-          <div class="note-preview-scroll notes-content" id="noteSplitPreview">${renderNotePreviewLayout(previewHtml, tocHtml)}</div>
-        </div>
-      </div>`;
-  }
-
-  content.innerHTML = `<div class="note-type-tabs">${tabsHtml}</div>${bodyHtml}`;
-  updateGlobalNoteTocDock(noteHeadings, noteAnchorPrefix);
-
-  // 编辑模式下绑定 Ctrl+S
-  if (noteEditing) {
-    const ta = content.querySelector('#noteTypeTextarea');
-    if (ta) {
-      ta.addEventListener('keydown', function(ev) {
-        if ((ev.ctrlKey || ev.metaKey) && ev.key === 's') {
-          ev.preventDefault();
-          saveNoteTypeContent();
-          renderNotesPanelRight();
-        }
-      });
-    }
-  }
-
-  renderNotesPanelRight();
+  renderKnowledgeNotesViewV2();
 }
 
-// 实时更新预览面板（兼容笔记Tab分栏 + 旧版全局笔记）
+// 实时更新预览面板（仅保留知识工作区）
 // 显示/隐藏表格插入面板
 function toggleTablePicker() {
   const panel = document.getElementById('tablePickerPanel');
@@ -7381,59 +7395,40 @@ function insertMdTable() {
 }
 
 function liveNotePreview() {
-  // 笔记Tab 分栏预览
   const ta = document.getElementById('noteTypeTextarea');
   const preview = document.getElementById('noteSplitPreview');
   if (ta && preview) {
-    const anchorPrefix = notesViewMode === 'knowledge'
-      ? getKnowledgeNoteAnchorPrefix(selectedKnowledgeNodeId)
-      : getLegacyNoteAnchorPrefix(selectedNoteType);
+    const anchorPrefix = getKnowledgeNoteAnchorPrefix(selectedKnowledgeNodeId);
     const liveHeadings = extractMdHeadings(ta.value);
     const tocHtml = renderFloatingHeadingPanel(liveHeadings, anchorPrefix);
-    updateGlobalNoteTocDock(liveHeadings, anchorPrefix);
     preview.innerHTML = ta.value
       ? renderNotePreviewLayout(renderMd(ta.value, { anchorPrefix }), tocHtml)
       : '<span style="color:#ccc;font-size:12px;font-style:italic">输入 Markdown 后在此预览…</span>';
   }
-  // 旧版全局笔记弹窗预览（如仍有此元素）
   const gta = document.getElementById('globalNoteTA');
   const gpv = document.getElementById('noteEditPreview');
   if (gta && gpv) gpv.innerHTML = renderMd(gta.value) || '<span style="color:#ccc;font-size:12px;font-style:italic">右侧实时预览</span>';
 }
 
 function selectNoteType(type) {
-  // 先保存当前内容，再切换
-  saveNoteTypeContent();
-  notesViewMode = 'legacy';
-  selectedNoteType = type;
-  renderNotesByType();
+  if (type) {
+    showToast('旧题型笔记已彻底下线，请直接使用知识工作区。', 'warning');
+  }
+  renderKnowledgeNotesViewV2();
 }
 
 function saveNoteTypeContent() {
   const ta = document.getElementById('noteTypeTextarea');
   if (!ta) return;
-  if (notesViewMode === 'knowledge') {
-    ensureKnowledgeState();
-    if (!selectedKnowledgeNodeId) return;
-    const node = getKnowledgeNodeById(selectedKnowledgeNodeId);
-    if (!node) return;
-    node.contentMd = ta.value;
-    node.updatedAt = new Date().toISOString();
-    saveKnowledgeState();
-    return;
-  }
-  if (!selectedNoteType) return;
-  if (!notesByType[selectedNoteType]) {
-    notesByType[selectedNoteType] = { content: '', updatedAt: '' };
-  }
-  notesByType[selectedNoteType].content = ta.value;
-  notesByType[selectedNoteType].updatedAt = new Date().toISOString();
-  saveNotesByType();
+  ensureKnowledgeState();
+  if (!selectedKnowledgeNodeId) return;
+  const node = getKnowledgeNodeById(selectedKnowledgeNodeId);
+  if (!node) return;
+  node.contentMd = ta.value;
+  node.updatedAt = new Date().toISOString();
+  saveKnowledgeState();
 }
 
-// ============================================================
-// 右侧笔记面板渲染（扁平 + 笔记标题）
-// ============================================================
 function extractMdHeadings(content) {
   const headings = [];
   const lines = String(content || '').replace(/\r/g, '').split('\n');
@@ -7464,7 +7459,7 @@ function prependNodeHeading(headings, nodeTitle) {
 function renderNotePreviewLayout(previewHtml, tocHtml) {
   const article = `<article class="note-preview-article">${previewHtml || ''}</article>`;
   if (!tocHtml) {
-    return `<div class="note-preview-layout no-toc">${article}</div>`;
+    return `<div class="note-preview-layout note-preview-layout-no-toc">${article}</div>`;
   }
   return `<div class="note-preview-layout"><aside class="note-preview-toc">${tocHtml}</aside>${article}</div>`;
 }
@@ -7534,14 +7529,7 @@ function clearGlobalNoteTocDock() {
   dock.style.display = 'none';
 }
 function updateGlobalNoteTocDock(headings, anchorPrefix) {
-  const dock = ensureGlobalNoteTocDock();
-  const tocHtml = renderFloatingHeadingPanel(headings, anchorPrefix);
-  if (!tocHtml || !document.getElementById('tabContentNotes') || !document.getElementById('tabContentNotes').classList.contains('active')) {
-    clearGlobalNoteTocDock();
-    return;
-  }
-  dock.innerHTML = tocHtml;
-  dock.style.display = '';
+  clearGlobalNoteTocDock();
 }
 function renderNoteToc(content, anchorPrefix) {
   const raw = (content || '').trim();
@@ -7624,18 +7612,12 @@ function resolveCurrentErrorScope() {
       predicate: e => e.type === typeFilter.type && e.subtype === typeFilter.subtype && e.subSubtype === typeFilter.value
     };
   }
-  if (notesViewMode === 'knowledge' && selectedKnowledgeNodeId) {
+  if (selectedKnowledgeNodeId) {
     const node = getKnowledgeNodeById(selectedKnowledgeNodeId);
     const nodeIds = node ? getKnowledgeDescendantNodeIds(node) : [selectedKnowledgeNodeId];
     return {
       label: node ? `Knowledge "${node.title}"` : 'Current knowledge scope',
       predicate: e => nodeIds.includes(e.noteNodeId)
-    };
-  }
-  if (notesViewMode === 'legacy' && selectedNoteType) {
-    return {
-      label: `Type "${selectedNoteType}"`,
-      predicate: e => e.type === selectedNoteType
     };
   }
   if (statusFilter !== 'all' || reasonFilter || searchKw || dateFrom || dateTo) {
@@ -7669,7 +7651,6 @@ function clearCurrentModuleErrors() {
   renderSidebar();
   renderAll();
   renderNotesByType();
-  renderNotesPanelRight();
   showToast(`${matched.length} question(s) deleted from ${scope.label}`, 'success');
 }
 
@@ -7687,7 +7668,6 @@ function clearAllErrorsData() {
   renderSidebar();
   renderAll();
   renderNotesByType();
-  renderNotesPanelRight();
   showToast('All questions cleared', 'success');
 }
 
@@ -7703,173 +7683,14 @@ function renderRelatedErrorMeta(label, value) {
   if (!text) return '';
   return `<div class="related-error-meta"><strong>${escapeHtml(label)}</strong>${escapeHtml(text)}</div>`;
 }
-function renderKnowledgeNotesPanelRight() {
-  ensureKnowledgeState();
-  const body = document.getElementById('notesPanelRightBody');
-  if (!body) return;
-  const header = document.querySelector('.notes-panel-right-header h3');
-  if (header) {
-    const suffix = knowledgeRelatedMode === 'direct' ? '直属' : '含下级';
-    header.textContent = `关联错题 · ${suffix}`;
-  }
-  const currentNode = getCurrentKnowledgeNode();
-  if (!currentNode) {
-    body.innerHTML = '<div style="color:#ccc;font-size:12px;padding:20px;text-align:center">暂无关联错题</div>';
-    return;
-  }
-  const nodeIds = knowledgeRelatedMode === 'direct' ? [currentNode.id] : getKnowledgeDescendantNodeIds(currentNode);
-  const related = getFiltered().filter(item => nodeIds.includes(item.noteNodeId));
-  const pathText = collapseKnowledgePathTitles(getKnowledgePathTitles(currentNode.id)).join(' > ');
-  if (!related.length) {
-    const emptyText = knowledgeRelatedMode === 'direct'
-      ? '当前节点下暂无直属错题或筛选结果为空。'
-      : '当前节点及下级节点下暂无错题或筛选结果为空。';
-    body.innerHTML = `<div style="padding:14px 12px;color:#888;font-size:12px;line-height:1.7">${escapeHtml(pathText)}<br>${emptyText}</div>`;
-    return;
-  }
-  const summaryText = knowledgeRelatedMode === 'direct'
-    ? `当前节点直属错题 ${related.length} 道`
-    : `当前节点及下级共 ${related.length} 道关联错题`;
-  body.innerHTML = `<div class="related-errors-summary"><strong>${escapeHtml(pathText)}</strong><br>${summaryText}</div>` + related.map(e => {
-    const notePath = collapseKnowledgePathTitles(getKnowledgePathTitles(e.noteNodeId)).join(' > ');
-    const questionText = (e.question || '').trim();
-    const questionHtml = questionText
-      ? `<div class="related-error-question">${hl(questionText, searchKw)}</div>`
-      : '<div class="related-error-question">图片题</div>';
-    const questionImg = e.imgData ? `<img class="related-error-image" src="${e.imgData}" alt="题目图片">` : '';
-    const analysisImg = e.analysisImgData ? `<img class="related-error-image" src="${e.analysisImgData}" alt="解析图片">` : '';
-    const optionsHtml = renderRelatedErrorOptions(e.options);
-    const metaHtml = [
-      renderRelatedErrorMeta('正确答案', e.answer),
-      renderRelatedErrorMeta('我的答案', e.myAnswer),
-      renderRelatedErrorMeta('根本主因', e.rootReason),
-      renderRelatedErrorMeta('直接原因', e.errorReason)
-    ].filter(Boolean).join('');
-    const analysisHtml = e.analysis ? `<div class="related-error-analysis">${escapeHtml(e.analysis)}</div>` : '';
-    const idLit = idArg(e.id);
-    const noteNodeLit = noteNodeArg(e.noteNodeId || '');
-    return `<div class="error-card related-error-card" draggable="true" ondragstart="startErrorDrag(${idLit}, event)" ondragend="endErrorDrag()">
-      <div class="card-top">
-        <span class="status-tag ${escapeHtml(e.status || 'focus')}">${escapeHtml((e.status === 'review' ? '待复习' : e.status === 'mastered' ? '已掌握' : '重点复习'))}</span>
-        <span class="card-num">#${e.id}</span>
-      </div>
-      <div class="related-error-path"><strong>知识点</strong> ${escapeHtml(notePath)}</div>
-      <div class="related-error-detail">
-        ${questionHtml}
-        ${questionImg}
-        ${optionsHtml}
-        ${metaHtml ? `<div class="related-error-meta-grid">${metaHtml}</div>` : ''}
-        ${analysisHtml}
-        ${analysisImg}
-      </div>
-      <div class="card-actions related-error-actions">
-        <button class="btn btn-secondary btn-sm" onclick="moveErrorToKnowledgeNode(${idLit}, ${noteNodeLit})">改挂载</button>
-        <button class="btn btn-secondary btn-sm" onclick="openEditModal(${idLit})">编辑</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-function renderNotesPanelRight() {
-  const notesTab = document.getElementById('tabContentNotes');
-  if (!notesTab || !notesTab.classList.contains('active')) {
-    clearGlobalNoteTocDock();
-    return;
-  }
-  let anchorPrefix = '';
-  let content = '';
-  if (notesViewMode === 'knowledge') {
-    ensureKnowledgeState();
-    const currentNode = getCurrentKnowledgeNode();
-    if (currentNode) {
-      anchorPrefix = getKnowledgeNoteAnchorPrefix(currentNode.id);
-      content = currentNode.contentMd || '';
-    }
-  } else {
-    anchorPrefix = getLegacyNoteAnchorPrefix(selectedNoteType);
-    const noteData = selectedNoteType ? notesByType[selectedNoteType] : null;
-    content = noteData && noteData.content ? noteData.content : '';
-  }
-  updateGlobalNoteTocDock(extractMdHeadings(content), anchorPrefix);
-}
-function renderLegacyNotesPanelRight() {
-  const body = document.getElementById('notesPanelRightBody');
-  if (!body) return;
-  const types = [...new Set(errors.map(e => e.type).filter(Boolean))];
-  if (types.length === 0) {
-    body.innerHTML = '<div style="color:#ccc;font-size:12px;padding:20px;text-align:center">暂无章节<br><span style="font-size:11px">添加错题后自动生成</span></div>';
-    return;
-  }
-  body.innerHTML = types.map((t, idx) => {
-    const noteData = notesByType[t];
-    const content = (noteData && noteData.content) || '';
-    const cnt = errors.filter(e => e.type === t).length;
-    const safeId = 'npitem_' + idx;
-    const mdHeadings = extractMdHeadings(content);
-
-    let subItemsHtml = '';
-    if (mdHeadings.length > 0) {
-      // 笔记有 Markdown 标题：显示标题列表，点击跳到笔记对应位置
-      subItemsHtml = mdHeadings.map((h) => {
-        const cls = h.level === 2 ? ' note-heading-h2' : h.level === 3 ? ' note-heading-h3' : '';
-        const indent = '　'.repeat(Math.max(0, h.level - 1));
-        const anchorId = getNoteHeadingAnchorId(getLegacyNoteAnchorPrefix(t), h.headingIndex);
-        return `<div class="note-heading-item${cls}" data-anchor-id="${anchorId}" onclick="jumpToNoteHeadingByEncoded('${encodeInlineValue(t)}',${h.headingIndex})">${indent}${escapeHtml(h.text)}</div>`;
-      }).join('');
-    } else {
-      // 无 Markdown 标题：降级为从错题中提取子类型
-      const subtypes = [...new Set(errors.filter(e => e.type === t).map(e => e.subtype).filter(Boolean))];
-      subItemsHtml = subtypes.map(s => {
-        const scnt = errors.filter(e => e.type === t && e.subtype === s).length;
-        return `<div class="note-heading-item note-heading-h2" onclick="filterByNoteTitle('${escapeHtml(t)}','${escapeHtml(s)}')">${escapeHtml(s)}<span style="color:#ccc;font-size:10px;margin-left:4px">${scnt}题</span></div>`;
-      }).join('');
-    }
-
-    return `<div class="note-panel-item" id="${safeId}">
-      <div class="note-panel-item-header" onclick="filterByNoteTitle('${escapeHtml(t)}')">
-        <span class="note-panel-title">${escapeHtml(t)}</span>
-        <span style="font-size:11px;color:#aaa;margin-left:auto">${cnt}题</span>
-        ${content.trim() ? '<span style="font-size:10px;color:#e74c3c;margin-left:4px" title="有笔记">●</span>' : ''}
-      </div>
-      ${subItemsHtml}
-    </div>`;
-  }).join('');
-}
-
-// Override legacy right-panel behavior: notes tab uses TOC only.
-function updateKnowledgeWorkspaceChrome(currentNode, linkedCount) {
+function updateKnowledgeWorkspaceChrome(currentNode) {
   const titleEl = document.querySelector('.notes-header h2');
   if (titleEl) titleEl.textContent = currentNode ? currentNode.title : '学习笔记';
-  const actionWrap = document.querySelector('.notes-header > div:last-child');
-  if (actionWrap) actionWrap.innerHTML = '';
-  const rightHeader = document.querySelector('.notes-panel-right-header h3');
-  if (rightHeader) rightHeader.textContent = '笔记目录';
-  renderNotesPanelRight();
 }
 
 function setKnowledgeRelatedMode(mode) {
-  renderNotesPanelRight();
-}
-
-function renderKnowledgeNotesPanelRight() {
-  renderNotesPanelRight();
-}
-
-// 点击右侧 MD 标题：设置错题筛选 + 跳到笔记Tab + 定位标题
-function jumpToNoteHeading(type, headingIdx) {
-  saveNoteTypeContent();
-  selectedNoteType = type;
-  // 同时设置错题筛选，切回错题Tab时生效
-  typeFilter = { level: 'type', value: type };
-  switchTab('notes');
-  renderNotesByType();
-  renderSidebar();
-  setTimeout(function() {
-    const anchorId = getNoteHeadingAnchorId(getLegacyNoteAnchorPrefix(type), headingIdx);
-    scrollToRenderedAnchor(anchorId, { behavior: 'smooth' });
-    document.querySelectorAll('.note-heading-item').forEach(el => el.classList.remove('active'));
-    const activeItem = document.querySelector(`.note-heading-item[data-anchor-id="${anchorId}"]`);
-    if (activeItem) activeItem.classList.add('active');
-  }, 80);
+  knowledgeRelatedMode = mode === 'direct' ? 'direct' : 'all';
+  renderKnowledgeNotesViewV2();
 }
 
 function renderNotesPanelTree(notesData, level) {
@@ -8237,7 +8058,6 @@ function deleteError(id){
 
   syncNotesWithErrors();
   renderNotesByType();
-  renderNotesPanelRight();
   showToast(`Question #${id} deleted`, 'success');
 }
 
@@ -8369,7 +8189,6 @@ function fallbackCopy(text) {
   renderSidebar();
   renderAll();
   renderNotesByType();
-  renderNotesPanelRight();
   checkStorageUsage();
 
   window.addEventListener('beforeunload', () => {
