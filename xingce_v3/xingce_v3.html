@@ -2195,6 +2195,8 @@ async function loadData() {
   await loadNotesByType();
   await loadKnowledgeState();
   await migrateIntegerIds();
+  setErrorSyncSnapshot();
+  setWorkspaceSyncSnapshot();
 }
 function saveData()    {
   DB.set(KEY_ERRORS, JSON.stringify(errors))
@@ -2262,6 +2264,9 @@ function saveKnowledgeExpanded() {
 }
 const persistTimers = new Map();
 let suppressCloudAutoSave = 0;
+let suppressIncrementalSync = 0;
+let errorSyncSnapshot = new Map();
+let workspaceSyncSnapshot = new Map();
 function queuePersist(key, value, delay) {
   const wait = typeof delay === 'number' ? delay : 160;
   const encoded = typeof value === 'string' ? value : JSON.stringify(value);
@@ -2280,38 +2285,194 @@ function withCloudAutoSaveSuppressed(fn) {
     suppressCloudAutoSave = Math.max(0, suppressCloudAutoSave - 1);
   }
 }
+function buildErrorSyncSnapshot() {
+  const snapshot = new Map();
+  getErrorEntries().forEach(item => {
+    const normalized = normalizeEntryRecord(item, 'error');
+    snapshot.set(String(normalized.id), JSON.stringify(normalized));
+  });
+  return snapshot;
+}
+function buildExpansionStateSyncValue() {
+  return {
+    main: [...expMain],
+    sub: [...expMainSub],
+    sub2: [...expMainSub2]
+  };
+}
+function flattenKnowledgeNodesForSync(nodes, parentId, bucket) {
+  const list = Array.isArray(nodes) ? nodes : [];
+  const acc = bucket || [];
+  list.forEach((node, idx) => {
+    if (!node) return;
+    acc.push({
+      id: String(node.id || newKnowledgeNodeId()),
+      parentId: String(parentId || ''),
+      title: String(node.title || ''),
+      contentMd: String(node.contentMd || ''),
+      updatedAt: String(node.updatedAt || ''),
+      sort: idx
+    });
+    flattenKnowledgeNodesForSync(node.children || [], node.id, acc);
+  });
+  return acc;
+}
+function buildKnowledgeNodeSyncSnapshot() {
+  const snapshot = new Map();
+  flattenKnowledgeNodesForSync(getKnowledgeRootNodes(), '', []).forEach(record => {
+    snapshot.set(`knowledge_node:${record.id}`, JSON.stringify(record));
+  });
+  return snapshot;
+}
+function buildWorkspaceSyncSnapshot() {
+  const snapshot = new Map();
+  Object.entries(notesByType || {}).forEach(([key, value]) => {
+    snapshot.set(`note_type:${String(key)}`, JSON.stringify({
+      key: String(key),
+      value: value || {},
+      updatedAt: String((value && value.updatedAt) || '')
+    }));
+  });
+  Object.entries(noteImages || {}).forEach(([id, data]) => {
+    snapshot.set(`note_image:${String(id)}`, JSON.stringify({
+      id: String(id),
+      data: data || ''
+    }));
+  });
+  buildKnowledgeNodeSyncSnapshot().forEach((value, key) => snapshot.set(key, value));
+  [
+    ['revealed', [...revealed]],
+    ['exp_types', [...expTypes]],
+    ['expansion_state', buildExpansionStateSyncValue()],
+    ['global_note', globalNote || ''],
+    ['type_rules', _typeRules || null],
+    ['dir_tree', _dirTree || null],
+    ['knowledge_expanded', Array.from(knowledgeExpanded || [])],
+    ['today_progress', { date: todayDate || '', done: Number(todayDone || 0) }],
+    ['history', _history || []]
+  ].forEach(([key, value]) => {
+    snapshot.set(`setting:${key}`, JSON.stringify({
+      key,
+      value,
+      updatedAt: ''
+    }));
+  });
+  return snapshot;
+}
+function setErrorSyncSnapshot(snapshot) {
+  errorSyncSnapshot = snapshot instanceof Map ? snapshot : buildErrorSyncSnapshot();
+}
+function setWorkspaceSyncSnapshot(snapshot) {
+  workspaceSyncSnapshot = snapshot instanceof Map ? snapshot : buildWorkspaceSyncSnapshot();
+}
+function withIncrementalSyncSuppressed(fn) {
+  suppressIncrementalSync += 1;
+  try {
+    return fn();
+  } finally {
+    suppressIncrementalSync = Math.max(0, suppressIncrementalSync - 1);
+    setErrorSyncSnapshot();
+    setWorkspaceSyncSnapshot();
+  }
+}
+function syncErrorOpsFromSnapshot() {
+  const nextSnapshot = buildErrorSyncSnapshot();
+  if (suppressIncrementalSync > 0) {
+    errorSyncSnapshot = nextSnapshot;
+    return;
+  }
+  for (const [id, payloadText] of nextSnapshot.entries()) {
+    if (errorSyncSnapshot.get(id) === payloadText) continue;
+    recordOp('error_upsert', id, JSON.parse(payloadText), { skipSnapshotUpdate: true });
+  }
+  for (const id of errorSyncSnapshot.keys()) {
+    if (nextSnapshot.has(id)) continue;
+    recordOp('error_delete', id, {}, { skipSnapshotUpdate: true });
+  }
+  errorSyncSnapshot = nextSnapshot;
+}
+function getSyncEntityBase(opType) {
+  return String(opType || '').replace(/_(upsert|delete)$/, '');
+}
+function getSyncOpTypesForEntityKey(entityKey) {
+  const [kind] = String(entityKey || '').split(':');
+  if (kind === 'note_type') return { upsert: 'note_type_upsert', delete: 'note_type_delete' };
+  if (kind === 'note_image') return { upsert: 'note_image_upsert', delete: 'note_image_delete' };
+  if (kind === 'knowledge_node') return { upsert: 'knowledge_node_upsert', delete: 'knowledge_node_delete' };
+  if (kind === 'setting') return { upsert: 'setting_upsert', delete: 'setting_delete' };
+  return null;
+}
+function getEntityIdFromSyncKey(entityKey) {
+  const parts = String(entityKey || '').split(':');
+  return parts.slice(1).join(':');
+}
+function syncWorkspaceOpsFromSnapshot() {
+  const nextSnapshot = buildWorkspaceSyncSnapshot();
+  if (suppressIncrementalSync > 0) {
+    workspaceSyncSnapshot = nextSnapshot;
+    return;
+  }
+  for (const [entityKey, payloadText] of nextSnapshot.entries()) {
+    if (workspaceSyncSnapshot.get(entityKey) === payloadText) continue;
+    const opTypes = getSyncOpTypesForEntityKey(entityKey);
+    if (!opTypes) continue;
+    recordOp(opTypes.upsert, getEntityIdFromSyncKey(entityKey), JSON.parse(payloadText), { skipSnapshotUpdate: true, silentState: true });
+  }
+  for (const entityKey of workspaceSyncSnapshot.keys()) {
+    if (nextSnapshot.has(entityKey)) continue;
+    const opTypes = getSyncOpTypesForEntityKey(entityKey);
+    if (!opTypes) continue;
+    recordOp(opTypes.delete, getEntityIdFromSyncKey(entityKey), {}, { skipSnapshotUpdate: true, silentState: true });
+  }
+  workspaceSyncSnapshot = nextSnapshot;
+}
+function markIncrementalWorkspaceChange() {
+  if (suppressIncrementalSync === 0) markLocalChange();
+}
 saveData = function() {
+  syncErrorOpsFromSnapshot();
   queuePersist(KEY_ERRORS, errors);
-  scheduleCloudSave();
+  markIncrementalWorkspaceChange();
 };
 saveReveal = function() {
+  syncWorkspaceOpsFromSnapshot();
   queuePersist(KEY_REVEALED, [...revealed]);
-  scheduleCloudSave();
+  markIncrementalWorkspaceChange();
 };
 saveExpMain = function() {
+  syncWorkspaceOpsFromSnapshot();
   queuePersist(KEY_EXP_MAIN, [...expMain, ...expMainSub]);
   queuePersist(KEY_EXP_SUB2, [...expMainSub2]);
-  scheduleCloudSave();
+  markIncrementalWorkspaceChange();
 };
 saveExpTypes = function() {
+  syncWorkspaceOpsFromSnapshot();
   queuePersist(KEY_EXP_TYPES, [...expTypes]);
-  scheduleCloudSave();
+  markIncrementalWorkspaceChange();
 };
 saveNotesByType = function() {
+  syncWorkspaceOpsFromSnapshot();
   queuePersist(KEY_NOTES_BY_TYPE, notesByType);
   queuePersist(KEY_NOTE_IMAGES, noteImages);
-  scheduleCloudSave();
+  markIncrementalWorkspaceChange();
 };
 saveKnowledgeState = function() {
   syncKnowledgeNotesFromTree();
+  syncWorkspaceOpsFromSnapshot();
   queuePersist(KEY_KNOWLEDGE_TREE, knowledgeTree);
   queuePersist(KEY_KNOWLEDGE_NOTES, knowledgeNotes);
-  scheduleCloudSave();
+  markIncrementalWorkspaceChange();
+};
+saveKnowledgeExpanded = function() {
+  syncWorkspaceOpsFromSnapshot();
+  queuePersist(KEY_KNOWLEDGE_EXPANDED, Array.from(knowledgeExpanded));
+  markIncrementalWorkspaceChange();
 };
 let cloudUser = null;
 let cloudSaveTimer = null;
 let cloudBusy = false;
 let pendingCloudSave = false;
+let cloudConflictBlocked = false;
 let cloudSyncState = 'idle';
 let cloudSyncMessage = '';
 let cloudSyncUpdatedAt = '';
@@ -2330,13 +2491,22 @@ function getFullBackupPayload() {
     baseUpdatedAt: cloudMeta.lastSeenBackupAt || '',
     forceOverwrite: false,
     errors: errors,
+    revealed: [...revealed],
+    expTypes: [...expTypes],
+    expMain: [...expMain],
+    expMainSub: [...expMainSub],
+    expMainSub2: [...expMainSub2],
     notesByType: notesByType,
     noteImages: noteImages,
     typeRules: _typeRules,
     dirTree: _dirTree,
     globalNote: globalNote,
     knowledgeTree: knowledgeTree,
-    knowledgeNotes: knowledgeNotes
+    knowledgeNotes: knowledgeNotes,
+    knowledgeExpanded: Array.from(knowledgeExpanded || []),
+    todayDate: todayDate || '',
+    todayDone: Number(todayDone || 0),
+    history: _history || []
   };
 }
 function getDefaultCloudMeta() {
@@ -2365,6 +2535,11 @@ async function clearWorkspaceStorageForRemoteRestore() {
   _dirTree = null;
   knowledgeTree = null;
   knowledgeNotes = {};
+  knowledgeExpanded = new Set();
+  knowledgeExpandedLoaded = true;
+  todayDate = today();
+  todayDone = 0;
+  _history = [];
   selectedKnowledgeNodeId = null;
   knowledgeNodeFilter = null;
   noteEditing = false;
@@ -2380,8 +2555,14 @@ async function clearWorkspaceStorageForRemoteRestore() {
     DB.set(KEY_TYPE_RULES, 'null'),
     DB.set(KEY_DIR_TREE, 'null'),
     DB.set(KEY_KNOWLEDGE_TREE, 'null'),
-    DB.set(KEY_KNOWLEDGE_NOTES, '{}')
+    DB.set(KEY_KNOWLEDGE_NOTES, '{}'),
+    DB.set(KEY_KNOWLEDGE_EXPANDED, '[]'),
+    DB.set(KEY_TODAY_DATE, todayDate),
+    DB.set(KEY_TODAY_DONE, '0'),
+    DB.set(KEY_HISTORY, '[]')
   ]);
+  setErrorSyncSnapshot();
+  setWorkspaceSyncSnapshot();
 }
 function clearLocalSyncMarkers() {
   try {
@@ -2530,9 +2711,9 @@ async function applyCloudBackup(data, updatedAt, opts) {
     clearLocalSyncMarkers();
     resetCurrentOriginRestoreDecision();
   }
-  withCloudAutoSaveSuppressed(() => {
+  withCloudAutoSaveSuppressed(() => withIncrementalSyncSuppressed(() => {
     _applyFullBackup(data, 'restore');
-  });
+  }));
   rememberCloudDecision(updatedAt || data.exportTime || '', 'loaded');
   scheduleOriginStatusSync({
     localChangedAt: updatedAt || data.exportTime || '',
@@ -2626,6 +2807,32 @@ function renderCloudUi() {
   });
   originStatus.innerHTML = lines.join('');
 }
+function getCloudSyncBadgeLabel(state) {
+  return ({
+    idle: '待同步',
+    dirty: '本地有改动',
+    saving: '同步中',
+    synced: '已同步',
+    error: '同步失败'
+  })[state] || state;
+}
+function getCloudFreshnessText(localIso, cloudIso) {
+  const localMs = toCloudTimeMs(localIso);
+  const cloudMs = toCloudTimeMs(cloudIso);
+  if (!localMs && !cloudMs) return '';
+  if (localMs && !cloudMs) return '当前只有本地记录，云端还没有备份时间';
+  if (!localMs && cloudMs) return '当前只有云端记录，本地还没有变更时间';
+  if (localMs > cloudMs) return '本地比云端更新，下一次保存会把新改动推到云端';
+  if (cloudMs > localMs) return '云端比本地更新，建议先看详情确认再覆盖';
+  return '本地与云端时间一致';
+}
+function getCloudActionHint(state) {
+  if (state === 'error') return '可直接点 Cloud Save 重试';
+  if (state === 'dirty') return '本地改动已记录，等待自动同步';
+  if (state === 'saving') return '正在上传当前页面数据，请先不要重复点击';
+  if (state === 'synced') return '当前页面的数据已经写到云端';
+  return '本地修改会自动尝试同步到云端';
+}
 renderCloudUi = function() {
   const badge = document.getElementById('cloudUserBadge');
   const syncBadge = document.getElementById('cloudSyncBadge');
@@ -2642,38 +2849,36 @@ renderCloudUi = function() {
     logoutBtn.style.display = '';
   }
   syncBadge.className = `cloud-status-badge ${cloudSyncState}`;
-  syncBadge.textContent = ({
-    idle: 'idle',
-    dirty: 'local changed',
-    saving: 'syncing',
-    synced: 'synced',
-    error: 'sync failed'
-  })[cloudSyncState] || cloudSyncState;
+  syncBadge.textContent = getCloudSyncBadgeLabel(cloudSyncState);
   const currentOrigin = mergeCurrentOriginStatus();
   const originText = currentOrigin.origin || getCloudOriginKey();
-  const timeText = formatCloudTime(cloudSyncUpdatedAt || cloudMeta.lastSavedAt || cloudMeta.lastLoadedAt || '');
-  const cloudUpdatedText = formatCloudTime(cloudMeta.lastSeenBackupAt || currentOrigin.lastBackupUpdatedAt || '');
-  const localUpdatedText = formatCloudTime(currentOrigin.lastLocalChangeAt || currentOrigin.lastSavedAt || currentOrigin.lastLoadedAt || '');
+  const currentLocalIso = currentOrigin.lastLocalChangeAt || currentOrigin.lastSavedAt || currentOrigin.lastLoadedAt || '';
+  const currentCloudIso = cloudMeta.lastSeenBackupAt || currentOrigin.lastBackupUpdatedAt || '';
+  const cloudUpdatedText = formatCloudTime(currentCloudIso);
+  const localUpdatedText = formatCloudTime(currentLocalIso);
+  const freshnessText = getCloudFreshnessText(currentLocalIso, currentCloudIso);
   syncHint.textContent = [
-    localUpdatedText ? `最后同步: ${localUpdatedText}` : '',
-    cloudUpdatedText ? `云端备份: ${cloudUpdatedText}` : '',
-    cloudSyncMessage || ''
-  ].filter(Boolean).join(' | ') || '本地修改会自动保存到云端';
+    localUpdatedText ? `本地最后修改: ${localUpdatedText}` : '本地最后修改: 暂无',
+    cloudUpdatedText ? `云端最后备份: ${cloudUpdatedText}` : '云端最后备份: 暂无',
+    freshnessText,
+    cloudSyncMessage || '',
+    getCloudActionHint(cloudSyncState)
+  ].filter(Boolean).join(' | ');
   const currentMs = toCloudTimeMs(getOriginDisplayTime(currentOrigin));
   const newerOrigins = (cloudOriginStatuses || []).filter(item => item.origin !== originText).filter(item => currentMs && currentMs > toCloudTimeMs(getOriginDisplayTime(item)));
   const lines = [];
-  if (newerOrigins.length) lines.push(`<div class="cloud-origin-alert">Current origin is newer than ${newerOrigins.length} other entries</div>`);
-  lines.push(`<div>Current: ${escapeHtml(originText)}</div>`);
-  if (localUpdatedText) lines.push(`<div>Local: ${escapeHtml(localUpdatedText)}</div>`);
-  if (cloudUpdatedText) lines.push(`<div>Cloud: ${escapeHtml(cloudUpdatedText)}</div>`);
+  if (newerOrigins.length) lines.push(`<div class="cloud-origin-alert">当前入口比其他 ${newerOrigins.length} 个入口更新，保存前请确认是否要覆盖云端</div>`);
+  lines.push(`<div>当前入口: ${escapeHtml(originText)}</div>`);
+  lines.push(`<div>本地最后修改: ${escapeHtml(localUpdatedText || '暂无')}</div>`);
+  lines.push(`<div>云端最后备份: ${escapeHtml(cloudUpdatedText || '暂无')}</div>`);
   const mergedItems = [currentOrigin].concat((cloudOriginStatuses || []).filter(item => item.origin !== originText));
   mergedItems.forEach(item => {
-    const label = item.origin === originText ? 'Current' : 'Other';
+    const label = item.origin === originText ? '当前' : '其他';
     const localText = formatCloudTime(item.lastLocalChangeAt || item.lastSavedAt || item.lastLoadedAt || '');
     const cloudText = formatCloudTime(item.lastBackupUpdatedAt || '');
     const suffix = [
-      localText ? `Local: ${localText}` : '',
-      cloudText ? `Cloud: ${cloudText}` : ''
+      localText ? `本地: ${localText}` : '',
+      cloudText ? `云端: ${cloudText}` : ''
     ].filter(Boolean).join(' | ');
     lines.push(`<div>${escapeHtml(label)} ${escapeHtml(item.origin)}${suffix ? ` | ${escapeHtml(suffix)}` : ''}</div>`);
   });
@@ -2694,7 +2899,7 @@ async function refreshCloudSession() {
     window.location.replace('/login');
     return;
   }
-  setCloudSyncState('idle', 'Logged in. Waiting for local/cloud actions.', '');
+  setCloudSyncState('idle', '已登录，等待本地或云端同步动作', '');
   await maybeRestoreCloudBackup();
   await syncWithServer();
   renderCloudUi();
@@ -2719,7 +2924,7 @@ async function loadCloudBackup(opts) {
   }
   if (cloudBusy) return;
   cloudBusy = true;
-  setCloudSyncState('saving', 'Loading cloud backup', '');
+  setCloudSyncState('saving', '正在拉取云端备份', '');
   try {
     const data = await fetchCloudBackupData();
     if (!data.exists || !data.backup) {
@@ -2733,9 +2938,10 @@ async function loadCloudBackup(opts) {
       if (!ok) return;
     }
     await applyCloudBackup(data.backup, updatedAt, { ...opts, forceOverwriteLocal: true });
+    cloudConflictBlocked = false;
   } catch (e) {
-    setCloudSyncState('error', e.message || 'Cloud load failed', '');
-    if (!opts.silent) showToast(e.message || 'Cloud load failed', 'error');
+    setCloudSyncState('error', e.message || '云端加载失败，请稍后重试', '');
+    if (!opts.silent) showToast(e.message || '云端加载失败，请稍后重试', 'error');
   } finally {
     cloudBusy = false;
   }
@@ -2746,14 +2952,28 @@ async function saveCloudBackup(opts) {
     if (!opts.silent) window.location.replace('/login');
     return;
   }
+  if (!opts.silent && cloudConflictBlocked && !opts.forceOverwrite) {
+    const shouldForceNow = confirm('当前同步已进入冲突保护。\n\n如果你要以当前页面为准覆盖云端，点击“确定”。\n如果你想先看云端版本，点击“取消”后再点 Cloud Load。');
+    if (!shouldForceNow) return;
+    opts = { ...opts, forceOverwrite: true };
+  }
+  if (opts.silent && cloudConflictBlocked && !opts.forceOverwrite) {
+    setCloudSyncState('dirty', '云端版本有冲突，已暂停自动同步，请先处理冲突', cloudMeta.lastSeenBackupAt || '');
+    return;
+  }
   if (cloudBusy) return;
+  if (cloudSaveTimer) {
+    clearTimeout(cloudSaveTimer);
+    cloudSaveTimer = null;
+  }
+  pendingCloudSave = false;
   cloudBusy = true;
   const controller = new AbortController();
   const busyTimer = setTimeout(() => {
     cloudBusy = false;
     controller.abort();
   }, 30000);
-  setCloudSyncState('saving', 'Saving local changes to cloud', '');
+  setCloudSyncState('saving', '正在把本地改动保存到云端', '');
   try {
     const res = await fetch('/api/backup', {
       method: 'PUT',
@@ -2773,18 +2993,16 @@ async function saveCloudBackup(opts) {
         cloudMeta.lastSeenBackupAt = data.currentUpdatedAt;
         saveCloudMeta();
       }
-      setCloudSyncState('dirty', 'Cloud backup is newer; local save paused', data.currentUpdatedAt || '');
+      cloudConflictBlocked = true;
+      setCloudSyncState('dirty', '云端版本更新，已暂停自动同步，请先确认本地和云端时间', data.currentUpdatedAt || '');
       if (!opts.silent) {
-        const shouldLoadLatest = confirm('云端备份比当前本地基线更新，已暂停保存，避免覆盖其他入口的新数据。\n\n点击“确定”加载最新云端备份。\n点击“取消”后，将继续询问是否用当前本地数据强制覆盖云端。');
-        if (shouldLoadLatest) {
-          await loadCloudBackup({ silent: false, askBeforeRestore: true });
+        const shouldForceOverwrite = confirm('检测到云端比当前基线更新。\n\n如果要以当前页面为准覆盖云端，点击“确定”。\n如果暂时不覆盖，点击“取消”。');
+        if (shouldForceOverwrite) {
+          clearTimeout(busyTimer);
+          cloudBusy = false;
+          await saveCloudBackup({ silent: false, forceOverwrite: true });
         } else {
-          const shouldForceOverwrite = confirm('确认要用当前页面这份本地数据强制覆盖云端吗？\n\n这会把云端现有数据替换成你当前看到的内容。');
-          if (shouldForceOverwrite) {
-            await saveCloudBackup({ silent: false, forceOverwrite: true });
-          } else {
-            showToast('已保留当前本地数据，未覆盖云端', 'warning');
-          }
+          showToast('已保留当前本地数据，未覆盖云端', 'warning');
         }
       }
       return;
@@ -2792,15 +3010,16 @@ async function saveCloudBackup(opts) {
     if (!res.ok) throw new Error(data.detail || data.error || 'save failed');
     updateCloudOriginStatuses(data.origins);
     rememberCloudDecision(data.updatedAt || '', 'saved');
+    cloudConflictBlocked = false;
     await syncWithServer();
-    setCloudSyncState('synced', 'Local changes saved to cloud', data.updatedAt || '');
+    setCloudSyncState('synced', '本地改动已保存到云端', data.updatedAt || '');
     if (!opts.silent) showToast('Cloud backup saved', 'success');
   } catch (e) {
     if (e.name === 'AbortError') {
-      setCloudSyncState('error', 'Cloud save timed out (30s)', '');
+      setCloudSyncState('error', '云端保存超时，请重试', '');
     } else {
-      setCloudSyncState('error', e.message || 'Cloud save failed', '');
-      if (!opts.silent) showToast(e.message || 'Cloud save failed', 'error');
+      setCloudSyncState('error', e.message || '云端保存失败，请重试', '');
+      if (!opts.silent) showToast(e.message || '云端保存失败，请重试', 'error');
     }
   } finally {
     clearTimeout(busyTimer);
@@ -2811,14 +3030,20 @@ function scheduleCloudSave() {
   if (suppressCloudAutoSave > 0) return;
   markLocalChange();
   if (!cloudUser) {
-    setCloudSyncState('dirty', 'Local changes pending until login', '');
+    setCloudSyncState('dirty', '本地改动已记录，登录后会继续同步', '');
     pendingCloudSave = true;
+    return;
+  }
+  if (cloudConflictBlocked) {
+    pendingCloudSave = true;
+    setCloudSyncState('dirty', '云端版本有冲突，已暂停自动同步，请先点 Cloud Load 或手动 Cloud Save 处理', cloudMeta.lastSeenBackupAt || '');
     return;
   }
   clearTimeout(cloudSaveTimer);
   pendingCloudSave = false;
-  setCloudSyncState('dirty', 'Waiting 2.5s before auto-save', '');
+  setCloudSyncState('dirty', '检测到改动，2.5 秒后自动同步', '');
   cloudSaveTimer = setTimeout(() => {
+    cloudSaveTimer = null;
     saveCloudBackup({ silent: true });
   }, 2500);
 }
@@ -2848,9 +3073,30 @@ async function migrateIntegerIds() {
     DB.set(KEY_ERRORS, JSON.stringify(errors)),
     DB.set(KEY_REVEALED, JSON.stringify([...revealed]))
   ]);
+  setErrorSyncSnapshot();
+  setWorkspaceSyncSnapshot();
   console.log('[migrate] integer IDs converted to UUIDs:', Object.keys(idMap).length);
 }
-function recordOp(opType, entityId, payload) {
+function getPendingOps() {
+  try {
+    return JSON.parse(localStorage.getItem('pendingOps') || '[]');
+  } catch (e) {
+    console.warn('[pendingOps] read failed', e);
+    return [];
+  }
+}
+function savePendingOps(pending) {
+  try {
+    localStorage.setItem('pendingOps', JSON.stringify(pending));
+  } catch (e) {
+    console.warn('[pendingOps] write failed', e);
+  }
+}
+function isIncrementalSyncOp(opType) {
+  return /_(upsert|delete)$/.test(String(opType || ''));
+}
+function recordOp(opType, entityId, payload, opts) {
+  opts = opts || {};
   const op = {
     id: crypto.randomUUID(),
     op_type: opType,
@@ -2858,12 +3104,19 @@ function recordOp(opType, entityId, payload) {
     payload: payload || {},
     created_at: new Date().toISOString(),
   };
-  try {
-    const pending = JSON.parse(localStorage.getItem('pendingOps') || '[]');
-    pending.push(op);
-    localStorage.setItem('pendingOps', JSON.stringify(pending));
-  } catch (e) {
-    console.warn('[recordOp] localStorage write failed', e);
+  let pending = getPendingOps();
+  if (isIncrementalSyncOp(opType)) {
+    const base = getSyncEntityBase(opType);
+    pending = pending.filter(item => !(getSyncEntityBase(item.op_type) === base && String(item.entity_id) === op.entity_id));
+  }
+  pending.push(op);
+  savePendingOps(pending);
+  if (!opts.silentState) {
+    if (cloudUser) {
+      setCloudSyncState('dirty', '错题改动已记录，准备增量同步', op.created_at);
+    } else {
+      setCloudSyncState('dirty', '本地错题改动已记录，登录后可增量同步', op.created_at);
+    }
   }
   scheduleIncrementalSync();
 }
@@ -2877,10 +3130,98 @@ function scheduleIncrementalSync() {
 }
 function recordErrorUpsert(errorItem) {
   if (!errorItem) return;
+  errorSyncSnapshot.set(String(errorItem.id), JSON.stringify(normalizeEntryRecord(errorItem, 'error')));
   recordOp('error_upsert', errorItem.id, errorItem);
 }
 function recordErrorDelete(errorId) {
+  errorSyncSnapshot.delete(String(errorId));
   recordOp('error_delete', errorId, {});
+}
+function parseSyncPayload(payload) {
+  if (typeof payload === 'string') {
+    try { return JSON.parse(payload); } catch (e) { return {}; }
+  }
+  return payload || {};
+}
+function buildKnowledgeTreeFromSyncRecords(records) {
+  const rows = Array.isArray(records) ? records : [];
+  const map = new Map();
+  rows.forEach(raw => {
+    if (!raw || !raw.id) return;
+    map.set(String(raw.id), {
+      id: String(raw.id),
+      title: String(raw.title || ''),
+      level: 1,
+      contentMd: String(raw.contentMd || ''),
+      updatedAt: String(raw.updatedAt || ''),
+      isLeaf: true,
+      children: [],
+      sort: Number(raw.sort || 0),
+      parentId: String(raw.parentId || '')
+    });
+  });
+  const roots = [];
+  map.forEach(node => {
+    if (node.parentId && map.has(node.parentId)) map.get(node.parentId).children.push(node);
+    else roots.push(node);
+  });
+  function finalize(nodes, level) {
+    return (nodes || [])
+      .sort((a, b) => (a.sort - b.sort) || String(a.title || '').localeCompare(String(b.title || ''), 'zh-Hans-CN'))
+      .map(node => {
+        const children = finalize(node.children || [], level + 1);
+        return {
+          id: node.id,
+          title: node.title,
+          level,
+          contentMd: node.contentMd || '',
+          updatedAt: node.updatedAt || '',
+          isLeaf: children.length === 0,
+          children
+        };
+      });
+  }
+  return { version: 1, roots: finalize(roots, 1) };
+}
+function applySettingSyncValue(key, value) {
+  switch (String(key || '')) {
+    case 'revealed':
+      revealed = new Set(Array.isArray(value) ? value.map(String) : []);
+      return true;
+    case 'exp_types':
+      expTypes = new Set(Array.isArray(value) ? value.map(String) : []);
+      return true;
+    case 'expansion_state': {
+      const data = value && typeof value === 'object' ? value : {};
+      expMain = new Set(Array.isArray(data.main) ? data.main.map(String) : []);
+      expMainSub = new Set(Array.isArray(data.sub) ? data.sub.map(String) : []);
+      expMainSub2 = new Set(Array.isArray(data.sub2) ? data.sub2.map(String) : []);
+      return true;
+    }
+    case 'global_note':
+      globalNote = typeof value === 'string' ? value : '';
+      return true;
+    case 'type_rules':
+      _typeRules = value || null;
+      return true;
+    case 'dir_tree':
+      _dirTree = value || null;
+      return true;
+    case 'knowledge_expanded':
+      knowledgeExpanded = new Set(Array.isArray(value) ? value.map(String) : []);
+      knowledgeExpandedLoaded = true;
+      return true;
+    case 'today_progress': {
+      const data = value && typeof value === 'object' ? value : {};
+      todayDate = String(data.date || today());
+      todayDone = Number(data.done || 0);
+      return true;
+    }
+    case 'history':
+      _history = Array.isArray(value) ? value : [];
+      return true;
+  }
+  return false;
 }
 function applyRemoteError(remote) {
   const idx = errors.findIndex(e => String(e.id) === String(remote.id));
@@ -2895,34 +3236,131 @@ function applyRemoteError(remote) {
   return false;
 }
 function applyOps(ops) {
-  let changed = false;
+  let errorChanged = false;
+  let notesChanged = false;
+  let noteImagesChanged = false;
+  let knowledgeChanged = false;
+  let settingsChanged = false;
+  let knowledgeRecordMap = null;
   for (const op of ops) {
     if (op.op_type === 'error_upsert') {
-      const remote = typeof op.payload === 'string' ? JSON.parse(op.payload) : op.payload;
+      const remote = parseSyncPayload(op.payload);
       if (remote && remote.id) {
         remote.id = String(remote.id);
-        changed = applyRemoteError(remote) || changed;
+        errorChanged = applyRemoteError(remote) || errorChanged;
       }
-    } else if (op.op_type === 'error_delete') {
+      continue;
+    }
+    if (op.op_type === 'error_delete') {
       const before = errors.length;
       errors = errors.filter(e => String(e.id) !== String(op.entity_id));
       revealed.delete(String(op.entity_id));
-      changed = changed || errors.length !== before;
+      errorChanged = errorChanged || errors.length !== before;
+      settingsChanged = true;
+      continue;
+    }
+    if (op.op_type === 'note_type_upsert') {
+      const remote = parseSyncPayload(op.payload);
+      const key = String(remote.key || op.entity_id || '');
+      if (key) {
+        notesByType[key] = remote.value || {};
+        notesChanged = true;
+      }
+      continue;
+    }
+    if (op.op_type === 'note_type_delete') {
+      if (notesByType[String(op.entity_id)] !== undefined) {
+        delete notesByType[String(op.entity_id)];
+        notesChanged = true;
+      }
+      continue;
+    }
+    if (op.op_type === 'note_image_upsert') {
+      const remote = parseSyncPayload(op.payload);
+      const key = String(remote.id || op.entity_id || '');
+      noteImages[key] = remote.data || '';
+      noteImagesChanged = true;
+      continue;
+    }
+    if (op.op_type === 'note_image_delete') {
+      if (noteImages[String(op.entity_id)] !== undefined) {
+        delete noteImages[String(op.entity_id)];
+        noteImagesChanged = true;
+      }
+      continue;
+    }
+    if (op.op_type === 'knowledge_node_upsert') {
+      if (!knowledgeRecordMap) {
+        knowledgeRecordMap = new Map(flattenKnowledgeNodesForSync(getKnowledgeRootNodes(), '', []).map(item => [String(item.id), { ...item }]));
+      }
+      const remote = parseSyncPayload(op.payload);
+      const nodeId = String(remote.id || op.entity_id || '');
+      if (nodeId) {
+        knowledgeRecordMap.set(nodeId, {
+          id: nodeId,
+          parentId: String(remote.parentId || ''),
+          title: String(remote.title || ''),
+          contentMd: String(remote.contentMd || ''),
+          updatedAt: String(remote.updatedAt || op.created_at || ''),
+          sort: Number(remote.sort || 0)
+        });
+        knowledgeChanged = true;
+      }
+      continue;
+    }
+    if (op.op_type === 'knowledge_node_delete') {
+      if (!knowledgeRecordMap) {
+        knowledgeRecordMap = new Map(flattenKnowledgeNodesForSync(getKnowledgeRootNodes(), '', []).map(item => [String(item.id), { ...item }]));
+      }
+      if (knowledgeRecordMap.delete(String(op.entity_id))) knowledgeChanged = true;
+      continue;
+    }
+    if (op.op_type === 'setting_upsert') {
+      const remote = parseSyncPayload(op.payload);
+      const key = String(remote.key || op.entity_id || '');
+      settingsChanged = applySettingSyncValue(key, remote.value) || settingsChanged;
+      continue;
+    }
+    if (op.op_type === 'setting_delete') {
+      settingsChanged = applySettingSyncValue(String(op.entity_id || ''), null) || settingsChanged;
     }
   }
-  if (changed) {
-    saveData();
-    saveReveal();
-    syncNotesWithErrors();
-    renderSidebar();
-    renderAll();
-    renderNotesByType();
+  if (knowledgeChanged && knowledgeRecordMap) {
+    knowledgeTree = buildKnowledgeTreeFromSyncRecords([...knowledgeRecordMap.values()]);
+    syncKnowledgeNotesFromTree();
+    const allNodes = collectKnowledgeNodes();
+    if ((!selectedKnowledgeNodeId || !getKnowledgeNodeById(selectedKnowledgeNodeId)) && allNodes.length > 0) {
+      selectedKnowledgeNodeId = allNodes[0].id;
+    }
+  }
+  if (errorChanged || notesChanged || noteImagesChanged || knowledgeChanged || settingsChanged) {
+    withIncrementalSyncSuppressed(() => {
+      if (errorChanged) saveData();
+      if (settingsChanged) {
+        saveReveal();
+        saveExpTypes();
+        saveExpMain();
+        saveKnowledgeExpanded();
+        saveTodayDone();
+        queuePersist(KEY_GLOBAL_NOTE, globalNote || '');
+        queuePersist(KEY_TYPE_RULES, _typeRules);
+        queuePersist(KEY_DIR_TREE, _dirTree);
+        queuePersist(KEY_HISTORY, _history || [], 220);
+      }
+      if (notesChanged || noteImagesChanged) saveNotesByType();
+      if (knowledgeChanged) saveKnowledgeState();
+      syncNotesWithErrors();
+      renderSidebar();
+      renderAll();
+      renderNotesByType();
+    });
   }
 }
 async function syncWithServer() {
   if (!cloudUser) return;
   try {
-    const pending = JSON.parse(localStorage.getItem('pendingOps') || '[]');
+    const pending = getPendingOps();
+    let pushed = false;
     if (pending.length > 0) {
       const pushRes = await fetch('/api/sync', {
         method: 'POST',
@@ -2935,6 +3373,7 @@ async function syncWithServer() {
         throw new Error(pushData.detail || pushData.error || 'sync push failed');
       }
       localStorage.removeItem('pendingOps');
+      pushed = true;
     }
     const lastSync = localStorage.getItem('lastSyncTime') || '';
     const pullRes = await fetch(`/api/sync?since=${encodeURIComponent(lastSync)}`, { credentials: 'include' });
@@ -2942,7 +3381,11 @@ async function syncWithServer() {
     if (!pullRes.ok) throw new Error(pullData.detail || pullData.error || 'sync pull failed');
     if (Array.isArray(pullData.ops) && pullData.ops.length) applyOps(pullData.ops);
     if (pullData.serverTime) localStorage.setItem('lastSyncTime', pullData.serverTime);
+    if (pushed || (Array.isArray(pullData.ops) && pullData.ops.length)) {
+      setCloudSyncState('synced', '错题增量同步完成', pullData.serverTime || '');
+    }
   } catch (e) {
+    setCloudSyncState('error', e.message || '错题增量同步失败', '');
     console.warn('[syncWithServer] failed', e);
   }
 }
@@ -3004,12 +3447,14 @@ function syncNoteTypeNames() {
     renderNotesByType();
 }
 function saveTodayDone(){
-  DB.set(KEY_TODAY_DATE, todayDate);
-  DB.set(KEY_TODAY_DONE, String(todayDone));
+  syncWorkspaceOpsFromSnapshot();
+  queuePersist(KEY_TODAY_DATE, todayDate || '');
+  queuePersist(KEY_TODAY_DONE, String(todayDone || 0));
+  markIncrementalWorkspaceChange();
 }
 let _history = [];
 function loadHistory(){ return _history; }
-function pushHistory(rec){ _history.unshift(rec); if(_history.length>30)_history.length=30; queuePersist(KEY_HISTORY, _history, 220); scheduleCloudSave(); }
+function pushHistory(rec){ _history.unshift(rec); if(_history.length>30)_history.length=30; syncWorkspaceOpsFromSnapshot(); queuePersist(KEY_HISTORY, _history, 220); markIncrementalWorkspaceChange(); }
 let aiChatHistory = [];
 let codexThreads = [];
 let codexMessages = [];
@@ -5966,7 +6411,7 @@ function mdInsert(type) {
 // ============================================================
 let _typeRules = null;
 function loadTypeRules() { return _typeRules || DEFAULT_TYPE_RULES; }
-function _saveTypeRules(rules) { _typeRules = rules; queuePersist(KEY_TYPE_RULES, rules, 220); scheduleCloudSave(); }
+function _saveTypeRules(rules) { _typeRules = rules; syncWorkspaceOpsFromSnapshot(); queuePersist(KEY_TYPE_RULES, rules, 220); markIncrementalWorkspaceChange(); }
 function autoDetectType(text) {
   if (!text || text.length < 5) return;
   const rules = loadTypeRules();
@@ -6447,12 +6892,30 @@ function _applyFullBackup(data, mode) {
       masteryUpdatedAt: e.masteryUpdatedAt || null,
       lastPracticedAt: e.lastPracticedAt || null
     }));
+    revealed = new Set((data.revealed || []).map(String));
+    expTypes = new Set((data.expTypes || []).map(String));
+    expMain = new Set((data.expMain || []).map(String));
+    expMainSub = new Set((data.expMainSub || []).map(String));
+    expMainSub2 = new Set((data.expMainSub2 || []).map(String));
     saveData();
+    saveReveal();
+    saveExpTypes();
+    saveExpMain();
     _typeRules = data.typeRules || null;
     _dirTree = data.dirTree || null;
+    globalNote = data.globalNote !== undefined ? data.globalNote : '';
+    knowledgeExpanded = new Set((data.knowledgeExpanded || []).map(String));
+    knowledgeExpandedLoaded = true;
+    todayDate = data.todayDate || today();
+    todayDone = Number(data.todayDone || 0);
+    _history = Array.isArray(data.history) ? data.history : [];
     DB.set(KEY_TYPE_RULES, JSON.stringify(_typeRules));
     DB.set(KEY_DIR_TREE, JSON.stringify(_dirTree));
-    if (data.globalNote !== undefined) { globalNote = data.globalNote; DB.set(KEY_GLOBAL_NOTE, data.globalNote); }
+    DB.set(KEY_GLOBAL_NOTE, globalNote);
+    DB.set(KEY_KNOWLEDGE_EXPANDED, JSON.stringify(Array.from(knowledgeExpanded)));
+    DB.set(KEY_TODAY_DATE, todayDate);
+    DB.set(KEY_TODAY_DONE, String(todayDone));
+    DB.set(KEY_HISTORY, JSON.stringify(_history));
   } else {
     // 合并错题
     const { added, updated } = mergeImport(data.errors || [], 'error');
@@ -6482,7 +6945,7 @@ function _applyFullBackup(data, mode) {
 
   const errCount = errors.length;
   const noteCount = Object.keys(notesByType || {}).length;
-  const knowledgeCount = Object.keys(knowledgeNotes || {}).length;
+  const knowledgeCount = collectKnowledgeNodes().length;
   alert(mode === 'restore'
     ? `完整恢复完成！${errCount} 条错题、${noteCount} 个旧笔记模块、${knowledgeCount} 个知识点笔记已恢复。`
     : `合并完成！当前共 ${errCount} 条错题、${noteCount} 个旧笔记模块、${knowledgeCount} 个知识点笔记。`
@@ -6535,8 +6998,9 @@ function loadDirTree() {
   return _dirTree;
 }
 function saveDirTree() {
-  DB.set(KEY_DIR_TREE, JSON.stringify(_dirTree));
-  scheduleCloudSave();
+  syncWorkspaceOpsFromSnapshot();
+  queuePersist(KEY_DIR_TREE, _dirTree);
+  markIncrementalWorkspaceChange();
 }
 function openDirModal() {
   _dirTree = loadDirTree();

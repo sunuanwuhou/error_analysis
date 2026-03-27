@@ -10,6 +10,7 @@ import secrets
 import sqlite3
 import urllib.error
 import urllib.request
+import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Optional
@@ -154,6 +155,20 @@ def init_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_ops_user_time
               ON operations(user_id, created_at);
 
+            CREATE TABLE IF NOT EXISTS state_entities (
+              user_id TEXT NOT NULL,
+              entity_type TEXT NOT NULL,
+              entity_id TEXT NOT NULL,
+              payload_json TEXT NOT NULL DEFAULT '{}',
+              updated_at TEXT NOT NULL,
+              deleted_at TEXT NOT NULL DEFAULT '',
+              PRIMARY KEY (user_id, entity_type, entity_id),
+              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_state_entities_user_type_time
+              ON state_entities(user_id, entity_type, updated_at);
+
             CREATE TABLE IF NOT EXISTS practice_log (
               id TEXT PRIMARY KEY,
               user_id TEXT NOT NULL,
@@ -289,6 +304,11 @@ class BackupPayload(BaseModel):
     baseUpdatedAt: Optional[str] = None
     forceOverwrite: bool = False
     errors: list[dict[str, Any]] = Field(default_factory=list)
+    revealed: list[str] = Field(default_factory=list)
+    expTypes: list[str] = Field(default_factory=list)
+    expMain: list[str] = Field(default_factory=list)
+    expMainSub: list[str] = Field(default_factory=list)
+    expMainSub2: list[str] = Field(default_factory=list)
     notesByType: dict[str, Any] = Field(default_factory=dict)
     noteImages: dict[str, Any] = Field(default_factory=dict)
     typeRules: Any = None
@@ -296,6 +316,10 @@ class BackupPayload(BaseModel):
     globalNote: str = ""
     knowledgeTree: Any = None
     knowledgeNotes: dict[str, Any] = Field(default_factory=dict)
+    knowledgeExpanded: list[str] = Field(default_factory=list)
+    todayDate: str = ""
+    todayDone: int = 0
+    history: list[Any] = Field(default_factory=list)
 
 
 class OriginStatusPayload(BaseModel):
@@ -1322,6 +1346,357 @@ def cleanup_old_ops(user_id: str, conn: sqlite3.Connection) -> None:
     )
 
 
+ENTITY_SYNC_OPS: dict[str, tuple[str, str]] = {
+    "error": ("error_upsert", "error_delete"),
+    "note_type": ("note_type_upsert", "note_type_delete"),
+    "note_image": ("note_image_upsert", "note_image_delete"),
+    "knowledge_node": ("knowledge_node_upsert", "knowledge_node_delete"),
+    "setting": ("setting_upsert", "setting_delete"),
+}
+UPSERT_TO_ENTITY_TYPE = {value[0]: key for key, value in ENTITY_SYNC_OPS.items()}
+DELETE_TO_ENTITY_TYPE = {value[1]: key for key, value in ENTITY_SYNC_OPS.items()}
+
+
+def normalize_error_sync_record(raw: Any, fallback_updated_at: str) -> Optional[dict[str, Any]]:
+    if not isinstance(raw, dict):
+        return None
+    entry_kind = str(raw.get("entryKind") or "error").strip() or "error"
+    if entry_kind != "error":
+        return None
+    record = dict(raw)
+    record["id"] = str(record.get("id") or uuid.uuid4())
+    record["entryKind"] = "error"
+    record["updatedAt"] = record.get("updatedAt") or fallback_updated_at or utcnow().isoformat()
+    return record
+
+
+def normalize_note_type_sync_record(entity_id: str, raw: Any, fallback_updated_at: str) -> dict[str, Any]:
+    payload = raw if isinstance(raw, dict) else {"value": raw}
+    value = payload.get("value") if isinstance(payload, dict) and "value" in payload else raw
+    updated_at = payload.get("updatedAt") if isinstance(payload, dict) else ""
+    return {
+        "key": str(entity_id),
+        "value": value if value is not None else {},
+        "updatedAt": updated_at or fallback_updated_at or utcnow().isoformat(),
+    }
+
+
+def normalize_note_image_sync_record(entity_id: str, raw: Any, fallback_updated_at: str) -> dict[str, Any]:
+    payload = raw if isinstance(raw, dict) else {"data": raw}
+    data = payload.get("data") if isinstance(payload, dict) and "data" in payload else raw
+    updated_at = payload.get("updatedAt") if isinstance(payload, dict) else ""
+    return {
+        "id": str(entity_id),
+        "data": data or "",
+        "updatedAt": updated_at or fallback_updated_at or utcnow().isoformat(),
+    }
+
+
+def normalize_setting_sync_record(entity_id: str, raw: Any, fallback_updated_at: str) -> dict[str, Any]:
+    payload = raw if isinstance(raw, dict) else {"value": raw}
+    value = payload.get("value") if isinstance(payload, dict) and "value" in payload else raw
+    updated_at = payload.get("updatedAt") if isinstance(payload, dict) else ""
+    return {
+        "key": str(entity_id),
+        "value": value,
+        "updatedAt": updated_at or fallback_updated_at or utcnow().isoformat(),
+    }
+
+
+def normalize_knowledge_node_sync_record(entity_id: str, raw: Any, fallback_updated_at: str) -> Optional[dict[str, Any]]:
+    if not isinstance(raw, dict):
+        return None
+    node_id = str(raw.get("id") or entity_id or uuid.uuid4())
+    return {
+        "id": node_id,
+        "parentId": str(raw.get("parentId") or ""),
+        "title": str(raw.get("title") or "").strip() or f"知识点 {node_id[-4:]}",
+        "contentMd": str(raw.get("contentMd") or ""),
+        "updatedAt": str(raw.get("updatedAt") or fallback_updated_at or utcnow().isoformat()),
+        "sort": int(raw.get("sort") or 0),
+    }
+
+
+def iter_backup_sync_entities(data: dict[str, Any], fallback_updated_at: str) -> list[tuple[str, str, str, str]]:
+    entities: list[tuple[str, str, str, str]] = []
+    backup_updated_at = fallback_updated_at or utcnow().isoformat()
+    knowledge_notes = data.get("knowledgeNotes") or {}
+
+    for raw in data.get("errors") or []:
+        record = normalize_error_sync_record(raw, backup_updated_at)
+        if not record:
+            continue
+        entities.append(("error", record["id"], json.dumps(record, ensure_ascii=False), record["updatedAt"]))
+
+    for key, value in (data.get("notesByType") or {}).items():
+        record = normalize_note_type_sync_record(str(key), {"value": value}, backup_updated_at)
+        entities.append(("note_type", record["key"], json.dumps(record, ensure_ascii=False), record["updatedAt"]))
+
+    for key, value in (data.get("noteImages") or {}).items():
+        record = normalize_note_image_sync_record(str(key), {"data": value}, backup_updated_at)
+        entities.append(("note_image", record["id"], json.dumps(record, ensure_ascii=False), record["updatedAt"]))
+
+    def walk_knowledge_nodes(nodes: Any, parent_id: str) -> None:
+        for idx, raw_node in enumerate(nodes or []):
+            if not isinstance(raw_node, dict):
+                continue
+            node_id = str(raw_node.get("id") or uuid.uuid4())
+            legacy_note = knowledge_notes.get(node_id) if isinstance(knowledge_notes, dict) else None
+            record = normalize_knowledge_node_sync_record(
+                node_id,
+                {
+                    "id": node_id,
+                    "parentId": parent_id,
+                    "title": raw_node.get("title"),
+                    "contentMd": raw_node.get("contentMd")
+                    if raw_node.get("contentMd") is not None
+                    else (legacy_note.get("content") if isinstance(legacy_note, dict) else ""),
+                    "updatedAt": raw_node.get("updatedAt")
+                    or (legacy_note.get("updatedAt") if isinstance(legacy_note, dict) else "")
+                    or backup_updated_at,
+                    "sort": raw_node.get("sort", idx),
+                },
+                backup_updated_at,
+            )
+            if not record:
+                continue
+            entities.append(("knowledge_node", record["id"], json.dumps(record, ensure_ascii=False), record["updatedAt"]))
+            walk_knowledge_nodes(raw_node.get("children") or [], record["id"])
+
+    tree = data.get("knowledgeTree") or {}
+    roots = tree.get("roots") if isinstance(tree, dict) else tree
+    walk_knowledge_nodes(roots or [], "")
+
+    setting_values = {
+        "revealed": data.get("revealed"),
+        "exp_types": data.get("expTypes"),
+        "expansion_state": {
+            "main": data.get("expMain") or [],
+            "sub": data.get("expMainSub") or [],
+            "sub2": data.get("expMainSub2") or [],
+        },
+        "global_note": data.get("globalNote"),
+        "type_rules": data.get("typeRules"),
+        "dir_tree": data.get("dirTree"),
+        "knowledge_expanded": data.get("knowledgeExpanded"),
+        "today_progress": {
+            "date": data.get("todayDate") or "",
+            "done": int(data.get("todayDone") or 0),
+        },
+        "history": data.get("history") or [],
+    }
+    for key, value in setting_values.items():
+        if value is None:
+            continue
+        record = normalize_setting_sync_record(key, {"value": value}, backup_updated_at)
+        entities.append(("setting", key, json.dumps(record, ensure_ascii=False), record["updatedAt"]))
+
+    return entities
+
+
+def replace_workspace_entities_from_snapshot(
+    user_id: str,
+    data: dict[str, Any],
+    conn: sqlite3.Connection,
+    fallback_updated_at: str,
+) -> int:
+    entities = iter_backup_sync_entities(data, fallback_updated_at)
+    conn.execute(
+        f"DELETE FROM state_entities WHERE user_id = ? AND entity_type IN ({', '.join('?' for _ in ENTITY_SYNC_OPS)})",
+        (user_id, *ENTITY_SYNC_OPS.keys()),
+    )
+    if entities:
+        conn.executemany(
+            """
+            INSERT INTO state_entities(user_id, entity_type, entity_id, payload_json, updated_at, deleted_at)
+            VALUES (?, ?, ?, ?, ?, '')
+            """,
+            [(user_id, entity_type, entity_id, payload_json, updated_at) for entity_type, entity_id, payload_json, updated_at in entities],
+        )
+    return len(entities)
+
+
+def append_workspace_snapshot_ops(
+    user_id: str,
+    data: dict[str, Any],
+    conn: sqlite3.Connection,
+    created_at: str,
+) -> None:
+    current_rows = conn.execute(
+        """
+        SELECT entity_type, entity_id, payload_json
+        FROM state_entities
+        WHERE user_id = ? AND entity_type IN ('error', 'note_type', 'note_image', 'knowledge_node', 'setting') AND deleted_at = ''
+        """,
+        (user_id,),
+    ).fetchall()
+    current_map = {
+        (row["entity_type"], row["entity_id"]): row["payload_json"]
+        for row in current_rows
+    }
+    next_entities = iter_backup_sync_entities(data, created_at)
+    next_map = {(entity_type, entity_id): payload_json for entity_type, entity_id, payload_json, _ in next_entities}
+
+    for (entity_type, entity_id), payload_json in next_map.items():
+        if current_map.get((entity_type, entity_id)) == payload_json:
+            continue
+        upsert_op = ENTITY_SYNC_OPS[entity_type][0]
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO operations(id, user_id, op_type, entity_id, payload, created_at)
+            VALUES(?, ?, ?, ?, ?, ?)
+            """,
+            (str(uuid.uuid4()), user_id, upsert_op, entity_id, payload_json, created_at),
+        )
+
+    for entity_type, entity_id in current_map.keys() - next_map.keys():
+        delete_op = ENTITY_SYNC_OPS[entity_type][1]
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO operations(id, user_id, op_type, entity_id, payload, created_at)
+            VALUES(?, ?, ?, ?, '{}', ?)
+            """,
+            (str(uuid.uuid4()), user_id, delete_op, entity_id, created_at),
+        )
+
+
+def apply_sync_op_to_state_entity(user_id: str, op: dict[str, Any], conn: sqlite3.Connection) -> None:
+    op_type = str(op.get("op_type") or "").strip()
+    entity_id = str(op.get("entity_id") or "").strip()
+    created_at = str(op.get("created_at") or utcnow().isoformat())
+    if not entity_id:
+        return
+    if op_type in DELETE_TO_ENTITY_TYPE:
+        entity_type = DELETE_TO_ENTITY_TYPE[op_type]
+        conn.execute(
+            """
+            INSERT INTO state_entities(user_id, entity_type, entity_id, payload_json, updated_at, deleted_at)
+            VALUES (?, ?, ?, '{}', ?, ?)
+            ON CONFLICT(user_id, entity_type, entity_id) DO UPDATE SET
+              payload_json = '{}',
+              updated_at = excluded.updated_at,
+              deleted_at = excluded.deleted_at
+            """,
+            (user_id, entity_type, entity_id, created_at, created_at),
+        )
+        return
+
+    payload = op.get("payload") or {}
+    entity_type = UPSERT_TO_ENTITY_TYPE.get(op_type)
+    record: Optional[dict[str, Any]] = None
+    if entity_type == "error":
+        record = normalize_error_sync_record(payload, created_at)
+    elif entity_type == "note_type":
+        record = normalize_note_type_sync_record(entity_id, payload, created_at)
+    elif entity_type == "note_image":
+        record = normalize_note_image_sync_record(entity_id, payload, created_at)
+    elif entity_type == "knowledge_node":
+        record = normalize_knowledge_node_sync_record(entity_id, payload, created_at)
+    elif entity_type == "setting":
+        record = normalize_setting_sync_record(entity_id, payload, created_at)
+    if not entity_type or not record:
+        return
+    conn.execute(
+        """
+        INSERT INTO state_entities(user_id, entity_type, entity_id, payload_json, updated_at, deleted_at)
+        VALUES (?, ?, ?, ?, ?, '')
+        ON CONFLICT(user_id, entity_type, entity_id) DO UPDATE SET
+          payload_json = excluded.payload_json,
+          updated_at = excluded.updated_at,
+          deleted_at = ''
+        """,
+        (
+            user_id,
+            entity_type,
+            entity_id,
+            json.dumps(record, ensure_ascii=False),
+            str(record.get("updatedAt") or created_at),
+        ),
+    )
+
+
+def ensure_workspace_entities_seeded(user_id: str, conn: sqlite3.Connection) -> None:
+    existing = conn.execute(
+        """
+        SELECT 1
+        FROM state_entities
+        WHERE user_id = ? AND entity_type IN ('error', 'note_type', 'note_image', 'knowledge_node', 'setting')
+        LIMIT 1
+        """,
+        (user_id,),
+    ).fetchone()
+    if existing:
+        return
+
+    backup_row = conn.execute(
+        "SELECT payload_json, updated_at FROM user_backups WHERE user_id = ?",
+        (user_id,),
+    ).fetchone()
+    if not backup_row:
+        return
+
+    try:
+        backup = json.loads(backup_row["payload_json"] or "{}")
+    except json.JSONDecodeError:
+        return
+    replace_workspace_entities_from_snapshot(
+        user_id,
+        backup,
+        conn,
+        backup_row["updated_at"] or utcnow().isoformat(),
+    )
+    ops = conn.execute(
+        """
+        SELECT op_type, entity_id, payload, created_at
+        FROM operations
+        WHERE user_id = ?
+        ORDER BY created_at ASC
+        """,
+        (user_id,),
+    ).fetchall()
+    for row in ops:
+        try:
+            op_payload = json.loads(row["payload"] or "{}")
+        except json.JSONDecodeError:
+            op_payload = {}
+        apply_sync_op_to_state_entity(
+            user_id,
+            {
+                "op_type": row["op_type"],
+                "entity_id": row["entity_id"],
+                "payload": op_payload,
+                "created_at": row["created_at"],
+            },
+            conn,
+        )
+
+
+def list_current_sync_ops(user_id: str, conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    ensure_workspace_entities_seeded(user_id, conn)
+    rows = conn.execute(
+        """
+        SELECT entity_type, entity_id, payload_json, updated_at
+        FROM state_entities
+        WHERE user_id = ? AND entity_type IN ('error', 'note_type', 'note_image', 'knowledge_node', 'setting') AND deleted_at = ''
+        ORDER BY updated_at ASC, entity_type ASC, entity_id ASC
+        """,
+        (user_id,),
+    ).fetchall()
+    ops: list[dict[str, Any]] = []
+    for row in rows:
+        upsert_op = ENTITY_SYNC_OPS[row["entity_type"]][0]
+        ops.append(
+            {
+                "id": f"snapshot:{row['entity_type']}:{row['entity_id']}:{row['updated_at']}",
+                "op_type": upsert_op,
+                "entity_id": row["entity_id"],
+                "payload": row["payload_json"],
+                "created_at": row["updated_at"],
+            }
+        )
+    return ops
+
+
 def extract_json_value(text: str) -> Any:
     cleaned = (text or "").strip()
     if cleaned.startswith("```"):
@@ -1811,6 +2186,18 @@ def put_backup(payload: BackupPayload, request: Request, xingce_session: Optiona
             """,
             (user["id"], json.dumps(body, ensure_ascii=False), updated_at),
         )
+        append_workspace_snapshot_ops(
+            user["id"],
+            body,
+            conn,
+            updated_at,
+        )
+        replace_workspace_entities_from_snapshot(
+            user["id"],
+            body,
+            conn,
+            updated_at,
+        )
         conn.commit()
 
     upsert_origin_status(
@@ -1979,6 +2366,13 @@ def sync_pull(
 ) -> dict[str, Any]:
     user = require_user(xingce_session)
     with get_conn() as conn:
+        if not since:
+            ops = list_current_sync_ops(user["id"], conn)
+            return {
+                "ops": ops,
+                "serverTime": utcnow().isoformat(),
+                "hasMore": False,
+            }
         rows = conn.execute(
             """
             SELECT id, op_type, entity_id, payload, created_at
@@ -2004,6 +2398,7 @@ def sync_push(
     user = require_user(xingce_session)
     with get_conn() as conn:
         for op in body.ops:
+            op_payload = op.get("payload") or {}
             conn.execute(
                 """
                 INSERT OR IGNORE INTO operations(id, user_id, op_type, entity_id, payload, created_at)
@@ -2014,9 +2409,19 @@ def sync_push(
                     user["id"],
                     op["op_type"],
                     str(op["entity_id"]),
-                    json.dumps(op.get("payload") or {}, ensure_ascii=False),
+                    json.dumps(op_payload, ensure_ascii=False),
                     op["created_at"],
                 ),
+            )
+            apply_sync_op_to_state_entity(
+                user["id"],
+                {
+                    "op_type": op.get("op_type"),
+                    "entity_id": op.get("entity_id"),
+                    "payload": op_payload,
+                    "created_at": op.get("created_at"),
+                },
+                conn,
             )
         cleanup_old_ops(user["id"], conn)
         conn.commit()
