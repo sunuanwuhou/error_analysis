@@ -1249,14 +1249,15 @@ body{
     <div class="more-menu" id="moreMenu">
       <button class="btn btn-secondary" onclick="toggleMoreMenu(event)">更多</button>
       <div class="more-menu-panel" id="moreMenuPanel">
-        <button class="btn btn-secondary" onclick="closeMoreMenu();openQuickImportModal()">⬆ 导入</button>
+        <button class="btn btn-secondary" onclick="closeMoreMenu();openQuickImportModal()">⬆ 导入错题</button>
         <button class="btn btn-secondary" onclick="closeMoreMenu();openExportModal()">⬇ 导出</button>
         <button class="btn btn-secondary" onclick="closeMoreMenu();clearCurrentModuleErrors()">🧹 清空当前模块</button>
-        <button class="btn btn-secondary" onclick="closeMoreMenu();clearAllErrorsData()">🗑 清空全部题目</button>
+        <button class="btn btn-secondary" onclick="closeMoreMenu();clearAllErrorsData()">🗑 清空全部错题</button>
         <button class="btn btn-secondary" onclick="closeMoreMenu();resetAllStudyData()">♻ 重置全部学习数据</button>
         <button class="btn btn-secondary" onclick="closeMoreMenu();openDashboard()">📊 统计</button>
         <button class="btn btn-secondary" onclick="closeMoreMenu();openCodexInboxModal()">🧾 Codex</button>
-        <button class="btn btn-secondary" onclick="closeMoreMenu();openModal('claudeModal')">🤖 Claude</button>
+        <button class="btn btn-secondary" onclick="closeMoreMenu();openModal('claudeModal')">🤖 导入Claude题</button>
+        <button class="btn btn-secondary" onclick="closeMoreMenu();openClaudeBankModal()">📚 Claude题库</button>
         <button class="btn btn-secondary" onclick="closeMoreMenu();printList()">🖨 打印</button>
       </div>
     </div>
@@ -1577,8 +1578,8 @@ body{
 <div class="modal-mask" id="claudeModal">
   <div class="claude-modal">
     <button class="modal-close" onclick="closeModal('claudeModal')" style="float:right">✕</button>
-    <h2 style="font-size:16px;font-weight:700;color:#2c3e50;margin-bottom:4px">🤖 发题给 Claude</h2>
-    <p style="font-size:12px;color:#999;margin-bottom:16px">粘贴错题 → 复制模板 → 发到 Claude.ai → 粘贴结果导入</p>
+    <h2 style="font-size:16px;font-weight:700;color:#2c3e50;margin-bottom:4px">🤖 导入 Claude 题库</h2>
+    <p style="font-size:12px;color:#999;margin-bottom:16px">粘贴题目 → 复制模板 → 发到 Claude.ai → 粘贴结果导入到题库</p>
     <div class="step-label"><span class="step-num">1</span>粘贴原始题目（可多题）</div>
     <textarea id="rawQuestion" rows="5" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;font-family:inherit;resize:vertical;outline:none" placeholder="直接粘贴题目原文，包括选项..."></textarea>
     <div style="margin-top:8px"><button class="btn btn-primary btn-sm" onclick="genClaudeTemplate()">生成发送模板 →</button></div>
@@ -1591,9 +1592,26 @@ body{
     <div class="step-label"><span class="step-num">3</span>粘贴 Claude.ai 返回的 JSON</div>
     <textarea id="claudeResult" rows="6" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:12px;font-family:monospace;resize:vertical;outline:none" placeholder='[{"type":"判断推理","question":"...","answer":"A","analysis":"..."}]'></textarea>
     <div style="margin-top:8px">
-      <button class="btn btn-primary btn-sm" onclick="importFromClaude()">导入结果</button>
-      <span style="font-size:11px;color:#aaa;margin-left:8px">自动合并，不会重复</span>
+      <button class="btn btn-primary btn-sm" onclick="importFromClaude()">导入到Claude题库</button>
+      <span style="font-size:11px;color:#aaa;margin-left:8px">自动合并，不会重复，也不会算进错题</span>
     </div>
+  </div>
+</div>
+
+<div class="modal-mask" id="claudeBankModal">
+  <div class="modal" style="width:1120px;max-width:96vw;max-height:92vh;overflow-y:auto">
+    <button class="modal-close" onclick="closeModal('claudeBankModal')">✕</button>
+    <h2 style="margin-bottom:6px">📚 Claude 题库</h2>
+    <div style="font-size:12px;color:#7a8599;line-height:1.8;margin-bottom:14px">
+      这里存放 Claude 生成或导入的题目。它们默认不算错题，不参与复习和错题统计；需要时可以一键转为错题。
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+      <input id="claudeBankSearch" type="text" placeholder="搜索题干、题型、解析..." oninput="renderClaudeBankModal()" style="flex:1;min-width:240px;padding:9px 12px;border:1px solid #d9d9d9;border-radius:8px;font-size:13px;outline:none">
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('claudeBankSearch').value='';renderClaudeBankModal()">清空搜索</button>
+      <button class="btn btn-secondary btn-sm" onclick="openModal('claudeModal')">继续导入</button>
+    </div>
+    <div id="claudeBankSummary" style="font-size:12px;color:#667085;margin-bottom:12px"></div>
+    <div id="claudeBankList"></div>
   </div>
 </div>
 
@@ -1755,8 +1773,8 @@ body{
         <label class="export-fmt-card active" id="efmt_json" onclick="selectExportFmt('json')">
           <input type="radio" name="exportFmt" value="json" checked style="display:none">
           <div style="font-size:22px;margin-bottom:4px">📦</div>
-          <div style="font-size:13px;font-weight:700">JSON 备份</div>
-          <div style="font-size:11px;color:#999;margin-top:2px">导入到其他设备</div>
+          <div style="font-size:13px;font-weight:700">数据导出</div>
+          <div style="font-size:11px;color:#999;margin-top:2px">题目、笔记、模块包</div>
         </label>
         <label class="export-fmt-card" id="efmt_print" onclick="selectExportFmt('print')">
           <input type="radio" name="exportFmt" value="print" style="display:none">
@@ -1773,9 +1791,21 @@ body{
       </div>
     </div>
     <div id="exportJsonOpts">
-      <label style="font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px">
-        <input type="checkbox" id="exportFilterOnly"> 仅导出当前筛选结果
-      </label>
+      <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px">导出内容</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px">
+        <label style="font-size:13px;cursor:pointer"><input type="radio" name="exportDataMode" value="questions" checked> 仅题目</label>
+        <label style="font-size:13px;cursor:pointer"><input type="radio" name="exportDataMode" value="questions_notes"> 题目 + 笔记</label>
+        <label style="font-size:13px;cursor:pointer"><input type="radio" name="exportDataMode" value="module_backup"> 模块备份</label>
+      </div>
+      <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px">导出范围</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px">
+        <label style="font-size:13px;cursor:pointer"><input type="radio" name="exportDataScope" value="all" checked> 全部错题</label>
+        <label style="font-size:13px;cursor:pointer"><input type="radio" name="exportDataScope" value="filtered"> 当前筛选</label>
+        <label style="font-size:13px;cursor:pointer"><input type="radio" name="exportDataScope" value="current"> 当前模块/知识点</label>
+      </div>
+      <div style="font-size:11px;color:#999;line-height:1.7">
+        “题目 + 笔记”适合发给外部 Claude 或单独存专题；“模块备份”会导出当前范围内的题目、知识树和笔记，便于以后单独恢复。
+      </div>
     </div>
     <div id="exportPrintOpts" style="display:none">
       <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px">内容选项</div>
@@ -1994,6 +2024,29 @@ let aiAnalyzeResult = null;
 let questionOCRBusy = false;
 let questionOCRResult = null;
 
+function normalizeEntryKind(value, fallback) {
+  if (value === 'claude_bank') return 'claude_bank';
+  if (value === 'error') return 'error';
+  return fallback === 'claude_bank' ? 'claude_bank' : 'error';
+}
+function isClaudeBankEntry(item) {
+  return !!item && normalizeEntryKind(item.entryKind, 'error') === 'claude_bank';
+}
+function isErrorEntry(item) {
+  return !!item && normalizeEntryKind(item.entryKind, 'error') === 'error';
+}
+function normalizeEntryRecord(item, fallbackKind) {
+  const record = item && typeof item === 'object' ? { ...item } : {};
+  record.entryKind = normalizeEntryKind(record.entryKind, fallbackKind);
+  return record;
+}
+function getErrorEntries() {
+  return errors.filter(isErrorEntry);
+}
+function getClaudeBankEntries() {
+  return errors.filter(isClaudeBankEntry);
+}
+
 // 日期筛选
 let dateFrom = '';
 let dateTo   = '';
@@ -2115,7 +2168,7 @@ function findErrorById(id) {
 // 持久化（IndexedDB）
 // ============================================================
 async function loadData() {
-  try { errors = JSON.parse(await DB.get(KEY_ERRORS)) || getInitialData(); }
+  try { errors = (JSON.parse(await DB.get(KEY_ERRORS)) || getInitialData()).map(item => normalizeEntryRecord(item, 'error')); }
   catch(e) { errors = getInitialData(); }
   try { revealed = new Set(JSON.parse(await DB.get(KEY_REVEALED)||'[]')); }
   catch(e) { revealed = new Set(); }
@@ -2902,12 +2955,13 @@ function resolveNoteImgs(text) {
 }
 // 笔记目录联动：确保每个题型有笔记条目
 function syncNotesWithErrors() {
+  const errorEntries = getErrorEntries();
   // 收集所有题型
-  const types = [...new Set(errors.map(e => e.type).filter(Boolean))];
+  const types = [...new Set(errorEntries.map(e => e.type).filter(Boolean))];
   // 新建缺失的题型，并自动生成子类型标题
   types.forEach(t => {
     if (!notesByType[t] || !notesByType[t].content) {
-      const subtypes = [...new Set(errors.filter(e => e.type === t).map(e => e.subtype).filter(Boolean))];
+      const subtypes = [...new Set(errorEntries.filter(e => e.type === t).map(e => e.subtype).filter(Boolean))];
       const autoContent = subtypes.length > 0 ? subtypes.map(s => `## ${s}\n\n`).join('') : '';
       notesByType[t] = { content: autoContent, updatedAt: '' };
     }
@@ -3229,7 +3283,7 @@ function getCurrentKnowledgeNodeSummary(){
     title: node.title || '',
     path,
     contentMd: node.contentMd || '',
-    linkedErrors: errors.filter(e => e.noteNodeId === node.id).slice(0, 20)
+    linkedErrors: getErrorEntries().filter(e => e.noteNodeId === node.id).slice(0, 20)
   };
 }
 
@@ -3249,7 +3303,7 @@ function switchAITab(tab) {
 function renderLocalStatsCards() {
   const el = document.getElementById('localStatsCards');
   if (!el) return;
-  const list = getFiltered().length ? getFiltered() : errors;
+  const list = getFiltered().length ? getFiltered() : getErrorEntries();
   if (!list.length) { el.innerHTML = ''; return; }
   // 统计 rootReason 频次
   const reasonMap = {};
@@ -3347,7 +3401,7 @@ async function generateFromWeakpoint() {
   const type = document.getElementById('genTypeSelect').value;
   const subtype = document.getElementById('genSubtypeSelect').value;
   // 找该题型下的错题做参考
-  const refErrors = errors.filter(e =>
+  const refErrors = getErrorEntries().filter(e =>
     (!type || e.type===type) && (!subtype || e.subtype===subtype) && e.status==='focus'
   ).slice(0,3);
   if (!type && !refErrors.length) { showToast('请先选择题型', 'warning'); return; }
@@ -3991,9 +4045,9 @@ document.addEventListener('paste', async e=>{
 function getInitialData() {
   const t = today();
   return [
-    {id:1,type:'言语理解与表达',subtype:'片段阅读',question:'下列句子中，意在说明"阅读不可或缺"的是哪项？',options:'A. 读书是一种习惯|B. 书籍是人类进步的阶梯|C. 阅读是精神的必需品|D. 图书馆是知识的宝库',answer:'C',myAnswer:'B',analysis:'意在说明题目找核心观点。C项"精神的必需品"直接说明阅读不可或缺。',status:'focus',addDate:t,quiz:null},
-    {id:2,type:'数量关系',subtype:'数字推理',question:'2, 6, 12, 20, 30, ___',options:'A. 40|B. 42|C. 44|D. 46',answer:'B',myAnswer:'A',analysis:'差值为4,6,8,10，等差递增，下一差为12，30+12=42。',status:'review',addDate:t,quiz:null},
-    {id:3,type:'判断推理',subtype:'逻辑判断',question:'所有教师是知识分子，有些知识分子是作家，能推出？',options:'A. 有些教师是作家|B. 有些作家是教师|C. 有些知识分子是教师|D. 以上都不能确定',answer:'C',myAnswer:'A',analysis:'由"所有教师是知识分子"直接推出"有些知识分子是教师"(C)。A、B不能推出。',status:'focus',addDate:t,quiz:null}
+    {id:1,entryKind:'error',type:'言语理解与表达',subtype:'片段阅读',question:'下列句子中，意在说明"阅读不可或缺"的是哪项？',options:'A. 读书是一种习惯|B. 书籍是人类进步的阶梯|C. 阅读是精神的必需品|D. 图书馆是知识的宝库',answer:'C',myAnswer:'B',analysis:'意在说明题目找核心观点。C项"精神的必需品"直接说明阅读不可或缺。',status:'focus',addDate:t,quiz:null},
+    {id:2,entryKind:'error',type:'数量关系',subtype:'数字推理',question:'2, 6, 12, 20, 30, ___',options:'A. 40|B. 42|C. 44|D. 46',answer:'B',myAnswer:'A',analysis:'差值为4,6,8,10，等差递增，下一差为12，30+12=42。',status:'review',addDate:t,quiz:null},
+    {id:3,entryKind:'error',type:'判断推理',subtype:'逻辑判断',question:'所有教师是知识分子，有些知识分子是作家，能推出？',options:'A. 有些教师是作家|B. 有些作家是教师|C. 有些知识分子是教师|D. 以上都不能确定',answer:'C',myAnswer:'A',analysis:'由"所有教师是知识分子"直接推出"有些知识分子是教师"(C)。A、B不能推出。',status:'focus',addDate:t,quiz:null}
   ];
 }
 
@@ -4232,7 +4286,7 @@ function deleteNoteNodeRecursive(notesData, key, level) {
 // ============================================================
 function getDueList() {
   const t = today();
-  return errors.filter(e => {
+  return getErrorEntries().filter(e => {
     if (e.status==='mastered') return false;
     if (!e.quiz||!e.quiz.nextReview) return true;
     return e.quiz.nextReview <= t;
@@ -4244,7 +4298,7 @@ function updateSidebar() {
   const btn = document.getElementById('quizBtn');
   btn.classList.toggle('disabled', dueN===0);
   // 全量练习 badge：所有非已掌握题目数
-  const fullN = errors.filter(e => e.status !== 'mastered').length;
+  const fullN = getErrorEntries().filter(e => e.status !== 'mastered').length;
   document.getElementById('fullPracticeBadge').textContent = fullN;
   document.getElementById('fullPracticeBtn').classList.toggle('disabled', fullN===0);
   const total = todayDone + dueN;
@@ -4265,7 +4319,7 @@ async function startQuiz() {
     console.warn('daily practice fallback:', e);
   }
   quizQueue = serverItems.length
-    ? serverItems.map(item => ({ ...errors.find(e => e.id === item.id), ...item }))
+    ? serverItems.map(item => ({ ...findErrorById(item.id), ...item })).filter(isErrorEntry)
     : getDueList();
   if (!quizQueue.length) { showToast('今日暂无需要复习的题目', 'warning'); return; }
   quizIdx = 0; quizAnswers = []; quizSkipped = new Set();
@@ -4275,7 +4329,7 @@ async function startQuiz() {
 }
 
 function startFullPractice() {
-  const all = errors.filter(e => e.status !== 'mastered');
+  const all = getErrorEntries().filter(e => e.status !== 'mastered');
   if (!all.length) { showToast('暂无错题，当前都已掌握', 'warning'); return; }
   // 打开章节筛选弹窗
   const typeMap = {};
@@ -4315,7 +4369,7 @@ function startFullPracticeFiltered() {
     selected.add(cb.getAttribute('data-type')+'::::'+(cb.getAttribute('data-sub')||'未分类'));
   });
   if(!selected.size){showToast('请至少选择一个章节', 'warning');return;}
-  quizQueue = errors.filter(e=>{
+  quizQueue = getErrorEntries().filter(e=>{
     if(e.status==='mastered') return false;
     const key=e.type+'::::'+(e.subtype||'未分类');
     return selected.has(key);
@@ -4606,11 +4660,12 @@ function renderSidebarKnowledgeTreeV2(nodes, depth) {
 function renderSidebar() {
   updateSidebar();
   ensureKnowledgeState();
-  const focusN    = errors.filter(e=>e.status==='focus').length;
-  const reviewN   = errors.filter(e=>e.status==='review').length;
-  const masteredN = errors.filter(e=>e.status==='mastered').length;
+  const errorEntries = getErrorEntries();
+  const focusN    = errorEntries.filter(e=>e.status==='focus').length;
+  const reviewN   = errorEntries.filter(e=>e.status==='review').length;
+  const masteredN = errorEntries.filter(e=>e.status==='mastered').length;
   const statusItems = [
-    {key:'all',    label:'全部题目',  dot:'#aaa',    count:errors.length},
+    {key:'all',    label:'全部题目',  dot:'#aaa',    count:errorEntries.length},
     {key:'focus',  label:'重点复习',  dot:'#e74c3c', count:focusN},
     {key:'review', label:'待复习',    dot:'#fa8c16', count:reviewN},
     {key:'mastered',label:'已掌握',   dot:'#52c41a', count:masteredN},
@@ -4727,7 +4782,7 @@ function onSearch(){
 }
 function clearFilter(){ statusFilter='all';typeFilter=null;reasonFilter=null;knowledgeNodeFilter=null;searchKw='';dateFrom='';dateTo='';document.getElementById('searchInput').value='';document.getElementById('dateFrom').value='';document.getElementById('dateTo').value='';updateSearchClear();renderSidebar();renderAll(); }
 function getFiltered(){
-  return errors.filter(e=>{
+  return getErrorEntries().filter(e=>{
     if(statusFilter!=='all'&&e.status!==statusFilter)return false;
     if(knowledgeNodeFilter){
       const currentNode = getKnowledgeNodeById(knowledgeNodeFilter);
@@ -4783,6 +4838,9 @@ function renderAll(){
     document.getElementById('errorList').innerHTML=`<div class="empty"><div class="emoji">${searchKw?'🔍':'📭'}</div><p>${searchKw?'未找到匹配题目':'暂无错题，点击"＋ 添加"'}</p></div>`;
     if (typeof window.refreshKnowledgeWorkspaceCards === 'function') {
       window.refreshKnowledgeWorkspaceCards();
+    }
+    if (typeof window.refreshClaudeBankModal === 'function') {
+      window.refreshClaudeBankModal();
     }
     return;
   }
@@ -4857,6 +4915,9 @@ function renderAll(){
   el.classList.toggle('batch-mode-on', batchMode);
   if (typeof window.refreshKnowledgeWorkspaceCards === 'function') {
     window.refreshKnowledgeWorkspaceCards();
+  }
+  if (typeof window.refreshClaudeBankModal === 'function') {
+    window.refreshClaudeBankModal();
   }
 }
 
@@ -5107,7 +5168,7 @@ function openEditModal(id){
   editingId=normalizeErrorId(id); editImgBase64=null; editImgDeleted=false; editAnalysisImgBase64=null; editAnalysisImgDeleted=false;
   modalKnowledgeNodeId = null;
   resetAIAnalyzeState();
-  document.getElementById('addModalTitle').textContent='编辑错题';
+  document.getElementById('addModalTitle').textContent = isClaudeBankEntry(e) ? '编辑题库题' : '编辑错题';
   document.getElementById('editType').value=e.type||'其他';
   document.getElementById('editSubtype').value=e.subtype||'';
   document.getElementById('editSubSubtype').value=e.subSubtype||'';
@@ -5277,10 +5338,10 @@ function openQuickImportModal() {
   openImportModal();
 }
 
-function normalizeImportedErrorsForCurrentKnowledge(list) {
+function normalizeImportedErrorsForCurrentKnowledge(list, defaultKind) {
   const context = importKnowledgeNodeId ? getKnowledgeContextForEntry(importKnowledgeNodeId) : null;
   return (list || []).map(item => ({
-    ...item,
+    ...normalizeEntryRecord(item, defaultKind || 'error'),
     id: item.id ? normalizeErrorId(item.id) : newId(),
     type: item.type || context?.type || '其他',
     subtype: item.subtype || context?.subtype || '未分类',
@@ -5304,12 +5365,13 @@ function tryParseJson(text){
   }catch(e){}
   return null;
 }
-function mergeImport(data){
-  const key=q=>(q||'').trim().slice(0,100);
+function mergeImport(data, defaultKind){
+  const normalizeKey = (kind, q) => `${kind}::${(q||'').trim().slice(0,100)}`;
   const questionMap={};
   const idMap={};
   errors.forEach((e,i)=>{
-    questionMap[key(e.question)]=i;
+    const kind = normalizeEntryKind(e.entryKind, 'error');
+    questionMap[normalizeKey(kind, e.question)] = i;
     if (e && e.id !== undefined && e.id !== null && e.id !== '') {
       idMap[normalizeErrorId(e.id)] = i;
     }
@@ -5317,7 +5379,7 @@ function mergeImport(data){
   let added=0,updated=0;
   data.forEach(raw=>{
     const imp = {
-      ...raw,
+      ...normalizeEntryRecord(raw, defaultKind || 'error'),
       id: raw.id ? normalizeErrorId(raw.id) : newId(),
       addDate: raw.addDate || today(),
       quiz: raw.quiz || null,
@@ -5326,7 +5388,8 @@ function mergeImport(data){
       masteryUpdatedAt: raw.masteryUpdatedAt || null,
       lastPracticedAt: raw.lastPracticedAt || null
     };
-    const k=key(imp.question);
+    const kind = normalizeEntryKind(imp.entryKind, defaultKind || 'error');
+    const k=normalizeKey(kind, imp.question);
     const targetIndex = idMap[imp.id] !== undefined ? idMap[imp.id] : questionMap[k];
     if(targetIndex!==undefined){
       const old=errors[targetIndex];
@@ -5334,6 +5397,7 @@ function mergeImport(data){
         ...old,
         ...imp,
         id: old.id ? normalizeErrorId(old.id) : imp.id,
+        entryKind: normalizeEntryKind(old.entryKind, kind),
         quiz: old.quiz || imp.quiz,
         addDate: old.addDate || imp.addDate
       };
@@ -5359,11 +5423,12 @@ function doImport(){
   if(Array.isArray(parsed)){ data=parsed; }
   else if(parsed.errors&&Array.isArray(parsed.errors)){ data=parsed.errors; }
   else{ showToast('应为数组或含 errors 字段的对象', 'error');return; }
-  data = normalizeImportedErrorsForCurrentKnowledge(data);
+  data = normalizeImportedErrorsForCurrentKnowledge(data, 'error');
   if(importMode==='replace'){
     if(!confirm(`清空现有 ${errors.length} 条，替换为 ${data.length} 条？`))return;
     errors=data.map(e=>({
       id:e.id ? normalizeErrorId(e.id) : newId(),
+      entryKind: normalizeEntryKind(e.entryKind, 'error'),
       addDate:e.addDate||today(),
       quiz:e.quiz||null,
       status:e.status||'focus',
@@ -5375,7 +5440,7 @@ function doImport(){
     saveData();closeModal('importModal');renderSidebar();renderAll();
     showToast(`已替换，共 ${errors.length} 条`, 'success');
   }else{
-    const{added,updated}=mergeImport(data);
+    const{added,updated}=mergeImport(data, 'error');
     saveData();closeModal('importModal');renderSidebar();renderAll();
     showToast(`导入完成：更新 ${updated} 条，新增 ${added} 条`, 'success');
   }
@@ -5460,11 +5525,155 @@ function importFromClaude(){
   const data=tryParseJson(safeRaw);
   if(!data){showToast('JSON 解析失败，请确认内容是完整的 JSON 数组', 'error');return;}
   if(!Array.isArray(data)){showToast('应为数组格式 [...]', 'error');return;}
-  const{added,updated}=mergeImport(data);
+  const normalized = normalizeImportedErrorsForCurrentKnowledge(data, 'claude_bank');
+  const{added,updated}=mergeImport(normalized, 'claude_bank');
   saveData();document.getElementById('claudeResult').value='';
   closeModal('claudeModal');renderSidebar();renderAll();
-  showToast(`导入完成：新增 ${added} 题，更新 ${updated} 题`, 'success');
+  openClaudeBankModal();
+  showToast(`Claude 题库导入完成：新增 ${added} 题，更新 ${updated} 题`, 'success');
 }
+
+function getFilteredClaudeBankEntries() {
+  const keyword = (document.getElementById('claudeBankSearch')?.value || '').trim().toLowerCase();
+  const list = getClaudeBankEntries();
+  if (!keyword) return list;
+  const terms = keyword.split(/\s+/).filter(Boolean);
+  return list.filter(item => {
+    const haystack = [
+      item.type,
+      item.subtype,
+      item.subSubtype,
+      item.question,
+      item.options,
+      item.answer,
+      item.analysis,
+      item.rootReason,
+      item.errorReason
+    ].join(' ').toLowerCase();
+    return terms.every(term => haystack.includes(term));
+  });
+}
+function renderClaudeBankCard(item) {
+  const normalizedId = normalizeErrorId(item.id);
+  const idLit = idArg(item.id);
+  const noteNodeLit = noteNodeArg(item.noteNodeId || '');
+  const notePath = item.noteNodeId ? collapseKnowledgePathTitles(getKnowledgePathTitles(item.noteNodeId)).join(' > ') : '未关联知识点';
+  const isRev = revealed.has(normalizedId);
+  const opts = item.options ? item.options.split(/\n|\|/).map(o => `<p>${escapeHtml(o.trim())}</p>`).join('') : '';
+  const imgTag = item.imgData ? `<img src="${escapeHtml(item.imgData)}" class="cuoti-img" onclick="this.classList.toggle('expanded')" title="点击放大/缩小">` : '';
+  let detailHtml = '';
+  if (isRev) {
+    detailHtml = `<div class="card-detail">
+      <div class="detail-meta-row">
+        <span class="detail-pill correct-pill">正确答案 ${escapeHtml(item.answer || '未填写')}</span>
+        ${item.rootReason ? `<span class="detail-pill" style="background:#fff0f6;color:#c41d7f;border:1px solid #ffadd2;font-size:11px">根因：${escapeHtml(item.rootReason)}</span>` : ''}
+        ${item.errorReason ? `<span class="detail-pill reason-pill">表象：${escapeHtml(item.errorReason)}</span>` : ''}
+      </div>
+      ${item.analysis ? `<div class="detail-analysis">${renderAnalysis(item.analysis)}</div>` : '<div style="font-size:12px;color:#bbb">暂无解析</div>'}
+      ${item.analysisImgData ? `<img src="${escapeHtml(item.analysisImgData)}" class="cuoti-img" onclick="this.classList.toggle('expanded')" title="点击放大/缩小" style="border:1px solid #e0e4ff;margin-top:6px">` : ''}
+    </div>`;
+  }
+  const iqState = inlineQuizState[normalizedId];
+  let iqHtml = '';
+  if (iqState) {
+    const options = item.options ? item.options.split(/\n|\|/).map(o => o.trim()).filter(Boolean) : [];
+    if (!iqState.answered) {
+      const optBtns = options.length
+        ? options.map((opt, index) => {
+            const letter = String.fromCharCode(65 + index);
+            return `<button class="iq-opt" onclick='selectInlineAnswer(${idLit},"${letter}")'>${escapeHtml(opt)}</button>`;
+          }).join('')
+        : ['A','B','C','D'].map(letter => `<button class="iq-opt" onclick='selectInlineAnswer(${idLit},"${letter}")' style="text-align:center;font-weight:700">${letter}</button>`).join('');
+      iqHtml = `<div class="iq-area">
+        <div class="iq-hint">选择你的答案</div>
+        <div class="iq-opts">${optBtns}</div>
+        <div class="iq-actions">
+          <button class="btn btn-sm btn-secondary" onclick='closeInlineQuiz(${idLit})'>取消</button>
+        </div>
+      </div>`;
+    } else {
+      const ok = iqState.correct;
+      iqHtml = `<div class="iq-area">
+        <div class="iq-result ${ok ? 'ok' : 'fail'}">${ok ? '答对了' : '答错了'}，你选了 <strong>${escapeHtml(iqState.userAnswer)}</strong>，正确答案是 <strong>${escapeHtml(item.answer || '未填写')}</strong></div>
+        ${item.analysis ? `<div style="margin-top:6px;font-size:12px;color:#555;padding:6px 10px;background:#f6f8ff;border-radius:6px;border-left:3px solid #4e8ef7">${renderAnalysis(item.analysis)}</div>` : ''}
+        <div class="iq-actions" style="margin-top:8px">
+          <button class="btn btn-sm btn-primary" onclick='convertClaudeBankToError(${idLit})'>转为错题</button>
+          <button class="btn btn-sm btn-secondary" onclick='closeInlineQuiz(${idLit})'>关闭</button>
+        </div>
+      </div>`;
+    }
+  }
+  return `<div class="error-card" id="claude-bank-card-${normalizedId}" style="margin-bottom:14px">
+    <div class="card-top">
+      <span class="card-num">#${escapeHtml(String(item.id || ''))}</span>
+      <span style="font-size:11px;padding:1px 8px;border-radius:999px;background:#f0f5ff;color:#1d4ed8;border:1px solid #bfdbfe">Claude题库</span>
+      ${item.type ? `<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#f6ffed;color:#389e0d;border:1px solid #b7eb8f">${escapeHtml(item.type)}</span>` : ''}
+      ${item.subtype ? `<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#fff7e6;color:#d46b08;border:1px solid #ffd591">${escapeHtml(item.subtype)}</span>` : ''}
+      ${item.subSubtype ? `<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#f9f0ff;color:#722ed1;border:1px solid #d3adf7">${escapeHtml(item.subSubtype)}</span>` : ''}
+      ${item.addDate ? `<span style="font-size:11px;color:#999">${escapeHtml(item.addDate)}</span>` : ''}
+    </div>
+    <div class="card-question">${escapeHtml(item.question || '')}</div>
+    <div style="font-size:11px;color:#888;line-height:1.6;margin-bottom:8px">知识点：${escapeHtml(notePath)}</div>
+    ${imgTag}
+    ${opts ? `<div class="card-options">${opts}</div>` : ''}
+    ${isRev ? detailHtml : ''}
+    <button class="card-reveal-btn" onclick='revealCard(${idLit})' style="${isRev ? 'color:#bbb;border-color:#eee;font-size:11px;margin-top:6px':''}">
+      ${isRev ? '收起' : '查看答案与解析'}
+    </button>
+    ${iqHtml}
+    <div class="card-actions">
+      <button class="btn btn-sm btn-secondary" onclick='openKnowledgeForError(${idLit})'>知识点</button>
+      <button class="btn btn-sm btn-secondary" onclick='moveErrorToKnowledgeNode(${idLit}, ${noteNodeLit})'>改挂载</button>
+      <button class="btn btn-sm btn-secondary" onclick='openEditModal(${idLit})'>编辑</button>
+      <button class="btn btn-sm btn-secondary" style="color:#4e8ef7;border-color:#adc6ff" onclick='startInlineQuiz(${idLit})'>做题</button>
+      <button class="btn btn-sm btn-primary" onclick='convertClaudeBankToError(${idLit})'>转为错题</button>
+      <button class="del-btn" onclick='deleteError(${idLit})'>🗑</button>
+    </div>
+  </div>`;
+}
+function renderClaudeBankModal() {
+  const listEl = document.getElementById('claudeBankList');
+  const summaryEl = document.getElementById('claudeBankSummary');
+  if (!listEl || !summaryEl) return;
+  const all = getClaudeBankEntries();
+  const list = getFilteredClaudeBankEntries();
+  const keyword = (document.getElementById('claudeBankSearch')?.value || '').trim();
+  summaryEl.textContent = keyword
+    ? `Claude 题库共 ${all.length} 题，当前搜索命中 ${list.length} 题`
+    : `Claude 题库共 ${all.length} 题，不参与错题统计与复习`;
+  if (!list.length) {
+    listEl.innerHTML = `<div class="empty"><div class="emoji">📚</div><p>${all.length ? '没有匹配的题库题' : 'Claude 题库还是空的，先去导入一批题目'}</p></div>`;
+    return;
+  }
+  listEl.innerHTML = list.map(renderClaudeBankCard).join('');
+}
+function openClaudeBankModal() {
+  openModal('claudeBankModal');
+  renderClaudeBankModal();
+}
+function convertClaudeBankToError(id) {
+  const item = findErrorById(id);
+  if (!item || !isClaudeBankEntry(item)) return;
+  item.entryKind = 'error';
+  item.status = item.status || 'focus';
+  item.masteryLevel = item.masteryLevel || 'not_mastered';
+  item.updatedAt = new Date().toISOString();
+  item.addDate = item.addDate || today();
+  recordErrorUpsert(item);
+  saveData();
+  syncNotesWithErrors();
+  renderSidebar();
+  renderAll();
+  renderNotesByType();
+  renderClaudeBankModal();
+  showToast('已转为错题', 'success');
+}
+window.refreshClaudeBankModal = function () {
+  const modal = document.getElementById('claudeBankModal');
+  if (modal && modal.classList.contains('open')) {
+    renderClaudeBankModal();
+  }
+};
 
 // ============================================================
 // Dashboard（Tab分模块版）
@@ -5472,7 +5681,7 @@ function importFromClaude(){
 let _dashTrendDays = 7; // 7 或 30
 
 function openDashboard() {
-  const tabs = ['总览', ...new Set(errors.map(e=>e.type))];
+  const tabs = ['总览', ...new Set(getErrorEntries().map(e=>e.type))];
   const tabBtns = tabs.map((t,i) =>
     `<button class="dash-tab-btn ${i===0?'active':''}" id="dashtab_${i}" onclick="switchDashTab(${i})">${escapeHtml(t)}</button>`
   ).join('');
@@ -5525,16 +5734,17 @@ function buildTrendBars(days) {
 
 function renderDashOverview(idx) {
   const hist = loadHistory();
-  const total = errors.length;
-  const masteredN = errors.filter(e=>e.status==='mastered').length;
-  const focusN = errors.filter(e=>e.status==='focus').length;
-  const reviewN = errors.filter(e=>e.status==='review').length;
-  const totalReviews = errors.reduce((s,e)=>s+(e.quiz&&e.quiz.reviewCount||0),0);
+  const errorEntries = getErrorEntries();
+  const total = errorEntries.length;
+  const masteredN = errorEntries.filter(e=>e.status==='mastered').length;
+  const focusN = errorEntries.filter(e=>e.status==='focus').length;
+  const reviewN = errorEntries.filter(e=>e.status==='review').length;
+  const totalReviews = errorEntries.reduce((s,e)=>s+(e.quiz&&e.quiz.reviewCount||0),0);
   const mastPct = total ? Math.round(masteredN/total*100) : 0;
 
   // 各模块对比
   const typeMap={};
-  errors.forEach(e=>{
+  errorEntries.forEach(e=>{
     if(!typeMap[e.type])typeMap[e.type]={total:0,mastered:0,focus:0};
     typeMap[e.type].total++;
     if(e.status==='mastered') typeMap[e.type].mastered++;
@@ -5552,7 +5762,7 @@ function renderDashOverview(idx) {
 
   // 全局错因 Top5
   const reasonMap={};
-  errors.forEach(e=>{const r=e.errorReason||'（未填写）';reasonMap[r]=(reasonMap[r]||0)+1;});
+  errorEntries.forEach(e=>{const r=e.errorReason||'（未填写）';reasonMap[r]=(reasonMap[r]||0)+1;});
   const maxR=Math.max(...Object.values(reasonMap),1);
   const reasonBars=Object.entries(reasonMap).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([r,n],ci)=>{
     const pct=Math.round(n/maxR*100);
@@ -5565,7 +5775,7 @@ function renderDashOverview(idx) {
   }).join('');
 
   // 全局Top3薄弱题
-  const weakList=errors.filter(e=>e.quiz&&e.quiz.reviewCount>0)
+  const weakList=errorEntries.filter(e=>e.quiz&&e.quiz.reviewCount>0)
     .map(e=>({q:e.question.slice(0,28),type:e.type,wrong:e.quiz.wrongCount||0,review:e.quiz.reviewCount,ratio:(e.quiz.wrongCount||0)/e.quiz.reviewCount}))
     .sort((a,b)=>b.ratio-a.ratio).slice(0,3);
   const weakHtml=weakList.length
@@ -5615,7 +5825,7 @@ function switchTrend(days, paneIdx) {
 }
 
 function renderDashModule(idx, type) {
-  const list = errors.filter(e=>e.type===type);
+  const list = getErrorEntries().filter(e=>e.type===type);
   if (!list.length) {
     document.getElementById('dashpane_'+idx).innerHTML='<div style="color:#ccc;text-align:center;padding:40px;font-size:13px">该模块暂无错题</div>';
     return;
@@ -5855,7 +6065,10 @@ function openExportModal() {
   document.getElementById('efmt_full').classList.remove('active');
   document.getElementById('exportJsonOpts').style.display = '';
   document.getElementById('exportPrintOpts').style.display = 'none';
-  document.getElementById('exportFilterOnly').checked = false;
+  const modeDefault = document.querySelector('input[name="exportDataMode"][value="questions"]');
+  const scopeDefault = document.querySelector('input[name="exportDataScope"][value="all"]');
+  if (modeDefault) modeDefault.checked = true;
+  if (scopeDefault) scopeDefault.checked = true;
   openModal('exportModal');
 }
 function selectExportFmt(fmt) {
@@ -5866,6 +6079,145 @@ function selectExportFmt(fmt) {
   document.getElementById('exportJsonOpts').style.display = fmt==='json' ? '' : 'none';
   document.getElementById('exportPrintOpts').style.display = fmt==='print' ? '' : 'none';
   if (fmt === 'print') refreshPrintModuleList();
+}
+function cloneJson(value) {
+  return value == null ? value : JSON.parse(JSON.stringify(value));
+}
+function getExportDataMode() {
+  return (document.querySelector('input[name="exportDataMode"]:checked') || {}).value || 'questions';
+}
+function getExportDataScope() {
+  return (document.querySelector('input[name="exportDataScope"]:checked') || {}).value || 'all';
+}
+function getCurrentExportScopeContext() {
+  if (knowledgeNodeFilter || selectedKnowledgeNodeId) {
+    const nodeId = knowledgeNodeFilter || selectedKnowledgeNodeId;
+    const node = getKnowledgeNodeById(nodeId);
+    const nodeIds = node ? getKnowledgeDescendantNodeIds(node) : [nodeId];
+    return {
+      label: node ? `knowledge_${node.title}` : 'knowledge_scope',
+      displayLabel: node ? `知识点：${node.title}` : '当前知识点',
+      nodeIds
+    };
+  }
+  if (typeFilter) {
+    const list = getFiltered();
+    return {
+      label: typeFilter.level === 'type'
+        ? `type_${typeFilter.value}`
+        : typeFilter.level === 'subtype'
+          ? `module_${typeFilter.type}_${typeFilter.value}`
+          : `module_${typeFilter.type}_${typeFilter.subtype}_${typeFilter.value}`,
+      displayLabel: typeFilter.level === 'type'
+        ? `题型：${typeFilter.value}`
+        : typeFilter.level === 'subtype'
+          ? `模块：${typeFilter.type} / ${typeFilter.value}`
+          : `模块：${typeFilter.type} / ${typeFilter.subtype} / ${typeFilter.value}`,
+      nodeIds: [...new Set(list.map(item => item.noteNodeId).filter(Boolean))]
+    };
+  }
+  const scope = resolveCurrentErrorScope();
+  if (scope) {
+    const list = getErrorEntries().filter(scope.predicate);
+    return {
+      label: 'current_scope',
+      displayLabel: scope.label || '当前范围',
+      nodeIds: [...new Set(list.map(item => item.noteNodeId).filter(Boolean))]
+    };
+  }
+  return null;
+}
+function getExportErrorListByScope(scopeMode) {
+  if (scopeMode === 'all') {
+    return { list: getErrorEntries(), label: 'all_errors', displayLabel: '全部错题' };
+  }
+  if (scopeMode === 'filtered') {
+    return { list: getFiltered(), label: 'filtered', displayLabel: '当前筛选' };
+  }
+  const context = getCurrentExportScopeContext();
+  if (!context) return null;
+  const scope = resolveCurrentErrorScope();
+  const list = scope ? getErrorEntries().filter(scope.predicate) : getFiltered();
+  return { list, label: context.label, displayLabel: context.displayLabel, nodeIds: context.nodeIds };
+}
+function buildNotesByTypeSubset(errorList) {
+  const types = [...new Set((errorList || []).map(item => item.type).filter(Boolean))];
+  const subset = {};
+  types.forEach(type => {
+    if (notesByType[type]) subset[type] = cloneJson(notesByType[type]);
+  });
+  return subset;
+}
+function buildKnowledgeSubset(nodeIds) {
+  const includeIds = new Set((nodeIds || []).filter(Boolean));
+  if (!includeIds.size) return { knowledgeTree: null, knowledgeNotes: {} };
+  function walk(nodes) {
+    return (nodes || []).reduce((acc, node) => {
+      const children = walk(node.children || []);
+      if (!includeIds.has(node.id) && !children.length) return acc;
+      acc.push({
+        ...cloneJson(node),
+        children
+      });
+      return acc;
+    }, []);
+  }
+  const tree = walk(getKnowledgeRootNodes());
+  const notes = {};
+  includeIds.forEach(id => {
+    const node = getKnowledgeNodeById(id);
+    if (node && ((node.contentMd || '').trim() || knowledgeNotes[id])) {
+      notes[id] = cloneJson(knowledgeNotes[id] || {
+        title: node.title || '',
+        content: node.contentMd || '',
+        updatedAt: node.updatedAt || ''
+      });
+    }
+  });
+  return {
+    knowledgeTree: tree.length ? tree : null,
+    knowledgeNotes: notes
+  };
+}
+function buildScopedExportPayload(mode, scopeInfo) {
+  const errorsSubset = (scopeInfo.list || []).map(item => cloneJson(item));
+  const noteNodeIds = scopeInfo.nodeIds && scopeInfo.nodeIds.length
+    ? scopeInfo.nodeIds
+    : [...new Set(errorsSubset.map(item => item.noteNodeId).filter(Boolean))];
+  const knowledgeSubset = buildKnowledgeSubset(noteNodeIds);
+  const notesSubset = buildNotesByTypeSubset(errorsSubset);
+  if (mode === 'questions') {
+    return errorsSubset;
+  }
+  const base = {
+    xc_version: 2,
+    exportTime: new Date().toISOString(),
+    exportKind: mode,
+    exportScope: scopeInfo.displayLabel,
+    errors: errorsSubset,
+    notesByType: notesSubset,
+    noteImages: cloneJson(noteImages),
+    knowledgeTree: knowledgeSubset.knowledgeTree,
+    knowledgeNotes: knowledgeSubset.knowledgeNotes
+  };
+  if (mode === 'module_backup') {
+    return {
+      ...getFullBackupPayload(),
+      ...base,
+      errors: errorsSubset,
+      notesByType: notesSubset,
+      noteImages: cloneJson(noteImages),
+      knowledgeTree: knowledgeSubset.knowledgeTree,
+      knowledgeNotes: knowledgeSubset.knowledgeNotes
+    };
+  }
+  return base;
+}
+function sanitizeExportLabel(value) {
+  return String(value || 'export')
+    .replace(/[\\/:*?"<>|]+/g, '_')
+    .replace(/\s+/g, '_')
+    .slice(0, 48) || 'export';
 }
 function refreshPrintModuleList() {
   const mode = (document.querySelector('input[name="printContent"]:checked') || {}).value || 'q';
@@ -5883,8 +6235,9 @@ function refreshPrintModuleList() {
     const filtered = getFiltered();
     const typeMap = {};
     filtered.forEach(e => { typeMap[e.type] = (typeMap[e.type]||0)+1; });
-    const hint = filtered.length < errors.length
-      ? `<div style="font-size:11px;color:#fa8c16;margin-bottom:8px">⚠ 当前有筛选条件，仅显示 ${filtered.length}/${errors.length} 题</div>` : '';
+    const allErrors = getErrorEntries();
+    const hint = filtered.length < allErrors.length
+      ? `<div style="font-size:11px;color:#fa8c16;margin-bottom:8px">⚠ 当前有筛选条件，仅显示 ${filtered.length}/${allErrors.length} 题</div>` : '';
     document.getElementById('exportModuleList').innerHTML = hint + Object.entries(typeMap).map(([t,n]) =>
       `<label style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px;cursor:pointer">
         <input type="checkbox" class="export-mod-cb" data-type="${escapeHtml(t)}" checked>
@@ -5902,9 +6255,25 @@ function doExport() {
     return;
   }
   if (_exportFmt === 'json') {
-    const useFilter = document.getElementById('exportFilterOnly').checked;
-    const list = useFilter ? getFiltered() : errors;
-    download('cuoti_' + today() + '.json', JSON.stringify(list, null, 2));
+    const scopeMode = getExportDataScope();
+    const contentMode = getExportDataMode();
+    const scopeInfo = getExportErrorListByScope(scopeMode);
+    if (!scopeInfo) {
+      showToast('当前没有可导出的模块范围，请先选中一个模块或知识点', 'warning');
+      return;
+    }
+    if (!scopeInfo.list.length) {
+      showToast('当前范围内没有可导出的错题', 'warning');
+      return;
+    }
+    const payload = buildScopedExportPayload(contentMode, scopeInfo);
+    const suffix = sanitizeExportLabel(scopeInfo.label);
+    const fileName = contentMode === 'module_backup'
+      ? `xingce_module_backup_${suffix}_${today()}.json`
+      : contentMode === 'questions_notes'
+        ? `xingce_questions_notes_${suffix}_${today()}.json`
+        : `cuoti_questions_${suffix}_${today()}.json`;
+    download(fileName, JSON.stringify(payload, null, 2));
     closeModal('exportModal');
   } else {
     const contentMode = document.querySelector('input[name="printContent"]:checked').value;
@@ -6068,6 +6437,7 @@ function _applyFullBackup(data, mode) {
   if (mode === 'restore') {
     errors = (data.errors || []).map((e) => ({
       ...e,
+      entryKind: normalizeEntryKind(e.entryKind, 'error'),
       id: String(e.id || crypto.randomUUID()),
       addDate: e.addDate || today(),
       quiz: e.quiz || null,
@@ -6085,7 +6455,7 @@ function _applyFullBackup(data, mode) {
     if (data.globalNote !== undefined) { globalNote = data.globalNote; DB.set(KEY_GLOBAL_NOTE, data.globalNote); }
   } else {
     // 合并错题
-    const { added, updated } = mergeImport(data.errors || []);
+    const { added, updated } = mergeImport(data.errors || [], 'error');
     saveData();
     console.log(`[合并] 新增 ${added} 条，更新 ${updated} 条`);
   }
@@ -6420,7 +6790,7 @@ function countErrorsForKnowledgeNode(nodeId, includeDescendants) {
   const node = getKnowledgeNodeById(nodeId);
   if (!node) return 0;
   const nodeIds = includeDescendants === false ? [node.id] : getKnowledgeDescendantNodeIds(node);
-  return errors.filter(item => nodeIds.includes(item.noteNodeId)).length;
+  return getErrorEntries().filter(item => nodeIds.includes(item.noteNodeId)).length;
 }
 function getKnowledgeAssignableNodesForPath(type, subtype, subSubtype) {
   const path = getKnowledgePathConfig(type, subtype, subSubtype);
@@ -7445,7 +7815,7 @@ function switchTab(tabName) {
 
 // 检查章节是否可以删除
 function canDeleteNoteChapter(type, subtype, subSubtype) {
-  const count = errors.filter(e =>
+  const count = getErrorEntries().filter(e =>
     e.type === type &&
     e.subtype === subtype &&
     e.subSubtype === subSubtype
@@ -7514,7 +7884,7 @@ function filterNoteErrorList() {
   const list = document.getElementById('noteErrorList');
   if (!list) return;
 
-  const filteredErrors = errors.filter(e => {
+  const filteredErrors = getErrorEntries().filter(e => {
     const text = `${e.type || ''} ${e.subtype || ''} ${e.subSubtype || ''} ${e.question || ''}`.toLowerCase();
     return text.includes(searchTerm);
   });
@@ -7538,7 +7908,7 @@ function highlightNoteChapter(type, subtype, subSubtype) {
   document.querySelectorAll('.note-panel-item-header').forEach(el => el.classList.remove('note-chapter-highlight'));
   if (!type) return;
   // 用 index 匹配 ID（避免中文字符全变成_的碰撞问题）
-  const types = [...new Set(errors.map(e => e.type).filter(Boolean))];
+  const types = [...new Set(getErrorEntries().map(e => e.type).filter(Boolean))];
   const idx = types.indexOf(type);
   const safeId = idx >= 0 ? 'npitem_' + idx : null;
   if (!safeId) return;
@@ -8057,7 +8427,7 @@ function clearCurrentModuleErrors() {
     showToast('Open a module or apply a filter before clearing', 'warning');
     return;
   }
-  const matched = errors.filter(scope.predicate);
+  const matched = getErrorEntries().filter(scope.predicate);
   if (!matched.length) {
     showToast(`No questions found in ${scope.label}`, 'warning');
     return;
@@ -8076,20 +8446,22 @@ function clearCurrentModuleErrors() {
 }
 
 function clearAllErrorsData() {
-  if (!errors.length) {
+  const errorEntries = getErrorEntries();
+  if (!errorEntries.length) {
     showToast('There are no questions to delete', 'warning');
     return;
   }
-  if (!confirm(`Delete all ${errors.length} question(s)? This cannot be undone.`)) return;
-  errors = [];
-  revealed = new Set();
+  if (!confirm(`Delete all ${errorEntries.length} error question(s)? Claude 题库会保留。`)) return;
+  const ids = new Set(errorEntries.map(item => normalizeErrorId(item.id)));
+  errors = errors.filter(item => !ids.has(normalizeErrorId(item.id)));
+  revealed = new Set([...revealed].filter(id => !ids.has(normalizeErrorId(id))));
   saveData();
   saveReveal();
   syncNotesWithErrors();
   renderSidebar();
   renderAll();
   renderNotesByType();
-  showToast('All questions cleared', 'success');
+  showToast('All error questions cleared', 'success');
 }
 
 function renderRelatedErrorOptions(options) {
@@ -8172,7 +8544,7 @@ function countQuestionsInChapter(key, level) {
   const subtype = parts[1] || null;
   const subSubtype = parts[2] || null;
 
-  return errors.filter(e => {
+  return getErrorEntries().filter(e => {
     const matchType = e.type === type;
     const matchSubtype = subtype === '未分类' ? !e.subtype : e.subtype === subtype;
     const matchSubSubtype = subSubtype === '未分类' ? !e.subSubtype : e.subSubtype === subSubtype;
@@ -8187,9 +8559,9 @@ function countQuestionsInChapter(key, level) {
 // 获取当前题型已有的子类型/三级分类（供自动补全）
 function getExistingSubtypes() {
   const type = document.getElementById('editType')?.value || '';
-  const subtypes = [...new Set(errors.filter(e => e.type === type).map(e => e.subtype).filter(Boolean))];
+  const subtypes = [...new Set(getErrorEntries().filter(e => e.type === type).map(e => e.subtype).filter(Boolean))];
   const subtype = document.getElementById('editSubtype')?.value?.trim() || '';
-  const subSubtypes = [...new Set(errors.filter(e => e.type === type && e.subtype === subtype).map(e => e.subSubtype).filter(Boolean))];
+  const subSubtypes = [...new Set(getErrorEntries().filter(e => e.type === type && e.subtype === subtype).map(e => e.subSubtype).filter(Boolean))];
   return { subtypes, subSubtypes };
 }
 
@@ -8438,6 +8810,7 @@ async function saveError(){
   }else{
     const newErr = {
       id:newId(),
+      entryKind:'error',
       addDate:today(),
       updatedAt:new Date().toISOString(),
       masteryLevel:'not_mastered',
@@ -8472,7 +8845,7 @@ function deleteError(id){
   saveData();saveReveal();renderSidebar();renderAll();
 
   // 题型整体为空时，询问是否删除对应笔记（notesByType 是扁平结构，key 为题型名）
-  const typeCount = errors.filter(e => e.type === error.type).length;
+  const typeCount = getErrorEntries().filter(e => e.type === error.type).length;
   if (typeCount === 0 && notesByType[error.type]) {
     if (confirm(`"${error.type}" 题型已无错题，是否同时删除该题型的笔记？`)) {
       delete notesByType[error.type];
