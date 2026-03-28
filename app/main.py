@@ -11,11 +11,11 @@ import sqlite3
 import urllib.error
 import urllib.request
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import Cookie, FastAPI, File, HTTPException, Request, Response, UploadFile
+from fastapi import Cookie, FastAPI, File, HTTPException, Query, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -76,10 +76,29 @@ ALLOWED_ENTRY_TYPES = {
     "其他",
 }
 OCR_MAX_BYTES = 5 * 1024 * 1024
+RUNTIME_MODE = os.getenv("XINGCE_RUNTIME_MODE", "").strip().lower() or "local"
+RUNTIME_LABEL = os.getenv("XINGCE_RUNTIME_LABEL", "").strip()
+if not RUNTIME_LABEL:
+    RUNTIME_LABEL = "Docker App" if RUNTIME_MODE == "docker" else "Local Python"
 
 
 def utcnow() -> datetime:
     return datetime.utcnow()
+
+
+def parse_iso_datetime(value: str) -> Optional[datetime]:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    if text.endswith("Z"):
+        text = text[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if parsed.tzinfo is not None:
+        return parsed.astimezone(timezone.utc).replace(tzinfo=None)
+    return parsed
 
 
 def hash_password(password: str) -> str:
@@ -312,6 +331,25 @@ def infer_request_origin(request: Request) -> str:
     return normalize_origin(f"{scheme}://{host}")
 
 
+def request_is_secure(request: Request) -> bool:
+    forwarded_proto = str(request.headers.get("x-forwarded-proto") or "").lower()
+    if forwarded_proto:
+        return forwarded_proto.split(",")[0].strip() == "https"
+    return request.url.scheme == "https"
+
+
+def build_runtime_label(request: Request) -> str:
+    origin = infer_request_origin(request)
+    if not origin:
+        return RUNTIME_LABEL
+    host = origin.split("://", 1)[-1]
+    if RUNTIME_MODE == "docker":
+        return f"Docker / {host}"
+    if RUNTIME_MODE == "local":
+        return f"Local / {host}"
+    return f"{RUNTIME_MODE or 'Runtime'} / {host}"
+
+
 def read_tunnel_url() -> Optional[str]:
     if not TUNNEL_LOG_PATH.exists():
       return None
@@ -456,9 +494,11 @@ _raw_origins = os.getenv(
     "http://127.0.0.1:8000,http://localhost:8000",
 )
 ALLOWED_ORIGINS = [origin.strip() for origin in _raw_origins.split(",") if origin.strip()]
+ALLOWED_ORIGIN_REGEX = os.getenv("ALLOWED_ORIGIN_REGEX", r"https://([a-z0-9-]+\.)?qzz\.io")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=ALLOWED_ORIGIN_REGEX,
     allow_methods=["*"],
     allow_headers=["*"],
     allow_credentials=True,
@@ -1867,6 +1907,29 @@ def build_workspace_snapshot_from_entities(user_id: str, conn: sqlite3.Connectio
     }
 
 
+def count_knowledge_tree_nodes(nodes: Any) -> int:
+    total = 0
+    for node in nodes or []:
+        if not isinstance(node, dict):
+            continue
+        total += 1
+        total += count_knowledge_tree_nodes(node.get("children") or [])
+    return total
+
+
+def build_backup_summary(payload: dict[str, Any]) -> dict[str, Any]:
+    tree = payload.get("knowledgeTree") or {}
+    roots = tree.get("roots") if isinstance(tree, dict) else tree
+    return {
+        "errors": len(payload.get("errors") or []),
+        "notesByType": len(payload.get("notesByType") or {}),
+        "noteImages": len(payload.get("noteImages") or {}),
+        "knowledgeNodes": count_knowledge_tree_nodes(roots or []),
+        "knowledgeNotes": len(payload.get("knowledgeNotes") or {}),
+        "history": len(payload.get("history") or []),
+    }
+
+
 def get_workspace_snapshot_updated_at(user_id: str, conn: sqlite3.Connection) -> str:
     ensure_workspace_entities_seeded(user_id, conn)
     row = conn.execute(
@@ -2263,8 +2326,17 @@ def public_entry(request: Request) -> dict[str, Any]:
     }
 
 
+@app.get("/api/runtime-info")
+def runtime_info(request: Request) -> dict[str, Any]:
+    return {
+        "mode": RUNTIME_MODE,
+        "label": build_runtime_label(request),
+        "origin": infer_request_origin(request),
+    }
+
+
 @app.post("/api/auth/register")
-def register(payload: AuthPayload, response: Response) -> dict[str, Any]:
+def register(payload: AuthPayload, response: Response, request: Request) -> dict[str, Any]:
     if not SELF_SERVICE_REGISTRATION_ENABLED:
         raise HTTPException(status_code=403, detail="account registration is disabled; please contact the administrator")
     try:
@@ -2281,13 +2353,14 @@ def register(payload: AuthPayload, response: Response) -> dict[str, Any]:
         token,
         httponly=True,
         samesite="lax",
+        secure=request_is_secure(request),
         max_age=SESSION_TTL_DAYS * 24 * 3600,
     )
     return {"ok": True, "user": user}
 
 
 @app.post("/api/auth/login")
-def login(payload: AuthPayload, response: Response) -> dict[str, Any]:
+def login(payload: AuthPayload, response: Response, request: Request) -> dict[str, Any]:
     with get_conn() as conn:
         user = conn.execute(
             "SELECT id, username, password_hash FROM users WHERE username = ?",
@@ -2302,6 +2375,7 @@ def login(payload: AuthPayload, response: Response) -> dict[str, Any]:
         token,
         httponly=True,
         samesite="lax",
+        secure=request_is_secure(request),
         max_age=SESSION_TTL_DAYS * 24 * 3600,
     )
     return {"ok": True, "user": {"id": user["id"], "username": user["username"]}}
@@ -2323,7 +2397,11 @@ def me(xingce_session: Optional[str] = Cookie(default=None)) -> dict[str, Any]:
 
 
 @app.get("/api/backup")
-def get_backup(request: Request, xingce_session: Optional[str] = Cookie(default=None)) -> dict[str, Any]:
+def get_backup(
+    request: Request,
+    meta: bool = Query(default=False),
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
     user = require_user(xingce_session)
     current_origin = infer_request_origin(request)
     with get_conn() as conn:
@@ -2334,29 +2412,37 @@ def get_backup(request: Request, xingce_session: Optional[str] = Cookie(default=
         ).fetchone()
     if materialized:
         updated_at = str(materialized.get("exportTime") or materialized.get("baseUpdatedAt") or "")
-        return {
+        response = {
             "exists": True,
             "currentOrigin": current_origin,
             "updatedAt": updated_at,
-            "payload": materialized,
-            "backup": materialized,
+            "payloadBytes": len(json.dumps(materialized, ensure_ascii=False)),
+            "summary": build_backup_summary(materialized),
+            "payload": None if meta else materialized,
+            "backup": None if meta else materialized,
             "origins": list_origin_statuses(user["id"]),
         }
+        return response
     if not row:
         return {
             "exists": False,
             "currentOrigin": current_origin,
+            "payloadBytes": 0,
+            "summary": {},
             "payload": None,
             "backup": None,
             "origins": list_origin_statuses(user["id"]),
         }
-    backup = json.loads(row["payload_json"])
+    payload_text = row["payload_json"] or "{}"
+    backup = json.loads(payload_text)
     return {
         "exists": True,
         "currentOrigin": current_origin,
         "updatedAt": row["updated_at"],
-        "payload": backup,
-        "backup": backup,
+        "payloadBytes": len(payload_text.encode("utf-8")),
+        "summary": build_backup_summary(backup),
+        "payload": None if meta else backup,
+        "backup": None if meta else backup,
         "origins": list_origin_statuses(user["id"]),
     }
 
@@ -2389,10 +2475,9 @@ def put_backup(payload: BackupPayload, request: Request, xingce_session: Optiona
                     },
                     status_code=409,
                 )
-            try:
-                base_dt = datetime.fromisoformat(base_updated_at)
-                existing_dt = datetime.fromisoformat(existing_updated_at)
-            except ValueError:
+            base_dt = parse_iso_datetime(base_updated_at)
+            existing_dt = parse_iso_datetime(existing_updated_at)
+            if not base_dt or not existing_dt:
                 return JSONResponse(
                     {
                         "error": "cloud backup version is invalid; reload latest backup before saving",

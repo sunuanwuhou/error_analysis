@@ -20,7 +20,8 @@ The right-side related-errors rail has been retired from the active layout.
 
 ## Main Runtime Entry
 
-- local: `http://127.0.0.1:8000`
+- preferred Docker local entry: `http://127.0.0.1:8080`
+- fallback local Python entry: `http://127.0.0.1:8000`
 - public: `https://erroranaly.qzz.io`
 
 The login page no longer exposes the current domain or tunnel address.
@@ -99,7 +100,7 @@ cd E:\IdeaProject\git\xingce_v3_lab
 set DEEPSEEK_API_KEY=your_deepseek_key_here
 set MINIMAX_API_KEY=your_minimax_key_here
 set MINIMAX_MODEL=MiniMax-M2.5
-set ALLOWED_ORIGINS=http://127.0.0.1:8000,http://localhost:8000,https://erroranaly.qzz.io
+set ALLOWED_ORIGINS=http://127.0.0.1:8080,http://localhost:8080,http://127.0.0.1:8000,http://localhost:8000,https://erroranaly.qzz.io
 set TUNNEL_TOKEN=your_cloudflare_tunnel_token
 docker compose up --build -d app
 ```
@@ -117,7 +118,7 @@ cd E:\IdeaProject\git\xingce_v3_lab
 $env:DEEPSEEK_API_KEY='your_deepseek_key_here'
 $env:MINIMAX_API_KEY='your_minimax_key_here'
 $env:MINIMAX_MODEL='MiniMax-M2.5'
-$env:ALLOWED_ORIGINS='http://127.0.0.1:8000,http://localhost:8000'
+$env:ALLOWED_ORIGINS='http://127.0.0.1:8080,http://localhost:8080,http://127.0.0.1:8000,http://localhost:8000'
 powershell -ExecutionPolicy Bypass -File .\scripts\start-local.ps1
 ```
 

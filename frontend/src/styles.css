@@ -1571,6 +1571,7 @@ textarea {
 .knowledge-notes-content {
   flex: 1;
   overflow: auto;
+  min-height: 0;
   padding: 0 20px 24px;
   background: transparent;
 }
@@ -1610,11 +1611,13 @@ textarea {
   display: flex;
   gap: 18px;
   min-height: 0;
+  width: 100%;
 }
 
 .note-split-editor,
 .note-split-preview {
   min-width: 0;
+  min-height: 0;
   border: 1px solid #edf0f4;
   border-radius: 18px;
   background: #fff;
@@ -1673,28 +1676,42 @@ textarea {
 .note-preview-scroll {
   flex: 1;
   overflow: auto;
+  min-height: 0;
+  max-height: calc(100vh - 360px);
+  scroll-padding-top: 16px;
 }
 
 .note-preview-layout {
   display: grid;
-  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
-  gap: 28px;
+  grid-template-columns: minmax(200px, 240px) minmax(0, 1fr);
+  gap: 24px;
   align-items: start;
+  width: 100%;
 }
 
 .note-preview-layout-no-toc {
   display: block;
 }
 
+.note-preview-article {
+  grid-column: 2;
+  min-width: 0;
+  width: 100%;
+}
+
 .note-preview-toc {
-  position: sticky;
-  top: 0;
+  grid-column: 1;
+  grid-row: 1;
   align-self: start;
-  max-height: calc(100vh - 320px);
-  overflow: auto;
+  overflow: visible;
+  padding-right: 4px;
 }
 
 .note-toc-floating {
+  position: sticky;
+  top: 0;
+  max-height: calc(100vh - 380px);
+  overflow: auto;
   padding: 12px 14px;
   border: 1px solid #f1e2ce;
   border-radius: 16px;
@@ -1750,6 +1767,7 @@ textarea {
 .knowledge-note-preview__rich h3,
 .knowledge-note-preview__rich h4 {
   color: #2c3e50;
+  scroll-margin-top: 16px;
 }
 
 .knowledge-note-preview__rich h1 {
@@ -1911,10 +1929,19 @@ textarea {
     margin-bottom: 12px;
   }
 
+  .note-preview-scroll {
+    max-height: none;
+  }
+
   .note-preview-toc {
     position: static;
     max-height: none;
     margin-bottom: 12px;
+  }
+
+  .note-toc-floating {
+    position: static;
+    max-height: none;
   }
 }
 
@@ -1980,11 +2007,11 @@ textarea {
 }
 
 .note-preview-layout {
-  grid-template-columns: minmax(0, 1fr) minmax(180px, 220px);
+  grid-template-columns: minmax(200px, 240px) minmax(0, 1fr);
 }
 
 .note-preview-toc {
-  padding-left: 6px;
+  padding-right: 6px;
 }
 
 @media (max-width: 960px) {
@@ -2497,23 +2524,47 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 18px;
+  min-width: 0;
+  overflow: visible;
 }
 
 .cloud-status--sidebar {
   width: 100%;
+  overflow: visible;
 }
 
 .cloud-status--sidebar .cloud-status__toolbar {
   flex-direction: column;
   align-items: flex-start !important;
+  overflow: visible;
 }
 
 .cloud-status--sidebar .cloud-status__toolbar-actions {
   margin-left: 0;
+  position: relative;
+  overflow: visible;
+  z-index: 40;
 }
 
 .cloud-status--sidebar .cloud-status__details {
   grid-template-columns: 1fr !important;
+}
+
+.cloud-status--sidebar .workspace-more-menu {
+  position: relative;
+}
+
+.cloud-status--sidebar .workspace-more-menu__panel {
+  top: 0;
+  left: calc(100% + 12px);
+  min-width: 220px;
+}
+
+@media (max-width: 1080px) {
+  .cloud-status--sidebar .workspace-more-menu__panel {
+    top: calc(100% + 8px);
+    left: 0;
+  }
 }
 
 .workspace-main-area {
@@ -2544,6 +2595,10 @@ textarea {
   min-height: 180px;
   justify-content: flex-start;
   padding: 20px 18px;
+}
+
+.note-split-preview--single .note-preview-scroll {
+  max-height: calc(100vh - 300px);
 }
 
 .knowledge-note-empty__title {

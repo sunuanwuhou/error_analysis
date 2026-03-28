@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 import ErrorCard from '@/components/errors/ErrorCard.vue'
 import { useSyncStore } from '@/stores/sync'
@@ -19,6 +19,7 @@ const editingNote = ref(false)
 const statusMessage = ref('')
 const movingNode = ref(false)
 const moveTargetId = ref('')
+const notePreviewScrollRef = ref<HTMLElement | null>(null)
 
 const currentNode = computed(() => workspaceStore.selectedKnowledgeNode)
 const childNodes = computed(() => currentNode.value?.children || [])
@@ -279,6 +280,9 @@ watch(
     editingNote.value = false
     movingNode.value = false
     statusMessage.value = ''
+    void nextTick(() => {
+      notePreviewScrollRef.value?.scrollTo({ top: 0, behavior: 'auto' })
+    })
   },
   { immediate: true },
 )
@@ -408,7 +412,20 @@ function scrollToHeading(id: string) {
   if (typeof document === 'undefined') return
   const target = document.getElementById(id)
   if (!target) return
-  target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  const scrollContainer = notePreviewScrollRef.value
+  if (!scrollContainer) {
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    return
+  }
+
+  const containerRect = scrollContainer.getBoundingClientRect()
+  const targetRect = target.getBoundingClientRect()
+  const nextTop = scrollContainer.scrollTop + targetRect.top - containerRect.top - 16
+
+  scrollContainer.scrollTo({
+    top: Math.max(nextTop, 0),
+    behavior: 'smooth',
+  })
 }
 
 function handleEditorKeydown(event: KeyboardEvent) {
@@ -518,7 +535,7 @@ function handleEditorKeydown(event: KeyboardEvent) {
 
           <div class="note-split-preview">
             <div class="note-split-label">预览</div>
-            <div class="note-preview-scroll notes-content">
+            <div ref="notePreviewScrollRef" class="note-preview-scroll notes-content">
               <div v-if="draft.trim()" class="note-preview-layout" :class="{ 'note-preview-layout-no-toc': !noteTocItems.length }">
                 <article class="note-preview-article knowledge-note-preview__rich" v-html="notePreviewHtml" />
                 <aside v-if="noteTocItems.length" class="note-preview-toc">
@@ -547,7 +564,7 @@ function handleEditorKeydown(event: KeyboardEvent) {
         <div v-else class="note-split-area">
           <div class="note-split-preview note-split-preview--single">
             <div class="note-split-label">当前笔记</div>
-            <div class="note-preview-scroll notes-content">
+            <div ref="notePreviewScrollRef" class="note-preview-scroll notes-content">
               <div v-if="draft.trim()" class="note-preview-layout" :class="{ 'note-preview-layout-no-toc': !noteTocItems.length }">
                 <article class="note-preview-article knowledge-note-preview__rich" v-html="notePreviewHtml" />
                 <aside v-if="noteTocItems.length" class="note-preview-toc">

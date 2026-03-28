@@ -1,15 +1,3 @@
-FROM node:24-bookworm-slim AS frontend-build
-
-WORKDIR /frontend
-
-COPY frontend/package.json /frontend/package.json
-COPY frontend/package-lock.json /frontend/package-lock.json
-RUN npm ci
-
-COPY frontend /frontend
-RUN npm run build
-
-
 FROM error_manage-ocr:latest
 
 WORKDIR /app
@@ -27,8 +15,6 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 COPY app /app/app
 COPY scripts /app/scripts
 COPY xingce_v3 /app/xingce_v3
-COPY frontend /app/frontend
-COPY --from=frontend-build /frontend/dist /app/frontend/dist
 
 EXPOSE 8000
 

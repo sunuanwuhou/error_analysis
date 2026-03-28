@@ -1,29 +1,49 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ashore</title>
-<style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ashore</title>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']]
+      },
+      options: {
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+      }
+    };
+  </script>
+  <script defer src="/assets/vendor/mathjax/tex-svg.js"></script>
+  <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;background:#f0f2f5;color:#333;display:flex;height:100vh;overflow:hidden}
 
 /* ===== 侧边栏 ===== */
 .sidebar{width:260px;min-width:260px;background:#fff;border-right:1px solid #e8e8e8;display:flex;flex-direction:column;height:100vh;overflow:hidden}
-.sidebar-logo{padding:16px 14px 12px;border-bottom:1px solid #f0f0f0;font-size:15px;font-weight:700;color:#2c3e50}
+.sidebar-logo{padding:16px 14px 12px;border-bottom:1px solid #f0f0f0;font-size:15px;font-weight:700;color:#2c3e50;display:flex;flex-direction:column;gap:6px}
+.runtime-badge{display:inline-flex;align-items:center;align-self:flex-start;padding:4px 10px;border-radius:999px;font-size:11px;line-height:1.2;font-weight:700;border:1px solid #dbe4ee;background:#f8fafc;color:#475569;letter-spacing:.02em}
+.runtime-badge[data-mode="docker"]{background:#ecfdf5;border-color:#bbf7d0;color:#166534}
+.runtime-badge[data-mode="local"]{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8}
+.runtime-badge[data-mode="unknown"]{background:#fff7ed;border-color:#fed7aa;color:#c2410c}
 .sidebar-tools{padding:10px 12px;border-bottom:1px solid #f0f0f0;display:flex;flex-direction:column;gap:7px}
 .sidebar-tools-row{display:flex;align-items:center;gap:8px}
 .sidebar-tools-row .btn{flex:1}
 .sidebar-tools .more-menu{flex:1}
 .sidebar-tools .more-menu>.btn{width:100%}
-.sidebar-cloud-controls{width:calc(100% - 14px);max-width:none;align-self:center;display:flex;flex-direction:column;align-items:stretch;padding:5px 6px 6px;border-radius:10px;background:#f8fafc;border:1px solid #e5eaf2;gap:4px}
+.sidebar-tools .more-menu-panel{left:auto;right:0;min-width:0;width:214px;max-width:calc(100vw - 28px);padding:6px;border-radius:12px;box-shadow:0 14px 28px rgba(15,23,42,.12)}
+.sidebar-tools .more-menu.open .more-menu-panel{gap:4px}
+.sidebar-tools .more-menu-panel .btn{min-height:30px;padding:5px 10px;border-radius:10px;font-size:12px;line-height:1.2}
+.sidebar-cloud-controls{width:calc(100% - 18px);max-width:none;align-self:center;display:flex;flex-direction:column;align-items:stretch;padding:4px 5px 5px;border-radius:10px;background:#f8fafc;border:1px solid #e5eaf2;gap:3px}
 .sidebar-cloud-controls .cloud-meta{align-items:flex-start;min-width:0;max-width:none}
 .sidebar-cloud-controls .cloud-status-line,.sidebar-cloud-controls .cloud-status-hint,.sidebar-cloud-controls .cloud-origin-list{text-align:left;justify-content:flex-start}
 .sidebar-cloud-controls .cloud-status-line{gap:3px}
 .sidebar-cloud-controls .cloud-status-hint{font-size:9px;line-height:1.28;white-space:normal;overflow:visible;text-overflow:clip;display:flex;flex-direction:column;gap:1px}
 .sidebar-cloud-controls .cloud-origin-list{font-size:9px;line-height:1.24}
-.sidebar-cloud-controls .btn{padding:3px 9px;font-size:11px}
-.sidebar-cloud-actions .btn{flex:1}
+.sidebar-cloud-controls .btn{padding:2px 6px;font-size:10px;line-height:1.15;white-space:nowrap}
+.sidebar-cloud-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+.sidebar-cloud-actions .btn{min-width:0}
 .quiz-block{padding:12px 14px;border-bottom:1px solid #f0f0f0}
 .quiz-btn{width:100%;padding:9px 0;background:linear-gradient(135deg,#e74c3c,#c0392b);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;transition:.2s}
 .quiz-btn:hover{opacity:.9;transform:translateY(-1px);box-shadow:0 4px 12px rgba(231,76,60,.35)}
@@ -706,9 +726,19 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .note-md-textarea:focus{border-color:#e74c3c;box-shadow:0 0 0 2px rgba(231,76,60,.1)}
 .note-btn-bar{display:flex;gap:8px;margin-top:6px;flex-shrink:0;align-items:center}
 .note-btn-bar .save-hint{font-size:11px;color:#aaa}
-.note-preview-scroll{flex:1;overflow-y:auto;min-height:0;position:relative;padding-right:6px}
+.table-picker-wrap{position:relative;display:inline-flex}
+.table-picker-panel{position:absolute;left:0;bottom:calc(100% + 8px);display:none;min-width:220px;padding:10px 12px;border:1px solid #eadfd4;border-radius:14px;background:#fff;box-shadow:0 18px 36px rgba(15,23,42,.12);z-index:20}
+.table-picker-title{font-size:12px;font-weight:700;color:#7c5a2f;margin-bottom:8px}
+.table-picker-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.table-picker-grid label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#6b7280}
+.table-picker-grid input{width:100%;padding:6px 8px;border:1px solid #d1d5db;border-radius:8px}
+.table-picker-actions{display:flex;justify-content:flex-end;gap:8px}
+.note-preview-scroll{flex:1;overflow:hidden;min-height:0;position:relative;padding-right:6px;max-height:calc(100vh - 320px)}
 .note-preview-scroll::-webkit-scrollbar{width:5px}
 .note-preview-scroll::-webkit-scrollbar-thumb{background:#ddd;border-radius:3px}
+.note-preview-article-scroll{min-width:0;max-width:none;grid-column:2;max-height:calc(100vh - 320px);overflow-y:auto;overflow-x:hidden;padding-right:6px;scroll-padding-top:14px}
+.note-preview-article-scroll::-webkit-scrollbar{width:5px}
+.note-preview-article-scroll::-webkit-scrollbar-thumb{background:#ddd;border-radius:3px}
 .note-page-shell{display:flex;flex-direction:column;gap:16px;height:100%}
 .note-page-header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:6px 0 2px}
 .note-page-header-main{min-width:0;display:flex;flex-direction:column;gap:8px}
@@ -732,24 +762,32 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .note-toc-list{display:flex;flex-direction:column;gap:4px}
 .note-toc-item{padding:6px 2px;border-radius:10px;color:#7c5a2f;cursor:pointer;font-size:12px;line-height:1.55}
 .note-toc-item:hover{background:#fff2df;color:#c2410c}
+.note-toc-item.active{background:#fff2df;color:#c2410c;font-weight:700}
 .note-toc-item.lv2{padding-left:14px}
 .note-toc-item.lv3{padding-left:24px}
 .note-toc-item.lv4{padding-left:34px}
 .note-toc-inline{margin:10px 14px 0}
-.note-preview-layout{display:grid;grid-template-columns:minmax(180px,220px) minmax(0,1fr);gap:28px;align-items:start;min-height:100%}
+.note-preview-layout{display:grid;grid-template-columns:minmax(200px,240px) minmax(0,1fr);gap:24px;align-items:start;min-height:100%}
 .note-preview-layout-no-toc{display:block}
 .note-preview-article{min-width:0;max-width:none}
-.note-preview-toc{display:block!important;position:sticky;top:0;align-self:start;max-height:calc(100vh - 260px);overflow:auto;padding:4px 0 12px}
-.note-preview-toc .note-toc-floating{padding:12px 14px;border:1px solid #f1e2ce;border-radius:16px;background:linear-gradient(180deg,#fffdf8 0%,#fffaf2 100%);box-shadow:none}
+.note-preview-toc{display:block!important;grid-column:1;grid-row:1;align-self:start;position:sticky;top:0;max-height:calc(100vh - 340px);overflow:hidden;padding:4px 0 12px}
+.note-preview-toc .note-toc-floating{position:relative;max-height:100%;overflow:auto;padding:12px 14px;border:1px solid #f1e2ce;border-radius:16px;background:linear-gradient(180deg,#fffdf8 0%,#fffaf2 100%);box-shadow:none}
 .global-note-toc-dock{display:none!important}
-.note-toc-floating{position:relative;z-index:3;display:block;width:100%;max-width:100%;margin:0;border-color:#f3d6b8;box-shadow:0 8px 24px rgba(180,83,9,.08)}
+.note-toc-floating{z-index:3;display:block;width:100%;max-width:100%;margin:0;border-color:#f3d6b8;box-shadow:0 8px 24px rgba(180,83,9,.08)}
 .note-toc-floating .note-toc-title{display:flex;align-items:center;justify-content:space-between}
+.note-math-inline{display:inline-block;padding:0 2px}
+.note-math-block{margin:10px 0;padding:10px 12px;border:1px solid #f0e2cf;border-radius:12px;background:#fffdf8;overflow-x:auto}
+.note-math-block mjx-container{max-width:100%;overflow-x:auto;overflow-y:hidden}
+.note-math-inline mjx-container{max-width:100%}
 @media (max-width: 980px){
   .notes-area{padding-right:0}
   .notes-panel-right{display:none!important}
   .global-note-toc-dock{display:none!important}
   .note-preview-layout{display:block}
+  .note-preview-scroll{max-height:none}
+  .note-preview-article-scroll{max-height:none}
   .note-preview-toc{position:static;max-height:none;width:auto;max-width:none;margin-bottom:12px}
+  .note-preview-toc .note-toc-floating{position:static;max-height:none}
 }
 /* ===== AI 工具台 Tab 样式 ===== */
 .ai-tab-btn{padding:7px 14px;border:none;background:none;cursor:pointer;font-size:13px;color:#666;border-bottom:2px solid transparent;margin-bottom:-1px;transition:.15s;font-weight:500}
@@ -850,6 +888,22 @@ body{
   overflow:auto;
   padding:0 24px 24px;
 }
+#notesContent.knowledge-notes-active{
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  min-height:0;
+}
+#notesContent.knowledge-notes-active > *{
+  flex:1;
+  min-height:0;
+}
+#notesContent.knowledge-notes-active .knowledge-workspace-shell{
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+  height:100%;
+}
 #notesContent > *{
   width:100%;
   max-width:none;
@@ -888,6 +942,8 @@ body{
   gap:18px;
   padding:16px 20px 20px;
   background:linear-gradient(180deg,#fcfcfd,#fff);
+  min-height:0;
+  flex:1;
 }
 .knowledge-workspace-bar,
 .note-page-intro,
@@ -901,9 +957,10 @@ body{
   border-radius:18px;
   background:#fff;
   box-shadow:0 10px 24px rgba(15,23,42,.04);
+  min-height:0;
 }
 .note-split-editor{flex:1.05;padding:14px 14px 12px}
-.note-split-preview{flex:1.35;padding:14px 18px}
+.note-split-preview{flex:1.35;padding:14px 18px;display:flex;flex-direction:column;min-height:0}
 .note-md-textarea{
   border-radius:14px;
   border-color:#e5e7eb;
@@ -1234,7 +1291,10 @@ body{
 
 <!-- ===== 左侧菜单栏 ===== -->
 <div class="sidebar">
-  <div class="sidebar-logo">Ashore</div>
+  <div class="sidebar-logo">
+    <div>Ashore</div>
+    <div id="runtimeBadge" class="runtime-badge" data-mode="unknown">Runtime: loading</div>
+  </div>
   <div class="sidebar-tools">
     <div class="sidebar-tools-row">
       <button class="btn btn-primary" onclick="openQuickAddModal()">＋ 添加</button>
@@ -1267,8 +1327,8 @@ body{
       <div class="sidebar-tools-row sidebar-cloud-actions">
         <button class="btn btn-secondary" onclick="loadCloudBackup()">Cloud Load</button>
         <button class="btn btn-secondary" onclick="saveCloudBackup()">Cloud Save</button>
+        <button class="btn btn-secondary" id="cloudLogoutBtn" onclick="logoutCloud()">Logout</button>
       </div>
-      <button class="btn btn-secondary" id="cloudLogoutBtn" onclick="logoutCloud()">Logout</button>
     </div>
   </div>
   <div class="quiz-block">
@@ -2497,6 +2557,10 @@ let cloudOriginStatuses = [];
 let cloudOriginStatusTimer = null;
 let cloudDetailsExpanded = false;
 let cloudMeta = getDefaultCloudMeta();
+const LARGE_CLOUD_BACKUP_BYTES = 1.5 * 1024 * 1024;
+const MOBILE_DEFERRED_RESTORE_BYTES = 600 * 1024;
+let deferredCloudRestorePromise = null;
+let deferredCloudRestoreUpdatedAt = '';
 function toggleCloudDetails() {
   cloudDetailsExpanded = !cloudDetailsExpanded;
   renderCloudUi();
@@ -2537,6 +2601,39 @@ function getDefaultCloudMeta() {
 }
 function saveCloudMeta() {
   DB.set(KEY_CLOUD_META, JSON.stringify(cloudMeta || getDefaultCloudMeta()));
+}
+function getCloudBackupBytes(meta) {
+  return Number(meta && meta.payloadBytes || 0);
+}
+function formatBackupBytes(bytes) {
+  const value = Number(bytes || 0);
+  if (!value) return '0 B';
+  if (value >= 1024 * 1024) return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+  if (value >= 1024) return `${Math.round(value / 1024)} KB`;
+  return `${value} B`;
+}
+function isLikelyMobileClient() {
+  const ua = String((navigator && navigator.userAgent) || '').toLowerCase();
+  return /android|iphone|ipad|ipod|mobile|harmony/.test(ua);
+}
+function shouldUseDeferredCloudRestore(meta) {
+  const bytes = getCloudBackupBytes(meta);
+  if (!bytes) return false;
+  if (bytes >= LARGE_CLOUD_BACKUP_BYTES) return true;
+  return isLikelyMobileClient() && bytes >= MOBILE_DEFERRED_RESTORE_BYTES;
+}
+function delayCloudRestore(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms || 0));
+}
+function getBackupSummary(meta) {
+  const summary = meta && typeof meta.summary === 'object' ? meta.summary : {};
+  return {
+    errors: Number(summary.errors || 0),
+    notesByType: Number(summary.notesByType || 0),
+    noteImages: Number(summary.noteImages || 0),
+    knowledgeNodes: Number(summary.knowledgeNodes || 0),
+    knowledgeNotes: Number(summary.knowledgeNotes || 0)
+  };
 }
 async function clearWorkspaceStorageForRemoteRestore() {
   errors = [];
@@ -2714,12 +2811,16 @@ function rememberCloudDecision(updatedAt, action) {
   }
   saveCloudMeta();
 }
-async function fetchCloudBackupData() {
-  const res = await fetch('/api/backup', { credentials: 'include' });
+async function fetchCloudBackupData(opts) {
+  opts = opts || {};
+  const res = await fetch(opts.metaOnly ? '/api/backup?meta=1' : '/api/backup', { credentials: 'include' });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.detail || data.error || 'load failed');
   updateCloudOriginStatuses(data.origins);
   return data;
+}
+async function fetchCloudBackupMeta() {
+  return fetchCloudBackupData({ metaOnly: true });
 }
 async function applyCloudBackup(data, updatedAt, opts) {
   opts = opts || {};
@@ -2728,9 +2829,13 @@ async function applyCloudBackup(data, updatedAt, opts) {
     clearLocalSyncMarkers();
     resetCurrentOriginRestoreDecision();
   }
-  withCloudAutoSaveSuppressed(() => withIncrementalSyncSuppressed(() => {
-    _applyFullBackup(data, 'restore');
-  }));
+  if (opts.staged !== false) {
+    await _applyCloudBackupStaged(data, updatedAt, opts);
+  } else {
+    withCloudAutoSaveSuppressed(() => withIncrementalSyncSuppressed(() => {
+      _applyFullBackup(data, 'restore', opts);
+    }));
+  }
   rememberCloudDecision(updatedAt || data.exportTime || '', 'loaded');
   scheduleOriginStatusSync({
     localChangedAt: updatedAt || data.exportTime || '',
@@ -2740,17 +2845,51 @@ async function applyCloudBackup(data, updatedAt, opts) {
   setCloudSyncState('synced', 'Cloud backup loaded into this entry', updatedAt || data.exportTime || '');
   if (!opts || !opts.silent) showToast('Cloud backup loaded', 'success');
 }
+async function queueDeferredCloudRestore(meta, opts) {
+  opts = opts || {};
+  const updatedAt = String(meta && meta.updatedAt || '');
+  if (deferredCloudRestorePromise && deferredCloudRestoreUpdatedAt === updatedAt) return deferredCloudRestorePromise;
+  deferredCloudRestoreUpdatedAt = updatedAt;
+  deferredCloudRestorePromise = (async () => {
+    await delayCloudRestore(180);
+    setCloudSyncState('saving', `云端数据较大（${formatBackupBytes(getCloudBackupBytes(meta))}），正在后台缓慢同步`, updatedAt);
+    const fullData = await fetchCloudBackupData();
+    if (!fullData.exists || !fullData.backup) return;
+    await applyCloudBackup({ ...fullData.backup, summary: fullData.summary || {} }, fullData.updatedAt || fullData.backup.exportTime || updatedAt, {
+      ...opts,
+      silent: true,
+      staged: true,
+      skipCompletionAlert: true
+    });
+    showToast('云端数据已在后台同步完成', 'success');
+  })().catch(error => {
+    console.warn('deferred cloud restore failed:', error);
+    setCloudSyncState('error', error.message || '后台同步失败，请稍后重试', updatedAt);
+  }).finally(() => {
+    deferredCloudRestorePromise = null;
+    deferredCloudRestoreUpdatedAt = '';
+  });
+  return deferredCloudRestorePromise;
+}
 async function maybeRestoreCloudBackup() {
   if (!cloudUser || cloudBusy) return;
   cloudBusy = true;
   try {
-    const data = await fetchCloudBackupData();
-    if (!data.exists || !data.backup) return;
-    const updatedAt = data.updatedAt || data.backup.exportTime || '';
+    const meta = await fetchCloudBackupMeta();
+    if (!meta.exists) return;
+    const updatedAt = meta.updatedAt || '';
     const originKey = getCloudOriginKey();
     const existingDecision = cloudMeta.restoreDecisions && cloudMeta.restoreDecisions[originKey];
     if (!hasLocalWorkspaceData()) {
-      await applyCloudBackup(data.backup, updatedAt, { silent: true, forceOverwriteLocal: true });
+      if (shouldUseDeferredCloudRestore(meta)) {
+        setCloudSyncState('saving', `云端数据较大（${formatBackupBytes(getCloudBackupBytes(meta))}），已切换为后台缓慢同步`, updatedAt);
+        queueDeferredCloudRestore(meta, { forceOverwriteLocal: true });
+        showToast('检测到云端数据较大，已改为后台缓慢同步', 'success');
+        return;
+      }
+      const data = await fetchCloudBackupData();
+      if (!data.exists || !data.backup) return;
+      await applyCloudBackup({ ...data.backup, summary: data.summary || {} }, updatedAt || data.backup.exportTime || '', { silent: true, forceOverwriteLocal: true, staged: true, skipCompletionAlert: true });
       showToast('当前入口已自动恢复云端备份', 'success');
       return;
     }
@@ -2762,7 +2901,15 @@ async function maybeRestoreCloudBackup() {
       showToast('已保留当前入口本地数据，可随时点击 Cloud Load 恢复云端', 'warning');
       return;
     }
-    await applyCloudBackup(data.backup, updatedAt, { silent: true, forceOverwriteLocal: true });
+    if (shouldUseDeferredCloudRestore(meta)) {
+      setCloudSyncState('saving', `云端数据较大（${formatBackupBytes(getCloudBackupBytes(meta))}），已切换为后台缓慢同步`, updatedAt);
+      queueDeferredCloudRestore(meta, { forceOverwriteLocal: true });
+      showToast('已开始后台恢复云端备份', 'success');
+      return;
+    }
+    const data = await fetchCloudBackupData();
+    if (!data.exists || !data.backup) return;
+    await applyCloudBackup({ ...data.backup, summary: data.summary || {} }, updatedAt || data.backup.exportTime || '', { silent: true, forceOverwriteLocal: true, staged: true, skipCompletionAlert: true });
     showToast('已恢复云端备份到当前入口', 'success');
   } catch (e) {
     console.warn('cloud restore skipped:', e);
@@ -2944,18 +3091,29 @@ async function loadCloudBackup(opts) {
   cloudBusy = true;
   setCloudSyncState('saving', '正在拉取云端备份', '');
   try {
-    const data = await fetchCloudBackupData();
-    if (!data.exists || !data.backup) {
+    const meta = await fetchCloudBackupMeta();
+    if (!meta.exists) {
       if (!opts.silent) showToast('Cloud backup is empty', 'warning');
       return;
     }
-    const updatedAt = data.updatedAt || data.backup.exportTime || '';
+    const updatedAt = meta.updatedAt || '';
     const hasLocalData = (errors && errors.length) || Object.keys(notesByType || {}).length || Object.keys(knowledgeNotes || {}).length;
     if (opts.askBeforeRestore && hasLocalData) {
       const ok = confirm('Cloud backup found. Restore it to current device?');
       if (!ok) return;
     }
-    await applyCloudBackup(data.backup, updatedAt, { ...opts, forceOverwriteLocal: true });
+    if (shouldUseDeferredCloudRestore(meta)) {
+      setCloudSyncState('saving', `云端数据较大（${formatBackupBytes(getCloudBackupBytes(meta))}），已切换为后台缓慢同步`, updatedAt);
+      queueDeferredCloudRestore(meta, { ...opts, forceOverwriteLocal: true });
+      if (!opts.silent) showToast('已切换为后台缓慢同步', 'success');
+      return;
+    }
+    const data = await fetchCloudBackupData();
+    if (!data.exists || !data.backup) {
+      if (!opts.silent) showToast('Cloud backup is empty', 'warning');
+      return;
+    }
+    await applyCloudBackup({ ...data.backup, summary: data.summary || {} }, updatedAt || data.backup.exportTime || '', { ...opts, forceOverwriteLocal: true, staged: true, skipCompletionAlert: true });
     cloudConflictBlocked = false;
   } catch (e) {
     setCloudSyncState('error', e.message || '云端加载失败，请稍后重试', '');
@@ -4599,19 +4757,80 @@ function encodeInlineValue(value) {
 function scrollToRenderedAnchor(anchorId, opts) {
   const target = document.getElementById(anchorId);
   if (!target) return false;
-  const scroller = target.closest('.note-preview-scroll');
+  const scroller = target.closest('.note-preview-article-scroll') || target.closest('.note-preview-scroll');
   if (scroller) {
     const top = target.offsetTop - 12;
     scroller.scrollTo({ top: top < 0 ? 0 : top, behavior: (opts && opts.behavior) || 'smooth' });
   } else {
     target.scrollIntoView({ behavior: (opts && opts.behavior) || 'smooth', block: 'start' });
   }
+  setActiveNoteTocItem(anchorId);
   target.style.background = '#fff3cd';
   setTimeout(() => { target.style.background = ''; }, 1800);
   return true;
 }
 function jumpToRenderedAnchor(anchorId) {
   scrollToRenderedAnchor(anchorId, { behavior: 'smooth' });
+}
+function setActiveNoteTocItem(anchorId) {
+  const items = document.querySelectorAll('.note-toc-item[data-anchor-id]');
+  items.forEach(item => item.classList.toggle('active', item.getAttribute('data-anchor-id') === anchorId));
+  const active = document.querySelector(`.note-toc-item[data-anchor-id="${anchorId}"]`);
+  if (!active) return;
+  const container = active.closest('.note-toc-floating');
+  if (!container) return;
+  const top = active.offsetTop;
+  const bottom = top + active.offsetHeight;
+  const viewTop = container.scrollTop;
+  const viewBottom = viewTop + container.clientHeight;
+  if (top < viewTop + 12) {
+    container.scrollTo({ top: Math.max(top - 12, 0), behavior: 'smooth' });
+  } else if (bottom > viewBottom - 12) {
+    container.scrollTo({ top: bottom - container.clientHeight + 12, behavior: 'smooth' });
+  }
+}
+function syncActiveNoteToc(previewEl) {
+  if (!previewEl) return;
+  const headings = Array.from(previewEl.querySelectorAll('.note-md-heading[id]'));
+  if (!headings.length) return;
+  const current = headings.reduce((found, heading) => {
+    return previewEl.scrollTop + 24 >= heading.offsetTop ? heading : found;
+  }, headings[0]);
+  if (current && current.id) setActiveNoteTocItem(current.id);
+}
+function bindNotePreviewScrollTracking(contentEl) {
+  if (!contentEl) return;
+  const preview = contentEl.querySelector('#noteSplitPreview .note-preview-article-scroll') || contentEl.querySelector('#noteSplitPreview');
+  if (!preview || preview.dataset.tocBound === '1') return;
+  preview.dataset.tocBound = '1';
+  preview.addEventListener('scroll', function() {
+    syncActiveNoteToc(preview);
+  }, { passive: true });
+  requestAnimationFrame(function() {
+    syncActiveNoteToc(preview);
+    renderMathInElement(preview);
+  });
+}
+function renderMathInElement(element) {
+  if (!element) return;
+  const mathJax = window.MathJax;
+  if (!mathJax || typeof mathJax.typesetPromise !== 'function') {
+    const retryCount = Number(element.dataset.mathRetryCount || '0');
+    if (retryCount < 40) {
+      element.dataset.mathRetryCount = String(retryCount + 1);
+      setTimeout(function() {
+        renderMathInElement(element);
+      }, 180);
+    }
+    return;
+  }
+  element.dataset.mathRetryCount = '0';
+  if (typeof mathJax.typesetClear === 'function') {
+    mathJax.typesetClear([element]);
+  }
+  mathJax.typesetPromise([element]).catch(function(err) {
+    console.warn('MathJax typeset failed', err);
+  });
 }
 function renderMd(raw, opts) {
   if (!raw||!raw.trim()) return '';
@@ -4629,6 +4848,34 @@ function renderMd(raw, opts) {
       while (i < lines.length && !lines[i].startsWith('```')) { codeLines.push(lines[i]); i++; }
       out.push(`<pre><code>${escapeHtml(codeLines.join('\n'))}</code></pre>`);
       i++; continue;
+    }
+    const singleLineBlockMath = line.trim().match(/^\$\$(.+)\$\$$/);
+    if (singleLineBlockMath) {
+      out.push(`<div class="note-math-block">\\[${escapeHtml(singleLineBlockMath[1].trim())}\\]</div>`);
+      i++;
+      continue;
+    }
+    if (line.trim() === '$$') {
+      const mathLines = [];
+      i++;
+      while (i < lines.length && lines[i].trim() !== '$$') {
+        mathLines.push(lines[i]);
+        i++;
+      }
+      if (i < lines.length && lines[i].trim() === '$$') i++;
+      out.push(`<div class="note-math-block">\\[${escapeHtml(mathLines.join('\n'))}\\]</div>`);
+      continue;
+    }
+    if (line.trim() === '\\[') {
+      const mathLines = [];
+      i++;
+      while (i < lines.length && lines[i].trim() !== '\\]') {
+        mathLines.push(lines[i]);
+        i++;
+      }
+      if (i < lines.length && lines[i].trim() === '\\]') i++;
+      out.push(`<div class="note-math-block">\\[${escapeHtml(mathLines.join('\n'))}\\]</div>`);
+      continue;
     }
     // 表格（第二行是 --- 分隔行）
     if (line.includes('|') && i+1 < lines.length && /^\|?[\s\-:|]+\|/.test(lines[i+1])) {
@@ -4683,6 +4930,7 @@ function parseLooseNoteHeading(line) {
   return markdownMatch ? { level: markdownMatch[1].length, text: markdownMatch[2].trim(), rest: '' } : null;
 }
 function mdInline(text) {
+  const mathTokens = [];
   // 先把图片语法提取为占位符（保留原始URL，不被 escapeHtml 处理）
   const imgs = [];
   text = text.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_,alt,url) => {
@@ -4691,10 +4939,20 @@ function mdInline(text) {
     imgs.push(`<img src="${src}" alt="${alt}" class="cuoti-img" onclick="this.classList.toggle('expanded')" title="点击放大/缩小">`);
     return '\x00IMG'+(imgs.length-1)+'\x00';
   });
+  text = text
+    .replace(/\\\((.+?)\\\)/g, (_,expr) => {
+      mathTokens.push(`<span class="note-math-inline">\\(${escapeHtml(expr)}\\)</span>`);
+      return '\x00MATH'+(mathTokens.length-1)+'\x00';
+    })
+    .replace(/(^|[^\\$])\$([^$\n]+)\$/g, (_,prefix,expr) => {
+      mathTokens.push(`<span class="note-math-inline">\\(${escapeHtml(expr)}\\)</span>`);
+      return prefix + '\x00MATH'+(mathTokens.length-1)+'\x00';
+    });
   let s = escapeHtml(text)
     .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
     .replace(/\*(.+?)\*/g,'<em>$1</em>')
     .replace(/`(.+?)`/g,'<code>$1</code>');
+  mathTokens.forEach((math,idx) => { s = s.replace('\x00MATH'+idx+'\x00', math); });
   imgs.forEach((img,idx) => { s = s.replace('\x00IMG'+idx+'\x00', img); });
   return s;
 }
@@ -5490,7 +5748,6 @@ function renderCard(e){
   const isRev=revealed.has(normalizedId);
   const idLit = idArg(e.id);
   const noteNodeLit = noteNodeArg(e.noteNodeId || '');
-  const notePath = e.noteNodeId ? collapseKnowledgePathTitles(getKnowledgePathTitles(e.noteNodeId)).join(' > ') : '未关联知识点';
 
   // 复习信息
   let quizInfoStr='';
@@ -5584,7 +5841,6 @@ function renderCard(e){
       <span class="card-drag-handle" title="拖到左侧知识点可改挂载" draggable="true" ondragstart='startErrorDrag(${idLit}, event)' ondragend="endErrorDrag()" onclick="event.preventDefault();event.stopPropagation()">⋮⋮ 拖挂载</span>
     </div>
     <div class="card-question">${hl(e.question,searchKw)}</div>
-    <div style="font-size:11px;color:#888;line-height:1.6;margin-bottom:8px">知识点：${escapeHtml(notePath)}</div>
     ${imgTag}
     ${opts?`<div class="card-options">${opts}</div>`:''}
     ${isRev ? detailHtml+noteArea : ''}
@@ -6090,7 +6346,6 @@ function renderClaudeBankCard(item) {
   const normalizedId = normalizeErrorId(item.id);
   const idLit = idArg(item.id);
   const noteNodeLit = noteNodeArg(item.noteNodeId || '');
-  const notePath = item.noteNodeId ? collapseKnowledgePathTitles(getKnowledgePathTitles(item.noteNodeId)).join(' > ') : '未关联知识点';
   const isRev = revealed.has(normalizedId);
   const opts = item.options ? item.options.split(/\n|\|/).map(o => `<p>${escapeHtml(o.trim())}</p>`).join('') : '';
   const imgTag = item.imgData ? `<img src="${escapeHtml(item.imgData)}" class="cuoti-img" onclick="this.classList.toggle('expanded')" title="点击放大/缩小">` : '';
@@ -6146,7 +6401,6 @@ function renderClaudeBankCard(item) {
       ${item.addDate ? `<span style="font-size:11px;color:#999">${escapeHtml(item.addDate)}</span>` : ''}
     </div>
     <div class="card-question">${escapeHtml(item.question || '')}</div>
-    <div style="font-size:11px;color:#888;line-height:1.6;margin-bottom:8px">知识点：${escapeHtml(notePath)}</div>
     ${imgTag}
     ${opts ? `<div class="card-options">${opts}</div>` : ''}
     ${isRev ? detailHtml : ''}
@@ -6966,7 +7220,8 @@ function importFullMerge(data) {
   _applyFullBackup(data, 'merge');
 }
 
-function _applyFullBackup(data, mode) {
+function _applyFullBackup(data, mode, opts) {
+  opts = opts || {};
   if (mode === 'restore') {
     errors = (data.errors || []).map((e) => ({
       ...e,
@@ -7034,10 +7289,92 @@ function _applyFullBackup(data, mode) {
   const errCount = errors.length;
   const noteCount = Object.keys(notesByType || {}).length;
   const knowledgeCount = collectKnowledgeNodes().length;
-  alert(mode === 'restore'
-    ? `完整恢复完成！${errCount} 条错题、${noteCount} 个旧笔记模块、${knowledgeCount} 个知识点笔记已恢复。`
-    : `合并完成！当前共 ${errCount} 条错题、${noteCount} 个旧笔记模块、${knowledgeCount} 个知识点笔记。`
-  );
+  if (!opts.skipCompletionAlert) {
+    alert(mode === 'restore'
+      ? `完整恢复完成！${errCount} 条错题、${noteCount} 个旧笔记模块、${knowledgeCount} 个知识点笔记已恢复。`
+      : `合并完成！当前共 ${errCount} 条错题、${noteCount} 个旧笔记模块、${knowledgeCount} 个知识点笔记。`
+    );
+  }
+}
+
+async function _applyCloudBackupStaged(data, updatedAt, opts) {
+  opts = opts || {};
+  const syncAt = updatedAt || data.exportTime || '';
+  const summary = getBackupSummary(data);
+  withCloudAutoSaveSuppressed(() => withIncrementalSyncSuppressed(() => {
+    errors = (data.errors || []).map((e) => ({
+      ...e,
+      entryKind: normalizeEntryKind(e.entryKind, 'error'),
+      id: String(e.id || crypto.randomUUID()),
+      addDate: e.addDate || today(),
+      quiz: e.quiz || null,
+      status: e.status || 'focus',
+      updatedAt: e.updatedAt || new Date().toISOString(),
+      masteryLevel: e.masteryLevel || 'not_mastered',
+      masteryUpdatedAt: e.masteryUpdatedAt || null,
+      lastPracticedAt: e.lastPracticedAt || null
+    }));
+    revealed = new Set((data.revealed || []).map(String));
+    expTypes = new Set((data.expTypes || []).map(String));
+    expMain = new Set((data.expMain || []).map(String));
+    expMainSub = new Set((data.expMainSub || []).map(String));
+    expMainSub2 = new Set((data.expMainSub2 || []).map(String));
+    saveData();
+    saveReveal();
+    saveExpTypes();
+    saveExpMain();
+  }));
+  setCloudSyncState('saving', `正在同步云端错题 ${summary.errors || errors.length} 条`, syncAt);
+  await delayCloudRestore(0);
+
+  withCloudAutoSaveSuppressed(() => withIncrementalSyncSuppressed(() => {
+    _typeRules = data.typeRules || null;
+    _dirTree = data.dirTree || null;
+    globalNote = data.globalNote !== undefined ? data.globalNote : '';
+    knowledgeExpanded = new Set((data.knowledgeExpanded || []).map(String));
+    knowledgeExpandedLoaded = true;
+    todayDate = data.todayDate || today();
+    todayDone = Number(data.todayDone || 0);
+    _history = Array.isArray(data.history) ? data.history : [];
+    DB.set(KEY_TYPE_RULES, JSON.stringify(_typeRules));
+    DB.set(KEY_DIR_TREE, JSON.stringify(_dirTree));
+    DB.set(KEY_GLOBAL_NOTE, globalNote);
+    DB.set(KEY_KNOWLEDGE_EXPANDED, JSON.stringify(Array.from(knowledgeExpanded)));
+    DB.set(KEY_TODAY_DATE, todayDate);
+    DB.set(KEY_TODAY_DONE, String(todayDone));
+    DB.set(KEY_HISTORY, JSON.stringify(_history));
+    if (data.notesByType) {
+      notesByType = data.notesByType;
+      DB.set(KEY_NOTES_BY_TYPE, JSON.stringify(notesByType));
+    }
+    if (data.noteImages) {
+      noteImages = data.noteImages;
+      DB.set(KEY_NOTE_IMAGES, JSON.stringify(noteImages));
+    }
+  }));
+  setCloudSyncState('saving', `正在同步笔记与图片 ${summary.notesByType + summary.noteImages} 项`, syncAt);
+  await delayCloudRestore(0);
+
+  withCloudAutoSaveSuppressed(() => withIncrementalSyncSuppressed(() => {
+    knowledgeTree = data.knowledgeTree || null;
+    knowledgeNotes = data.knowledgeNotes || {};
+    DB.set(KEY_KNOWLEDGE_TREE, JSON.stringify(knowledgeTree));
+    DB.set(KEY_KNOWLEDGE_NOTES, JSON.stringify(knowledgeNotes));
+    ensureKnowledgeState({ syncErrors: true, persist: true });
+  }));
+  setCloudSyncState('saving', `正在同步知识点 ${summary.knowledgeNodes || collectKnowledgeNodes().length} 个`, syncAt);
+  await delayCloudRestore(0);
+
+  closeModal('importModal');
+  saveReveal();
+  renderSidebar();
+  renderAll();
+  if (!opts.skipCompletionAlert) {
+    const errCount = errors.length;
+    const noteCount = Object.keys(notesByType || {}).length;
+    const knowledgeCount = collectKnowledgeNodes().length;
+    alert(`完整恢复完成！${errCount} 条错题、${noteCount} 个旧笔记模块、${knowledgeCount} 个知识点笔记已恢复。`);
+  }
 }
 
 // ============================================================
@@ -7067,6 +7404,7 @@ document.addEventListener('keydown', e=>{
 // ============================================================
 const KEY_DIR_TREE = 'xc_dir_tree';
 const FIXED_TYPES = ['言语理解与表达','数量关系','判断推理','资料分析','常识判断','其他'];
+const FIXED_KNOWLEDGE_ROOTS = ['言语理解与表达','数量关系','判断推理','资料分析','常识判断'];
 const DEFAULT_DIR_TREE = {
   '言语理解与表达':{'逻辑填空':['成语辨析','实词辨析','虚词辨析','语境分析'],'片段阅读':['主旨概括','意图判断','细节判断','词句理解'],'语句排序':['语句排序','语句填空']},
   '数量关系':{'数字推理':['等差数列','等比数列','多级数列','混合数列'],'数学运算':['工程问题','行程问题','概率问题','排列组合','利润问题']},
@@ -7180,11 +7518,34 @@ function createKnowledgeNode(title, level, isLeaf) {
   };
 }
 function createDefaultKnowledgeTree() {
-  const roots = FIXED_TYPES.map(type => createKnowledgeNode(type, 1, false));
+  const roots = FIXED_KNOWLEDGE_ROOTS.map(type => createKnowledgeNode(type, 1, false));
   if (!roots.some(node => node.title === '未分类')) {
     roots.push(createKnowledgeNode('未分类', 1, false));
   }
   return { version: 1, roots };
+}
+function ensureFixedKnowledgeRoots() {
+  const roots = getKnowledgeRootNodes();
+  const desiredTitles = [...FIXED_KNOWLEDGE_ROOTS, '未分类'];
+  const orderMap = new Map(desiredTitles.map((title, index) => [title, index]));
+  let changed = false;
+  desiredTitles.forEach(title => {
+    if (!roots.some(node => String(node.title || '') === title)) {
+      roots.push(createKnowledgeNode(title, 1, false));
+      changed = true;
+    }
+  });
+  const sortedRoots = roots.slice().sort((a, b) => {
+    const left = orderMap.has(String(a.title || '')) ? orderMap.get(String(a.title || '')) : desiredTitles.length + 100;
+    const right = orderMap.has(String(b.title || '')) ? orderMap.get(String(b.title || '')) : desiredTitles.length + 100;
+    if (left !== right) return left - right;
+    return String(a.title || '').localeCompare(String(b.title || ''), 'zh-CN');
+  });
+  if (sortedRoots.some((node, index) => node !== roots[index])) {
+    knowledgeTree.roots = sortedRoots;
+    changed = true;
+  }
+  return changed;
 }
 function getKnowledgeRootNodes() {
   if (!knowledgeTree || !Array.isArray(knowledgeTree.roots)) {
@@ -7335,6 +7696,11 @@ function pruneKnowledgeGhostNodes(nodes, directCountMap) {
     const nodeId = String(node.id || '');
     const directCount = directCountMap.get(nodeId) || 0;
     const hasContent = !!String(node.contentMd || '').trim();
+    const isProtectedRoot = Number(node.level || 0) === 1 && FIXED_KNOWLEDGE_ROOTS.includes(String(node.title || ''));
+    if (isProtectedRoot) {
+      next.push(node);
+      return;
+    }
     if (!hasContent && directCount === 0) {
       if (node.children.length === 0) {
         knowledgeExpanded.delete(nodeId);
@@ -7535,7 +7901,8 @@ function ensureKnowledgeState(opts) {
   const options = opts || {};
   getKnowledgeRootNodes();
   knowledgeNotes = knowledgeNotes && typeof knowledgeNotes === 'object' ? knowledgeNotes : {};
-  let changed = mergeDuplicateKnowledgeSiblings(getKnowledgeRootNodes());
+  let changed = ensureFixedKnowledgeRoots();
+  if (mergeDuplicateKnowledgeSiblings(getKnowledgeRootNodes())) changed = true;
   if (collapseDuplicateKnowledgeWrappers(getKnowledgeRootNodes())) changed = true;
   if (pruneKnowledgeGhostNodes(getKnowledgeRootNodes(), getKnowledgeDirectErrorCountMap())) changed = true;
   normalizeKnowledgeNodes(getKnowledgeRootNodes(), 1);
@@ -8758,6 +9125,34 @@ function renderKnowledgeNotesView() {
           </div>
           <textarea id="noteTypeTextarea" class="note-md-textarea" placeholder="# 规则总结&#10;## 易错点&#10;- ...&#10;&#10;## 行动建议&#10;- ..." oninput="liveNotePreview()">${escapeHtml(note.content || '')}</textarea>
           <div class="note-btn-bar">
+            <div class="table-picker-wrap">
+              <button class="btn btn-secondary btn-sm" type="button" id="tablePickerBtn" onclick="toggleTablePicker()">+ 琛ㄦ牸</button>
+              <div class="table-picker-panel" id="tablePickerPanel">
+                <div class="table-picker-title">鎻掑叆 Markdown 琛ㄦ牸</div>
+                <div class="table-picker-grid">
+                  <label>琛屾暟<input id="tblRows" type="number" min="1" max="20" value="3"></label>
+                  <label>鍒楁暟<input id="tblCols" type="number" min="1" max="10" value="3"></label>
+                </div>
+                <div class="table-picker-actions">
+                  <button class="btn btn-secondary btn-sm" type="button" onclick="document.getElementById('tablePickerPanel').style.display='none'">鍙栨秷</button>
+                  <button class="btn btn-primary btn-sm" type="button" onclick="insertQuickMdTable(document.getElementById('tblRows').value, document.getElementById('tblCols').value)">鎻掑叆</button>
+                </div>
+              </div>
+            </div>
+            <div class="table-picker-wrap">
+              <button class="btn btn-secondary btn-sm" type="button" id="tablePickerBtn" onclick="toggleTablePicker()">+ 表格</button>
+              <div class="table-picker-panel" id="tablePickerPanel">
+                <div class="table-picker-title">插入 Markdown 表格</div>
+                <div class="table-picker-grid">
+                  <label>行数<input id="tblRows" type="number" min="1" max="20" value="3"></label>
+                  <label>列数<input id="tblCols" type="number" min="1" max="10" value="3"></label>
+                </div>
+                <div class="table-picker-actions">
+                  <button class="btn btn-secondary btn-sm" type="button" onclick="document.getElementById('tablePickerPanel').style.display='none'">取消</button>
+                  <button class="btn btn-primary btn-sm" type="button" onclick="insertQuickMdTable(document.getElementById('tblRows').value, document.getElementById('tblCols').value)">插入</button>
+                </div>
+              </div>
+            </div>
             <button class="btn btn-primary btn-sm" onclick="saveNoteTypeContent()">💾 保存</button>
             <button class="btn btn-secondary btn-sm" onclick="addKnowledgeLeafUnderSelected()">+ 新建同层节点</button>
             <button class="btn btn-secondary btn-sm" onclick="renameKnowledgeNode('${selectedKnowledgeNodeId}')">重命名</button>
@@ -8787,6 +9182,7 @@ function renderKnowledgeNotesViewV2() {
   ensureKnowledgeState();
   const content = document.getElementById('notesContent');
   if (!content) return;
+  content.classList.add('knowledge-notes-active');
   const currentNode = getCurrentKnowledgeNode() || getKnowledgeRootNodes()[0];
   if (!currentNode) {
     content.innerHTML = '<div class="note-placeholder" style="padding:40px;text-align:center;color:#999">暂无知识点笔记，先录入错题后自动生成</div>';
@@ -8836,6 +9232,20 @@ function renderKnowledgeNotesViewV2() {
             <button onclick="saveNoteTypeContent();noteEditing=false;renderNotesByType()" style="float:right;background:#52c41a;color:#fff;border:none;border-radius:4px;padding:2px 10px;cursor:pointer;font-size:12px">完成</button>
           </div>
           ${summaryHtml}
+          <div class="table-picker-wrap" style="margin:0 0 8px">
+            <button class="btn btn-secondary btn-sm" type="button" id="tablePickerBtn" onclick="toggleTablePicker()">+ 琛ㄦ牸</button>
+            <div class="table-picker-panel" id="tablePickerPanel">
+              <div class="table-picker-title">鎻掑叆 Markdown 琛ㄦ牸</div>
+              <div class="table-picker-grid">
+                <label>琛屾暟<input id="tblRows" type="number" min="1" max="20" value="3"></label>
+                <label>鍒楁暟<input id="tblCols" type="number" min="1" max="10" value="3"></label>
+              </div>
+              <div class="table-picker-actions">
+                <button class="btn btn-secondary btn-sm" type="button" onclick="document.getElementById('tablePickerPanel').style.display='none'">鍙栨秷</button>
+                <button class="btn btn-primary btn-sm" type="button" onclick="insertQuickMdTable(document.getElementById('tblRows').value, document.getElementById('tblCols').value)">鎻掑叆</button>
+              </div>
+            </div>
+          </div>
           <textarea id="noteTypeTextarea" class="note-md-textarea" placeholder="# 规则总结&#10;## 易错点&#10;- ...&#10;&#10;## 行动建议&#10;- ..." oninput="liveNotePreview()">${escapeHtml(noteContent)}</textarea>
           <div class="note-btn-bar">
             <button class="btn btn-primary btn-sm" onclick="saveNoteTypeContent()">保存</button>
@@ -8862,6 +9272,7 @@ function renderKnowledgeNotesViewV2() {
   content.innerHTML = `${workspaceBar}${bodyHtml}`;
   decorateKnowledgeNotesView(content, currentNode, pathText, directCount, linkedCount, summaryHtml, noteEditing);
   updateGlobalNoteTocDock(noteHeadings, noteAnchorPrefix);
+  bindNotePreviewScrollTracking(content);
   if (noteEditing) {
     const ta = content.querySelector('#noteTypeTextarea');
     if (ta) {
@@ -8925,6 +9336,24 @@ function insertMdTable() {
 
   document.getElementById('tablePickerPanel').style.display = 'none';
 }
+function insertQuickMdTable(rows, cols) {
+  const ta = document.getElementById('noteTypeTextarea');
+  if (!ta) return;
+  const safeRows = Math.min(20, Math.max(1, parseInt(rows, 10) || 3));
+  const safeCols = Math.min(10, Math.max(1, parseInt(cols, 10) || 3));
+  const header = '| ' + Array.from({ length: safeCols }, (_, i) => `Col${i + 1}`).join(' | ') + ' |';
+  const separator = '| ' + Array(safeCols).fill('---').join(' | ') + ' |';
+  const row = '| ' + Array(safeCols).fill('    ').join(' | ') + ' |';
+  const table = '\n' + [header, separator, ...Array(safeRows).fill(row)].join('\n') + '\n';
+  const start = ta.selectionStart;
+  const end = ta.selectionEnd;
+  ta.value = ta.value.substring(0, start) + table + ta.value.substring(end);
+  ta.selectionStart = ta.selectionEnd = start + table.length;
+  ta.focus();
+  liveNotePreview();
+  const panel = document.getElementById('tablePickerPanel');
+  if (panel) panel.style.display = 'none';
+}
 
 function liveNotePreview() {
   const ta = document.getElementById('noteTypeTextarea');
@@ -8937,8 +9366,15 @@ function liveNotePreview() {
       ? renderNotePreviewLayout(renderMd(ta.value, { anchorPrefix }), tocHtml)
       : '<span style="color:#ccc;font-size:12px;font-style:italic">输入 Markdown 后在此预览…</span>';
   }
+  if (preview) {
+    requestAnimationFrame(() => {
+      syncActiveNoteToc(preview);
+      renderMathInElement(preview);
+    });
+  }
   const gta = document.getElementById('globalNoteTA');
   const gpv = document.getElementById('noteEditPreview');
+  if (gta && gpv) requestAnimationFrame(() => renderMathInElement(gpv));
   if (gta && gpv) gpv.innerHTML = renderMd(gta.value) || '<span style="color:#ccc;font-size:12px;font-style:italic">右侧实时预览</span>';
 }
 
@@ -8989,7 +9425,7 @@ function prependNodeHeading(headings, nodeTitle) {
   );
 }
 function renderNotePreviewLayout(previewHtml, tocHtml) {
-  const article = `<article class="note-preview-article">${previewHtml || ''}</article>`;
+  const article = `<div class="note-preview-article-scroll"><article class="note-preview-article">${previewHtml || ''}</article></div>`;
   if (!tocHtml) {
     return `<div class="note-preview-layout note-preview-layout-no-toc">${article}</div>`;
   }
@@ -9112,7 +9548,7 @@ function renderInlineHeadingPanel(headings, anchorPrefix) {
     }
     const items = list.map(item => {
       const anchorId = getNoteHeadingAnchorId(anchorPrefix, item.headingIndex);
-      return `<div class="note-toc-item lv${Math.min(item.level, 4)}" onclick="jumpToRenderedAnchor('${anchorId}')">${escapeHtml(item.text)}</div>`;
+      return `<div class="note-toc-item lv${Math.min(item.level, 4)}" data-anchor-id="${anchorId}" onclick="jumpToRenderedAnchor('${anchorId}')">${escapeHtml(item.text)}</div>`;
     }).join('');
     return `<div class="note-toc note-toc-floating"><div class="note-toc-title"><span>本页笔记目录</span><span>${list.length}</span></div><div class="note-toc-list">${items}</div></div>`;
 }
@@ -9704,6 +10140,25 @@ function fallbackCopy(text) {
   try { document.execCommand('copy'); } catch(ex) {}
   document.body.removeChild(ta);
 }
+async function refreshRuntimeBadge() {
+  const badge = document.getElementById('runtimeBadge');
+  if (!badge) return;
+  try {
+    const res = await fetch('/api/runtime-info', { credentials: 'same-origin', cache: 'no-store' });
+    if (!res.ok) throw new Error('runtime-info failed');
+    const data = await res.json();
+    const mode = String(data.mode || 'unknown');
+    const label = String(data.label || 'Unknown runtime');
+    const origin = String(data.origin || '');
+    badge.dataset.mode = mode;
+    badge.textContent = label;
+    badge.title = origin ? `${label}\n${origin}` : label;
+  } catch (error) {
+    badge.dataset.mode = 'unknown';
+    badge.textContent = 'Runtime: unknown';
+    badge.title = 'Failed to load runtime info';
+  }
+}
 
 (async () => {
   const ALL_KEYS = [
@@ -9714,6 +10169,7 @@ function fallbackCopy(text) {
   ];
   await DB.migrateFromLocalStorage(ALL_KEYS);
   await loadData();
+  await refreshCloudSession();
   ensureKnowledgeState({ persist: true });
   const allTypes=[...new Set(errors.map(e=>e.type))];
   allTypes.forEach(t=>expMain.add(t));
@@ -9723,7 +10179,7 @@ function fallbackCopy(text) {
   });
   saveExpMain();
   syncNotesWithErrors();
-  await refreshCloudSession();
+  await refreshRuntimeBadge();
   renderSidebar();
   renderAll();
   renderNotesByType();

@@ -2,12 +2,14 @@
 
 ## Runtime Rule
 
-This project now has one stable production entry and one preferred local debug entry:
+This project now has one preferred Docker entry, one fallback local debug entry, and one public entry:
 
-- local debug: `http://127.0.0.1:8000`
+- preferred Docker local entry: `http://127.0.0.1:8080`
+- fallback local Python entry: `http://127.0.0.1:8000`
 - production/public: `https://erroranaly.qzz.io`
 
 Do not assume `localhost`, `127.0.0.1`, Docker port mappings, and the public domain share one browser-local state.
+Do not assume `8080` and `8000` are interchangeable. Under the current rule, `8080` is the default Docker entry.
 
 ## Product Boundary
 
@@ -64,6 +66,30 @@ Command:
 ```bash
 docker compose up --build -d app
 ```
+
+Preferred habit:
+
+1. start Docker first
+2. open `http://127.0.0.1:8080`
+3. use local Python on `8000` only when Docker is intentionally not the active runtime
+
+## Deployment Discipline Rule
+
+For user-visible fixes, source edits are not enough.
+
+Required rule:
+
+1. after the change is made, deploy in the same work cycle
+2. do not stop at local diff, static inspection, or local build output
+3. deploy the runtime that actually serves the URL the user is looking at
+4. for the current default runtime, that usually means:
+   `docker compose up --build -d app`
+5. only report the change as done after the rebuilt runtime is up and the target page or endpoint responds normally
+
+Practical reminder:
+
+- if the active page is still served by `xingce_v3/xingce_v3.html`, changing `frontend/` alone does not count as delivery
+- if the user is looking at the Docker-served app, rebuild the container before asking them to verify
 
 ## Cloudflare Rule
 

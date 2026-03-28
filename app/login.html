@@ -43,6 +43,35 @@
       line-height: 1.15;
       color: #7a1d16;
     }
+    .runtime-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      margin-bottom: 16px;
+      border-radius: 999px;
+      font-size: 11px;
+      line-height: 1.2;
+      font-weight: 700;
+      border: 1px solid #dbe4ee;
+      background: #f8fafc;
+      color: #475569;
+      letter-spacing: .02em;
+    }
+    .runtime-badge[data-mode="docker"] {
+      background: #ecfdf5;
+      border-color: #bbf7d0;
+      color: #166534;
+    }
+    .runtime-badge[data-mode="local"] {
+      background: #eff6ff;
+      border-color: #bfdbfe;
+      color: #1d4ed8;
+    }
+    .runtime-badge[data-mode="unknown"] {
+      background: #fff7ed;
+      border-color: #fed7aa;
+      color: #c2410c;
+    }
     .hero p {
       margin: 0 0 18px;
       font-size: 14px;
@@ -148,6 +177,7 @@
 <body>
   <div class="shell">
     <section class="hero">
+      <div id="runtimeBadge" class="runtime-badge" data-mode="unknown">Runtime: loading</div>
       <h1>Ashore</h1>
       <p>登录后即可继续访问你的个人学习空间、同步内容与历史记录。</p>
       <div class="points">
@@ -186,6 +216,26 @@
     const usernameEl = document.getElementById('username');
     const passwordEl = document.getElementById('password');
     const loginBtn = document.getElementById('loginBtn');
+    const runtimeBadge = document.getElementById('runtimeBadge');
+
+    async function refreshRuntimeBadge() {
+      if (!runtimeBadge) return;
+      try {
+        const res = await fetch('/api/runtime-info', { credentials: 'same-origin', cache: 'no-store' });
+        if (!res.ok) throw new Error('runtime-info failed');
+        const data = await res.json();
+        const mode = String(data.mode || 'unknown');
+        const label = String(data.label || 'Unknown runtime');
+        const origin = String(data.origin || '');
+        runtimeBadge.dataset.mode = mode;
+        runtimeBadge.textContent = label;
+        runtimeBadge.title = origin ? `${label}\n${origin}` : label;
+      } catch (_) {
+        runtimeBadge.dataset.mode = 'unknown';
+        runtimeBadge.textContent = 'Runtime: unknown';
+        runtimeBadge.title = 'Failed to load runtime info';
+      }
+    }
 
     async function checkSession() {
       try {
@@ -238,6 +288,7 @@
       if (event.key === 'Enter') submitAuth();
     });
 
+    refreshRuntimeBadge();
     checkSession();
   </script>
 </body>
