@@ -1730,6 +1730,156 @@ def list_current_sync_ops(user_id: str, conn: sqlite3.Connection) -> list[dict[s
     return ops
 
 
+def build_knowledge_tree_snapshot(records: list[dict[str, Any]]) -> dict[str, Any]:
+    node_map: dict[str, dict[str, Any]] = {}
+    children_map: dict[str, list[dict[str, Any]]] = {}
+    roots: list[dict[str, Any]] = []
+    for raw in records:
+        record = normalize_knowledge_node_sync_record(str(raw.get("id") or ""), raw, str(raw.get("updatedAt") or ""))
+        if not record:
+            continue
+        node_map[record["id"]] = record
+    for record in node_map.values():
+        parent_id = str(record.get("parentId") or "")
+        if parent_id and parent_id in node_map:
+            children_map.setdefault(parent_id, []).append(record)
+        else:
+            roots.append(record)
+
+    def finalize(nodes: list[dict[str, Any]], level: int) -> list[dict[str, Any]]:
+        ordered = sorted(
+            nodes,
+            key=lambda item: (int(item.get("sort") or 0), str(item.get("title") or "")),
+        )
+        result: list[dict[str, Any]] = []
+        for node in ordered:
+            kids = finalize(children_map.get(node["id"], []), level + 1)
+            result.append(
+                {
+                    "id": node["id"],
+                    "title": str(node.get("title") or ""),
+                    "contentMd": str(node.get("contentMd") or ""),
+                    "updatedAt": str(node.get("updatedAt") or ""),
+                    "level": level,
+                    "isLeaf": len(kids) == 0,
+                    "children": kids,
+                    "sort": int(node.get("sort") or 0),
+                }
+            )
+        return result
+
+    return {"version": 1, "roots": finalize(roots, 1)}
+
+
+def build_workspace_snapshot_from_entities(user_id: str, conn: sqlite3.Connection) -> dict[str, Any]:
+    ensure_workspace_entities_seeded(user_id, conn)
+    rows = conn.execute(
+        """
+        SELECT entity_type, entity_id, payload_json, updated_at, deleted_at
+        FROM state_entities
+        WHERE user_id = ? AND entity_type IN ('error', 'note_type', 'note_image', 'knowledge_node', 'setting')
+        ORDER BY updated_at ASC, entity_type ASC, entity_id ASC
+        """,
+        (user_id,),
+    ).fetchall()
+    if not rows:
+        return {}
+
+    latest_updated_at = ""
+    errors: list[dict[str, Any]] = []
+    notes_by_type: dict[str, Any] = {}
+    note_images: dict[str, Any] = {}
+    knowledge_records: list[dict[str, Any]] = []
+    settings: dict[str, Any] = {}
+
+    for row in rows:
+        latest_updated_at = max(latest_updated_at, str(row["updated_at"] or ""))
+        if str(row["deleted_at"] or "").strip():
+            continue
+        try:
+            payload = json.loads(row["payload_json"] or "{}")
+        except json.JSONDecodeError:
+            payload = {}
+        entity_type = str(row["entity_type"] or "")
+        updated_at = str(row["updated_at"] or "")
+        entity_id = str(row["entity_id"] or "")
+        if entity_type == "error":
+            record = normalize_error_sync_record(payload, updated_at)
+            if record:
+                errors.append(record)
+            continue
+        if entity_type == "note_type":
+            record = normalize_note_type_sync_record(entity_id, payload, updated_at)
+            notes_by_type[record["key"]] = record["value"]
+            continue
+        if entity_type == "note_image":
+            record = normalize_note_image_sync_record(entity_id, payload, updated_at)
+            note_images[record["id"]] = record["data"]
+            continue
+        if entity_type == "knowledge_node":
+            record = normalize_knowledge_node_sync_record(entity_id, payload, updated_at)
+            if record:
+                knowledge_records.append(record)
+            continue
+        if entity_type == "setting":
+            record = normalize_setting_sync_record(entity_id, payload, updated_at)
+            settings[record["key"]] = record["value"]
+
+    knowledge_tree = build_knowledge_tree_snapshot(knowledge_records)
+    knowledge_notes: dict[str, Any] = {}
+
+    def collect_notes(nodes: list[dict[str, Any]]) -> None:
+        for node in nodes or []:
+            node_id = str(node.get("id") or "")
+            if node_id:
+                knowledge_notes[node_id] = {
+                    "title": str(node.get("title") or ""),
+                    "content": str(node.get("contentMd") or ""),
+                    "updatedAt": str(node.get("updatedAt") or ""),
+                }
+            collect_notes(node.get("children") or [])
+
+    collect_notes(knowledge_tree.get("roots") or [])
+    expansion_state = settings.get("expansion_state") if isinstance(settings.get("expansion_state"), dict) else {}
+    today_progress = settings.get("today_progress") if isinstance(settings.get("today_progress"), dict) else {}
+
+    return {
+        "xc_version": 2,
+        "exportTime": latest_updated_at or utcnow().isoformat(),
+        "baseUpdatedAt": latest_updated_at or "",
+        "errors": errors,
+        "revealed": settings.get("revealed") or [],
+        "expTypes": settings.get("exp_types") or [],
+        "expMain": expansion_state.get("main") or [],
+        "expMainSub": expansion_state.get("sub") or [],
+        "expMainSub2": expansion_state.get("sub2") or [],
+        "notesByType": notes_by_type,
+        "noteImages": note_images,
+        "globalNote": settings.get("global_note") or "",
+        "typeRules": settings.get("type_rules"),
+        "dirTree": settings.get("dir_tree"),
+        "knowledgeTree": knowledge_tree,
+        "knowledgeNotes": knowledge_notes,
+        "knowledgeExpanded": settings.get("knowledge_expanded") or [],
+        "todayDate": str(today_progress.get("date") or ""),
+        "todayDone": int(today_progress.get("done") or 0),
+        "history": settings.get("history") or [],
+    }
+
+
+def get_workspace_snapshot_updated_at(user_id: str, conn: sqlite3.Connection) -> str:
+    ensure_workspace_entities_seeded(user_id, conn)
+    row = conn.execute(
+        """
+        SELECT MAX(updated_at) AS updated_at
+        FROM state_entities
+        WHERE user_id = ? AND entity_type IN ('error', 'note_type', 'note_image', 'knowledge_node', 'setting')
+        """,
+        (user_id,),
+    ).fetchone()
+    return str((row["updated_at"] if row else "") or "")
+
+
 def extract_json_value(text: str) -> Any:
     cleaned = (text or "").strip()
     if cleaned.startswith("```"):
@@ -1749,6 +1899,9 @@ def extract_json_value(text: str) -> Any:
 
 def load_backup_payload(user_id: str) -> dict[str, Any]:
     with get_conn() as conn:
+        materialized = build_workspace_snapshot_from_entities(user_id, conn)
+        if materialized:
+            return materialized
         row = conn.execute(
             "SELECT payload_json FROM user_backups WHERE user_id = ?",
             (user_id,),
@@ -2035,7 +2188,14 @@ def root(xingce_session: Optional[str] = Cookie(default=None)) -> Response:
     user = get_user_by_token(xingce_session)
     if not user:
         return RedirectResponse(url="/login", status_code=302)
-    return RedirectResponse(url="/new", status_code=302)
+    return FileResponse(
+        HTML_PATH,
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
 
 
 @app.get("/legacy")
@@ -2069,16 +2229,7 @@ def new_frontend_root(xingce_session: Optional[str] = Cookie(default=None)) -> R
     user = get_user_by_token(xingce_session)
     if not user:
         return RedirectResponse(url="/login", status_code=302)
-    if not FRONTEND_INDEX_PATH.exists():
-        return frontend_not_ready_response()
-    return FileResponse(
-        FRONTEND_INDEX_PATH,
-        headers={
-            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
-            "Pragma": "no-cache",
-            "Expires": "0",
-        },
-    )
+    return RedirectResponse(url="/", status_code=302)
 
 
 @app.get("/new/{path:path}")
@@ -2086,16 +2237,7 @@ def new_frontend_spa(path: str, xingce_session: Optional[str] = Cookie(default=N
     user = get_user_by_token(xingce_session)
     if not user:
         return RedirectResponse(url="/login", status_code=302)
-    if not FRONTEND_INDEX_PATH.exists():
-        return frontend_not_ready_response()
-    return FileResponse(
-        FRONTEND_INDEX_PATH,
-        headers={
-            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
-            "Pragma": "no-cache",
-            "Expires": "0",
-        },
-    )
+    return RedirectResponse(url="/", status_code=302)
 
 
 @app.get("/login")
@@ -2185,10 +2327,21 @@ def get_backup(request: Request, xingce_session: Optional[str] = Cookie(default=
     user = require_user(xingce_session)
     current_origin = infer_request_origin(request)
     with get_conn() as conn:
+        materialized = build_workspace_snapshot_from_entities(user["id"], conn)
         row = conn.execute(
             "SELECT payload_json, updated_at FROM user_backups WHERE user_id = ?",
             (user["id"],),
         ).fetchone()
+    if materialized:
+        updated_at = str(materialized.get("exportTime") or materialized.get("baseUpdatedAt") or "")
+        return {
+            "exists": True,
+            "currentOrigin": current_origin,
+            "updatedAt": updated_at,
+            "payload": materialized,
+            "backup": materialized,
+            "origins": list_origin_statuses(user["id"]),
+        }
     if not row:
         return {
             "exists": False,
@@ -2452,11 +2605,14 @@ def sync_pull(
 ) -> dict[str, Any]:
     user = require_user(xingce_session)
     with get_conn() as conn:
+        snapshot_updated_at = get_workspace_snapshot_updated_at(user["id"], conn)
         if not since:
             ops = list_current_sync_ops(user["id"], conn)
             return {
                 "ops": ops,
                 "serverTime": utcnow().isoformat(),
+                "snapshotUpdatedAt": snapshot_updated_at,
+                "origins": list_origin_statuses(user["id"]),
                 "hasMore": False,
             }
         if cursorAt:
@@ -2490,6 +2646,8 @@ def sync_pull(
     return {
         "ops": [dict(row) for row in rows],
         "serverTime": utcnow().isoformat(),
+        "snapshotUpdatedAt": snapshot_updated_at,
+        "origins": list_origin_statuses(user["id"]),
         "hasMore": len(rows) == 500,
         "nextCursorAt": next_cursor_at,
         "nextCursorId": next_cursor_id,
@@ -2499,9 +2657,11 @@ def sync_pull(
 @app.post("/api/sync")
 def sync_push(
     body: SyncPushPayload,
+    request: Request,
     xingce_session: Optional[str] = Cookie(default=None),
 ) -> dict[str, Any]:
     user = require_user(xingce_session)
+    current_origin = infer_request_origin(request)
     with get_conn() as conn:
         for op in body.ops:
             op_payload = op.get("payload") or {}
@@ -2530,9 +2690,21 @@ def sync_push(
                 conn,
             )
         cleanup_old_ops(user["id"], conn)
+        snapshot_updated_at = get_workspace_snapshot_updated_at(user["id"], conn) or utcnow().isoformat()
         conn.commit()
+    upsert_origin_status(
+        user["id"],
+        current_origin,
+        last_backup_updated_at=snapshot_updated_at,
+    )
 
-    return {"ok": True, "serverTime": utcnow().isoformat()}
+    return {
+        "ok": True,
+        "serverTime": utcnow().isoformat(),
+        "snapshotUpdatedAt": snapshot_updated_at,
+        "currentOrigin": current_origin,
+        "origins": list_origin_statuses(user["id"]),
+    }
 
 
 @app.post("/api/practice/log")

@@ -11,6 +11,19 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 /* ===== 侧边栏 ===== */
 .sidebar{width:260px;min-width:260px;background:#fff;border-right:1px solid #e8e8e8;display:flex;flex-direction:column;height:100vh;overflow:hidden}
 .sidebar-logo{padding:16px 14px 12px;border-bottom:1px solid #f0f0f0;font-size:15px;font-weight:700;color:#2c3e50}
+.sidebar-tools{padding:10px 12px;border-bottom:1px solid #f0f0f0;display:flex;flex-direction:column;gap:7px}
+.sidebar-tools-row{display:flex;align-items:center;gap:8px}
+.sidebar-tools-row .btn{flex:1}
+.sidebar-tools .more-menu{flex:1}
+.sidebar-tools .more-menu>.btn{width:100%}
+.sidebar-cloud-controls{width:calc(100% - 14px);max-width:none;align-self:center;display:flex;flex-direction:column;align-items:stretch;padding:5px 6px 6px;border-radius:10px;background:#f8fafc;border:1px solid #e5eaf2;gap:4px}
+.sidebar-cloud-controls .cloud-meta{align-items:flex-start;min-width:0;max-width:none}
+.sidebar-cloud-controls .cloud-status-line,.sidebar-cloud-controls .cloud-status-hint,.sidebar-cloud-controls .cloud-origin-list{text-align:left;justify-content:flex-start}
+.sidebar-cloud-controls .cloud-status-line{gap:3px}
+.sidebar-cloud-controls .cloud-status-hint{font-size:9px;line-height:1.28;white-space:normal;overflow:visible;text-overflow:clip;display:flex;flex-direction:column;gap:1px}
+.sidebar-cloud-controls .cloud-origin-list{font-size:9px;line-height:1.24}
+.sidebar-cloud-controls .btn{padding:3px 9px;font-size:11px}
+.sidebar-cloud-actions .btn{flex:1}
 .quiz-block{padding:12px 14px;border-bottom:1px solid #f0f0f0}
 .quiz-btn{width:100%;padding:9px 0;background:linear-gradient(135deg,#e74c3c,#c0392b);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;transition:.2s}
 .quiz-btn:hover{opacity:.9;transform:translateY(-1px);box-shadow:0 4px 12px rgba(231,76,60,.35)}
@@ -1222,6 +1235,42 @@ body{
 <!-- ===== 左侧菜单栏 ===== -->
 <div class="sidebar">
   <div class="sidebar-logo">Ashore</div>
+  <div class="sidebar-tools">
+    <div class="sidebar-tools-row">
+      <button class="btn btn-primary" onclick="openQuickAddModal()">＋ 添加</button>
+      <div class="more-menu" id="moreMenu">
+        <button class="btn btn-secondary" onclick="toggleMoreMenu(event)">更多</button>
+        <div class="more-menu-panel" id="moreMenuPanel">
+          <button class="btn btn-secondary" onclick="closeMoreMenu();openQuickImportModal()">⬆ 导入错题</button>
+          <button class="btn btn-secondary" onclick="closeMoreMenu();openExportModal()">⬇ 导出</button>
+          <button class="btn btn-secondary" onclick="closeMoreMenu();clearCurrentModuleErrors()">🧹 清空当前模块</button>
+          <button class="btn btn-secondary" onclick="closeMoreMenu();clearAllErrorsData()">🗑 清空全部错题</button>
+          <button class="btn btn-secondary" onclick="closeMoreMenu();resetAllStudyData()">♻ 重置全部学习数据</button>
+          <button class="btn btn-secondary" onclick="closeMoreMenu();openDashboard()">📊 统计</button>
+          <button class="btn btn-secondary" onclick="closeMoreMenu();openCodexInboxModal()">🧾 Codex</button>
+          <button class="btn btn-secondary" onclick="closeMoreMenu();openModal('claudeModal')">🤖 导入Claude题</button>
+          <button class="btn btn-secondary" onclick="closeMoreMenu();openClaudeBankModal()">📚 Claude题库</button>
+          <button class="btn btn-secondary" onclick="closeMoreMenu();printList()">🖨 打印</button>
+        </div>
+      </div>
+    </div>
+    <div class="cloud-controls sidebar-cloud-controls">
+      <div class="cloud-meta">
+        <div class="cloud-status-line">
+          <span id="cloudUserBadge" style="font-size:12px;color:#666">Cloud: offline</span>
+          <span id="cloudSyncBadge" class="cloud-status-badge">idle</span>
+          <button type="button" id="cloudDetailsToggle" class="cloud-details-toggle" onclick="toggleCloudDetails()">详情</button>
+        </div>
+        <div id="cloudSyncHint" class="cloud-status-hint">Local cache is per origin.</div>
+        <div id="cloudOriginStatus" class="cloud-origin-list"></div>
+      </div>
+      <div class="sidebar-tools-row sidebar-cloud-actions">
+        <button class="btn btn-secondary" onclick="loadCloudBackup()">Cloud Load</button>
+        <button class="btn btn-secondary" onclick="saveCloudBackup()">Cloud Save</button>
+      </div>
+      <button class="btn btn-secondary" id="cloudLogoutBtn" onclick="logoutCloud()">Logout</button>
+    </div>
+  </div>
   <div class="quiz-block">
     <button class="quiz-btn" id="quizBtn" onclick="startQuiz()">
       <span>📝 今日复习</span>
@@ -1241,42 +1290,6 @@ body{
 
 <!-- ===== 主区域（Tab + 内容）===== -->
 <div class="main-area">
-
-  <!-- 顶部操作栏 -->
-<div class="top-bar">
-    <h1>Ashore</h1>
-    <button class="btn btn-primary" onclick="openQuickAddModal()">＋ 添加</button>
-    <div class="more-menu" id="moreMenu">
-      <button class="btn btn-secondary" onclick="toggleMoreMenu(event)">更多</button>
-      <div class="more-menu-panel" id="moreMenuPanel">
-        <button class="btn btn-secondary" onclick="closeMoreMenu();openQuickImportModal()">⬆ 导入错题</button>
-        <button class="btn btn-secondary" onclick="closeMoreMenu();openExportModal()">⬇ 导出</button>
-        <button class="btn btn-secondary" onclick="closeMoreMenu();clearCurrentModuleErrors()">🧹 清空当前模块</button>
-        <button class="btn btn-secondary" onclick="closeMoreMenu();clearAllErrorsData()">🗑 清空全部错题</button>
-        <button class="btn btn-secondary" onclick="closeMoreMenu();resetAllStudyData()">♻ 重置全部学习数据</button>
-        <button class="btn btn-secondary" onclick="closeMoreMenu();openDashboard()">📊 统计</button>
-        <button class="btn btn-secondary" onclick="closeMoreMenu();openCodexInboxModal()">🧾 Codex</button>
-        <button class="btn btn-secondary" onclick="closeMoreMenu();openModal('claudeModal')">🤖 导入Claude题</button>
-        <button class="btn btn-secondary" onclick="closeMoreMenu();openClaudeBankModal()">📚 Claude题库</button>
-        <button class="btn btn-secondary" onclick="closeMoreMenu();printList()">🖨 打印</button>
-      </div>
-    </div>
-    <span class="toolbar-spacer"></span>
-    <div class="cloud-controls">
-      <div class="cloud-meta">
-        <div class="cloud-status-line">
-          <span id="cloudUserBadge" style="font-size:12px;color:#666">Cloud: offline</span>
-          <span id="cloudSyncBadge" class="cloud-status-badge">idle</span>
-          <button type="button" id="cloudDetailsToggle" class="cloud-details-toggle" onclick="toggleCloudDetails()">详情</button>
-        </div>
-        <div id="cloudSyncHint" class="cloud-status-hint">Local cache is per origin.</div>
-        <div id="cloudOriginStatus" class="cloud-origin-list"></div>
-      </div>
-      <button class="btn btn-secondary" onclick="loadCloudBackup()">Cloud Load</button>
-      <button class="btn btn-secondary" onclick="manualCloudSync()">鍚屾</button>
-      <button class="btn btn-secondary" id="cloudLogoutBtn" onclick="logoutCloud()">Logout</button>
-    </div>
-  </div>
 
   <div class="toast-stack" id="toastStack"></div>
   <button id="codexInboxBtn" class="btn btn-secondary" style="position:fixed;right:18px;bottom:18px;z-index:1200;box-shadow:0 10px 24px rgba(15,23,42,.18)" onclick="openCodexInboxModal()">Codex 留言</button>
@@ -1358,7 +1371,7 @@ body{
       <div class="notes-header">
         <h2>学习笔记</h2>
         <div style="display:flex;gap:8px">
-          <button class="btn btn-secondary" onclick="syncNotesWithErrors();renderNotesByType()">🔄 同步</button>
+          <button class="btn btn-secondary" onclick="deleteSelectedKnowledgeNode()">删除知识点</button>
           <button class="btn btn-secondary" onclick="clearNotes()">🗑 清空</button>
         </div>
       </div>
@@ -2457,6 +2470,9 @@ saveNotesByType = function() {
   markIncrementalWorkspaceChange();
 };
 saveKnowledgeState = function() {
+  mergeDuplicateKnowledgeSiblings(getKnowledgeRootNodes());
+  collapseDuplicateKnowledgeWrappers(getKnowledgeRootNodes());
+  pruneKnowledgeGhostNodes(getKnowledgeRootNodes(), getKnowledgeDirectErrorCountMap());
   syncKnowledgeNotesFromTree();
   syncWorkspaceOpsFromSnapshot();
   queuePersist(KEY_KNOWLEDGE_TREE, knowledgeTree);
@@ -2858,13 +2874,14 @@ renderCloudUi = function() {
   const cloudUpdatedText = formatCloudTime(currentCloudIso);
   const localUpdatedText = formatCloudTime(currentLocalIso);
   const freshnessText = getCloudFreshnessText(currentLocalIso, currentCloudIso);
-  syncHint.textContent = [
+  const hintLines = [
     localUpdatedText ? `本地最后修改: ${localUpdatedText}` : '本地最后修改: 暂无',
     cloudUpdatedText ? `云端最后备份: ${cloudUpdatedText}` : '云端最后备份: 暂无',
     freshnessText,
     cloudSyncMessage || '',
     getCloudActionHint(cloudSyncState)
-  ].filter(Boolean).join(' | ');
+  ].filter(Boolean);
+  syncHint.innerHTML = hintLines.map(line => `<div>${escapeHtml(line)}</div>`).join('');
   const currentMs = toCloudTimeMs(getOriginDisplayTime(currentOrigin));
   const newerOrigins = (cloudOriginStatuses || []).filter(item => item.origin !== originText).filter(item => currentMs && currentMs > toCloudTimeMs(getOriginDisplayTime(item)));
   const lines = [];
@@ -2938,7 +2955,6 @@ async function loadCloudBackup(opts) {
       const ok = confirm('Cloud backup found. Restore it to current device?');
       if (!ok) return;
     }
-    /*
     await applyCloudBackup(data.backup, updatedAt, { ...opts, forceOverwriteLocal: true });
     cloudConflictBlocked = false;
   } catch (e) {
@@ -3358,8 +3374,6 @@ function applyOps(ops) {
     });
   }
 }
-/*
-/*
 function getLastSyncCursor() {
   try {
     return {
@@ -3385,24 +3399,15 @@ function rememberLastSyncCursor(serverTime) {
     localStorage.removeItem('lastSyncCursorId');
   } catch (e) {}
 }
-async function manualCloudSync() {
-  await syncWithServer({ manual: true });
-}
 async function syncWithServer(opts) {
-  opts = opts || {};
-  if (!cloudUser) {
-    if (opts.manual) window.location.replace('/login');
-    return;
-  }
-  if (incrementalSyncBusy) {
-    if (opts.manual) showToast('姝ｅ湪鍚屾锛岃绋嶅悗鍐嶈瘯', 'info');
-    return;
-  }
+  const options = opts || {};
+  if (!cloudUser) return;
+  if (incrementalSyncBusy) return;
   incrementalSyncBusy = true;
   try {
-    if (opts.manual) setCloudSyncState('saving', '姝ｅ湪鎵ц澧為噺鍚屾', '');
     const pending = getPendingOps();
     let pushed = false;
+    let latestSnapshotAt = '';
     if (pending.length > 0) {
       const pushRes = await fetch('/api/sync', {
         method: 'POST',
@@ -3410,18 +3415,18 @@ async function syncWithServer(opts) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ops: pending }),
       });
-      if (!pushRes.ok) {
-        const pushData = await pushRes.json().catch(() => ({}));
-        throw new Error(pushData.detail || pushData.error || 'sync push failed');
-      }
+      const pushData = await pushRes.json().catch(() => ({}));
+      if (!pushRes.ok) throw new Error(pushData.detail || pushData.error || 'sync push failed');
       localStorage.removeItem('pendingOps');
       pushed = true;
+      latestSnapshotAt = pushData.snapshotUpdatedAt || latestSnapshotAt;
+      if (Array.isArray(pushData.origins)) updateCloudOriginStatuses(pushData.origins);
     }
-    if (opts.resetCursor) clearLastSyncCursor();
+    if (options.resetCursor) clearLastSyncCursor();
     const syncCursor = getLastSyncCursor();
-    const baseSince = opts.forceFullPull ? '' : (syncCursor.since || '');
-    let cursorAt = '';
-    let cursorId = '';
+    const baseSince = options.forceFullPull ? '' : (syncCursor.since || '');
+    let cursorAt = options.forceFullPull ? '' : (syncCursor.cursorAt || '');
+    let cursorId = options.forceFullPull ? '' : (syncCursor.cursorId || '');
     let pulled = 0;
     let serverTime = syncCursor.since || '';
     while (true) {
@@ -3437,6 +3442,8 @@ async function syncWithServer(opts) {
         applyOps(ops);
         pulled += ops.length;
       }
+      latestSnapshotAt = pullData.snapshotUpdatedAt || latestSnapshotAt;
+      if (Array.isArray(pullData.origins)) updateCloudOriginStatuses(pullData.origins);
       serverTime = pullData.serverTime || serverTime;
       if (!pullData.hasMore) break;
       cursorAt = pullData.nextCursorAt || (ops.length ? String(ops[ops.length - 1].created_at || '') : cursorAt);
@@ -3447,224 +3454,16 @@ async function syncWithServer(opts) {
         localStorage.setItem('lastSyncCursorId', cursorId);
       } catch (e) {}
     }
-      setCloudSyncState('synced', '错题增量同步完成', pullData.serverTime || '');
-    */
     rememberLastSyncCursor(serverTime);
+    if (latestSnapshotAt) {
+      cloudMeta.lastSeenBackupAt = latestSnapshotAt;
+      saveCloudMeta();
+    }
     if (pushed || pulled > 0) {
-      setCloudSyncState('synced', 'incremental sync complete', serverTime || '');
-      if (opts.manual) showToast(`同步完成${pushed ? '，已上传本地改动' : ''}${pulled ? `，已拉取 ${pulled} 条更新` : ''}`, 'success');
-    } else if (opts.manual) {
-      setCloudSyncState('synced', 'already up to date', serverTime || '');
-      showToast('云端与本地已经是最新', 'success');
+      setCloudSyncState('synced', '错题增量同步完成', latestSnapshotAt || serverTime || '');
     }
   } catch (e) {
     setCloudSyncState('error', e.message || '错题增量同步失败', '');
-    console.warn('[syncWithServer] failed', e);
-  }
-}
-*/
-function getLastSyncCursor() {
-  try {
-    return {
-      since: localStorage.getItem('lastSyncTime') || '',
-      cursorAt: localStorage.getItem('lastSyncCursorAt') || '',
-      cursorId: localStorage.getItem('lastSyncCursorId') || ''
-    };
-  } catch (e) {
-    return { since: '', cursorAt: '', cursorId: '' };
-  }
-}
-function clearLastSyncCursor() {
-  try {
-    localStorage.removeItem('lastSyncTime');
-    localStorage.removeItem('lastSyncCursorAt');
-    localStorage.removeItem('lastSyncCursorId');
-  } catch (e) {}
-}
-function rememberLastSyncCursor(serverTime) {
-  try {
-    if (serverTime) localStorage.setItem('lastSyncTime', serverTime);
-    localStorage.removeItem('lastSyncCursorAt');
-    localStorage.removeItem('lastSyncCursorId');
-  } catch (e) {}
-}
-async function manualCloudSync() {
-  await syncWithServer({ manual: true });
-}
-async function syncWithServer(opts) {
-  opts = opts || {};
-  if (!cloudUser) {
-    if (opts.manual) window.location.replace('/login');
-    return;
-  }
-  if (incrementalSyncBusy) {
-    if (opts.manual) showToast('同步进行中，请稍后再试', 'info');
-    return;
-  }
-  incrementalSyncBusy = true;
-  try {
-    if (opts.manual) setCloudSyncState('saving', '正在执行增量同步', '');
-    const pending = getPendingOps();
-    let pushed = false;
-    if (pending.length > 0) {
-      const pushRes = await fetch('/api/sync', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ops: pending }),
-      });
-      if (!pushRes.ok) {
-        const pushData = await pushRes.json().catch(() => ({}));
-        throw new Error(pushData.detail || pushData.error || 'sync push failed');
-      }
-      localStorage.removeItem('pendingOps');
-      pushed = true;
-    }
-    if (opts.resetCursor) clearLastSyncCursor();
-    const syncCursor = getLastSyncCursor();
-    const baseSince = opts.forceFullPull ? '' : (syncCursor.since || '');
-    let cursorAt = '';
-    let cursorId = '';
-    let pulled = 0;
-    let serverTime = syncCursor.since || '';
-    while (true) {
-      const params = new URLSearchParams();
-      params.set('since', baseSince);
-      if (cursorAt) params.set('cursorAt', cursorAt);
-      if (cursorId) params.set('cursorId', cursorId);
-      const pullRes = await fetch(`/api/sync?${params.toString()}`, { credentials: 'include' });
-      const pullData = await pullRes.json().catch(() => ({}));
-      if (!pullRes.ok) throw new Error(pullData.detail || pullData.error || 'sync pull failed');
-      const ops = Array.isArray(pullData.ops) ? pullData.ops : [];
-      if (ops.length) {
-        applyOps(ops);
-        pulled += ops.length;
-      }
-      serverTime = pullData.serverTime || serverTime;
-      if (!pullData.hasMore) break;
-      cursorAt = pullData.nextCursorAt || (ops.length ? String(ops[ops.length - 1].created_at || '') : cursorAt);
-      cursorId = pullData.nextCursorId || (ops.length ? String(ops[ops.length - 1].id || '') : cursorId);
-      if (!cursorAt) break;
-      try {
-        localStorage.setItem('lastSyncCursorAt', cursorAt);
-        localStorage.setItem('lastSyncCursorId', cursorId);
-      } catch (e) {}
-    }
-    rememberLastSyncCursor(serverTime);
-    if (pushed || pulled > 0) {
-      setCloudSyncState('synced', 'incremental sync complete', serverTime || '');
-      if (opts.manual) showToast(`同步完成${pushed ? '，已上传本地改动' : ''}${pulled ? `，已拉取 ${pulled} 条更新` : ''}`, 'success');
-    } else if (opts.manual) {
-      setCloudSyncState('synced', 'already up to date', serverTime || '');
-      showToast('云端与本地已经是最新', 'success');
-    }
-  } catch (e) {
-    setCloudSyncState('error', e.message || 'incremental sync failed', '');
-    if (opts.manual) showToast(e.message || '增量同步失败', 'error');
-    console.warn('[syncWithServer] failed', e);
-  } finally {
-    incrementalSyncBusy = false;
-  }
-}
-*/
-function getLastSyncCursor() {
-  try {
-    return {
-      since: localStorage.getItem('lastSyncTime') || '',
-      cursorAt: localStorage.getItem('lastSyncCursorAt') || '',
-      cursorId: localStorage.getItem('lastSyncCursorId') || ''
-    };
-  } catch (e) {
-    return { since: '', cursorAt: '', cursorId: '' };
-  }
-}
-function clearLastSyncCursor() {
-  try {
-    localStorage.removeItem('lastSyncTime');
-    localStorage.removeItem('lastSyncCursorAt');
-    localStorage.removeItem('lastSyncCursorId');
-  } catch (e) {}
-}
-function rememberLastSyncCursor(serverTime) {
-  try {
-    if (serverTime) localStorage.setItem('lastSyncTime', serverTime);
-    localStorage.removeItem('lastSyncCursorAt');
-    localStorage.removeItem('lastSyncCursorId');
-  } catch (e) {}
-}
-async function manualCloudSync() {
-  await syncWithServer({ manual: true });
-}
-async function syncWithServer(opts) {
-  opts = opts || {};
-  if (!cloudUser) {
-    if (opts.manual) window.location.replace('/login');
-    return;
-  }
-  if (incrementalSyncBusy) {
-    if (opts.manual) showToast('Sync in progress, please try again shortly.', 'info');
-    return;
-  }
-  incrementalSyncBusy = true;
-  try {
-    if (opts.manual) setCloudSyncState('saving', 'Running incremental sync', '');
-    const pending = getPendingOps();
-    let pushed = false;
-    if (pending.length > 0) {
-      const pushRes = await fetch('/api/sync', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ops: pending }),
-      });
-      if (!pushRes.ok) {
-        const pushData = await pushRes.json().catch(() => ({}));
-        throw new Error(pushData.detail || pushData.error || 'sync push failed');
-      }
-      localStorage.removeItem('pendingOps');
-      pushed = true;
-    }
-    if (opts.resetCursor) clearLastSyncCursor();
-    const syncCursor = getLastSyncCursor();
-    const baseSince = opts.forceFullPull ? '' : (syncCursor.since || '');
-    let cursorAt = '';
-    let cursorId = '';
-    let pulled = 0;
-    let serverTime = syncCursor.since || '';
-    while (true) {
-      const params = new URLSearchParams();
-      params.set('since', baseSince);
-      if (cursorAt) params.set('cursorAt', cursorAt);
-      if (cursorId) params.set('cursorId', cursorId);
-      const pullRes = await fetch(`/api/sync?${params.toString()}`, { credentials: 'include' });
-      const pullData = await pullRes.json().catch(() => ({}));
-      if (!pullRes.ok) throw new Error(pullData.detail || pullData.error || 'sync pull failed');
-      const ops = Array.isArray(pullData.ops) ? pullData.ops : [];
-      if (ops.length) {
-        applyOps(ops);
-        pulled += ops.length;
-      }
-      serverTime = pullData.serverTime || serverTime;
-      if (!pullData.hasMore) break;
-      cursorAt = pullData.nextCursorAt || (ops.length ? String(ops[ops.length - 1].created_at || '') : cursorAt);
-      cursorId = pullData.nextCursorId || (ops.length ? String(ops[ops.length - 1].id || '') : cursorId);
-      if (!cursorAt) break;
-      try {
-        localStorage.setItem('lastSyncCursorAt', cursorAt);
-        localStorage.setItem('lastSyncCursorId', cursorId);
-      } catch (e) {}
-    }
-    rememberLastSyncCursor(serverTime);
-    if (pushed || pulled > 0) {
-      setCloudSyncState('synced', 'incremental sync complete', serverTime || '');
-      if (opts.manual) showToast(`Sync complete${pushed ? ', uploaded local changes' : ''}${pulled ? `, pulled ${pulled} updates` : ''}`, 'success');
-    } else if (opts.manual) {
-      setCloudSyncState('synced', 'already up to date', serverTime || '');
-      showToast('Cloud and local are already up to date.', 'success');
-    }
-  } catch (e) {
-    setCloudSyncState('error', e.message || 'incremental sync failed', '');
-    if (opts.manual) showToast(e.message || 'Incremental sync failed.', 'error');
     console.warn('[syncWithServer] failed', e);
   } finally {
     incrementalSyncBusy = false;
@@ -5371,12 +5170,20 @@ function renderSidebarKnowledgeTreeV2(nodes, depth) {
     const expanded = hasChildren && depth > 0 && isKnowledgeExpanded(node);
     const marker = hasChildren ? (expanded ? '▾' : '▸') : '•';
     const countClass = count > 0 ? 'knowledge-tree-count' : 'knowledge-tree-count is-empty';
+    const actions = `<span class="knowledge-node-actions">
+      <button class="note-action-btn" title="重命名" onclick="event.stopPropagation();renameKnowledgeNode('${node.id}')">✎</button>
+      ${depth > 0 ? `<button class="note-action-btn" title="移动" onclick="event.stopPropagation();moveKnowledgeNode('${node.id}')">⇄</button>` : ''}
+      <button class="note-action-btn" title="删除" onclick="event.stopPropagation();deleteKnowledgeNode('${node.id}')">✕</button>
+    </span>`;
     let html = `<div class="${cls} knowledge-tree-node ${active ? 'active is-active' : ''} ${hasChildren ? 'is-branch' : ''}" style="${extraStyle}" data-knowledge-node-id="${node.id}" draggable="true" ondragstart="startKnowledgeNodeDrag('${node.id}', event)" ondragend="endKnowledgeNodeDrag()" ondragover="allowKnowledgeDrop(event, '${node.id}')" ondragleave="leaveKnowledgeDrop(event)" ondrop="handleKnowledgeDrop('${node.id}', event)" onclick="selectKnowledgeNodeFromSidebar('${node.id}')">
       <span class="knowledge-tree-row">
         <button type="button" class="knowledge-tree-toggle${hasChildren ? '' : ' placeholder'}" onclick="toggleKnowledgeExpanded('${node.id}', event)" aria-label="${hasChildren ? '切换展开' : '无下级'}">${marker}</button>
         <span class="knowledge-tree-title">${escapeHtml(node.title)}</span>
       </span>
-      <span class="${countClass}">${count}</span></div>`;
+      <span style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+        <span class="${countClass}">${count}</span>
+        ${actions}
+      </span></div>`;
     if (hasChildren && expanded) {
       html += `<div class="knowledge-tree-children">${renderSidebarKnowledgeTreeV2(node.children, depth + 1)}</div>`;
     }
@@ -7438,6 +7245,148 @@ function syncKnowledgeNotesFromTree() {
   });
   knowledgeNotes = next;
 }
+function migrateKnowledgeNodeReference(oldId, newId) {
+  if (!oldId || !newId || oldId === newId) return;
+  errors.forEach(item => {
+    if (item.noteNodeId === oldId) {
+      item.noteNodeId = newId;
+      item.updatedAt = new Date().toISOString();
+    }
+  });
+  if (selectedKnowledgeNodeId === oldId) selectedKnowledgeNodeId = newId;
+  if (knowledgeNodeFilter === oldId) knowledgeNodeFilter = newId;
+  if (knowledgeExpanded.has(oldId)) {
+    knowledgeExpanded.delete(oldId);
+    knowledgeExpanded.add(newId);
+  }
+  const legacy = knowledgeNotes && knowledgeNotes[oldId];
+  if (legacy) {
+    const current = knowledgeNotes[newId] || { title: '', content: '', updatedAt: '' };
+    if (!String(current.content || '').trim() && String(legacy.content || '').trim()) {
+      knowledgeNotes[newId] = {
+        title: current.title || legacy.title || '',
+        content: legacy.content || '',
+        updatedAt: legacy.updatedAt || current.updatedAt || ''
+      };
+    }
+    delete knowledgeNotes[oldId];
+  }
+}
+function getKnowledgeDirectErrorCountMap() {
+  const counts = new Map();
+  (errors || []).forEach(item => {
+    const nodeId = String((item && item.noteNodeId) || '');
+    if (!nodeId) return;
+    counts.set(nodeId, (counts.get(nodeId) || 0) + 1);
+  });
+  return counts;
+}
+function mergeKnowledgeNodeIntoTarget(target, source) {
+  if (!target || !source || target === source) return;
+  const targetContent = String(target.contentMd || '').trim();
+  const sourceContent = String(source.contentMd || '').trim();
+  if (!targetContent && sourceContent) {
+    target.contentMd = source.contentMd || '';
+    target.updatedAt = source.updatedAt || target.updatedAt || '';
+  } else if (sourceContent && String(source.updatedAt || '') > String(target.updatedAt || '')) {
+    target.contentMd = source.contentMd || target.contentMd || '';
+    target.updatedAt = source.updatedAt || target.updatedAt || '';
+  }
+  target.children = (target.children || []).concat(source.children || []);
+  migrateKnowledgeNodeReference(String(source.id || ''), String(target.id || ''));
+}
+function mergeDuplicateKnowledgeSiblings(nodes) {
+  let changed = false;
+  const list = Array.isArray(nodes) ? nodes : [];
+  list.forEach(node => {
+    if (mergeDuplicateKnowledgeSiblings(node.children || [])) changed = true;
+  });
+  const next = [];
+  const seen = new Map();
+  list.forEach(node => {
+    if (!node || typeof node !== 'object') return;
+    const key = String(node.title || '').trim();
+    if (!key) {
+      next.push(node);
+      return;
+    }
+    const existing = seen.get(key);
+    if (!existing) {
+      seen.set(key, node);
+      next.push(node);
+      return;
+    }
+    mergeKnowledgeNodeIntoTarget(existing, node);
+    changed = true;
+  });
+  if (changed && Array.isArray(nodes)) {
+    nodes.splice(0, nodes.length, ...next);
+  }
+  return changed;
+}
+function pruneKnowledgeGhostNodes(nodes, directCountMap) {
+  let changed = false;
+  const list = Array.isArray(nodes) ? nodes : [];
+  const next = [];
+  list.forEach(node => {
+    if (!node || typeof node !== 'object') return;
+    if (pruneKnowledgeGhostNodes(node.children || [], directCountMap)) changed = true;
+    node.children = Array.isArray(node.children) ? node.children : [];
+    const nodeId = String(node.id || '');
+    const directCount = directCountMap.get(nodeId) || 0;
+    const hasContent = !!String(node.contentMd || '').trim();
+    if (!hasContent && directCount === 0) {
+      if (node.children.length === 0) {
+        knowledgeExpanded.delete(nodeId);
+        delete knowledgeNotes[nodeId];
+        changed = true;
+        return;
+      }
+      if (node.children.length === 1) {
+        const child = node.children[0];
+        if (child && typeof child === 'object') {
+          child.level = node.level;
+          migrateKnowledgeNodeReference(nodeId, String(child.id || ''));
+          next.push(child);
+          changed = true;
+          return;
+        }
+      }
+    }
+    next.push(node);
+  });
+  if (Array.isArray(nodes)) {
+    nodes.splice(0, nodes.length, ...next);
+  }
+  return changed;
+}
+function collapseDuplicateKnowledgeWrappers(nodes) {
+  let changed = false;
+  const list = Array.isArray(nodes) ? nodes : [];
+  for (let idx = 0; idx < list.length; idx += 1) {
+    const node = list[idx];
+    if (!node) continue;
+    if (collapseDuplicateKnowledgeWrappers(node.children || [])) changed = true;
+    while (
+      node &&
+      Array.isArray(node.children) &&
+      node.children.length === 1 &&
+      node.children[0] &&
+      node.children[0].title === node.title
+    ) {
+      const child = node.children[0];
+      if (!String(child.contentMd || '').trim() && String(node.contentMd || '').trim()) {
+        child.contentMd = node.contentMd;
+        child.updatedAt = child.updatedAt || node.updatedAt || '';
+      }
+      child.level = node.level;
+      migrateKnowledgeNodeReference(node.id, child.id);
+      list[idx] = child;
+      changed = true;
+    }
+  }
+  return changed;
+}
 function normalizeKnowledgeNodes(nodes, level) {
   (nodes || []).forEach(node => {
     if (!node.id) node.id = newKnowledgeNodeId();
@@ -7586,9 +7535,11 @@ function ensureKnowledgeState(opts) {
   const options = opts || {};
   getKnowledgeRootNodes();
   knowledgeNotes = knowledgeNotes && typeof knowledgeNotes === 'object' ? knowledgeNotes : {};
+  let changed = mergeDuplicateKnowledgeSiblings(getKnowledgeRootNodes());
+  if (collapseDuplicateKnowledgeWrappers(getKnowledgeRootNodes())) changed = true;
+  if (pruneKnowledgeGhostNodes(getKnowledgeRootNodes(), getKnowledgeDirectErrorCountMap())) changed = true;
   normalizeKnowledgeNodes(getKnowledgeRootNodes(), 1);
   ensureKnowledgeExpandedDefaults();
-  let changed = false;
   errors.forEach(item => {
     if (ensureKnowledgeBindingForError(item)) changed = true;
   });
@@ -7991,31 +7942,73 @@ function moveKnowledgeNode(nodeId) {
   }
   openKnowledgeNodeModal('move', { nodeId: node.id });
 }
-function deleteKnowledgeNode(nodeId) {
-  const node = getKnowledgeNodeById(nodeId);
-  const parent = findKnowledgeParent(nodeId);
-  if (!node) return;
-  if (!parent) {
-    showToast('一级节点暂不支持删除', 'warning');
+function deleteSelectedKnowledgeNode() {
+  const currentNode =
+    getCurrentKnowledgeNode() ||
+    (selectedKnowledgeNodeId ? getKnowledgeNodeById(selectedKnowledgeNodeId) : null) ||
+    getKnowledgeRootNodes()[0];
+  if (!currentNode) {
+    showToast('当前没有可删除的知识点', 'warning');
     return;
   }
+  deleteKnowledgeNode(currentNode.id);
+}
+function shouldAutoUnwrapKnowledgeNode(node, expectedTitle) {
+  if (!node || node.title !== expectedTitle) return false;
+  if (!Array.isArray(node.children) || !node.children.length) return false;
+  const hasOwnContent = !!String(node.contentMd || '').trim();
+  const hasOwnDirectErrors = errors.some(item => item.noteNodeId === node.id);
+  return !hasOwnContent && !hasOwnDirectErrors;
+}
+function unwrapPromotedKnowledgeChildren(children, removedTitle) {
+  let next = Array.isArray(children) ? children.slice() : [];
+  while (next.length === 1 && shouldAutoUnwrapKnowledgeNode(next[0], removedTitle)) {
+    const wrapper = next[0];
+    knowledgeExpanded.delete(wrapper.id);
+    delete knowledgeNotes[wrapper.id];
+    next = (wrapper.children || []).slice();
+  }
+  return next;
+}
+function deleteKnowledgeNode(nodeId) {
+  const node = getKnowledgeNodeById(nodeId);
+  if (!node) return;
+  const parent = findKnowledgeParent(nodeId);
+  const isRootNode = !parent;
+  const roots = getKnowledgeRootNodes();
+  const siblings = parent ? (parent.children || []) : roots;
   const directErrors = errors.filter(item => item.noteNodeId === node.id);
   const childCount = (node.children || []).length;
   const noteFlag = (node.contentMd || '').trim() ? '\n- 当前节点有笔记内容' : '';
-  const childFlag = childCount ? `\n- 当前节点有 ${childCount} 个下级，删除后会自动上提到父节点` : '';
-  const errorFlag = directErrors.length ? `\n- 当前节点直属挂了 ${directErrors.length} 道错题，删除后会自动移动到父节点` : '';
+  const childFlag = childCount ? `\n- 当前节点有 ${childCount} 个下级，删除后会自动提升到当前层级` : '';
+  const errorFlag = directErrors.length ? `\n- 当前节点直属挂了 ${directErrors.length} 道错题，删除后会自动改挂到其他知识点或未归属` : '';
   const ok = confirm(`确认删除知识点「${node.title}」吗？${noteFlag}${childFlag}${errorFlag}\n\n此操作不可撤销。`);
   if (!ok) return;
-  const siblings = parent.children || [];
+  if (isRootNode) {
+    const secondOk = confirm(`你正在删除一级知识点「${node.title}」。\n\n这会影响整组知识树结构和挂载错题，请再次确认。`);
+    if (!secondOk) return;
+  }
   const idx = siblings.findIndex(item => item.id === node.id);
   if (idx < 0) return;
-  directErrors.forEach(item => { item.noteNodeId = parent.id; });
-  siblings.splice(idx, 1, ...(node.children || []));
-  parent.isLeaf = siblings.length === 0;
+  const promotedChildren = unwrapPromotedKnowledgeChildren(node.children || [], node.title);
+  const fallbackTargetId = parent
+    ? parent.id
+    : (promotedChildren[0]?.id || siblings[idx - 1]?.id || siblings[idx + 1]?.id || '');
+  directErrors.forEach(item => {
+    item.noteNodeId = fallbackTargetId || '';
+    item.updatedAt = new Date().toISOString();
+  });
+  siblings.splice(idx, 1, ...promotedChildren);
+  if (parent) {
+    parent.isLeaf = siblings.length === 0;
+  }
   delete knowledgeNotes[node.id];
   knowledgeExpanded.delete(node.id);
   saveKnowledgeExpanded();
-  if (selectedKnowledgeNodeId === node.id) selectedKnowledgeNodeId = parent.id;
+  if (knowledgeNodeFilter === node.id) knowledgeNodeFilter = null;
+  if (selectedKnowledgeNodeId === node.id) {
+    selectedKnowledgeNodeId = fallbackTargetId || promotedChildren[0]?.id || siblings[0]?.id || null;
+  }
   saveData();
   saveKnowledgeState();
   renderSidebar();
@@ -8195,6 +8188,8 @@ function updateKnowledgeWorkspaceChrome(currentNode, linkedCount) {
       <button class="btn btn-secondary" onclick="addKnowledgeLeafUnderSelected()">+ 新建知识点</button>
       ${currentNode ? `<button class="btn btn-secondary" onclick="renameKnowledgeNode('${currentNode.id}')">重命名</button>` : ''}
       ${currentNode && findKnowledgeParent(currentNode.id) ? `<button class="btn btn-secondary" onclick="moveKnowledgeNode('${currentNode.id}')">移动</button>` : ''}
+      ${currentNode ? `<button class="btn btn-secondary" onclick="deleteKnowledgeNode('${currentNode.id}')">删除知识点</button>` : ''}
+      ${currentNode ? `<button class="btn btn-secondary" onclick="clearNotes()">清空</button>` : ''}
     `;
   }
 
@@ -8726,6 +8721,7 @@ function renderKnowledgeNotesView() {
       <button class="btn btn-secondary btn-sm" onclick="addKnowledgeLeafUnderSelected()">+ 新建知识点</button>
       <button class="btn btn-secondary btn-sm" onclick="openAddModalForCurrentKnowledge()">+ 录入错题</button>
       <button class="btn btn-secondary btn-sm" onclick="openImportModalForCurrentKnowledge()">JSON导入</button>
+      <button class="btn btn-secondary btn-sm" onclick="deleteKnowledgeNode('${currentNode.id}')">删除节点</button>
       ${currentNode.isLeaf ? `<button class="btn btn-primary btn-sm" onclick="noteEditing=${noteEditing ? 'false' : 'true'};renderNotesByType()">${noteEditing ? '完成编辑' : '编辑笔记'}</button>` : ''}
     </div>
   </div>`;
@@ -8826,7 +8822,7 @@ function renderKnowledgeNotesViewV2() {
       <button class="btn btn-secondary btn-sm" onclick="selectedKnowledgeNodeId='${currentNode.id}';addKnowledgeLeafUnderSelected()">+ 新建下级</button>
       <button class="btn btn-secondary btn-sm" onclick="openAddModalForCurrentKnowledge()">+ 录入错题</button>
       <button class="btn btn-secondary btn-sm" onclick="openImportModalForCurrentKnowledge()">JSON导入</button>
-      ${findKnowledgeParent(currentNode.id) ? `<button class="btn btn-secondary btn-sm" onclick="deleteKnowledgeNode('${currentNode.id}')">删除节点</button>` : ''}
+      <button class="btn btn-secondary btn-sm" onclick="deleteKnowledgeNode('${currentNode.id}')">删除节点</button>
       <button class="btn btn-primary btn-sm" onclick="noteEditing=${noteEditing ? 'false' : 'true'};renderNotesByType()">${noteEditing ? '完成编辑' : '编辑笔记'}</button>
     </div>
   </div>`;
@@ -9019,7 +9015,7 @@ function renderKnowledgeWorkspaceHeader(node, pathText, directCount, linkedCount
           <button class="btn btn-secondary btn-sm" onclick="selectedKnowledgeNodeId='${node.id}';addKnowledgeLeafUnderSelected()">新建下级</button>
           <button class="btn btn-secondary btn-sm" onclick="openAddModalForCurrentKnowledge()">录入题目</button>
           <button class="btn btn-secondary btn-sm" onclick="openImportModalForCurrentKnowledge()">导入 JSON</button>
-          ${findKnowledgeParent(node.id) ? `<button class="btn btn-secondary btn-sm" onclick="deleteKnowledgeNode('${node.id}')">删除节点</button>` : ''}
+          <button class="btn btn-secondary btn-sm" onclick="deleteKnowledgeNode('${node.id}')">删除节点</button>
         </div>
       </details>
     </div>`;
@@ -9737,18 +9733,13 @@ function fallbackCopy(text) {
   window.addEventListener('beforeunload', () => {
     if (cloudSaveTimer) {
       clearTimeout(cloudSaveTimer);
-      cloudSaveTimer = null;
+      saveCloudBackup({ silent: true });
     }
   });
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') {
-      if (cloudSaveTimer) {
-        clearTimeout(cloudSaveTimer);
-        cloudSaveTimer = null;
-      }
-      if (cloudUser && getPendingOps().length && !incrementalSyncBusy) {
-        syncWithServer();
-      }
+    if (document.visibilityState === 'hidden' && cloudSaveTimer) {
+      clearTimeout(cloudSaveTimer);
+      saveCloudBackup({ silent: true });
     }
   });
 })();
