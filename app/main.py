@@ -28,10 +28,19 @@ DB_PATH = DATA_DIR / "xingce.db"
 IMAGES_DIR = DATA_DIR / "images"
 HTML_PATH = BASE_DIR / "xingce_v3" / "xingce_v3.html"
 LOGIN_HTML_PATH = BASE_DIR / "app" / "login.html"
+FRONTEND_DIST_DIR = BASE_DIR / "frontend" / "dist"
+FRONTEND_INDEX_PATH = FRONTEND_DIST_DIR / "index.html"
+FRONTEND_ASSETS_DIR = FRONTEND_DIST_DIR / "assets"
 RUNTIME_DIR = BASE_DIR / "runtime"
 TUNNEL_LOG_PATH = RUNTIME_DIR / "cloudflared.log"
 SESSION_COOKIE = "xingce_session"
 SESSION_TTL_DAYS = 30
+SELF_SERVICE_REGISTRATION_ENABLED = os.getenv("SELF_SERVICE_REGISTRATION_ENABLED", "").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
 MINIMAX_API_URL = "https://api.minimaxi.com/v1/text/chatcompletion_v2"
 DEFAULT_MINIMAX_MODEL = "MiniMax-M2.5"
 DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
@@ -84,6 +93,28 @@ def verify_password(password: str, encoded: str) -> bool:
     salt, expected = raw[:16], raw[16:]
     actual = hashlib.scrypt(password.encode("utf-8"), salt=salt, n=2**14, r=8, p=1)
     return hmac.compare_digest(actual, expected)
+
+
+def create_user_account(username: str, password: str) -> dict[str, str]:
+    normalized_username = username.strip()
+    if len(normalized_username) < 2 or len(normalized_username) > 32:
+        raise ValueError("username must be 2-32 characters")
+    if len(password) < 6 or len(password) > 128:
+        raise ValueError("password must be 6-128 characters")
+
+    user_id = secrets.token_hex(12)
+    with get_conn() as conn:
+        existing = conn.execute("SELECT id FROM users WHERE username = ?", (normalized_username,)).fetchone()
+        if existing:
+            raise ValueError("username already exists")
+
+        conn.execute(
+            "INSERT INTO users(id, username, password_hash, created_at) VALUES (?, ?, ?, ?)",
+            (user_id, normalized_username, hash_password(password), utcnow().isoformat()),
+        )
+        conn.commit()
+
+    return {"id": user_id, "username": normalized_username}
 
 
 def get_conn() -> sqlite3.Connection:
@@ -433,13 +464,15 @@ app.add_middleware(
     allow_credentials=True,
 )
 app.mount("/assets", StaticFiles(directory=str(BASE_DIR / "xingce_v3")), name="assets")
+if FRONTEND_ASSETS_DIR.exists():
+    app.mount("/new/assets", StaticFiles(directory=str(FRONTEND_ASSETS_DIR)), name="new-assets")
 
 
 @app.middleware("http")
 async def disable_static_cache_for_local_debug(request: Request, call_next):
     response = await call_next(request)
     path = request.url.path or ""
-    if path == "/" or path == "/login" or path.startswith("/assets/"):
+    if path == "/" or path == "/legacy" or path == "/new" or path.startswith("/new/") or path == "/login" or path.startswith("/assets/"):
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
@@ -2002,8 +2035,61 @@ def root(xingce_session: Optional[str] = Cookie(default=None)) -> Response:
     user = get_user_by_token(xingce_session)
     if not user:
         return RedirectResponse(url="/login", status_code=302)
+    return RedirectResponse(url="/new", status_code=302)
+
+
+@app.get("/legacy")
+def legacy_root(xingce_session: Optional[str] = Cookie(default=None)) -> Response:
+    user = get_user_by_token(xingce_session)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
     return FileResponse(
         HTML_PATH,
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
+
+
+def frontend_not_ready_response() -> Response:
+    return JSONResponse(
+        {
+            "ok": False,
+            "error": "new frontend build is not ready yet",
+            "expected": str(FRONTEND_INDEX_PATH),
+        },
+        status_code=503,
+    )
+
+
+@app.get("/new")
+def new_frontend_root(xingce_session: Optional[str] = Cookie(default=None)) -> Response:
+    user = get_user_by_token(xingce_session)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    if not FRONTEND_INDEX_PATH.exists():
+        return frontend_not_ready_response()
+    return FileResponse(
+        FRONTEND_INDEX_PATH,
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
+
+
+@app.get("/new/{path:path}")
+def new_frontend_spa(path: str, xingce_session: Optional[str] = Cookie(default=None)) -> Response:
+    user = get_user_by_token(xingce_session)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    if not FRONTEND_INDEX_PATH.exists():
+        return frontend_not_ready_response()
+    return FileResponse(
+        FRONTEND_INDEX_PATH,
         headers={
             "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
             "Pragma": "no-cache",
@@ -2037,19 +2123,17 @@ def public_entry(request: Request) -> dict[str, Any]:
 
 @app.post("/api/auth/register")
 def register(payload: AuthPayload, response: Response) -> dict[str, Any]:
-    user_id = secrets.token_hex(12)
-    with get_conn() as conn:
-        existing = conn.execute("SELECT id FROM users WHERE username = ?", (payload.username.strip(),)).fetchone()
-        if existing:
-            raise HTTPException(status_code=409, detail="username already exists")
+    if not SELF_SERVICE_REGISTRATION_ENABLED:
+        raise HTTPException(status_code=403, detail="account registration is disabled; please contact the administrator")
+    try:
+        user = create_user_account(payload.username, payload.password)
+    except ValueError as exc:
+        detail = str(exc)
+        if detail == "username already exists":
+            raise HTTPException(status_code=409, detail=detail) from exc
+        raise HTTPException(status_code=400, detail=detail) from exc
 
-        conn.execute(
-            "INSERT INTO users(id, username, password_hash, created_at) VALUES (?, ?, ?, ?)",
-            (user_id, payload.username.strip(), hash_password(payload.password), utcnow().isoformat()),
-        )
-        conn.commit()
-
-    token, _ = issue_session(user_id)
+    token, _ = issue_session(user["id"])
     response.set_cookie(
         SESSION_COOKIE,
         token,
@@ -2057,7 +2141,7 @@ def register(payload: AuthPayload, response: Response) -> dict[str, Any]:
         samesite="lax",
         max_age=SESSION_TTL_DAYS * 24 * 3600,
     )
-    return {"ok": True, "user": {"id": user_id, "username": payload.username.strip()}}
+    return {"ok": True, "user": user}
 
 
 @app.post("/api/auth/login")
@@ -2362,6 +2446,8 @@ def unref_image(
 @app.get("/api/sync")
 def sync_pull(
     since: str = "",
+    cursorAt: str = "",
+    cursorId: str = "",
     xingce_session: Optional[str] = Cookie(default=None),
 ) -> dict[str, Any]:
     user = require_user(xingce_session)
@@ -2373,20 +2459,40 @@ def sync_pull(
                 "serverTime": utcnow().isoformat(),
                 "hasMore": False,
             }
-        rows = conn.execute(
-            """
-            SELECT id, op_type, entity_id, payload, created_at
-            FROM operations
-            WHERE user_id = ? AND created_at > ?
-            ORDER BY created_at ASC
-            LIMIT 500
-            """,
-            (user["id"], since or ""),
-        ).fetchall()
+        if cursorAt:
+            rows = conn.execute(
+                """
+                SELECT id, op_type, entity_id, payload, created_at
+                FROM operations
+                WHERE user_id = ?
+                  AND (
+                    created_at > ?
+                    OR (created_at = ? AND id > ?)
+                  )
+                ORDER BY created_at ASC, id ASC
+                LIMIT 500
+                """,
+                (user["id"], cursorAt, cursorAt, cursorId or ""),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT id, op_type, entity_id, payload, created_at
+                FROM operations
+                WHERE user_id = ? AND created_at > ?
+                ORDER BY created_at ASC, id ASC
+                LIMIT 500
+                """,
+                (user["id"], since or ""),
+            ).fetchall()
+    next_cursor_at = rows[-1]["created_at"] if rows else ""
+    next_cursor_id = rows[-1]["id"] if rows else ""
     return {
         "ops": [dict(row) for row in rows],
         "serverTime": utcnow().isoformat(),
         "hasMore": len(rows) == 500,
+        "nextCursorAt": next_cursor_at,
+        "nextCursorId": next_cursor_id,
     }
 
 

@@ -124,11 +124,6 @@
       background: linear-gradient(135deg, #be1e2d 0%, #8f171f 100%);
       color: #fff;
     }
-    .btn-secondary {
-      background: #fff;
-      color: #374151;
-      border: 1px solid #d1d5db;
-    }
     .hint {
       min-height: 20px;
       font-size: 12px;
@@ -154,18 +149,18 @@
   <div class="shell">
     <section class="hero">
       <h1>Ashore</h1>
-      <p>登录后可继续访问你的个人空间、同步内容与历史记录。</p>
+      <p>登录后即可继续访问你的个人学习空间、同步内容与历史记录。</p>
       <div class="points">
-        <div class="point">账号数据按用户隔离保存，避免不同设备或不同用户内容混在一起。</div>
+        <div class="point">账号数据按用户隔离保存，避免不同设备或不同用户的内容混在一起。</div>
         <div class="point">同一账号可在不同入口继续访问个人内容，并保持云端同步能力。</div>
-        <div class="point">当前入口默认用于受控访问，不在登录前展示具体系统用途。</div>
+        <div class="point">当前入口仅支持登录，账号由管理员统一发放，不开放自助注册。</div>
       </div>
     </section>
 
     <section class="form-wrap">
       <div>
-        <h2 class="card-title">Sign In / Register</h2>
-        <p class="sub">使用同一账号可继续访问你自己的个人数据与同步记录。</p>
+        <h2 class="card-title">登录</h2>
+        <p class="sub">请使用管理员发放的用户名和密码登录。</p>
       </div>
 
       <div class="form-group">
@@ -181,7 +176,6 @@
       <div id="hint" class="hint"></div>
 
       <div class="actions">
-        <button class="btn btn-secondary" id="registerBtn" type="button">注册</button>
         <button class="btn btn-primary" id="loginBtn" type="button">登录</button>
       </div>
     </section>
@@ -192,7 +186,6 @@
     const usernameEl = document.getElementById('username');
     const passwordEl = document.getElementById('password');
     const loginBtn = document.getElementById('loginBtn');
-    const registerBtn = document.getElementById('registerBtn');
 
     async function checkSession() {
       try {
@@ -209,20 +202,19 @@
       hintEl.className = ok ? 'hint ok' : 'hint';
     }
 
-    async function submitAuth(action) {
+    async function submitAuth() {
       const username = (usernameEl.value || '').trim();
       const password = passwordEl.value || '';
       if (username.length < 2 || password.length < 6) {
-        setHint('用户名至少 2 位，密码至少 6 位');
+        setHint('用户名至少 2 位，密码至少 6 位。');
         return;
       }
 
       loginBtn.disabled = true;
-      registerBtn.disabled = true;
-      setHint(action === 'login' ? '正在登录...' : '正在注册...', true);
+      setHint('正在登录...', true);
 
       try {
-        const res = await fetch('/api/auth/' + action, {
+        const res = await fetch('/api/auth/login', {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -232,20 +224,18 @@
         if (!res.ok) {
           throw new Error(data.detail || data.error || '请求失败');
         }
-        setHint(action === 'login' ? '登录成功，正在进入...' : '注册成功，正在进入...', true);
+        setHint('登录成功，正在进入...', true);
         window.location.replace('/');
       } catch (error) {
         setHint(error.message || '请求失败');
       } finally {
         loginBtn.disabled = false;
-        registerBtn.disabled = false;
       }
     }
 
-    loginBtn.addEventListener('click', () => submitAuth('login'));
-    registerBtn.addEventListener('click', () => submitAuth('register'));
+    loginBtn.addEventListener('click', () => submitAuth());
     passwordEl.addEventListener('keydown', event => {
-      if (event.key === 'Enter') submitAuth('login');
+      if (event.key === 'Enter') submitAuth();
     });
 
     checkSession();

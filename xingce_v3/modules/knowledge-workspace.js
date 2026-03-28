@@ -1,5 +1,5 @@
 (function () {
-  var DEFAULT_MODE = "list";
+  var DEFAULT_MODE = "note";
 
   function getWorkspaceMode() {
     if (window.knowledgeWorkspaceMode !== "list" && window.knowledgeWorkspaceMode !== "note") {
@@ -36,7 +36,7 @@
     if (options.mode) {
       setWorkspaceMode(options.mode);
     } else {
-      setWorkspaceMode("list");
+      setWorkspaceMode(DEFAULT_MODE);
     }
     if (options.switchTab !== false) {
       switchTab("notes");
@@ -51,7 +51,7 @@
     if (!nodeId) return;
     saveNoteTypeContent();
     notesViewMode = "knowledge";
-    setCurrentKnowledgeNode(nodeId, { switchTab: false, mode: "list" });
+    setCurrentKnowledgeNode(nodeId, { switchTab: false, mode: DEFAULT_MODE });
   }
 
   function selectNoteType(type) {

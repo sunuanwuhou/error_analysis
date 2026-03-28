@@ -1273,7 +1273,7 @@ body{
         <div id="cloudOriginStatus" class="cloud-origin-list"></div>
       </div>
       <button class="btn btn-secondary" onclick="loadCloudBackup()">Cloud Load</button>
-      <button class="btn btn-secondary" onclick="saveCloudBackup()">Cloud Save</button>
+      <button class="btn btn-secondary" onclick="manualCloudSync()">鍚屾</button>
       <button class="btn btn-secondary" id="cloudLogoutBtn" onclick="logoutCloud()">Logout</button>
     </div>
   </div>
@@ -2471,6 +2471,7 @@ saveKnowledgeExpanded = function() {
 let cloudUser = null;
 let cloudSaveTimer = null;
 let cloudBusy = false;
+let incrementalSyncBusy = false;
 let pendingCloudSave = false;
 let cloudConflictBlocked = false;
 let cloudSyncState = 'idle';
@@ -2937,6 +2938,7 @@ async function loadCloudBackup(opts) {
       const ok = confirm('Cloud backup found. Restore it to current device?');
       if (!ok) return;
     }
+    /*
     await applyCloudBackup(data.backup, updatedAt, { ...opts, forceOverwriteLocal: true });
     cloudConflictBlocked = false;
   } catch (e) {
@@ -3356,9 +3358,49 @@ function applyOps(ops) {
     });
   }
 }
-async function syncWithServer() {
-  if (!cloudUser) return;
+/*
+/*
+function getLastSyncCursor() {
   try {
+    return {
+      since: localStorage.getItem('lastSyncTime') || '',
+      cursorAt: localStorage.getItem('lastSyncCursorAt') || '',
+      cursorId: localStorage.getItem('lastSyncCursorId') || ''
+    };
+  } catch (e) {
+    return { since: '', cursorAt: '', cursorId: '' };
+  }
+}
+function clearLastSyncCursor() {
+  try {
+    localStorage.removeItem('lastSyncTime');
+    localStorage.removeItem('lastSyncCursorAt');
+    localStorage.removeItem('lastSyncCursorId');
+  } catch (e) {}
+}
+function rememberLastSyncCursor(serverTime) {
+  try {
+    if (serverTime) localStorage.setItem('lastSyncTime', serverTime);
+    localStorage.removeItem('lastSyncCursorAt');
+    localStorage.removeItem('lastSyncCursorId');
+  } catch (e) {}
+}
+async function manualCloudSync() {
+  await syncWithServer({ manual: true });
+}
+async function syncWithServer(opts) {
+  opts = opts || {};
+  if (!cloudUser) {
+    if (opts.manual) window.location.replace('/login');
+    return;
+  }
+  if (incrementalSyncBusy) {
+    if (opts.manual) showToast('姝ｅ湪鍚屾锛岃绋嶅悗鍐嶈瘯', 'info');
+    return;
+  }
+  incrementalSyncBusy = true;
+  try {
+    if (opts.manual) setCloudSyncState('saving', '姝ｅ湪鎵ц澧為噺鍚屾', '');
     const pending = getPendingOps();
     let pushed = false;
     if (pending.length > 0) {
@@ -3375,18 +3417,257 @@ async function syncWithServer() {
       localStorage.removeItem('pendingOps');
       pushed = true;
     }
-    const lastSync = localStorage.getItem('lastSyncTime') || '';
-    const pullRes = await fetch(`/api/sync?since=${encodeURIComponent(lastSync)}`, { credentials: 'include' });
-    const pullData = await pullRes.json().catch(() => ({}));
-    if (!pullRes.ok) throw new Error(pullData.detail || pullData.error || 'sync pull failed');
-    if (Array.isArray(pullData.ops) && pullData.ops.length) applyOps(pullData.ops);
-    if (pullData.serverTime) localStorage.setItem('lastSyncTime', pullData.serverTime);
-    if (pushed || (Array.isArray(pullData.ops) && pullData.ops.length)) {
+    if (opts.resetCursor) clearLastSyncCursor();
+    const syncCursor = getLastSyncCursor();
+    const baseSince = opts.forceFullPull ? '' : (syncCursor.since || '');
+    let cursorAt = '';
+    let cursorId = '';
+    let pulled = 0;
+    let serverTime = syncCursor.since || '';
+    while (true) {
+      const params = new URLSearchParams();
+      params.set('since', baseSince);
+      if (cursorAt) params.set('cursorAt', cursorAt);
+      if (cursorId) params.set('cursorId', cursorId);
+      const pullRes = await fetch(`/api/sync?${params.toString()}`, { credentials: 'include' });
+      const pullData = await pullRes.json().catch(() => ({}));
+      if (!pullRes.ok) throw new Error(pullData.detail || pullData.error || 'sync pull failed');
+      const ops = Array.isArray(pullData.ops) ? pullData.ops : [];
+      if (ops.length) {
+        applyOps(ops);
+        pulled += ops.length;
+      }
+      serverTime = pullData.serverTime || serverTime;
+      if (!pullData.hasMore) break;
+      cursorAt = pullData.nextCursorAt || (ops.length ? String(ops[ops.length - 1].created_at || '') : cursorAt);
+      cursorId = pullData.nextCursorId || (ops.length ? String(ops[ops.length - 1].id || '') : cursorId);
+      if (!cursorAt) break;
+      try {
+        localStorage.setItem('lastSyncCursorAt', cursorAt);
+        localStorage.setItem('lastSyncCursorId', cursorId);
+      } catch (e) {}
+    }
       setCloudSyncState('synced', '错题增量同步完成', pullData.serverTime || '');
+    */
+    rememberLastSyncCursor(serverTime);
+    if (pushed || pulled > 0) {
+      setCloudSyncState('synced', 'incremental sync complete', serverTime || '');
+      if (opts.manual) showToast(`同步完成${pushed ? '，已上传本地改动' : ''}${pulled ? `，已拉取 ${pulled} 条更新` : ''}`, 'success');
+    } else if (opts.manual) {
+      setCloudSyncState('synced', 'already up to date', serverTime || '');
+      showToast('云端与本地已经是最新', 'success');
     }
   } catch (e) {
     setCloudSyncState('error', e.message || '错题增量同步失败', '');
     console.warn('[syncWithServer] failed', e);
+  }
+}
+*/
+function getLastSyncCursor() {
+  try {
+    return {
+      since: localStorage.getItem('lastSyncTime') || '',
+      cursorAt: localStorage.getItem('lastSyncCursorAt') || '',
+      cursorId: localStorage.getItem('lastSyncCursorId') || ''
+    };
+  } catch (e) {
+    return { since: '', cursorAt: '', cursorId: '' };
+  }
+}
+function clearLastSyncCursor() {
+  try {
+    localStorage.removeItem('lastSyncTime');
+    localStorage.removeItem('lastSyncCursorAt');
+    localStorage.removeItem('lastSyncCursorId');
+  } catch (e) {}
+}
+function rememberLastSyncCursor(serverTime) {
+  try {
+    if (serverTime) localStorage.setItem('lastSyncTime', serverTime);
+    localStorage.removeItem('lastSyncCursorAt');
+    localStorage.removeItem('lastSyncCursorId');
+  } catch (e) {}
+}
+async function manualCloudSync() {
+  await syncWithServer({ manual: true });
+}
+async function syncWithServer(opts) {
+  opts = opts || {};
+  if (!cloudUser) {
+    if (opts.manual) window.location.replace('/login');
+    return;
+  }
+  if (incrementalSyncBusy) {
+    if (opts.manual) showToast('同步进行中，请稍后再试', 'info');
+    return;
+  }
+  incrementalSyncBusy = true;
+  try {
+    if (opts.manual) setCloudSyncState('saving', '正在执行增量同步', '');
+    const pending = getPendingOps();
+    let pushed = false;
+    if (pending.length > 0) {
+      const pushRes = await fetch('/api/sync', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ops: pending }),
+      });
+      if (!pushRes.ok) {
+        const pushData = await pushRes.json().catch(() => ({}));
+        throw new Error(pushData.detail || pushData.error || 'sync push failed');
+      }
+      localStorage.removeItem('pendingOps');
+      pushed = true;
+    }
+    if (opts.resetCursor) clearLastSyncCursor();
+    const syncCursor = getLastSyncCursor();
+    const baseSince = opts.forceFullPull ? '' : (syncCursor.since || '');
+    let cursorAt = '';
+    let cursorId = '';
+    let pulled = 0;
+    let serverTime = syncCursor.since || '';
+    while (true) {
+      const params = new URLSearchParams();
+      params.set('since', baseSince);
+      if (cursorAt) params.set('cursorAt', cursorAt);
+      if (cursorId) params.set('cursorId', cursorId);
+      const pullRes = await fetch(`/api/sync?${params.toString()}`, { credentials: 'include' });
+      const pullData = await pullRes.json().catch(() => ({}));
+      if (!pullRes.ok) throw new Error(pullData.detail || pullData.error || 'sync pull failed');
+      const ops = Array.isArray(pullData.ops) ? pullData.ops : [];
+      if (ops.length) {
+        applyOps(ops);
+        pulled += ops.length;
+      }
+      serverTime = pullData.serverTime || serverTime;
+      if (!pullData.hasMore) break;
+      cursorAt = pullData.nextCursorAt || (ops.length ? String(ops[ops.length - 1].created_at || '') : cursorAt);
+      cursorId = pullData.nextCursorId || (ops.length ? String(ops[ops.length - 1].id || '') : cursorId);
+      if (!cursorAt) break;
+      try {
+        localStorage.setItem('lastSyncCursorAt', cursorAt);
+        localStorage.setItem('lastSyncCursorId', cursorId);
+      } catch (e) {}
+    }
+    rememberLastSyncCursor(serverTime);
+    if (pushed || pulled > 0) {
+      setCloudSyncState('synced', 'incremental sync complete', serverTime || '');
+      if (opts.manual) showToast(`同步完成${pushed ? '，已上传本地改动' : ''}${pulled ? `，已拉取 ${pulled} 条更新` : ''}`, 'success');
+    } else if (opts.manual) {
+      setCloudSyncState('synced', 'already up to date', serverTime || '');
+      showToast('云端与本地已经是最新', 'success');
+    }
+  } catch (e) {
+    setCloudSyncState('error', e.message || 'incremental sync failed', '');
+    if (opts.manual) showToast(e.message || '增量同步失败', 'error');
+    console.warn('[syncWithServer] failed', e);
+  } finally {
+    incrementalSyncBusy = false;
+  }
+}
+*/
+function getLastSyncCursor() {
+  try {
+    return {
+      since: localStorage.getItem('lastSyncTime') || '',
+      cursorAt: localStorage.getItem('lastSyncCursorAt') || '',
+      cursorId: localStorage.getItem('lastSyncCursorId') || ''
+    };
+  } catch (e) {
+    return { since: '', cursorAt: '', cursorId: '' };
+  }
+}
+function clearLastSyncCursor() {
+  try {
+    localStorage.removeItem('lastSyncTime');
+    localStorage.removeItem('lastSyncCursorAt');
+    localStorage.removeItem('lastSyncCursorId');
+  } catch (e) {}
+}
+function rememberLastSyncCursor(serverTime) {
+  try {
+    if (serverTime) localStorage.setItem('lastSyncTime', serverTime);
+    localStorage.removeItem('lastSyncCursorAt');
+    localStorage.removeItem('lastSyncCursorId');
+  } catch (e) {}
+}
+async function manualCloudSync() {
+  await syncWithServer({ manual: true });
+}
+async function syncWithServer(opts) {
+  opts = opts || {};
+  if (!cloudUser) {
+    if (opts.manual) window.location.replace('/login');
+    return;
+  }
+  if (incrementalSyncBusy) {
+    if (opts.manual) showToast('Sync in progress, please try again shortly.', 'info');
+    return;
+  }
+  incrementalSyncBusy = true;
+  try {
+    if (opts.manual) setCloudSyncState('saving', 'Running incremental sync', '');
+    const pending = getPendingOps();
+    let pushed = false;
+    if (pending.length > 0) {
+      const pushRes = await fetch('/api/sync', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ops: pending }),
+      });
+      if (!pushRes.ok) {
+        const pushData = await pushRes.json().catch(() => ({}));
+        throw new Error(pushData.detail || pushData.error || 'sync push failed');
+      }
+      localStorage.removeItem('pendingOps');
+      pushed = true;
+    }
+    if (opts.resetCursor) clearLastSyncCursor();
+    const syncCursor = getLastSyncCursor();
+    const baseSince = opts.forceFullPull ? '' : (syncCursor.since || '');
+    let cursorAt = '';
+    let cursorId = '';
+    let pulled = 0;
+    let serverTime = syncCursor.since || '';
+    while (true) {
+      const params = new URLSearchParams();
+      params.set('since', baseSince);
+      if (cursorAt) params.set('cursorAt', cursorAt);
+      if (cursorId) params.set('cursorId', cursorId);
+      const pullRes = await fetch(`/api/sync?${params.toString()}`, { credentials: 'include' });
+      const pullData = await pullRes.json().catch(() => ({}));
+      if (!pullRes.ok) throw new Error(pullData.detail || pullData.error || 'sync pull failed');
+      const ops = Array.isArray(pullData.ops) ? pullData.ops : [];
+      if (ops.length) {
+        applyOps(ops);
+        pulled += ops.length;
+      }
+      serverTime = pullData.serverTime || serverTime;
+      if (!pullData.hasMore) break;
+      cursorAt = pullData.nextCursorAt || (ops.length ? String(ops[ops.length - 1].created_at || '') : cursorAt);
+      cursorId = pullData.nextCursorId || (ops.length ? String(ops[ops.length - 1].id || '') : cursorId);
+      if (!cursorAt) break;
+      try {
+        localStorage.setItem('lastSyncCursorAt', cursorAt);
+        localStorage.setItem('lastSyncCursorId', cursorId);
+      } catch (e) {}
+    }
+    rememberLastSyncCursor(serverTime);
+    if (pushed || pulled > 0) {
+      setCloudSyncState('synced', 'incremental sync complete', serverTime || '');
+      if (opts.manual) showToast(`Sync complete${pushed ? ', uploaded local changes' : ''}${pulled ? `, pulled ${pulled} updates` : ''}`, 'success');
+    } else if (opts.manual) {
+      setCloudSyncState('synced', 'already up to date', serverTime || '');
+      showToast('Cloud and local are already up to date.', 'success');
+    }
+  } catch (e) {
+    setCloudSyncState('error', e.message || 'incremental sync failed', '');
+    if (opts.manual) showToast(e.message || 'Incremental sync failed.', 'error');
+    console.warn('[syncWithServer] failed', e);
+  } finally {
+    incrementalSyncBusy = false;
   }
 }
 function noteImgId() {
@@ -9456,13 +9737,18 @@ function fallbackCopy(text) {
   window.addEventListener('beforeunload', () => {
     if (cloudSaveTimer) {
       clearTimeout(cloudSaveTimer);
-      saveCloudBackup({ silent: true });
+      cloudSaveTimer = null;
     }
   });
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden' && cloudSaveTimer) {
-      clearTimeout(cloudSaveTimer);
-      saveCloudBackup({ silent: true });
+    if (document.visibilityState === 'hidden') {
+      if (cloudSaveTimer) {
+        clearTimeout(cloudSaveTimer);
+        cloudSaveTimer = null;
+      }
+      if (cloudUser && getPendingOps().length && !incrementalSyncBusy) {
+        syncWithServer();
+      }
     }
   });
 })();

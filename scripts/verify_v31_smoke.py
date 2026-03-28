@@ -6,6 +6,14 @@ import sys
 import urllib.error
 import urllib.request
 import uuid
+from pathlib import Path
+
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+from app.main import create_user_account, init_db
 
 
 BASE = "http://127.0.0.1:8000"
@@ -46,11 +54,14 @@ def main() -> int:
     status, data = c1.req("/health")
     assert_true(status == 200 and data.get("ok") is True, "health failed")
 
-    status, data = c1.req("/api/auth/register", method="POST", data={"username": username, "password": password})
-    assert_true(status == 200 and data.get("ok") is True, "register failed")
+    init_db()
+    create_user_account(username, password)
+
+    status, data = c1.req("/api/auth/login", method="POST", data={"username": username, "password": password})
+    assert_true(status == 200 and data.get("ok") is True, "login failed (client 1)")
 
     status, data = c2.req("/api/auth/login", method="POST", data={"username": username, "password": password})
-    assert_true(status == 200 and data.get("ok") is True, "login failed")
+    assert_true(status == 200 and data.get("ok") is True, "login failed (client 2)")
 
     backup_payload = {
         "xc_version": 2,
@@ -90,6 +101,19 @@ def main() -> int:
     assert_true(status == 200 and data.get("exists") is True, "backup get failed")
     assert_true(data["backup"]["errors"][0]["id"] == "err-1", "backup payload mismatch")
 
+    status, data = c1.req(
+        "/api/origin-status",
+        method="POST",
+        data={
+            "localChangedAt": "2026-03-26T12:10:00",
+            "lastLoadedAt": "2026-03-26T12:10:00",
+            "lastSavedAt": "2026-03-26T12:10:00",
+            "lastBackupUpdatedAt": "2026-03-26T12:10:00",
+        },
+    )
+    assert_true(status == 200 and data.get("ok") is True, "origin status update failed")
+    assert_true(isinstance(data.get("origins"), list) and data["origins"], "origin statuses missing")
+
     op1 = {
         "id": "op-" + uuid.uuid4().hex,
         "op_type": "error_upsert",
@@ -114,7 +138,7 @@ def main() -> int:
     status, data = c1.req("/api/sync", method="POST", data={"ops": [op1]})
     assert_true(status == 200 and data.get("ok") is True, "sync push failed")
 
-    status, data = c2.req("/api/sync?since=")
+    status, data = c2.req("/api/sync?since=2026-03-26T12:00:00")
     assert_true(status == 200 and len(data.get("ops", [])) >= 1, "sync pull missing ops")
     pulled = next((op for op in data["ops"] if op["id"] == op1["id"]), None)
     assert_true(pulled is not None, "pushed op not found")
@@ -122,7 +146,7 @@ def main() -> int:
 
     status, data = c1.req("/api/sync", method="POST", data={"ops": [op1]})
     assert_true(status == 200, "idempotent push failed")
-    status, data = c2.req("/api/sync?since=")
+    status, data = c2.req("/api/sync?since=2026-03-26T12:00:00")
     matches = [op for op in data.get("ops", []) if op["id"] == op1["id"]]
     assert_true(len(matches) == 1, "duplicate op inserted")
 
@@ -142,6 +166,47 @@ def main() -> int:
         raise AssertionError("image should be deleted after unref")
     except urllib.error.HTTPError as exc:
         assert_true(exc.code == 404, "image delete expectation failed")
+
+    status, data = c1.req("/api/practice/daily?limit=5")
+    assert_true(status == 200 and data.get("ok") is True, "practice daily failed")
+    assert_true(isinstance(data.get("items"), list), "practice daily items missing")
+
+    status, data = c1.req(
+        "/api/practice/log",
+        method="POST",
+        data={
+            "date": "2026-03-26",
+            "mode": "daily",
+            "weaknessTag": "判断推理",
+            "total": 1,
+            "correct": 0,
+            "errorIds": ["err-1"],
+        },
+    )
+    assert_true(status == 200 and data.get("ok") is True, "practice log failed")
+    assert_true(isinstance(data.get("recent"), list) and data["recent"], "practice recent logs missing")
+
+    status, data = c1.req("/api/codex/threads", method="POST", data={"title": "验收线程"})
+    assert_true(status == 200 and data.get("ok") is True, "codex thread create failed")
+    thread_id = data["thread"]["id"]
+
+    status, data = c1.req(
+        f"/api/codex/threads/{thread_id}/messages",
+        method="POST",
+        data={
+            "content": "请根据当前知识点生成复习建议",
+            "context": {"selectedKnowledgeNode": {"title": "判断推理"}},
+        },
+    )
+    assert_true(status == 200 and data.get("ok") is True, "codex message create failed")
+    assert_true(data["message"]["status"] == "pending", "codex message status mismatch")
+
+    status, data = c1.req("/api/codex/threads")
+    assert_true(status == 200 and data.get("ok") is True and data.get("threads"), "codex threads list failed")
+
+    status, data = c1.req(f"/api/codex/threads/{thread_id}")
+    assert_true(status == 200 and data.get("ok") is True, "codex thread get failed")
+    assert_true(len(data.get("messages", [])) == 1, "codex thread messages mismatch")
 
     print(json.dumps({"ok": True, "username": username, "image_hash": img_hash}, ensure_ascii=False))
     return 0
