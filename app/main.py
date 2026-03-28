@@ -27,6 +27,7 @@ DATA_DIR = BASE_DIR / "data"
 DB_PATH = DATA_DIR / "xingce.db"
 IMAGES_DIR = DATA_DIR / "images"
 HTML_PATH = BASE_DIR / "xingce_v3" / "xingce_v3.html"
+SHENLUN_HTML_PATH = BASE_DIR / "xingce_v3" / "shenlun.html"
 LOGIN_HTML_PATH = BASE_DIR / "app" / "login.html"
 FRONTEND_DIST_DIR = BASE_DIR / "frontend" / "dist"
 FRONTEND_INDEX_PATH = FRONTEND_DIST_DIR / "index.html"
@@ -2268,6 +2269,21 @@ def legacy_root(xingce_session: Optional[str] = Cookie(default=None)) -> Respons
         return RedirectResponse(url="/login", status_code=302)
     return FileResponse(
         HTML_PATH,
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
+
+
+@app.get("/shenlun")
+def shenlun_root(xingce_session: Optional[str] = Cookie(default=None)) -> Response:
+    user = get_user_by_token(xingce_session)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    return FileResponse(
+        SHENLUN_HTML_PATH,
         headers={
             "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
             "Pragma": "no-cache",

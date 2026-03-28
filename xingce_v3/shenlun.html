@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ashore - 申论工作台</title>
+  <link rel="stylesheet" href="/assets/modules/shenlun.css">
+</head>
+<body>
+  <div class="sl-app">
+    <header class="sl-top">
+      <div>
+        <div class="sl-badges">
+          <span id="runtimeBadge" class="sl-badge" data-mode="unknown">Runtime: loading</span>
+          <span id="cloudUserBadge" class="sl-badge">Cloud: checking</span>
+          <span id="syncBadge" class="sl-badge" data-state="idle">同步待命</span>
+        </div>
+        <h1>申论工作台</h1>
+        <p>按申论知识树选节点，再往节点下录题和笔记。题目表单只保留最小必需项。</p>
+      </div>
+      <nav class="sl-switch">
+        <a href="/">行测工作台</a>
+        <a class="active" href="/shenlun">申论工作台</a>
+        <button id="manualSyncBtn" type="button">立即同步</button>
+        <button id="logoutBtn" type="button">退出登录</button>
+      </nav>
+    </header>
+
+    <div class="sl-shell">
+      <aside class="sl-side">
+        <section class="sl-card">
+          <div class="sl-card-head"><h2>当前概况</h2></div>
+          <div class="sl-metrics">
+            <div><span>题目</span><strong id="metricQuestions">0</strong></div>
+            <div><span>已写</span><strong id="metricDone">0</strong></div>
+            <div><span>套卷</span><strong id="metricPapers">0</strong></div>
+          </div>
+          <p id="syncHint" class="sl-hint">工作区还没同步，先在本地录入也可以。</p>
+        </section>
+
+        <section class="sl-card">
+          <div class="sl-card-head"><h2>申论知识树</h2></div>
+          <div id="noteTree" class="sl-list"></div>
+        </section>
+
+        <section class="sl-card">
+          <div class="sl-card-head">
+            <h2>当前节点题目</h2>
+            <button id="newQuestionBtn" type="button">新建题目</button>
+          </div>
+          <div id="questionList" class="sl-list"></div>
+        </section>
+      </aside>
+
+      <main class="sl-main">
+        <section class="sl-hero">
+          <h2 id="heroTitle">先在左侧选一个申论节点</h2>
+          <p id="heroSummary">当前页只保留：当前节点、套卷、题目、我的答案、标准答案。</p>
+          <div id="heroMeta" class="sl-badges"></div>
+        </section>
+
+        <section class="sl-card">
+          <div class="sl-card-head">
+            <h2>节点工作区</h2>
+            <div class="sl-tabs">
+              <button class="sl-tab active" type="button" data-tab="questions">题目</button>
+              <button class="sl-tab" type="button" data-tab="notes">笔记</button>
+            </div>
+          </div>
+
+          <div id="panel-questions" class="sl-panel active">
+            <section class="sl-card sl-subcard">
+              <div class="sl-card-head"><h3>题目记录</h3></div>
+              <div class="sl-form">
+                <label><span>当前节点</span><input id="questionNodeLabel" disabled></label>
+                <label><span>套卷</span><input id="questionPaperTitle" placeholder="可空，如 2025国考副省级"></label>
+                <label><span>题目</span><textarea id="questionPrompt" placeholder="题目、材料说明、要求都可以直接写在这里。"></textarea></label>
+                <label><span>我的答案</span><textarea id="questionMyAnswer" placeholder="直接录入你的答案。"></textarea></label>
+                <label><span>标准答案</span><textarea id="questionReference" placeholder="标准答案或参考答案。"></textarea></label>
+              </div>
+              <div class="sl-actions">
+                <button id="saveQuestionBtn" type="button" class="primary">保存题目</button>
+                <button id="resetQuestionBtn" type="button">清空题目</button>
+                <button id="deleteQuestionBtn" type="button" class="danger">删除当前题目</button>
+              </div>
+            </section>
+          </div>
+
+          <div id="panel-notes" class="sl-panel">
+            <div class="sl-form">
+              <label><span>节点标题</span><input id="noteTitle"></label>
+              <label><span>节点笔记</span><textarea id="noteContent" placeholder="这一节点的方法、模板、素材、易错点都可以放这里。"></textarea></label>
+            </div>
+            <div class="sl-actions">
+              <button id="saveNoteBtn" type="button" class="primary">保存笔记</button>
+              <button id="resetNoteBtn" type="button">恢复当前节点内容</button>
+            </div>
+            <section class="sl-preview">
+              <h3 id="notePreviewTitle">节点笔记预览</h3>
+              <div id="notePreviewContent">当前还没有内容。</div>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div id="toast" class="sl-toast"></div>
+  <script src="/assets/modules/shenlun.js"></script>
+</body>
+</html>

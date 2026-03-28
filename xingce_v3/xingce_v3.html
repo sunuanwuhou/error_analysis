@@ -30,6 +30,7 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .sidebar-tools{padding:10px 12px;border-bottom:1px solid #f0f0f0;display:flex;flex-direction:column;gap:7px}
 .sidebar-tools-row{display:flex;align-items:center;gap:8px}
 .sidebar-tools-row .btn{flex:1}
+.workspace-entry-row .btn[disabled]{opacity:1;transform:none;background:#fff2f0;border-color:#fecaca;color:#c2410c;cursor:default}
 .sidebar-tools .more-menu{flex:1}
 .sidebar-tools .more-menu>.btn{width:100%}
 .sidebar-tools .more-menu-panel{left:auto;right:0;min-width:0;width:214px;max-width:calc(100vw - 28px);padding:6px;border-radius:12px;box-shadow:0 14px 28px rgba(15,23,42,.12)}
@@ -1296,6 +1297,10 @@ body{
     <div id="runtimeBadge" class="runtime-badge" data-mode="unknown">Runtime: loading</div>
   </div>
   <div class="sidebar-tools">
+    <div class="sidebar-tools-row workspace-entry-row">
+      <button class="btn btn-secondary" type="button" disabled>行测工作台</button>
+      <button class="btn btn-secondary" type="button" onclick="window.location.href='/shenlun'">申论工作台</button>
+    </div>
     <div class="sidebar-tools-row">
       <button class="btn btn-primary" onclick="openQuickAddModal()">＋ 添加</button>
       <div class="more-menu" id="moreMenu">
