@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>&#36807;&#31243;&#22270;&#32534;&#36753;</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: #1f2937;
+      background:
+        radial-gradient(circle at top left, rgba(255, 228, 196, 0.42), transparent 30%),
+        linear-gradient(180deg, #fffaf4 0%, #f8fafc 100%);
+    }
+    body.is-embedded {
+      background: transparent;
+    }
+    .process-page {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 18px;
+    }
+    body.is-embedded .process-page {
+      padding: 0;
+    }
+    .process-shell {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+      gap: 16px;
+    }
+    .process-card {
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 24px;
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+    }
+    .process-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 18px;
+    }
+    .process-kicker {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #b45309;
+    }
+    .process-title {
+      font-size: 28px;
+      line-height: 1.1;
+      font-weight: 800;
+      color: #0f172a;
+      word-break: break-word;
+    }
+    .process-path {
+      font-size: 13px;
+      color: #64748b;
+      line-height: 1.7;
+      word-break: break-word;
+    }
+    .process-question {
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: #fffaf4;
+      border: 1px solid #f3dfca;
+      font-size: 13px;
+      line-height: 1.75;
+      color: #7c2d12;
+      max-height: 180px;
+      overflow: auto;
+      white-space: pre-wrap;
+    }
+    .process-dropzone {
+      padding: 16px;
+      border-radius: 18px;
+      border: 1.5px dashed #fdba74;
+      background: linear-gradient(180deg, #fff7ed 0%, #fffaf4 100%);
+      color: #9a3412;
+      cursor: pointer;
+    }
+    .process-dropzone:hover {
+      border-color: #f97316;
+      background: linear-gradient(180deg, #fff1e6 0%, #fffaf4 100%);
+    }
+    .process-dropzone-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .process-dropzone-hint {
+      font-size: 12px;
+      line-height: 1.7;
+      color: #9a3412;
+    }
+    .process-actions {
+      display: grid;
+      gap: 10px;
+    }
+    .process-actions button,
+    .process-actions label {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 40px;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      background: #fff;
+      color: #334155;
+      font: inherit;
+      cursor: pointer;
+      text-decoration: none;
+      padding: 0 14px;
+    }
+    .process-actions button.primary {
+      background: linear-gradient(180deg, #fb923c 0%, #f97316 100%);
+      border-color: #f97316;
+      color: #fff;
+      font-weight: 700;
+    }
+    .process-actions button.warn {
+      color: #c2410c;
+      border-color: #fdba74;
+      background: #fff7ed;
+    }
+    .process-actions button:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+    .process-status {
+      font-size: 12px;
+      color: #64748b;
+      min-height: 18px;
+    }
+    .process-status.is-success { color: #15803d; }
+    .process-status.is-warning { color: #b45309; }
+    .process-status.is-error { color: #b91c1c; }
+    .process-main {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 18px;
+      gap: 14px;
+    }
+    .process-preview-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .process-preview-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .process-preview-meta {
+      font-size: 12px;
+      color: #94a3b8;
+    }
+    .process-preview-stage {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 22px;
+      border: 1px solid #efe6db;
+      background: rgba(255, 255, 255, 0.9);
+      overflow: hidden;
+      position: relative;
+    }
+    .process-preview-stage img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background:
+        linear-gradient(45deg, #f8fafc 25%, transparent 25%) -12px 0/24px 24px,
+        linear-gradient(-45deg, #f8fafc 25%, transparent 25%) -12px 0/24px 24px,
+        linear-gradient(45deg, transparent 75%, #f8fafc 75%) -12px 0/24px 24px,
+        linear-gradient(-45deg, transparent 75%, #f8fafc 75%) -12px 0/24px 24px,
+        #fff;
+    }
+    .process-empty {
+      padding: 28px;
+      text-align: center;
+      color: #64748b;
+      line-height: 1.9;
+      max-width: 420px;
+    }
+    .process-empty strong {
+      display: block;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+    input[type="file"] {
+      display: none;
+    }
+    @media (max-width: 960px) {
+      .process-shell {
+        grid-template-columns: 1fr;
+      }
+      .process-page {
+        padding: 12px;
+      }
+      .process-main {
+        min-height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="process-page">
+    <div class="process-shell">
+      <aside class="process-card process-sidebar">
+        <div class="process-kicker">&#36807;&#31243;&#22270;</div>
+        <div class="process-title" id="processTitle">&#27491;&#22312;&#21152;&#36733;</div>
+        <div class="process-path" id="processPath">&#35831;&#20174;&#20027;&#39029;&#38754;&#25171;&#24320;</div>
+        <div class="process-question" id="processQuestion"></div>
+        <div class="process-dropzone" id="processDropzone" tabindex="0">
+          <div class="process-dropzone-title">&#31896;&#36148;&#25110;&#19978;&#20256;&#22270;&#29255;</div>
+          <div class="process-dropzone-hint">
+            `Ctrl+V` &#31896;&#36148;&#25130;&#22270;&#65292;&#25110;&#28857;&#20987;&#36825;&#37324;&#36873;&#25321;&#26412;&#22320;&#22270;&#29255;&#12290;<br>
+            Phase 0 &#21482;&#20445;&#23384;&#26368;&#26032;&#19968;&#24352;&#39064;&#30446;&#20851;&#32852;&#36807;&#31243;&#22270;&#12290;
+          </div>
+        </div>
+        <input id="processFileInput" type="file" accept="image/*">
+        <div class="process-actions">
+          <label for="processFileInput">&#36873;&#25321;&#26412;&#22320;&#22270;&#29255;</label>
+          <button id="refreshBtn" type="button">&#20174;&#20027;&#39029;&#38754;&#21047;&#26032;</button>
+          <button id="clearBtn" type="button" class="warn">&#28165;&#38500;&#24403;&#21069;&#22270;&#29255;</button>
+          <button id="saveBtn" type="button" class="primary">&#20445;&#23384;</button>
+          <button id="saveCloseBtn" type="button" class="primary">&#20445;&#23384;&#24182;&#20851;&#38381;</button>
+          <button id="closeBtn" type="button">&#20851;&#38381;</button>
+        </div>
+        <div class="process-status" id="processStatus"></div>
+      </aside>
+      <section class="process-card process-main">
+        <div class="process-preview-head">
+          <div class="process-preview-title">&#39044;&#35272;</div>
+          <div class="process-preview-meta" id="processMeta"></div>
+        </div>
+        <div class="process-preview-stage" id="processPreviewStage">
+          <div class="process-empty" id="processEmpty">
+            <strong>&#36824;&#27809;&#26377;&#36807;&#31243;&#22270;</strong>
+            &#31896;&#36148;&#19968;&#24352;&#22270;&#65292;&#25110;&#20174;&#26412;&#22320;&#19978;&#20256;&#21518;&#20445;&#23384;&#12290;
+          </div>
+          <img id="processPreviewImage" alt="process image" hidden>
+        </div>
+      </section>
+    </div>
+  </div>
+  <script src="/assets/modules/process-image-editor-page.js"></script>
+</body>
+</html>

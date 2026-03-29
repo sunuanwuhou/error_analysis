@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>全局搜索</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: #1f2937;
+      background:
+        radial-gradient(circle at top left, rgba(255, 228, 196, 0.42), transparent 30%),
+        linear-gradient(180deg, #fffaf4 0%, #f8fafc 100%);
+    }
+    body.is-embedded {
+      background: transparent;
+    }
+    .search-page {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 20px;
+    }
+    body.is-embedded .search-page {
+      padding: 0;
+    }
+    .search-shell {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+      gap: 16px;
+    }
+    .panel {
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 24px;
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+    }
+    .search-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 18px;
+    }
+    .search-main {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      padding: 18px;
+      gap: 14px;
+    }
+    .search-topbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    .search-kicker {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #b45309;
+    }
+    .search-title {
+      margin-top: 6px;
+      font-size: 28px;
+      line-height: 1.08;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    .search-subtitle {
+      margin-top: 8px;
+      font-size: 13px;
+      line-height: 1.7;
+      color: #64748b;
+    }
+    .search-close {
+      border: 0;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.08);
+      color: #0f172a;
+      min-width: 38px;
+      min-height: 38px;
+      font-size: 24px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .search-close:hover {
+      background: rgba(15, 23, 42, 0.14);
+    }
+    .search-input-wrap {
+      position: relative;
+    }
+    .search-input {
+      width: 100%;
+      min-height: 54px;
+      padding: 0 18px 0 48px;
+      border-radius: 18px;
+      border: 1px solid #e5d8c7;
+      background: linear-gradient(180deg, #fffdf9 0%, #fff 100%);
+      font-size: 16px;
+      color: #1f2937;
+      outline: none;
+      transition: .16s;
+    }
+    .search-input:focus {
+      border-color: #f59e0b;
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.12);
+    }
+    .search-input-icon {
+      position: absolute;
+      left: 18px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #94a3b8;
+      font-size: 18px;
+    }
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #94a3b8;
+      margin-bottom: 8px;
+    }
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .chip {
+      padding: 7px 12px;
+      border-radius: 999px;
+      border: 1px solid #e2e8f0;
+      background: #fff;
+      color: #475569;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: .15s;
+    }
+    .chip:hover {
+      border-color: #f59e0b;
+      color: #b45309;
+      background: #fffaf0;
+    }
+    .chip.active {
+      border-color: #fdba74;
+      background: #fff3e0;
+      color: #c2410c;
+      box-shadow: 0 8px 18px rgba(249, 115, 22, 0.12);
+    }
+    .hint-list {
+      display: grid;
+      gap: 8px;
+      font-size: 12px;
+      line-height: 1.7;
+      color: #64748b;
+    }
+    .hint-item {
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: #f8fafc;
+      border: 1px solid #e5edf5;
+    }
+    .search-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 13px;
+      color: #64748b;
+      padding: 0 4px;
+      flex-wrap: wrap;
+    }
+    .search-summary strong {
+      color: #0f172a;
+    }
+    .result-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      padding-right: 4px;
+      display: grid;
+      gap: 18px;
+    }
+    .result-group {
+      display: grid;
+      gap: 10px;
+    }
+    .result-group-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #7c2d12;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .result-group-title span:last-child {
+      color: #94a3b8;
+      letter-spacing: normal;
+      text-transform: none;
+    }
+    .result-list {
+      display: grid;
+      gap: 10px;
+    }
+    .result-card {
+      padding: 14px 16px;
+      border-radius: 18px;
+      border: 1px solid #e9edf3;
+      background: linear-gradient(180deg, #fff 0%, #fcfcfd 100%);
+      cursor: pointer;
+      transition: .16s;
+    }
+    .result-card:hover {
+      border-color: #f5c2a0;
+      background: #fffaf6;
+      box-shadow: 0 16px 28px rgba(15, 23, 42, 0.08);
+      transform: translateY(-1px);
+    }
+    .result-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      color: #64748b;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .pill.kind-question {
+      background: #fff1f2;
+      border-color: #fecdd3;
+      color: #be123c;
+    }
+    .pill.kind-note {
+      background: #eff6ff;
+      border-color: #bfdbfe;
+      color: #1d4ed8;
+    }
+    .pill.image {
+      background: #fff7ed;
+      border-color: #fed7aa;
+      color: #c2410c;
+    }
+    .result-title {
+      font-size: 16px;
+      font-weight: 750;
+      line-height: 1.6;
+      color: #0f172a;
+      margin-bottom: 6px;
+      word-break: break-word;
+    }
+    .result-path {
+      font-size: 12px;
+      line-height: 1.7;
+      color: #7c8698;
+      margin-bottom: 6px;
+      word-break: break-word;
+    }
+    .result-snippet {
+      font-size: 13px;
+      line-height: 1.8;
+      color: #334155;
+      word-break: break-word;
+    }
+    mark {
+      background: #fef08a;
+      color: inherit;
+      padding: 0 2px;
+      border-radius: 4px;
+    }
+    .empty-state {
+      display: grid;
+      place-items: center;
+      min-height: 280px;
+      border-radius: 22px;
+      border: 1px dashed #e2e8f0;
+      background: linear-gradient(180deg, #fffdf9 0%, #f8fafc 100%);
+      color: #94a3b8;
+      text-align: center;
+      padding: 20px;
+      font-size: 13px;
+      line-height: 1.9;
+    }
+    .result-scroll::-webkit-scrollbar {
+      width: 8px;
+    }
+    .result-scroll::-webkit-scrollbar-thumb {
+      background: #d6dce5;
+      border-radius: 999px;
+    }
+    @media (max-width: 980px) {
+      .search-page {
+        padding: 12px;
+      }
+      .search-shell {
+        grid-template-columns: 1fr;
+      }
+      .search-main,
+      .search-sidebar {
+        padding: 14px;
+      }
+      .search-title {
+        font-size: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="search-page">
+    <div class="search-topbar">
+      <div>
+        <div class="search-kicker">Global Search</div>
+        <div class="search-title">题目、笔记、图片 一次搜全</div>
+        <div class="search-subtitle">支持题目全文、知识点笔记和图片状态搜索。第一版图片搜索按“是否有题图 / 解析图 / 过程图 / 笔记图”筛选，不做 OCR 猜图。</div>
+      </div>
+      <button class="search-close" id="closeSearchBtn" type="button" aria-label="Close">&times;</button>
+    </div>
+
+    <div class="search-input-wrap">
+      <span class="search-input-icon">⌕</span>
+      <input id="searchInput" class="search-input" type="text" placeholder="搜索题目、笔记、知识点路径，或直接输入 有过程图 / 有笔记图">
+    </div>
+
+    <div class="search-shell">
+      <div class="panel search-sidebar">
+        <div>
+          <div class="section-title">搜索范围</div>
+          <div class="chip-row" id="scopeChips"></div>
+        </div>
+        <div>
+          <div class="section-title">图片筛选</div>
+          <div class="chip-row" id="imageChips"></div>
+        </div>
+        <div>
+          <div class="section-title">快捷提示</div>
+          <div class="hint-list">
+            <div class="hint-item">直接输入关键词，默认同时搜题目和知识点笔记。</div>
+            <div class="hint-item">可输入 <strong>有图片</strong>、<strong>有题图</strong>、<strong>有解析图</strong>、<strong>有过程图</strong>、<strong>有笔记图</strong>。</div>
+            <div class="hint-item">点结果会直接跳回主页面并定位到题目或笔记节点。</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel search-main">
+        <div class="search-summary" id="searchSummary"></div>
+        <div class="result-scroll" id="resultScroll"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./modules/global-search-page.js"></script>
+</body>
+</html>

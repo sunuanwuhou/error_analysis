@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Process Image Smoke Harness</title>
+  <style>
+    body { font-family: "Microsoft YaHei", sans-serif; margin: 0; padding: 16px; background: #f8fafc; color: #0f172a; }
+    h1 { font-size: 20px; margin: 0 0 12px; }
+    #results { display: grid; gap: 8px; margin-bottom: 14px; }
+    .result { padding: 10px 12px; border-radius: 10px; border: 1px solid #cbd5e1; background: #fff; font-size: 13px; }
+    .pass { border-color: #86efac; background: #f0fdf4; color: #166534; }
+    .fail { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
+    .pending { border-color: #fde68a; background: #fffbeb; color: #92400e; }
+    iframe { width: 100%; height: 920px; border: 1px solid #cbd5e1; border-radius: 12px; background: #fff; }
+    #summary { margin-top: 12px; font-size: 13px; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Process Image Smoke Harness</h1>
+  <div id="results"></div>
+  <iframe id="editorFrame" src="/assets/process_image_editor.html?errorId=process-smoke&embed=1&source=card"></iframe>
+  <pre id="summary">running...</pre>
+  <script>
+    var DATA_URL_A = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
+    var DATA_URL_B = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP8AAP///ywAAAAAAQABAAACAUwAOw==";
+    var processItem = {
+      id: "process-smoke",
+      type: "判断推理",
+      subtype: "图形推理",
+      subSubtype: "位置变化",
+      question: "验证过程图弹窗的加载、替换和保存。",
+      processImage: {
+        imageUrl: DATA_URL_A,
+        updatedAt: "2026-03-29T00:00:00.000Z"
+      }
+    };
+    var saveCalls = [];
+    var results = [];
+
+    function addResult(name, ok, detail) {
+      results.push({ name: name, ok: ok, detail: detail || "" });
+      var el = document.createElement("div");
+      el.className = "result " + (ok === null ? "pending" : (ok ? "pass" : "fail"));
+      el.textContent = name + (detail ? " - " + detail : "");
+      document.getElementById("results").appendChild(el);
+    }
+
+    function replaceResult(name, ok, detail) {
+      var rows = Array.from(document.getElementById("results").children);
+      var row = rows.find(function (item) { return item.textContent.indexOf(name) === 0; });
+      if (!row) return addResult(name, ok, detail);
+      row.className = "result " + (ok ? "pass" : "fail");
+      row.textContent = name + (detail ? " - " + detail : "");
+    }
+
+    function waitFor(checker, timeoutMs) {
+      timeoutMs = timeoutMs || 15000;
+      var start = Date.now();
+      return new Promise(function (resolve, reject) {
+        function tick() {
+          try {
+            var value = checker();
+            if (value) return resolve(value);
+          } catch (error) {}
+          if (Date.now() - start > timeoutMs) return reject(new Error("timeout"));
+          setTimeout(tick, 100);
+        }
+        tick();
+      });
+    }
+
+    function getProcessImagePayload(id) {
+      return id === processItem.id ? {
+        id: processItem.id,
+        title: [processItem.type, processItem.subtype, processItem.subSubtype].join(" / "),
+        question: processItem.question,
+        imageUrl: processItem.processImage ? processItem.processImage.imageUrl : "",
+        updatedAt: processItem.processImage ? processItem.processImage.updatedAt : ""
+      } : null;
+    }
+
+    function saveProcessImageValue(id, value) {
+      if (id !== processItem.id) return Promise.reject(new Error("wrong id"));
+      saveCalls.push(value || "");
+      processItem.processImage = value ? {
+        imageUrl: value,
+        updatedAt: "2026-03-29T09:00:00.000Z"
+      } : null;
+      return Promise.resolve(processItem.processImage);
+    }
+
+    function closeProcessImageEditorModal() {}
+    function showToast() {}
+
+    window.getProcessImagePayload = getProcessImagePayload;
+    window.saveProcessImageValue = saveProcessImageValue;
+    window.closeProcessImageEditorModal = closeProcessImageEditorModal;
+    window.showToast = showToast;
+
+    async function run() {
+      addResult("initial load", null, "running");
+      addResult("replace image", null, "running");
+      addResult("save image", null, "running");
+
+      var frame = document.getElementById("editorFrame");
+      await waitFor(function () {
+        var doc = frame.contentDocument;
+        return doc && doc.getElementById("processPreviewImage");
+      });
+      var doc = frame.contentDocument;
+      await waitFor(function () {
+        var img = doc.getElementById("processPreviewImage");
+        return img && !img.hidden && img.getAttribute("src") === DATA_URL_A;
+      });
+      replaceResult("initial load", true, "existing image visible");
+
+      var api = frame.contentWindow.__processImageEditorTest;
+      if (!api || typeof api.setValue !== "function" || typeof api.save !== "function") {
+        replaceResult("replace image", false, "test api missing");
+        replaceResult("save image", false, "test api missing");
+      } else {
+        api.setValue(DATA_URL_B);
+        await waitFor(function () {
+          var img = doc.getElementById("processPreviewImage");
+          return img && img.getAttribute("src") === DATA_URL_B;
+        });
+        replaceResult("replace image", true, "preview updated");
+
+        api.save(false);
+        await waitFor(function () {
+          return saveCalls.length > 0 && saveCalls[saveCalls.length - 1] === DATA_URL_B;
+        });
+        replaceResult("save image", true, "host save called");
+      }
+
+      document.getElementById("summary").textContent = JSON.stringify({
+        results: results,
+        processItem: processItem,
+        saveCalls: saveCalls
+      }, null, 2);
+      document.body.dataset.done = "1";
+    }
+
+    run().catch(function (error) {
+      document.getElementById("summary").textContent = "FAILED: " + (error && error.message ? error.message : String(error));
+      document.body.dataset.done = "1";
+    });
+  </script>
+</body>
+</html>

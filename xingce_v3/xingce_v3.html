@@ -103,6 +103,8 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .more-menu.open .more-menu-panel{display:flex;flex-direction:column;gap:6px}
 .more-menu-panel .btn{justify-content:flex-start;text-align:left;width:100%}
 .search-box{flex:1;min-width:150px;position:relative}
+.errors-header-actions{display:flex;align-items:center;gap:10px;flex:1;justify-content:flex-end;min-width:0}
+.global-search-launch{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:0 14px;border-radius:14px}
 .search-box input{width:100%;padding:6px 10px 6px 28px;border:1px solid #ddd;border-radius:16px;font-size:13px;outline:none;transition:.2s}
 .search-box input:focus{border-color:#e74c3c;box-shadow:0 0 0 2px rgba(231,76,60,.1)}
 .search-clear{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:#bbb;cursor:pointer;font-size:15px;line-height:1;display:none;background:none;border:none;padding:0}
@@ -399,9 +401,12 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 
 /* ===== 答题弹窗 ===== */
 .quiz-modal{background:#fff;border-radius:16px;padding:26px;width:680px;max-width:95vw;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25)}
-.quiz-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.quiz-header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:16px}
+.quiz-header-main{display:flex;align-items:center;gap:12px;min-width:0}
 .quiz-title{font-size:16px;font-weight:700;color:#2c3e50}
 .quiz-progress{font-size:12px;color:#999}
+.quiz-close-btn{flex-shrink:0;padding:8px 14px;border:1px solid #f3d7d2;border-radius:999px;background:#fff7f6;color:#c2410c;font-size:12px;font-weight:700;cursor:pointer;transition:.15s}
+.quiz-close-btn:hover{background:#fff1ef;border-color:#f0b9ad}
 .quiz-prog-bar{height:4px;background:#f0f0f0;border-radius:2px;margin-bottom:20px;overflow:hidden}
 .quiz-prog-fill{height:100%;background:linear-gradient(90deg,#e74c3c,#ff8f85);transition:width .4s}
 .quiz-question-box{font-size:15px;line-height:1.8;color:#333;padding:14px 16px;background:#fafafa;border-radius:8px;margin-bottom:14px}
@@ -753,6 +758,31 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .note-editor-modal-close{position:absolute;top:18px;right:18px;z-index:2;width:36px;height:36px;border:0;border-radius:999px;background:rgba(15,23,42,.08);color:#0f172a;font-size:24px;line-height:1;cursor:pointer}
 .note-editor-modal-close:hover{background:rgba(15,23,42,.14)}
 .note-editor-modal-frame{display:block;width:100%;height:100%;border:0;border-radius:20px;background:transparent}
+.process-image-modal-open{overflow:hidden}
+.process-image-preview-block{margin-top:10px;padding:10px 12px;border:1px solid #e2e8f0;border-radius:14px;background:linear-gradient(180deg,#fffdf8 0%,#f8fafc 100%)}
+.process-image-preview-toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;list-style:none}
+.process-image-preview-toggle::-webkit-details-marker{display:none}
+.process-image-preview-toggle::after{content:'展开';font-size:11px;font-weight:700;color:#c2410c;background:#ffedd5;border:1px solid #fdba74;border-radius:999px;padding:3px 10px;flex-shrink:0}
+.process-image-preview-block[open] .process-image-preview-toggle::after{content:'收起'}
+.process-image-preview-label{font-size:12px;font-weight:700;color:#9a3412;letter-spacing:.04em}
+.process-image-preview-meta{font-size:11px;color:#94a3b8}
+.process-image-preview-body{display:grid;gap:10px;padding-top:10px;margin-top:10px;border-top:1px solid #e2e8f0}
+.process-image-preview-thumb{display:block;width:100%;max-height:240px;object-fit:contain;border-radius:12px;border:1px solid #e5e7eb;background:#fff;cursor:pointer}
+.process-image-preview-thumb:hover{border-color:#fdba74;box-shadow:0 8px 18px rgba(249,115,22,.12)}
+.process-image-preview-thumb.expanded{max-height:none}
+.process-image-preview-quiz{margin:12px 0}
+.process-image-action-btn{white-space:nowrap}
+.process-image-modal-mask{z-index:1420;padding:18px}
+.process-image-modal{position:relative;width:min(1120px,96vw);height:min(820px,92vh);background:linear-gradient(180deg,#fffaf4 0%,#f8fafc 100%);border-radius:26px;box-shadow:0 28px 80px rgba(15,23,42,.24);padding:14px;overflow:hidden}
+.process-image-modal-close{position:absolute;top:18px;right:18px;z-index:2;width:36px;height:36px;border:0;border-radius:999px;background:rgba(15,23,42,.08);color:#0f172a;font-size:24px;line-height:1;cursor:pointer}
+.process-image-modal-close:hover{background:rgba(15,23,42,.14)}
+.process-image-modal-frame{display:block;width:100%;height:100%;border:0;border-radius:20px;background:transparent}
+.global-search-modal-open{overflow:hidden}
+.global-search-modal-mask{z-index:1410;padding:18px}
+.global-search-modal{position:relative;width:min(1320px,96vw);height:min(900px,92vh);background:linear-gradient(180deg,#fffaf4 0%,#f8fafc 100%);border-radius:28px;box-shadow:0 28px 80px rgba(15,23,42,.24);padding:14px;overflow:hidden}
+.global-search-modal-close{position:absolute;top:18px;right:18px;z-index:2;width:36px;height:36px;border:0;border-radius:999px;background:rgba(15,23,42,.08);color:#0f172a;font-size:24px;line-height:1;cursor:pointer}
+.global-search-modal-close:hover{background:rgba(15,23,42,.14)}
+.global-search-modal-frame{display:block;width:100%;height:100%;border:0;border-radius:22px;background:transparent}
 .note-preview-article-scroll{min-width:0;max-width:none;grid-column:2;max-height:calc(100vh - 320px);overflow-y:auto;overflow-x:hidden;padding-right:6px;scroll-padding-top:14px}
 .note-preview-article-scroll::-webkit-scrollbar{width:5px}
 .note-preview-article-scroll::-webkit-scrollbar-thumb{background:#ddd;border-radius:3px}
@@ -801,6 +831,8 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
   .notes-panel-right{display:none!important}
   .global-note-toc-dock{display:none!important}
   .note-preview-layout{display:block}
+  .errors-header-actions{width:100%;justify-content:stretch;flex-wrap:wrap}
+  .global-search-launch{width:100%}
   .note-preview-scroll{max-height:none}
   .note-viewer-frame--read{height:100%;min-height:100%}
   .note-preview-article-scroll{max-height:none}
@@ -1190,6 +1222,8 @@ body{
   }
   .note-editor-modal-mask{padding:8px}
   .note-editor-modal{width:min(100vw - 16px, 1520px);height:calc(100vh - 16px);padding:8px;border-radius:18px}
+  .process-image-modal-mask{padding:8px}
+  .process-image-modal{width:min(100vw - 16px, 1120px);height:calc(100vh - 16px);padding:8px;border-radius:18px}
   #aiWorkbenchBtn{
     right:14px!important;
     bottom:14px!important;
@@ -1421,10 +1455,13 @@ body{
     <div class="errors-area">
       <div class="errors-header">
         <h2>错题列表</h2>
-        <div class="search-box">
-          <span class="search-icon">🔍</span>
-          <input type="text" id="searchInput" placeholder="搜索题目、解析..." oninput="onSearch();updateSearchClear()" onkeydown="if(event.key==='Enter')onSearch()">
-          <button class="search-clear" id="searchClear" onclick="clearSearchInput()">✕</button>
+        <div class="errors-header-actions">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="searchInput" placeholder="搜索题目、解析..." oninput="onSearch();updateSearchClear()" onkeydown="if(event.key==='Enter')onSearch()">
+            <button class="search-clear" id="searchClear" onclick="clearSearchInput()">✕</button>
+          </div>
+          <button class="btn btn-secondary global-search-launch" onclick="openGlobalSearchModal()" title="Ctrl+K">全局搜索</button>
         </div>
       </div>
       <div class="date-filter-bar">
@@ -1455,6 +1492,7 @@ body{
       <div class="notes-header">
         <h2>学习笔记</h2>
         <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" onclick="openGlobalSearchModal()">全局搜索</button>
           <button class="btn btn-secondary" onclick="deleteSelectedKnowledgeNode()">删除知识点</button>
           <button class="btn btn-secondary" onclick="clearNotes()">🗑 清空</button>
         </div>
@@ -1716,8 +1754,11 @@ body{
 <div class="modal-mask" id="quizModal">
   <div class="quiz-modal">
     <div class="quiz-header">
-      <span class="quiz-title" id="quizTitleText">📝 今日复习</span>
-      <span class="quiz-progress" id="quizProgress"></span>
+      <div class="quiz-header-main">
+        <span class="quiz-title" id="quizTitleText">📝 今日复习</span>
+        <span class="quiz-progress" id="quizProgress"></span>
+      </div>
+      <button class="quiz-close-btn" type="button" onclick="requestCloseQuizModal()">关闭</button>
     </div>
     <div class="quiz-prog-bar"><div class="quiz-prog-fill" id="quizProgFill" style="width:0%"></div></div>
     <div id="quizContent"></div>
@@ -2092,6 +2133,7 @@ function escapeAttrStr(s){ return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
 let statusFilter = 'all';
 let typeFilter   = null;   // {level:'type'|'subtype'|'sub2', value, type?, subtype?}
 let searchKw     = '';
+let quizSessionMode = 'daily';
 let reasonFilter = null;   // 错因筛选，null 表示不筛选
 let editingId    = null;
 let importMode   = 'merge';
@@ -4682,6 +4724,220 @@ async function unrefImageValue(value) {
   }
 }
 // 解析图片
+function getProcessImageUrl(errorItem) {
+  const processImage = errorItem && errorItem.processImage;
+  return processImage && typeof processImage.imageUrl === 'string' ? processImage.imageUrl : '';
+}
+function noteContentHasImage(content) {
+  const text = String(content || '');
+  return /noteimg:/i.test(text) || /!\[[^\]]*\]\([^)]+\)/.test(text) || /<img\b/i.test(text);
+}
+function getGlobalSearchPayload() {
+  ensureKnowledgeState();
+  const questions = getErrorEntries().map(errorItem => {
+    const node = errorItem.noteNodeId ? getKnowledgeNodeById(errorItem.noteNodeId) : null;
+    return {
+      kind: 'question',
+      id: String(errorItem.id),
+      type: errorItem.type || '',
+      subtype: errorItem.subtype || '',
+      subSubtype: errorItem.subSubtype || '',
+      question: errorItem.question || '',
+      options: errorItem.options || '',
+      analysis: errorItem.analysis || '',
+      reason: errorItem.rootReason || errorItem.errorReason || '',
+      status: errorItem.status || '',
+      knowledgePath: node ? collapseKnowledgePathTitles(getKnowledgePathTitles(node.id)).join(' > ') : '',
+      sourceYear: errorItem.srcYear || '',
+      sourceProvince: errorItem.srcProvince || '',
+      sourceOrigin: errorItem.srcOrigin || '',
+      hasQuestionImage: !!errorItem.imgData,
+      hasAnalysisImage: !!errorItem.analysisImgData,
+      hasProcessImage: !!getProcessImageUrl(errorItem)
+    };
+  });
+  const notes = collectKnowledgeNodes().map(node => {
+    const content = String(node.contentMd || '');
+    return {
+      kind: 'note',
+      id: String(node.id),
+      title: node.title || '',
+      path: collapseKnowledgePathTitles(getKnowledgePathTitles(node.id)).join(' > '),
+      content,
+      headings: extractMdHeadings(content).map(item => item.text),
+      linkedCount: countErrorsForKnowledgeNode(node.id, true),
+      hasNoteImage: noteContentHasImage(content)
+    };
+  }).filter(item => item.content.trim() || item.hasNoteImage);
+  return {
+    generatedAt: new Date().toISOString(),
+    query: searchKw || '',
+    questions,
+    notes
+  };
+}
+function activateGlobalSearchResult(result) {
+  if (!result || !result.kind || !result.id) return false;
+  if (result.kind === 'question') {
+    closeGlobalSearchModal(true);
+    jumpToErrorInList(result.id);
+    return true;
+  }
+  if (result.kind === 'note') {
+    closeGlobalSearchModal(true);
+    setCurrentKnowledgeNode(result.id, { switchTab: true });
+    return true;
+  }
+  return false;
+}
+function getProcessImagePayload(errorId) {
+  const errorItem = findErrorById(errorId);
+  if (!errorItem) return null;
+  const parts = [errorItem.type, errorItem.subtype, errorItem.subSubtype].filter(Boolean);
+  return {
+    id: errorItem.id,
+    title: parts.join(' / ') || `#${errorItem.id}`,
+    question: errorItem.question || '',
+    imageUrl: getProcessImageUrl(errorItem),
+    updatedAt: errorItem.processImage && errorItem.processImage.updatedAt ? errorItem.processImage.updatedAt : ''
+  };
+}
+async function saveProcessImageValue(errorId, nextValue) {
+  const errorItem = findErrorById(errorId);
+  if (!errorItem) throw new Error('question not found');
+  const previousUrl = getProcessImageUrl(errorItem);
+  let finalUrl = nextValue || '';
+  if (finalUrl) finalUrl = await uploadImageValue(finalUrl);
+  if (previousUrl && previousUrl !== finalUrl) {
+    await unrefImageValue(previousUrl);
+  }
+  if (finalUrl) {
+    errorItem.processImage = { imageUrl: finalUrl, updatedAt: new Date().toISOString() };
+  } else {
+    delete errorItem.processImage;
+  }
+  errorItem.updatedAt = new Date().toISOString();
+  recordErrorUpsert(errorItem);
+  saveData();
+  renderAll();
+  if (typeof renderNotesPanelRight === 'function') renderNotesPanelRight();
+  if (document.getElementById('quizModal')?.classList.contains('open')) {
+    const currentQuiz = quizQueue[quizIdx];
+    if (currentQuiz && normalizeErrorId(currentQuiz.id) === normalizeErrorId(errorItem.id)) renderQuizQuestion();
+  }
+  showToast(finalUrl ? '过程图已保存' : '过程图已移除', 'success');
+  return errorItem.processImage || null;
+}
+function renderProcessImagePreview(errorItem, source) {
+  const imageUrl = getProcessImageUrl(errorItem);
+  if (!imageUrl) return '';
+  const idLit = idArg(errorItem.id);
+  const sourceText = JSON.stringify(source || 'card');
+  const updatedAt = errorItem.processImage && errorItem.processImage.updatedAt
+    ? new Date(errorItem.processImage.updatedAt).toLocaleString()
+    : '';
+  return `<details class="process-image-preview-block ${source === 'quiz' ? 'process-image-preview-quiz' : ''}">
+    <summary class="process-image-preview-toggle">
+      <div>
+        <div class="process-image-preview-label">&#36807;&#31243;&#22270;</div>
+        ${updatedAt ? `<div class="process-image-preview-meta">${escapeHtml(updatedAt)}</div>` : ''}
+      </div>
+    </summary>
+    <div class="process-image-preview-body">
+      <button class="btn btn-sm btn-secondary process-image-action-btn" onclick='openProcessImageEditor(${idLit}, ${sourceText})'>&#32534;&#36753;&#36807;&#31243;&#22270;</button>
+      <img src="${escapeHtml(imageUrl)}" class="process-image-preview-thumb" onclick="this.classList.toggle('expanded')" title="click to zoom">
+    </div>
+  </details>`;
+}
+function ensureProcessImageEditorModal() {
+  let mask = document.getElementById('processImageEditorModal');
+  if (mask) return mask;
+  mask = document.createElement('div');
+  mask.id = 'processImageEditorModal';
+  mask.className = 'modal-mask process-image-modal-mask';
+  mask.innerHTML = '' +
+    '<div class="process-image-modal" role="dialog" aria-modal="true" aria-label="process image editor">' +
+      '<button class="process-image-modal-close" type="button" aria-label="Close">&times;</button>' +
+      '<iframe id="processImageEditorFrame" class="process-image-modal-frame" title="process image editor"></iframe>' +
+    '</div>';
+  function requestClose() {
+    const frame = document.getElementById('processImageEditorFrame');
+    const child = frame && frame.contentWindow;
+    if (child && typeof child.requestProcessImageEditorClose === 'function') {
+      if (child.requestProcessImageEditorClose(false) === false) return;
+    }
+    closeProcessImageEditorModal(true);
+  }
+  mask.addEventListener('click', function (event) {
+    if (event.target === mask) requestClose();
+  });
+  mask.querySelector('.process-image-modal-close').addEventListener('click', requestClose);
+  document.body.appendChild(mask);
+  return mask;
+}
+function openProcessImageEditor(errorId, source) {
+  const payload = getProcessImagePayload(errorId);
+  if (!payload) {
+    showToast('未找到对应题目', 'warning');
+    return;
+  }
+  const mask = ensureProcessImageEditorModal();
+  const frame = document.getElementById('processImageEditorFrame');
+  frame.src = `/assets/process_image_editor.html?errorId=${encodeURIComponent(payload.id)}&embed=1&source=${encodeURIComponent(source || 'card')}`;
+  mask.classList.add('open');
+  document.body.classList.add('process-image-modal-open');
+}
+function closeProcessImageEditorModal(force) {
+  const mask = document.getElementById('processImageEditorModal');
+  if (!mask) return;
+  if (!force) {
+    const frame = document.getElementById('processImageEditorFrame');
+    const child = frame && frame.contentWindow;
+    if (child && typeof child.requestProcessImageEditorClose === 'function') {
+      if (child.requestProcessImageEditorClose(false) === false) return;
+    }
+  }
+  mask.classList.remove('open');
+  document.body.classList.remove('process-image-modal-open');
+}
+function ensureGlobalSearchModal() {
+  let mask = document.getElementById('globalSearchModal');
+  if (mask) return mask;
+  mask = document.createElement('div');
+  mask.id = 'globalSearchModal';
+  mask.className = 'modal-mask global-search-modal-mask';
+  mask.innerHTML = '' +
+    '<div class="global-search-modal" role="dialog" aria-modal="true" aria-label="global search">' +
+      '<button class="global-search-modal-close" type="button" aria-label="Close">&times;</button>' +
+      '<iframe id="globalSearchFrame" class="global-search-modal-frame" title="global search"></iframe>' +
+    '</div>';
+  mask.addEventListener('click', function(event) {
+    if (event.target === mask) closeGlobalSearchModal(true);
+  });
+  mask.querySelector('.global-search-modal-close').addEventListener('click', function() {
+    closeGlobalSearchModal(true);
+  });
+  document.body.appendChild(mask);
+  return mask;
+}
+function openGlobalSearchModal(initialQuery) {
+  const mask = ensureGlobalSearchModal();
+  const frame = document.getElementById('globalSearchFrame');
+  const nextQuery = typeof initialQuery === 'string' ? initialQuery : (searchKw || '');
+  frame.src = `/assets/global_search.html?embed=1&q=${encodeURIComponent(nextQuery)}`;
+  mask.classList.add('open');
+  document.body.classList.add('global-search-modal-open');
+}
+function closeGlobalSearchModal(force) {
+  const mask = document.getElementById('globalSearchModal');
+  if (!mask) return;
+  mask.classList.remove('open');
+  document.body.classList.remove('global-search-modal-open');
+  if (force) {
+    const frame = document.getElementById('globalSearchFrame');
+    if (frame) frame.src = 'about:blank';
+  }
+}
 function setEditAnalysisImgPreview(b64) {
   editAnalysisImgBase64 = b64;
   document.getElementById('analysisImgPreview').src = b64;
@@ -5140,6 +5396,7 @@ async function startQuiz() {
     ? serverItems.map(item => ({ ...findErrorById(item.id), ...item })).filter(isErrorEntry)
     : getDueList();
   if (!quizQueue.length) { showToast('今日暂无需要复习的题目', 'warning'); return; }
+  quizSessionMode = 'daily';
   quizIdx = 0; quizAnswers = []; quizSkipped = new Set();
   document.getElementById('quizTitleText').textContent = '📝 今日复习';
   openModal('quizModal');
@@ -5196,11 +5453,49 @@ function startFullPracticeFiltered() {
     return tc!==0?tc:(a.subtype||'').localeCompare(b.subtype||'','zh');
   });
   if(!quizQueue.length){showToast('所选章节暂无错题', 'warning');return;}
+  quizSessionMode = 'full';
   quizIdx=0; quizAnswers=[]; quizSkipped=new Set();
   closeModal('chapterFilterModal');
   document.getElementById('quizTitleText').textContent='📚 全量练习';
   openModal('quizModal');
   renderQuizQuestion();
+}
+function resetQuizSession() {
+  quizQueue = [];
+  quizIdx = 0;
+  quizAnswers = [];
+  quizSkipped = new Set();
+  const titleEl = document.getElementById('quizTitleText');
+  const progressEl = document.getElementById('quizProgress');
+  const fillEl = document.getElementById('quizProgFill');
+  const contentEl = document.getElementById('quizContent');
+  if (titleEl) titleEl.textContent = '📝 今日复习';
+  if (progressEl) progressEl.textContent = '';
+  if (fillEl) fillEl.style.width = '0%';
+  if (contentEl) contentEl.innerHTML = '';
+}
+function getQuizClosePrompt(targetTab) {
+  const sessionLabel = quizSessionMode === 'full' ? '全量练习' : '今日复习';
+  const destination = targetTab === 'notes' ? '并前往知识树' : '';
+  if (!quizAnswers.length && quizIdx === 0) {
+    return `确认关闭本次${sessionLabel}${destination}？`;
+  }
+  if ((document.getElementById('quizTitleText')?.textContent || '').indexOf('回顾') >= 0) {
+    return `当前已经进入答题回顾，尚未保存本次${sessionLabel}结果。确认关闭${destination}？`;
+  }
+  return `当前${sessionLabel}进度尚未保存。确认关闭${destination}？`;
+}
+function requestCloseQuizModal(targetTab) {
+  const quizModal = document.getElementById('quizModal');
+  if (!quizModal || !quizModal.classList.contains('open')) return;
+  const message = getQuizClosePrompt(targetTab);
+  if (message && !confirm(message)) return;
+  closeQuizModal(true);
+  if (targetTab) switchTab(targetTab);
+}
+function closeQuizModal(force) {
+  closeModal('quizModal');
+  if (force) resetQuizSession();
 }
 
 function renderQuizQuestion() {
@@ -5208,6 +5503,7 @@ function renderQuizQuestion() {
   document.getElementById('quizProgress').textContent = `${quizIdx+1} / ${total}`;
   document.getElementById('quizProgFill').style.width = `${(quizIdx/total)*100}%`;
   const e = quizQueue[quizIdx];
+  const idLit = idArg(e.id);
   const opts = e.options ? e.options.split(/\n|\|/).map(o=>o.trim()).filter(Boolean) : [];
   const optBtns = opts.map((o,i) => {
     const letter = String.fromCharCode(65+i);
@@ -5218,10 +5514,12 @@ function renderQuizQuestion() {
     ${e.subtype?`<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:#f5f5f5;color:#888">${escapeHtml(e.subtype)}</span>`:''}
   </div>`;
   const imgTag = e.imgData ? `<img src="${escapeHtml(e.imgData)}" class="cuoti-img" onclick="this.classList.toggle('expanded')" title="点击放大/缩小" style="margin-bottom:10px">` : '';
+  const processImageTag = renderProcessImagePreview(e, 'quiz');
   document.getElementById('quizContent').innerHTML = `
     ${chapterTag}
     <div class="quiz-question-box">${escapeHtml(e.question)}</div>
     ${imgTag}
+    ${processImageTag}
     <div class="quiz-opt-grid">${optBtns || (e.imgData ? '' : '<p style="color:#aaa;font-size:13px">（无选项，直接点下方判断）</p>')}</div>
     ${!opts.length ? (e.imgData ? `
       <div class="quiz-opt-grid">
@@ -5232,6 +5530,7 @@ function renderQuizQuestion() {
         <button class="quiz-opt-btn" style="flex:1;text-align:center;border-color:#e74c3c;color:#e74c3c" onclick="selectQuizAnswer('✗')">❌ 答错了</button>
       </div>`) : ''}
     <div class="quiz-bottom-row">
+      <button class="quiz-skip-btn" type="button" onclick='openProcessImageEditor(${idLit},"quiz")' style="background:#fff7ed;color:#c2410c;border-color:#fdba74">&#36807;&#31243;&#22270;</button>
       <button class="quiz-skip-btn" id="quizSkipBtn" onclick="skipQuizQuestion()">跳过 ⏭</button>
       <button class="quiz-next-btn" id="quizNextBtn" onclick="nextQuizQuestion()" style="display:none;flex:1">
         ${quizIdx+1 < quizQueue.length ? '下一题 →' : '查看结果 →'}
@@ -5349,7 +5648,7 @@ function renderQuizReview() {
       <div style="display:flex;gap:8px;justify-content:center">
         <button class="btn btn-primary" onclick="saveQuizResults()">💾 保存并关闭</button>
         <button class="btn btn-secondary" onclick="markAllWrongAsFocus()">🔴 错题全标重点</button>
-        <button class="btn btn-secondary" onclick="closeModal('quizModal');switchTab('notes');renderSidebar();renderAll()">📚 去知识树</button>
+        <button class="btn btn-secondary" onclick="requestCloseQuizModal('notes')">📚 去知识树</button>
       </div>
       <div id="quizPostAiArea" style="padding:10px 12px;border-radius:10px;background:#f0f5ff;border:1px solid #bfdbfe;display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
@@ -5385,8 +5684,7 @@ async function saveQuizResults() {
     e.quiz.nextReview = addDays(today(), INTERVALS[Math.min(e.quiz.streak||0, INTERVALS.length-1)]);
   });
   // 记录练习历史
-  const titleText = document.getElementById('quizTitleText').textContent;
-  const sessionType = titleText.includes('全量') ? '全量练习' : '今日复习';
+  const sessionType = quizSessionMode === 'full' ? '全量练习' : '今日复习';
   pushHistory({
     date: today()+' '+new Date().toTimeString().slice(0,5),
     sessionType,
@@ -5414,9 +5712,7 @@ async function saveQuizResults() {
   todayDone += realAnswers.length;
   saveTodayDone();
   saveData();
-  quizAnswers = [];
-  quizSkipped = new Set();
-  closeModal('quizModal');
+  closeQuizModal(true);
   renderSidebar();
   renderAll();
   showToast('记录已保存', 'success');
@@ -5820,6 +6116,7 @@ function renderCard(e){
   }
 
   const imgTag = e.imgData ? `<img src="${escapeHtml(e.imgData)}" class="cuoti-img" onclick="this.classList.toggle('expanded')" title="点击放大/缩小">` : '';
+  const processImageTag = renderProcessImagePreview(e, 'card');
   const noteArea = isRev ? `<div class="card-note-area">
     <div class="card-note-label">📝 我的笔记</div>
     <textarea class="card-note-ta" placeholder="添加笔记..." onblur='saveCardNote(${idLit},this.value)'>${escapeHtml(e.note||'')}</textarea>
@@ -5877,6 +6174,7 @@ function renderCard(e){
     </div>
     <div class="card-question">${hl(e.question,searchKw)}</div>
     ${imgTag}
+    ${processImageTag}
     ${opts?`<div class="card-options">${opts}</div>`:''}
     ${isRev ? detailHtml+noteArea : ''}
     <button class="card-reveal-btn" onclick='revealCard(${idLit})' style="${isRev?'color:#bbb;border-color:#eee;font-size:11px;margin-top:6px':''}">
@@ -5897,6 +6195,7 @@ function renderCard(e){
         const c=cfg[ml]||cfg.not_mastered;
         return `<button class="btn btn-sm" style="color:${c.color};background:${c.bg};border:1px solid ${c.border}" onclick='cyclemastery(${idLit})' title="点击切换掌握状态">◎ ${c.label}</button>`;
       })()}
+      <button class="btn btn-sm btn-secondary" onclick='openProcessImageEditor(${idLit},"card")'>&#36807;&#31243;&#22270;</button>
       <button class="btn btn-sm btn-secondary" onclick='openEditModal(${idLit})'>✏ 编辑</button>
       <button class="btn btn-sm btn-secondary" style="color:#4e8ef7;border-color:#adc6ff" onclick='startInlineQuiz(${idLit})'>📝 做题</button>
       <button class="del-btn" onclick='deleteError(${idLit})'>🗑</button>
@@ -6384,6 +6683,7 @@ function renderClaudeBankCard(item) {
   const isRev = revealed.has(normalizedId);
   const opts = item.options ? item.options.split(/\n|\|/).map(o => `<p>${escapeHtml(o.trim())}</p>`).join('') : '';
   const imgTag = item.imgData ? `<img src="${escapeHtml(item.imgData)}" class="cuoti-img" onclick="this.classList.toggle('expanded')" title="点击放大/缩小">` : '';
+  const processImageTag = renderProcessImagePreview(item, 'card');
   let detailHtml = '';
   if (isRev) {
     detailHtml = `<div class="card-detail">
@@ -6437,6 +6737,7 @@ function renderClaudeBankCard(item) {
     </div>
     <div class="card-question">${escapeHtml(item.question || '')}</div>
     ${imgTag}
+    ${processImageTag}
     ${opts ? `<div class="card-options">${opts}</div>` : ''}
     ${isRev ? detailHtml : ''}
     <button class="card-reveal-btn" onclick='revealCard(${idLit})' style="${isRev ? 'color:#bbb;border-color:#eee;font-size:11px;margin-top:6px':''}">
@@ -6446,6 +6747,7 @@ function renderClaudeBankCard(item) {
     <div class="card-actions">
       <button class="btn btn-sm btn-secondary" onclick='openKnowledgeForError(${idLit})'>知识点</button>
       <button class="btn btn-sm btn-secondary" onclick='moveErrorToKnowledgeNode(${idLit}, ${noteNodeLit})'>改挂载</button>
+      <button class="btn btn-sm btn-secondary" onclick='openProcessImageEditor(${idLit},"card")'>&#36807;&#31243;&#22270;</button>
       <button class="btn btn-sm btn-secondary" onclick='openEditModal(${idLit})'>编辑</button>
       <button class="btn btn-sm btn-secondary" style="color:#4e8ef7;border-color:#adc6ff" onclick='startInlineQuiz(${idLit})'>做题</button>
       <button class="btn btn-sm btn-primary" onclick='convertClaudeBankToError(${idLit})'>转为错题</button>
@@ -8586,6 +8888,7 @@ function updateKnowledgeWorkspaceChrome(currentNode, linkedCount) {
   const actionWrap = document.querySelector('.notes-header > div:last-child');
   if (actionWrap) {
     actionWrap.innerHTML = `
+      <button class="btn btn-secondary" onclick="openGlobalSearchModal()">全局搜索</button>
       <button class="btn btn-secondary" onclick="switchTab('errors')">题目列表</button>
       <button class="btn btn-secondary" onclick="addKnowledgeLeafUnderSelected()">+ 新建知识点</button>
       ${currentNode ? `<button class="btn btn-secondary" onclick="renameKnowledgeNode('${currentNode.id}')">重命名</button>` : ''}
@@ -8812,6 +9115,19 @@ document.querySelectorAll('.modal-mask').forEach(mask=>{
   mask.addEventListener('click',function(e){
     if(e.target===this&&this.id!=='quizModal') closeModal(this.id);
   });
+});
+document.addEventListener('keydown', function(event) {
+  if ((event.ctrlKey || event.metaKey) && String(event.key || '').toLowerCase() === 'k') {
+    event.preventDefault();
+    openGlobalSearchModal();
+    return;
+  }
+  if (event.key === 'Escape') {
+    const searchModal = document.getElementById('globalSearchModal');
+    if (searchModal && searchModal.classList.contains('open')) {
+      closeGlobalSearchModal(true);
+    }
+  }
 });
 function showToast(message, type) {
   const stack = document.getElementById('toastStack');
@@ -9118,6 +9434,7 @@ function renderKnowledgeNotesView() {
       <div class="knowledge-workspace-path">${escapeHtml(pathText)}</div>
     </div>
     <div class="knowledge-workspace-actions">
+      <button class="btn btn-secondary btn-sm" onclick="openGlobalSearchModal()">全局搜索</button>
       <button class="btn btn-secondary btn-sm" onclick="renameKnowledgeNode('${currentNode.id}')">重命名</button>
       ${findKnowledgeParent(currentNode.id) ? `<button class="btn btn-secondary btn-sm" onclick="moveKnowledgeNode('${currentNode.id}')">移动</button>` : ''}
       <button class="btn btn-secondary btn-sm" onclick="addKnowledgeLeafUnderSelected()">+ 新建知识点</button>
@@ -9248,6 +9565,7 @@ function renderKnowledgeNotesViewV2() {
       <div class="knowledge-workspace-path">${escapeHtml(pathText)} · 直属错题 ${directCount} 题 · 含下级 ${linkedCount} 题</div>
     </div>
     <div class="knowledge-workspace-actions">
+      <button class="btn btn-secondary btn-sm" onclick="openGlobalSearchModal()">全局搜索</button>
       <button class="btn btn-secondary btn-sm" onclick="renameKnowledgeNode('${currentNode.id}')">重命名</button>
       ${findKnowledgeParent(currentNode.id) ? `<button class="btn btn-secondary btn-sm" onclick="moveKnowledgeNode('${currentNode.id}')">移动</button>` : ''}
       <button class="btn btn-secondary btn-sm" onclick="selectedKnowledgeNodeId='${currentNode.id}';addKnowledgeLeafUnderSelected()">+ 新建下级</button>
@@ -9691,6 +10009,10 @@ function renderRelatedErrorMeta(label, value) {
 function updateKnowledgeWorkspaceChrome(currentNode) {
   const titleEl = document.querySelector('.notes-header h2');
   if (titleEl) titleEl.textContent = currentNode ? currentNode.title : '学习笔记';
+  const actionWrap = document.querySelector('.notes-header > div:last-child');
+  if (actionWrap && actionWrap.innerHTML.indexOf('全局搜索') === -1) {
+    actionWrap.innerHTML = `<button class="btn btn-secondary" onclick="openGlobalSearchModal()">全局搜索</button>` + actionWrap.innerHTML;
+  }
 }
 
 function setKnowledgeRelatedMode(mode) {
@@ -10051,6 +10373,7 @@ function deleteError(id){
 
   unrefImageValue(error.imgData);
   unrefImageValue(error.analysisImgData);
+  unrefImageValue(getProcessImageUrl(error));
   errors = errors.filter(e => normalizeErrorId(e.id) !== targetId);
   revealed.delete(targetId);
   recordErrorDelete(targetId);

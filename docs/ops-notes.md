@@ -194,6 +194,18 @@ Do not manually rewrite these copies as product content. Product-facing structur
   3. verify `/login` or `/` actually renders from the rebuilt runtime
 - Do not trust only static HTML inspection when the page appears blank or unresponsive.
 
+## 2026-03-29 Feature Shell Rule
+
+- New user-facing tools should prefer a separate HTML page under `xingce_v3/` plus a small host bridge in `xingce_v3.html`.
+- Current examples:
+  - `note_editor.html`
+  - `note_viewer.html`
+  - `process_image_editor.html`
+  - `global_search.html`
+- The main page should stay responsible for workspace state, routing context, and save hooks.
+- Heavy editor, viewer, and search interactions should live in their own HTML + module pair when possible.
+- Do not default to adding another large inline feature block into `xingce_v3.html` unless the change is truly tiny.
+
 ## 2026-03-26 Notes And Tree Rules
 
 - The knowledge tree should default to collapsed at the first level.
