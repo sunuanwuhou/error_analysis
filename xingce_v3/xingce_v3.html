@@ -1461,7 +1461,7 @@ body{
             <input type="text" id="searchInput" placeholder="搜索题目、解析..." oninput="onSearch();updateSearchClear()" onkeydown="if(event.key==='Enter')onSearch()">
             <button class="search-clear" id="searchClear" onclick="clearSearchInput()">✕</button>
           </div>
-          <button class="btn btn-secondary global-search-launch" onclick="openGlobalSearchModal()" title="Ctrl+K">全局搜索</button>
+          <button class="btn btn-secondary global-search-launch" onclick="openGlobalSearchModal()" title="Alt+K 或 /">全局搜索</button>
         </div>
       </div>
       <div class="date-filter-bar">
@@ -2063,6 +2063,7 @@ let pendingKnowledgeMoveErrorId = null;
 let pendingKnowledgeMoveTargetId = null;
 let draggingKnowledgeNodeId = null;
 let draggingErrorId = null;
+let pendingKnowledgeSidebarFocusId = null;
 let knowledgeExpanded = new Set();
 let knowledgeExpandedLoaded = false;
 let knowledgeNodeModalState = { mode: '', nodeId: null, parentId: null, targetId: null, fallbackTitle: '' };
@@ -4786,6 +4787,7 @@ function activateGlobalSearchResult(result) {
   if (result.kind === 'note') {
     closeGlobalSearchModal(true);
     setCurrentKnowledgeNode(result.id, { switchTab: true });
+    focusKnowledgeNodeInSidebar(result.id);
     return true;
   }
   return false;
@@ -5756,7 +5758,7 @@ function renderSidebarKnowledgeTreeV2(nodes, depth) {
     const cls = depth === 0 ? 'nav-item nav-type-header' : depth === 1 ? 'nav-item nav-subtype' : 'nav-item nav-sub2';
     const extraStyle = depth > 2 ? `padding-left:${60 + ((depth - 2) * 18)}px` : '';
     const hasChildren = !!(node.children && node.children.length);
-    const expanded = hasChildren && depth > 0 && isKnowledgeExpanded(node);
+    const expanded = hasChildren && isKnowledgeExpanded(node);
     const marker = hasChildren ? (expanded ? '▾' : '▸') : '•';
     const countClass = count > 0 ? 'knowledge-tree-count' : 'knowledge-tree-count is-empty';
     const actions = `<span class="knowledge-node-actions">
@@ -5805,6 +5807,9 @@ function renderSidebar() {
   html+='<div class="nav-section-title" style="margin-top:4px;border-top:1px solid #eee;padding-top:8px">知识树</div>';
   html += renderSidebarKnowledgeTreeV2(getKnowledgeRootNodes(), 0) || '<div style="color:#ccc;font-size:12px;padding:14px">暂无知识树</div>';
   document.getElementById('navScroll').innerHTML=html;
+  if (pendingKnowledgeSidebarFocusId) {
+    focusKnowledgeNodeInSidebar(pendingKnowledgeSidebarFocusId);
+  }
 }
 function toggleReasonSection(){
   const k='__reasonSection_CLOSED__';
@@ -8283,6 +8288,41 @@ function expandKnowledgePath(nodeId) {
   }
   saveKnowledgeExpanded();
 }
+function focusKnowledgeNodeInSidebar(nodeId) {
+  if (!nodeId) return;
+  pendingKnowledgeSidebarFocusId = nodeId;
+  const tryFocus = (attempt) => {
+    const navScroll = document.getElementById('navScroll');
+    const activeNode = navScroll ? navScroll.querySelector(`.knowledge-tree-node[data-knowledge-node-id="${nodeId}"]`) : null;
+    if (navScroll && activeNode) {
+      const navRect = navScroll.getBoundingClientRect();
+      const nodeRect = activeNode.getBoundingClientRect();
+      const upperPadding = Math.max(24, Math.round(navScroll.clientHeight * 0.22));
+      const lowerPadding = Math.max(24, Math.round(navScroll.clientHeight * 0.18));
+      const aboveTop = nodeRect.top < navRect.top + upperPadding;
+      const belowBottom = nodeRect.bottom > navRect.bottom - lowerPadding;
+      if (aboveTop || belowBottom) {
+        const delta = nodeRect.top - navRect.top - upperPadding;
+        const targetTop = Math.max(0, navScroll.scrollTop + delta);
+        navScroll.scrollTop = targetTop;
+        navScroll.scrollTo({ top: targetTop, behavior: 'smooth' });
+        if (typeof activeNode.scrollIntoView === 'function') {
+          activeNode.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+        }
+        setTimeout(() => {
+          navScroll.scrollTop = targetTop;
+        }, 80);
+      }
+      pendingKnowledgeSidebarFocusId = null;
+      return;
+    }
+    if (attempt < 4) {
+      setTimeout(() => requestAnimationFrame(() => tryFocus(attempt + 1)), 60);
+      return;
+    }
+  };
+  setTimeout(() => requestAnimationFrame(() => tryFocus(0)), 30);
+}
 function isKnowledgeExpanded(node) {
   if (!node || !node.children || !node.children.length) return false;
   return knowledgeExpanded.has(node.id);
@@ -8383,6 +8423,7 @@ function setCurrentKnowledgeNode(nodeId, opts) {
     renderAll();
     renderNotesByType();
   }
+  focusKnowledgeNodeInSidebar(resolvedId);
 }
 function filterByKnowledgeNode(nodeId) {
   setCurrentKnowledgeNode(nodeId, { switchTab: true });
@@ -9117,7 +9158,15 @@ document.querySelectorAll('.modal-mask').forEach(mask=>{
   });
 });
 document.addEventListener('keydown', function(event) {
-  if ((event.ctrlKey || event.metaKey) && String(event.key || '').toLowerCase() === 'k') {
+  const key = String(event.key || '').toLowerCase();
+  const target = event.target;
+  const isTypingTarget = !!(target && (
+    ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) ||
+    target.isContentEditable
+  ));
+  const openByAltK = event.altKey && !event.ctrlKey && !event.metaKey && key === 'k';
+  const openBySlash = !event.altKey && !event.ctrlKey && !event.metaKey && key === '/' && !isTypingTarget;
+  if (openByAltK || openBySlash) {
     event.preventDefault();
     openGlobalSearchModal();
     return;

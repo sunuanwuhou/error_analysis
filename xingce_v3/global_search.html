@@ -134,6 +134,11 @@
       flex-wrap: wrap;
       gap: 8px;
     }
+    .shortcut-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
     .chip {
       padding: 7px 12px;
       border-radius: 999px;
@@ -155,6 +160,18 @@
       background: #fff3e0;
       color: #c2410c;
       box-shadow: 0 8px 18px rgba(249, 115, 22, 0.12);
+    }
+    .shortcut-chip {
+      text-align: left;
+    }
+    .shortcut-empty {
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: #f8fafc;
+      border: 1px dashed #d8e1eb;
+      color: #64748b;
+      font-size: 12px;
+      line-height: 1.7;
     }
     .hint-list {
       display: grid;
@@ -181,6 +198,25 @@
     }
     .search-summary strong {
       color: #0f172a;
+    }
+    .summary-hint {
+      font-size: 12px;
+      color: #94a3b8;
+    }
+    kbd {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 22px;
+      min-height: 22px;
+      padding: 0 6px;
+      border-radius: 7px;
+      border: 1px solid #d7dee8;
+      background: #fff;
+      color: #475569;
+      font-size: 11px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      box-shadow: inset 0 -1px 0 rgba(15, 23, 42, 0.05);
     }
     .result-scroll {
       flex: 1;
@@ -227,6 +263,16 @@
       background: #fffaf6;
       box-shadow: 0 16px 28px rgba(15, 23, 42, 0.08);
       transform: translateY(-1px);
+    }
+    .result-card.active {
+      border-color: #f59e0b;
+      background: linear-gradient(180deg, #fff8ef 0%, #fff3e0 100%);
+      box-shadow: 0 18px 34px rgba(245, 158, 11, 0.18);
+    }
+    .result-card:focus-visible {
+      outline: none;
+      border-color: #f59e0b;
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.14);
     }
     .result-meta {
       display: flex;
@@ -340,7 +386,7 @@
 
     <div class="search-input-wrap">
       <span class="search-input-icon">⌕</span>
-      <input id="searchInput" class="search-input" type="text" placeholder="搜索题目、笔记、知识点路径，或直接输入 有过程图 / 有笔记图">
+      <input id="searchInput" class="search-input" type="text" placeholder="搜索题目、笔记、知识点路径；支持 有过程图 / 只看笔记；可用 ↑↓ 和 Enter">
     </div>
 
     <div class="search-shell">
@@ -354,10 +400,19 @@
           <div class="chip-row" id="imageChips"></div>
         </div>
         <div>
+          <div class="section-title">快捷搜索</div>
+          <div class="shortcut-row" id="quickChips"></div>
+        </div>
+        <div>
+          <div class="section-title">最近搜索</div>
+          <div class="shortcut-row" id="recentChips"></div>
+        </div>
+        <div>
           <div class="section-title">快捷提示</div>
           <div class="hint-list">
             <div class="hint-item">直接输入关键词，默认同时搜题目和知识点笔记。</div>
             <div class="hint-item">可输入 <strong>有图片</strong>、<strong>有题图</strong>、<strong>有解析图</strong>、<strong>有过程图</strong>、<strong>有笔记图</strong>。</div>
+            <div class="hint-item">可输入 <strong>只看题目</strong>、<strong>只看笔记</strong>，也可以用键盘 <strong>↑ ↓</strong> 选择结果后按 <strong>Enter</strong> 打开。</div>
             <div class="hint-item">点结果会直接跳回主页面并定位到题目或笔记节点。</div>
           </div>
         </div>
