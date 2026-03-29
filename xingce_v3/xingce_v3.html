@@ -737,6 +737,22 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .note-preview-scroll{flex:1;overflow:hidden;min-height:0;position:relative;padding-right:6px;max-height:calc(100vh - 320px)}
 .note-preview-scroll::-webkit-scrollbar{width:5px}
 .note-preview-scroll::-webkit-scrollbar-thumb{background:#ddd;border-radius:3px}
+.note-preview-frame-scroll{padding-right:0;max-height:none}
+.knowledge-workspace-note-wrap{flex:1;display:flex;flex-direction:column;min-height:0}
+.knowledge-workspace-list-head{flex-shrink:0}
+.knowledge-workspace-note-wrap .note-preview-scroll,
+.note-split-preview .note-preview-scroll{max-height:none}
+.knowledge-workspace-note-wrap>.note-preview-frame-scroll{flex:0 0 auto;height:auto;overflow:hidden}
+.note-split-preview .note-preview-frame-scroll{height:100%;flex:1;overflow:hidden}
+.note-viewer-frame{display:block;width:100%;border:0;background:transparent;border-radius:18px}
+.note-viewer-frame--split{height:100%;min-height:100%}
+.note-viewer-frame--read{height:100%;min-height:0}
+.note-editor-modal-open{overflow:hidden}
+.note-editor-modal-mask{z-index:1400;padding:18px}
+.note-editor-modal{position:relative;width:min(1520px,96vw);height:min(940px,92vh);background:linear-gradient(180deg,#fffaf4 0%, #f8fafc 100%);border-radius:26px;box-shadow:0 28px 80px rgba(15,23,42,.24);padding:14px;overflow:hidden}
+.note-editor-modal-close{position:absolute;top:18px;right:18px;z-index:2;width:36px;height:36px;border:0;border-radius:999px;background:rgba(15,23,42,.08);color:#0f172a;font-size:24px;line-height:1;cursor:pointer}
+.note-editor-modal-close:hover{background:rgba(15,23,42,.14)}
+.note-editor-modal-frame{display:block;width:100%;height:100%;border:0;border-radius:20px;background:transparent}
 .note-preview-article-scroll{min-width:0;max-width:none;grid-column:2;max-height:calc(100vh - 320px);overflow-y:auto;overflow-x:hidden;padding-right:6px;scroll-padding-top:14px}
 .note-preview-article-scroll::-webkit-scrollbar{width:5px}
 .note-preview-article-scroll::-webkit-scrollbar-thumb{background:#ddd;border-radius:3px}
@@ -786,6 +802,7 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
   .global-note-toc-dock{display:none!important}
   .note-preview-layout{display:block}
   .note-preview-scroll{max-height:none}
+  .note-viewer-frame--read{height:100%;min-height:100%}
   .note-preview-article-scroll{max-height:none}
   .note-preview-toc{position:static;max-height:none;width:auto;max-width:none;margin-bottom:12px}
   .note-preview-toc .note-toc-floating{position:static;max-height:none}
@@ -1171,6 +1188,8 @@ body{
   .note-split-preview{
     min-height:360px;
   }
+  .note-editor-modal-mask{padding:8px}
+  .note-editor-modal{width:min(100vw - 16px, 1520px);height:calc(100vh - 16px);padding:8px;border-radius:18px}
   #aiWorkbenchBtn{
     right:14px!important;
     bottom:14px!important;
@@ -3634,6 +3653,17 @@ async function syncWithServer(opts) {
 }
 function noteImgId() {
   return 'ni' + Math.random().toString(36).slice(2, 8);
+}
+function setNoteImageRef(id, value) {
+  const key = String(id || '').trim();
+  if (!key) return '';
+  noteImages[key] = value || '';
+  saveNotesByType();
+  return noteImages[key];
+}
+function getNoteImageRef(id) {
+  const key = String(id || '').trim();
+  return key ? (noteImages[key] || '') : '';
 }
 // 解析笔记图片引用（noteimg:xxx → base64）
 function resolveNoteImgs(text) {

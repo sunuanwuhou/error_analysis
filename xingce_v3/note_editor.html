@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>&#30693;&#35782;&#28857;&#31508;&#35760;&#32534;&#36753;&#22120;</title>
+  <link rel="stylesheet" href="/assets/vendor/toastui/toastui-editor.min.css">
+  <style>
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: #1f2937;
+      background:
+        radial-gradient(circle at top left, rgba(255, 225, 185, 0.4), transparent 28%),
+        linear-gradient(180deg, #f8f3ea 0%, #edf3f8 100%);
+    }
+    body.is-embedded {
+      background: transparent;
+    }
+    .editor-page {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      padding: 18px;
+      gap: 14px;
+    }
+    body.is-embedded .editor-page {
+      min-height: 100%;
+      height: 100%;
+      padding: 0;
+      gap: 0;
+    }
+    .editor-topbar,
+    .editor-shell {
+      background: rgba(255, 255, 255, 0.94);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 22px;
+      box-shadow: 0 18px 44px rgba(15, 23, 42, 0.08);
+    }
+    .editor-topbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 18px 20px;
+      flex-wrap: wrap;
+    }
+    .editor-meta {
+      min-width: 0;
+      flex: 1;
+    }
+    .editor-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #b45309;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .editor-title {
+      margin-top: 6px;
+      font-size: 24px;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+    .editor-path {
+      margin-top: 6px;
+      color: #64748b;
+      font-size: 13px;
+      line-height: 1.6;
+      word-break: break-word;
+    }
+    .editor-status-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .editor-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #fff7ed;
+      border: 1px solid #f6d3b1;
+      color: #b45309;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .editor-status {
+      font-size: 12px;
+      color: #64748b;
+    }
+    .editor-status.is-success { color: #15803d; }
+    .editor-status.is-warning { color: #b45309; }
+    .editor-status.is-error { color: #b91c1c; }
+    .editor-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 110px;
+      padding: 10px 16px;
+      border-radius: 14px;
+      border: 1px solid rgba(15, 23, 42, 0.12);
+      background: #fff;
+      color: #0f172a;
+      cursor: pointer;
+      font: inherit;
+      transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+    }
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+      border-color: rgba(234, 88, 12, 0.25);
+    }
+    .btn-primary {
+      background: #fff4e8;
+      border-color: rgba(234, 88, 12, 0.18);
+      color: #b45309;
+    }
+    .editor-shell {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      padding: 12px;
+    }
+    body.is-embedded .editor-topbar,
+    body.is-embedded .editor-shell {
+      border-radius: 0;
+      border: 0;
+      box-shadow: none;
+      background: transparent;
+    }
+    body.is-embedded .editor-topbar {
+      padding: 14px 16px 10px;
+    }
+    body.is-embedded .editor-shell {
+      padding: 0 12px 12px;
+    }
+    .editor-host {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      border-radius: 18px;
+    }
+    body.is-embedded .editor-host {
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-shadow: 0 16px 34px rgba(15, 23, 42, 0.06);
+    }
+    #editor {
+      height: 100%;
+    }
+    .toastui-editor-defaultUI {
+      border: 1px solid #edf0f4 !important;
+      border-radius: 18px !important;
+      overflow: hidden;
+    }
+    .toastui-editor-defaultUI-toolbar {
+      background: #fffaf5 !important;
+      border-bottom-color: #f1e2ce !important;
+    }
+    .toastui-editor-main {
+      min-height: calc(100vh - 220px);
+    }
+    .toastui-editor-md-container,
+    .toastui-editor-ww-container,
+    .toastui-editor-md-preview {
+      background: #fff !important;
+    }
+    .editor-empty {
+      display: flex;
+      flex: 1;
+      min-height: 360px;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 10px;
+      text-align: center;
+      color: #475569;
+      padding: 32px;
+    }
+    .editor-empty h1 {
+      margin: 0;
+      font-size: 24px;
+      color: #0f172a;
+    }
+    .editor-empty p {
+      margin: 0;
+      line-height: 1.7;
+      max-width: 560px;
+    }
+    @media (max-width: 960px) {
+      .editor-page { padding: 12px; }
+      .editor-topbar { padding: 16px; }
+      .editor-actions { justify-content: flex-start; }
+      .btn { min-width: 0; width: 100%; }
+      .toastui-editor-main { min-height: calc(100vh - 340px); }
+    }
+  </style>
+</head>
+<body>
+  <main class="editor-page">
+    <section class="editor-topbar">
+      <div class="editor-meta">
+        <div class="editor-label">Markdown Editor</div>
+        <div class="editor-title" id="noteTitle">&#30693;&#35782;&#28857;&#31508;&#35760;</div>
+        <div class="editor-path" id="notePath">&#27491;&#22312;&#36830;&#25509;&#20027;&#24037;&#20316;&#21488;...</div>
+        <div class="editor-status-row">
+          <span class="editor-pill" id="dirtyFlag">&#24050;&#21516;&#27493;</span>
+          <span class="editor-status is-info" id="saveStatus">&#21021;&#22987;&#21270;&#20013;...</span>
+        </div>
+      </div>
+
+      <div class="editor-actions">
+        <button class="btn" id="refreshBtn" type="button">&#20174;&#20027;&#39029;&#38754;&#21047;&#26032;</button>
+        <button class="btn" id="focusWorkbenchBtn" type="button">&#22238;&#21040;&#20027;&#24037;&#20316;&#21488;</button>
+        <button class="btn btn-primary" id="saveBtn" type="button">&#20445;&#23384;</button>
+        <button class="btn btn-primary" id="saveCloseBtn" type="button">&#20445;&#23384;&#24182;&#20851;&#38381;</button>
+        <button class="btn" id="closeBtn" type="button">&#20851;&#38381;</button>
+      </div>
+    </section>
+
+    <section class="editor-shell" id="editorShell">
+      <div class="editor-host">
+        <div id="editor"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/assets/vendor/toastui/toastui-editor-all.min.js"></script>
+  <script src="/assets/modules/note-editor-page.js"></script>
+</body>
+</html>

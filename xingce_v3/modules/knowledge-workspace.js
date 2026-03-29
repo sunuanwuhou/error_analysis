@@ -1,6 +1,41 @@
 (function () {
   var DEFAULT_MODE = "note";
 
+  var TEXT = {
+    legacyTypeNotes: "\u65e7\u9898\u578b\u7b14\u8bb0\u5df2\u7ecf\u9000\u5230\u517c\u5bb9\u5c42\uff0c\u5f53\u524d\u7edf\u4e00\u4f7f\u7528\u77e5\u8bc6\u6811\u7b14\u8bb0\u3002",
+    noKnowledgeNode: "\u5f53\u524d\u9898\u76ee\u8fd8\u6ca1\u6709\u5173\u8054\u77e5\u8bc6\u70b9",
+    pickKnowledgeNode: "\u8bf7\u5148\u9009\u62e9\u4e00\u4e2a\u77e5\u8bc6\u70b9",
+    tabQuestions: "\u9898\u76ee",
+    tabNotes: "\u7b14\u8bb0",
+    countSuffix: "\u9898",
+    createQuestion: "+ \u65b0\u5efa\u9898\u76ee",
+    standaloneEdit: "\u5f39\u7a97\u7f16\u8f91",
+    rename: "\u91cd\u547d\u540d",
+    move: "\u79fb\u52a8",
+    createChild: "+ \u65b0\u5efa\u4e0b\u7ea7",
+    directCount: "\u76f4\u5c5e ",
+    linkedCount: "\u542b\u4e0b\u7ea7 ",
+    noQuestions: "\u5f53\u524d\u77e5\u8bc6\u70b9\u4e0b\u8fd8\u6ca1\u6709\u9898\u76ee\uff0c\u5148\u70b9\u201c\u65b0\u5efa\u9898\u76ee\u201d\u5f55\u4e00\u9898\u3002",
+    currentQuestions: "\u5f53\u524d\u9898\u76ee",
+    noNotes: "\u5f53\u524d\u8282\u70b9\u8fd8\u6ca1\u6709\u7b14\u8bb0\uff0c\u5148\u5199\u89c4\u5219\u603b\u7ed3\u3001\u6613\u9519\u70b9\u548c\u4e0b\u4e00\u6b65\u52a8\u4f5c\u3002",
+    openStandaloneEditor: "\u6253\u5f00\u5f39\u7a97\u7f16\u8f91\u5668",
+    edit: "\u7f16\u8f91",
+    done: "\u5b8c\u6210",
+    save: "\u4fdd\u5b58",
+    shortcutSave: "Ctrl+S \u5feb\u6377\u4fdd\u5b58",
+    preview: "\u9884\u89c8",
+    currentNote: "\u5f53\u524d\u7b14\u8bb0",
+    noKnowledgeContent: "\u6682\u65f6\u8fd8\u6ca1\u6709\u77e5\u8bc6\u70b9\u5185\u5bb9\uff0c\u5148\u5f55\u5165\u9519\u9898\u540e\u4f1a\u81ea\u52a8\u751f\u6210\u7ed3\u6784\u3002"
+  };
+
+  function escapeAttr(value) {
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
   function getWorkspaceMode() {
     if (window.knowledgeWorkspaceMode !== "list" && window.knowledgeWorkspaceMode !== "note") {
       window.knowledgeWorkspaceMode = DEFAULT_MODE;
@@ -14,6 +49,163 @@
 
   function getCurrentKnowledgeNode() {
     return getKnowledgeNodeById(selectedKnowledgeNodeId);
+  }
+
+  function getCurrentNoteMarkdown() {
+    var ta = document.getElementById("noteTypeTextarea");
+    if (ta) return ta.value;
+    var node = getCurrentKnowledgeNode();
+    return node ? (node.contentMd || "") : "";
+  }
+
+  function buildViewerPayload(currentNode, markdown) {
+    if (!currentNode) return null;
+    return {
+      nodeId: currentNode.id,
+      title: currentNode.title || "",
+      pathText: collapseKnowledgePathTitles(getKnowledgePathTitles(currentNode.id)).join(" > "),
+      markdown: markdown || "",
+      emptyText: TEXT.noNotes
+    };
+  }
+
+  function postViewerPayload(frame, payload) {
+    if (!frame || !frame.contentWindow || !payload) return;
+    try {
+      frame.contentWindow.postMessage(
+        { type: "knowledge-note-viewer-sync", payload: payload },
+        window.location.origin
+      );
+    } catch (error) {
+      console.warn("post viewer payload failed", error);
+    }
+  }
+
+  function bindViewerFrame(frame) {
+    if (!frame || frame.dataset.viewerBound === "1") return;
+    frame.dataset.viewerBound = "1";
+    frame.addEventListener("load", function () {
+      var currentNode = getCurrentKnowledgeNode();
+      if (!currentNode) return;
+      postViewerPayload(frame, buildViewerPayload(currentNode, getCurrentNoteMarkdown()));
+    });
+  }
+
+  function syncEmbeddedNoteViewers(currentNode, markdown) {
+    var content = document.getElementById("notesContent");
+    if (!content || !currentNode) return;
+    var payload = buildViewerPayload(currentNode, markdown);
+    content.querySelectorAll(".js-note-viewer-frame").forEach(function (frame) {
+      bindViewerFrame(frame);
+      postViewerPayload(frame, payload);
+    });
+  }
+
+  function getAvailableNotePreviewHeight(container, host) {
+    if (!container || !host) return 0;
+    var containerRect = container.getBoundingClientRect();
+    var hostRect = host.getBoundingClientRect();
+    return Math.max(0, Math.floor(hostRect.bottom - containerRect.top - 12));
+  }
+
+  function syncNotePreviewViewportHeight() {
+    var container = document.getElementById("noteSplitPreview");
+    var host = document.getElementById("notesContent");
+    if (!container || !host) return;
+    if (!noteEditing) {
+      var frame = document.getElementById("noteReadPreviewFrame");
+      var contentHeight = frame ? Math.ceil(Number(frame.dataset.contentHeight) || 0) : 0;
+      var available = getAvailableNotePreviewHeight(container, host);
+      if (frame && contentHeight > 0 && available > 0) {
+        var nextHeight = Math.max(120, Math.min(contentHeight, available));
+        container.style.height = nextHeight + "px";
+        frame.style.height = nextHeight + "px";
+      } else {
+        container.style.height = "auto";
+        if (frame) frame.style.height = "auto";
+      }
+      container.style.maxHeight = "none";
+      return;
+    }
+
+    var available = getAvailableNotePreviewHeight(container, host);
+    if (available < 260) return;
+
+    container.style.height = available + "px";
+    container.style.maxHeight = "none";
+  }
+
+  function renderViewerFrame(nodeId, role) {
+    var roleName = role || "preview";
+    var src = "/assets/note_viewer.html?nodeId=" + encodeURIComponent(nodeId || "") +
+      "&embed=1&role=" + encodeURIComponent(roleName);
+    return "<iframe" +
+      " class=\"note-viewer-frame note-viewer-frame--" + escapeAttr(roleName === "noteSplitPreview" ? "split" : "read") + " js-note-viewer-frame\"" +
+      " id=\"" + escapeAttr(roleName) + "Frame\"" +
+      " src=\"" + escapeAttr(src) + "\"" +
+      " loading=\"lazy\"" +
+      " referrerpolicy=\"same-origin\"" +
+      " title=\"" + TEXT.preview + "\">" +
+    "</iframe>";
+  }
+
+  function applyNoteViewerHeight(role, contentHeight) {
+    if (role !== "noteReadPreview") return;
+    var frame = document.getElementById(role + "Frame");
+    if (!frame) return;
+    var measuredHeight = Math.max(120, Math.ceil(Number(contentHeight) || 0));
+    frame.dataset.contentHeight = String(measuredHeight);
+    frame.style.height = measuredHeight + "px";
+  }
+
+  function ensureEmbeddedNoteEditorModal() {
+    var existing = document.getElementById("knowledgeNoteEditorModal");
+    if (existing) return existing;
+
+    var mask = document.createElement("div");
+    mask.id = "knowledgeNoteEditorModal";
+    mask.className = "modal-mask note-editor-modal-mask";
+    mask.innerHTML = "" +
+      "<div class=\"note-editor-modal\" role=\"dialog\" aria-modal=\"true\" aria-label=\"" + TEXT.standaloneEdit + "\">" +
+        "<button class=\"note-editor-modal-close\" type=\"button\" aria-label=\"Close\">&times;</button>" +
+        "<iframe id=\"knowledgeNoteEditorModalFrame\" class=\"note-editor-modal-frame\" title=\"" + TEXT.standaloneEdit + "\"></iframe>" +
+      "</div>";
+
+    function requestClose() {
+      var frame = document.getElementById("knowledgeNoteEditorModalFrame");
+      var editorWindow = frame && frame.contentWindow;
+      if (editorWindow && typeof editorWindow.requestNoteEditorClose === "function") {
+        if (editorWindow.requestNoteEditorClose(false) === false) return;
+      }
+      closeEmbeddedKnowledgeNoteEditor(true);
+    }
+
+    mask.addEventListener("click", function (event) {
+      if (event.target === mask) requestClose();
+    });
+    mask.querySelector(".note-editor-modal-close").addEventListener("click", requestClose);
+    document.addEventListener("keydown", function (event) {
+      if (event.key !== "Escape") return;
+      if (!mask.classList.contains("open")) return;
+      requestClose();
+    });
+
+    document.body.appendChild(mask);
+    return mask;
+  }
+
+  function closeEmbeddedKnowledgeNoteEditor(force) {
+    var mask = document.getElementById("knowledgeNoteEditorModal");
+    if (!mask) return;
+    if (!force) {
+      var frame = document.getElementById("knowledgeNoteEditorModalFrame");
+      var editorWindow = frame && frame.contentWindow;
+      if (editorWindow && typeof editorWindow.requestNoteEditorClose === "function") {
+        if (editorWindow.requestNoteEditorClose(false) === false) return;
+      }
+    }
+    mask.classList.remove("open");
+    document.body.classList.remove("note-editor-modal-open");
   }
 
   function collectNodeErrors(currentNode) {
@@ -57,7 +249,7 @@
   function selectNoteType(type) {
     saveNoteTypeContent();
     selectedNoteType = type;
-    showToast("旧题型笔记已退到兼容层，当前统一使用知识树笔记。", "info");
+    showToast(TEXT.legacyTypeNotes, "info");
     notesViewMode = "knowledge";
     setWorkspaceMode("note");
     renderNotesByType();
@@ -66,7 +258,7 @@
   function openKnowledgeForError(errorId) {
     var errorItem = errors.find(function (item) { return item.id === errorId; });
     if (!errorItem || !errorItem.noteNodeId) {
-      showToast("当前题目还没有关联知识点", "warning");
+      showToast(TEXT.noKnowledgeNode, "warning");
       return;
     }
     setCurrentKnowledgeNode(errorItem.noteNodeId, { switchTab: true, mode: "list" });
@@ -94,18 +286,27 @@
     });
   }
 
+  function openExternalKnowledgeNoteEditor(nodeId) {
+    ensureKnowledgeState();
+    var targetNode = getKnowledgeNodeById(nodeId || selectedKnowledgeNodeId) || getCurrentKnowledgeNode();
+    if (!targetNode) {
+      showToast(TEXT.pickKnowledgeNode, "warning");
+      return;
+    }
+    var mask = ensureEmbeddedNoteEditorModal();
+    var frame = document.getElementById("knowledgeNoteEditorModalFrame");
+    if (!frame) return;
+    frame.src = "/assets/note_editor.html?nodeId=" + encodeURIComponent(targetNode.id) + "&embed=1";
+    mask.classList.add("open");
+    document.body.classList.add("note-editor-modal-open");
+  }
+
   function liveNotePreview() {
     var ta = document.getElementById("noteTypeTextarea");
-    var preview = document.getElementById("noteSplitPreview");
-    if (ta && preview) {
-      var anchorPrefix = getKnowledgeNoteAnchorPrefix(selectedKnowledgeNodeId);
-      var liveHeadings = extractMdHeadings(ta.value);
-      var tocHtml = renderFloatingHeadingPanel(liveHeadings, anchorPrefix);
-      updateGlobalNoteTocDock(liveHeadings, anchorPrefix);
-      preview.innerHTML = ta.value
-        ? renderNotePreviewLayout(renderMd(ta.value, { anchorPrefix: anchorPrefix }), tocHtml)
-        : '<span style="color:#ccc;font-size:12px;font-style:italic">输入 Markdown 后在这里预览</span>';
-    }
+    var currentNode = getCurrentKnowledgeNode();
+    if (!ta || !currentNode) return;
+    clearGlobalNoteTocDock();
+    syncEmbeddedNoteViewers(currentNode, ta.value);
   }
 
   function saveNoteTypeContent() {
@@ -128,19 +329,19 @@
       "</div>" +
       "<div class=\"knowledge-workspace-shell-actions\">" +
         "<div class=\"knowledge-workspace-mode-switch\">" +
-          "<button class=\"btn btn-sm " + (mode === "list" ? "btn-primary" : "btn-secondary") + "\" onclick=\"setKnowledgeWorkspaceMode('list')\">题目</button>" +
-          "<button class=\"btn btn-sm " + (mode === "note" ? "btn-primary" : "btn-secondary") + "\" onclick=\"setKnowledgeWorkspaceMode('note')\">笔记</button>" +
+          "<button class=\"btn btn-sm " + (mode === "list" ? "btn-primary" : "btn-secondary") + "\" onclick=\"setKnowledgeWorkspaceMode('list')\">" + TEXT.tabQuestions + "</button>" +
+          "<button class=\"btn btn-sm " + (mode === "note" ? "btn-primary" : "btn-secondary") + "\" onclick=\"setKnowledgeWorkspaceMode('note')\">" + TEXT.tabNotes + "</button>" +
         "</div>" +
-        "<span class=\"knowledge-workspace-count\">" + errorCount + "题</span>" +
-        "<button class=\"btn btn-sm btn-secondary\" onclick=\"openAddModalForCurrentKnowledge()\">+ 新建题目</button>" +
-        "<button class=\"btn btn-sm btn-secondary\" onclick=\"setKnowledgeWorkspaceMode('note', true)\">编辑笔记</button>" +
-        "<button class=\"btn btn-sm btn-secondary\" onclick=\"renameKnowledgeNode('" + currentNode.id + "')\">重命名</button>" +
-        (findKnowledgeParent(currentNode.id) ? "<button class=\"btn btn-sm btn-secondary\" onclick=\"moveKnowledgeNode('" + currentNode.id + "')\">移动</button>" : "") +
-        "<button class=\"btn btn-sm btn-secondary\" onclick=\"selectedKnowledgeNodeId='" + currentNode.id + "';addKnowledgeLeafUnderSelected()\">+ 新建下级</button>" +
+        "<span class=\"knowledge-workspace-count\">" + errorCount + TEXT.countSuffix + "</span>" +
+        "<button class=\"btn btn-sm btn-secondary\" onclick=\"openAddModalForCurrentKnowledge()\">" + TEXT.createQuestion + "</button>" +
+        "<button class=\"btn btn-sm btn-secondary\" onclick=\"openExternalKnowledgeNoteEditor('" + currentNode.id + "')\">" + TEXT.standaloneEdit + "</button>" +
+        "<button class=\"btn btn-sm btn-secondary\" onclick=\"renameKnowledgeNode('" + currentNode.id + "')\">" + TEXT.rename + "</button>" +
+        (findKnowledgeParent(currentNode.id) ? "<button class=\"btn btn-sm btn-secondary\" onclick=\"moveKnowledgeNode('" + currentNode.id + "')\">" + TEXT.move + "</button>" : "") +
+        "<button class=\"btn btn-sm btn-secondary\" onclick=\"selectedKnowledgeNodeId='" + currentNode.id + "';addKnowledgeLeafUnderSelected()\">" + TEXT.createChild + "</button>" +
       "</div>" +
       "<div class=\"knowledge-workspace-shell-stats\">" +
-        "<span class=\"knowledge-workspace-stat\">直属 " + directCount + "</span>" +
-        "<span class=\"knowledge-workspace-stat\">含下级 " + linkedCount + "</span>" +
+        "<span class=\"knowledge-workspace-stat\">" + TEXT.directCount + directCount + "</span>" +
+        "<span class=\"knowledge-workspace-stat\">" + TEXT.linkedCount + linkedCount + "</span>" +
       "</div>" +
     "</div>";
   }
@@ -148,47 +349,41 @@
   function renderListMode(currentNode, relatedErrors) {
     var body = relatedErrors.length
       ? relatedErrors.map(function (item) { return renderCard(item); }).join("")
-      : "<div class=\"knowledge-workspace-empty\">当前知识点下还没有题目，先点“新建题目”录一题。</div>";
+      : "<div class=\"knowledge-workspace-empty\">" + TEXT.noQuestions + "</div>";
 
     return "<div class=\"knowledge-workspace-list-wrap\">" +
-      "<div class=\"knowledge-workspace-list-head\">当前题目</div>" +
+      "<div class=\"knowledge-workspace-list-head\">" + TEXT.currentQuestions + "</div>" +
       "<div class=\"knowledge-workspace-list\">" + body + "</div>" +
     "</div>";
   }
 
   function renderNoteMode(currentNode, noteContent) {
-    var noteAnchorPrefix = getKnowledgeNoteAnchorPrefix(currentNode.id);
-    var noteHeadings = extractMdHeadings(noteContent);
-    var tocHtml = renderFloatingHeadingPanel(noteHeadings, noteAnchorPrefix);
-    var previewHtml = noteContent
-      ? renderNotePreviewLayout(renderMd(noteContent, { anchorPrefix: noteAnchorPrefix }), tocHtml)
-      : '<div class="knowledge-workspace-empty">当前节点还没有笔记，直接开始写总结、易错点和行动建议。</div>';
-
-    updateGlobalNoteTocDock(noteHeadings, noteAnchorPrefix);
+    clearGlobalNoteTocDock();
+    var previewHtml = renderViewerFrame(currentNode.id, noteEditing ? "noteSplitPreview" : "noteReadPreview");
 
     if (noteEditing) {
       return "" +
         "<div class=\"note-split-area\">" +
           "<div class=\"note-split-editor\">" +
-            "<div class=\"note-split-label\">编辑" +
-              "<button onclick=\"saveNoteTypeContent();noteEditing=false;renderNotesByType()\" style=\"float:right;background:#52c41a;color:#fff;border:none;border-radius:4px;padding:2px 10px;cursor:pointer;font-size:12px\">完成</button>" +
+            "<div class=\"note-split-label\">" + TEXT.edit +
+              "<button onclick=\"saveNoteTypeContent();noteEditing=false;renderNotesByType()\" style=\"float:right;background:#52c41a;color:#fff;border:none;border-radius:4px;padding:2px 10px;cursor:pointer;font-size:12px\">" + TEXT.done + "</button>" +
             "</div>" +
-            "<textarea id=\"noteTypeTextarea\" class=\"note-md-textarea\" placeholder=\"# 规则总结&#10;## 易错点&#10;- ...&#10;&#10;## 行动建议&#10;- ...\" oninput=\"liveNotePreview()\">" + escapeHtml(noteContent) + "</textarea>" +
+            "<textarea id=\"noteTypeTextarea\" class=\"note-md-textarea\" placeholder=\"# \\u89c4\\u5219\\u603b\\u7ed3&#10;## \\u6613\\u9519\\u70b9&#10;- ...&#10;&#10;## \\u884c\\u52a8\\u5efa\\u8bae&#10;- ...\" oninput=\"liveNotePreview()\">" + escapeHtml(noteContent) + "</textarea>" +
             "<div class=\"note-btn-bar\">" +
-              "<button class=\"btn btn-primary btn-sm\" onclick=\"saveNoteTypeContent()\">保存</button>" +
-              "<span class=\"save-hint\">Ctrl+S 快捷保存</span>" +
+              "<button class=\"btn btn-primary btn-sm\" onclick=\"saveNoteTypeContent()\">" + TEXT.save + "</button>" +
+              "<span class=\"save-hint\">" + TEXT.shortcutSave + "</span>" +
             "</div>" +
           "</div>" +
           "<div class=\"note-split-preview\">" +
-            "<div class=\"note-split-label\">预览</div>" +
-            "<div class=\"note-preview-scroll notes-content\" id=\"noteSplitPreview\">" + previewHtml + "</div>" +
+            "<div class=\"note-split-label\">" + TEXT.preview + "</div>" +
+            "<div class=\"note-preview-scroll note-preview-frame-scroll\" id=\"noteSplitPreview\">" + previewHtml + "</div>" +
           "</div>" +
         "</div>";
     }
 
     return "<div class=\"knowledge-workspace-note-wrap\">" +
-      "<div class=\"knowledge-workspace-list-head\">当前笔记</div>" +
-      "<div class=\"note-preview-scroll notes-content\" id=\"noteSplitPreview\">" + previewHtml + "</div>" +
+      "<div class=\"knowledge-workspace-list-head\">" + TEXT.currentNote + "</div>" +
+      "<div class=\"note-preview-scroll note-preview-frame-scroll\" id=\"noteSplitPreview\">" + previewHtml + "</div>" +
     "</div>";
   }
 
@@ -200,7 +395,7 @@
 
     var currentNode = getCurrentKnowledgeNode() || getKnowledgeRootNodes()[0];
     if (!currentNode) {
-      content.innerHTML = '<div class="knowledge-workspace-empty">暂无知识点内容，先录入错题后会自动生成结构。</div>';
+      content.innerHTML = '<div class="knowledge-workspace-empty">' + TEXT.noKnowledgeContent + "</div>";
       return;
     }
 
@@ -226,6 +421,12 @@
       bodyHtml +
     "</div>";
 
+    syncNotePreviewViewportHeight();
+
+    if (mode === "note") {
+      syncEmbeddedNoteViewers(currentNode, noteEditing ? getCurrentNoteMarkdown() : noteContent);
+    }
+
     if (mode === "note" && noteEditing) {
       bindKnowledgeEditorShortcuts(content);
     }
@@ -240,9 +441,41 @@
 
   function setKnowledgeWorkspaceMode(mode, editing) {
     setWorkspaceMode(mode);
-    noteEditing = !!editing && mode === "note";
+    if (editing && mode === "note") {
+      noteEditing = false;
+      renderNotesByType();
+      openExternalKnowledgeNoteEditor(selectedKnowledgeNodeId);
+      return;
+    }
+    noteEditing = false;
     renderNotesByType();
   }
+
+  window.addEventListener("message", function (event) {
+    if (!event || event.origin !== window.location.origin) return;
+    var data = event.data || {};
+    if (data.type === "knowledge-note-viewer-size") {
+      applyNoteViewerHeight(data.role, data.height);
+      syncNotePreviewViewportHeight();
+      return;
+    }
+    if (data.type === "knowledge-note-viewer-ready") {
+      var currentNode = getCurrentKnowledgeNode();
+      syncNotePreviewViewportHeight();
+      if (currentNode) syncEmbeddedNoteViewers(currentNode, getCurrentNoteMarkdown());
+      return;
+    }
+    if (data.type === "knowledge-note-editor-close") {
+      closeEmbeddedKnowledgeNoteEditor(true);
+      return;
+    }
+    if (data.type !== "knowledge-note-saved") return;
+    noteEditing = false;
+    if (data.nodeId) selectedKnowledgeNodeId = data.nodeId;
+    renderSidebar();
+    renderNotesByType();
+    if (typeof renderNotesPanelRight === "function") renderNotesPanelRight();
+  });
 
   window.renderKnowledgeNotesViewV2 = renderKnowledgeNotesViewV2;
   window.getCurrentKnowledgeNode = getCurrentKnowledgeNode;
@@ -254,6 +487,7 @@
   window.liveNotePreview = liveNotePreview;
   window.saveNoteTypeContent = saveNoteTypeContent;
   window.setKnowledgeWorkspaceMode = setKnowledgeWorkspaceMode;
+  window.openExternalKnowledgeNoteEditor = openExternalKnowledgeNoteEditor;
   window.refreshKnowledgeWorkspaceCards = refreshKnowledgeWorkspaceCards;
   window.renderNotesByType = function () {
     renderKnowledgeNotesViewV2();
@@ -268,4 +502,5 @@
     noteEditing = false;
     renderKnowledgeNotesViewV2();
   };
+  window.addEventListener("resize", syncNotePreviewViewportHeight);
 })();

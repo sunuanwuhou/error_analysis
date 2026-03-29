@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Markdown Smoke Harness</title>
+  <style>
+    body { font-family: "Microsoft YaHei", sans-serif; margin: 0; padding: 16px; background: #f8fafc; color: #0f172a; }
+    h1 { font-size: 20px; margin: 0 0 12px; }
+    #results { display: grid; gap: 8px; margin-bottom: 14px; }
+    .result { padding: 10px 12px; border-radius: 10px; border: 1px solid #cbd5e1; background: #fff; font-size: 13px; }
+    .pass { border-color: #86efac; background: #f0fdf4; color: #166534; }
+    .fail { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
+    .pending { border-color: #fde68a; background: #fffbeb; color: #92400e; }
+                .frames { display: grid; grid-template-columns: 1fr; gap: 12px; }
+                iframe { width: 100%; height: 540px; border: 1px solid #cbd5e1; border-radius: 12px; background: #fff; }
+                #viewerFrame { height: 760px; }
+    #summary { margin-top: 12px; font-size: 13px; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Markdown Smoke Harness</h1>
+  <div id="results"></div>
+  <div class="frames">
+    <iframe id="viewerFrame" src="/assets/note_viewer.html?nodeId=smoke-node&embed=1&role=noteReadPreview"></iframe>
+    <iframe id="editorFrame" src="/assets/note_editor.html?nodeId=smoke-node&embed=1"></iframe>
+  </div>
+  <pre id="summary">running...</pre>
+  <script>
+    var DATA_URL = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
+              var longSections = Array.from({ length: 16 }, function (_, index) {
+                var n = index + 1;
+                return [
+                  "## 长段落 " + n,
+                  "",
+                  "这一段用于验证阅读态滚动容器是否只让正文滚动，目录区域保持固定。",
+                  "",
+                  "| 列 | 值 |",
+                  "| --- | --- |",
+                  "| " + n + " | 内容滚动验证 |",
+                  "",
+                  "> 第 " + n + " 段引用",
+                  "",
+                  "补充文本补充文本补充文本补充文本补充文本补充文本补充文本补充文本。"
+                ].join("\n");
+              }).join("\n\n");
+
+              var smokeNode = {
+                id: "smoke-node",
+                title: "Markdown Smoke",
+                contentMd: [
+                  "# 标题",
+        "",
+        "## 二级标题",
+        "",
+        "> 引用块",
+        "",
+        "| A | B |",
+        "| --- | --- |",
+        "| 1 | 2 |",
+        "",
+                  "![image.png](noteimg:niimg01)",
+                  "",
+                  "`inline code`",
+                  "",
+                  longSections
+                ].join("\n"),
+      updatedAt: new Date().toISOString()
+    };
+    var noteImages = { niimg01: DATA_URL };
+    var results = [];
+
+    function addResult(name, ok, detail) {
+      results.push({ name: name, ok: ok, detail: detail || "" });
+      var el = document.createElement("div");
+      el.className = "result " + (ok === null ? "pending" : (ok ? "pass" : "fail"));
+      el.textContent = name + (detail ? " - " + detail : "");
+      document.getElementById("results").appendChild(el);
+    }
+
+    function replaceLastResult(name, ok, detail) {
+      var rows = Array.from(document.getElementById("results").children);
+      var row = rows.find(function (item) { return item.textContent.indexOf(name) === 0; });
+      if (!row) return addResult(name, ok, detail);
+      row.className = "result " + (ok ? "pass" : "fail");
+      row.textContent = name + (detail ? " - " + detail : "");
+    }
+
+    function getKnowledgeNodeById(id) {
+      return id === smokeNode.id ? smokeNode : null;
+    }
+    function getKnowledgePathTitles(id) {
+      return id === smokeNode.id ? ["根", smokeNode.title] : [];
+    }
+    function collapseKnowledgePathTitles(list) {
+      return list || [];
+    }
+    function ensureKnowledgeState() {}
+    function ensureKnowledgeNoteRecord() {}
+    function saveKnowledgeState() {}
+    function renderSidebar() {}
+    function renderAll() {}
+    function renderNotesByType() {}
+    function renderNotesPanelRight() {}
+    function showToast() {}
+    function noteImgId() {
+      return "nitest01";
+    }
+    function setNoteImageRef(id, value) {
+      noteImages[id] = value;
+      return value;
+    }
+    function getNoteImageRef(id) {
+      return noteImages[id] || "";
+    }
+    function resolveNoteImgs(text) {
+      return String(text || "").replace(/noteimg:([a-z0-9]+)/g, function (_, id) {
+        return noteImages[id] || "";
+      });
+    }
+
+    window.getKnowledgeNodeById = getKnowledgeNodeById;
+    window.getKnowledgePathTitles = getKnowledgePathTitles;
+    window.collapseKnowledgePathTitles = collapseKnowledgePathTitles;
+    window.ensureKnowledgeState = ensureKnowledgeState;
+    window.ensureKnowledgeNoteRecord = ensureKnowledgeNoteRecord;
+    window.saveKnowledgeState = saveKnowledgeState;
+    window.renderSidebar = renderSidebar;
+    window.renderAll = renderAll;
+    window.renderNotesByType = renderNotesByType;
+    window.renderNotesPanelRight = renderNotesPanelRight;
+    window.showToast = showToast;
+    window.noteImgId = noteImgId;
+    window.setNoteImageRef = setNoteImageRef;
+    window.getNoteImageRef = getNoteImageRef;
+    window.resolveNoteImgs = resolveNoteImgs;
+    window.noteEditing = false;
+    window.selectedKnowledgeNodeId = smokeNode.id;
+
+    function waitFor(checker, timeoutMs) {
+      timeoutMs = timeoutMs || 15000;
+      var start = Date.now();
+      return new Promise(function (resolve, reject) {
+        function tick() {
+          try {
+            var value = checker();
+            if (value) return resolve(value);
+          } catch (error) {}
+          if (Date.now() - start > timeoutMs) return reject(new Error("timeout"));
+          setTimeout(tick, 120);
+        }
+        tick();
+      });
+    }
+
+    async function run() {
+      addResult("viewer render", null, "running");
+      addResult("editor preview render", null, "running");
+                addResult("editor save", null, "running");
+                addResult("viewer read scroll", null, "running");
+
+      var viewerFrame = document.getElementById("viewerFrame");
+      var editorFrame = document.getElementById("editorFrame");
+
+                var viewerDoc;
+                var editorDoc;
+
+                try {
+                  await waitFor(function () {
+                    var doc = viewerFrame.contentDocument;
+                    return doc && doc.querySelector(".toastui-editor-contents");
+                  });
+                  viewerDoc = viewerFrame.contentDocument;
+                  var viewerImg = viewerDoc.querySelector(".toastui-editor-contents img");
+                  var viewerTable = viewerDoc.querySelector(".toastui-editor-contents table");
+                  var viewerHeading = viewerDoc.querySelector(".toastui-editor-contents h1");
+                  replaceLastResult(
+                    "viewer render",
+                    !!(viewerImg && viewerImg.getAttribute("src").indexOf("data:image/") === 0 && viewerTable && viewerHeading),
+                    viewerImg ? viewerImg.getAttribute("src").slice(0, 16) : "missing image"
+                  );
+                } catch (error) {
+                  replaceLastResult("viewer render", false, error.message || String(error));
+                }
+
+                try {
+                  if (!viewerDoc) viewerDoc = viewerFrame.contentDocument;
+                  var viewerContent = viewerDoc && viewerDoc.getElementById("viewerContent");
+                  var viewerTocCard = viewerDoc && viewerDoc.querySelector(".viewer-toc-card");
+                  var viewerLayout = viewerDoc && viewerDoc.getElementById("viewerLayout");
+                  var viewerBodyOverflow = viewerDoc ? viewerFrame.contentWindow.getComputedStyle(viewerDoc.body).overflowY : "";
+                  var viewerContentOverflow = viewerContent ? viewerFrame.contentWindow.getComputedStyle(viewerContent).overflowY : "";
+                  var readScrollOk = !!(
+                    viewerContent &&
+                    viewerTocCard &&
+                    viewerLayout &&
+                    !viewerLayout.classList.contains("no-toc") &&
+                    viewerBodyOverflow === "hidden" &&
+                    viewerContentOverflow === "auto" &&
+                    viewerContent.scrollHeight > viewerContent.clientHeight + 20
+                  );
+                  replaceLastResult(
+                    "viewer read scroll",
+                    readScrollOk,
+                    JSON.stringify({
+                      bodyOverflow: viewerBodyOverflow,
+                      contentOverflow: viewerContentOverflow,
+                      hasToc: !!(viewerLayout && !viewerLayout.classList.contains("no-toc")),
+                      clientHeight: viewerContent ? viewerContent.clientHeight : 0,
+                      scrollHeight: viewerContent ? viewerContent.scrollHeight : 0
+                    })
+                  );
+                } catch (error) {
+                  replaceLastResult("viewer read scroll", false, error.message || String(error));
+                }
+
+                try {
+                  await waitFor(function () {
+                    var doc = editorFrame.contentDocument;
+                    return doc && doc.querySelector(".toastui-editor-md-preview");
+                  });
+                  editorDoc = editorFrame.contentDocument;
+                  var previewApi = editorFrame.contentWindow.__knowledgeNoteEditorTest;
+                  if (previewApi && typeof previewApi.setMarkdown === "function") {
+                    previewApi.setMarkdown([
+                      "# 图片预览验证",
+                      "",
+                      "![image.png](noteimg:niimg01)"
+                    ].join("\n"));
+                    await new Promise(function (resolve) { setTimeout(resolve, 500); });
+                  }
+                  await waitFor(function () {
+                    var img = editorDoc.querySelector(".toastui-editor-md-preview img");
+                    return img && img.getAttribute("src") && img.getAttribute("src").indexOf("data:image/") === 0;
+                  });
+                  var editorPreviewImg = editorDoc.querySelector(".toastui-editor-md-preview img");
+                  replaceLastResult(
+                    "editor preview render",
+                    !!editorPreviewImg,
+                    editorPreviewImg ? editorPreviewImg.getAttribute("src").slice(0, 16) : "missing preview image"
+                  );
+                } catch (error) {
+                  var previewRoot = editorDoc && editorDoc.querySelector(".toastui-editor-md-preview");
+                  replaceLastResult(
+                    "editor preview render",
+                    false,
+                    JSON.stringify({
+                      error: error.message || String(error),
+                      html: previewRoot ? previewRoot.innerHTML.slice(0, 400) : ""
+                    })
+                  );
+                }
+
+                try {
+                  var editorApi = editorFrame.contentWindow.__knowledgeNoteEditorTest;
+                  if (!editorApi || typeof editorApi.setMarkdown !== "function" || typeof editorApi.save !== "function") {
+                    replaceLastResult("editor save", false, "editor api missing");
+                  } else {
+                    editorApi.setMarkdown(smokeNode.contentMd + "\n\n保存验证");
+                    await new Promise(function (resolve) { setTimeout(resolve, 500); });
+                    editorApi.save(false);
+                    await waitFor(function () {
+                      return smokeNode.contentMd.indexOf("保存验证") >= 0;
+                    }, 8000);
+                    replaceLastResult("editor save", true, "content updated");
+                  }
+                } catch (error) {
+                  replaceLastResult("editor save", false, error.message || String(error));
+                }
+
+      var passCount = results.filter(function (item) { return item.ok === true; }).length;
+      var failCount = results.filter(function (item) { return item.ok === false; }).length;
+      document.getElementById("summary").textContent =
+        JSON.stringify({
+          pass: passCount,
+          fail: failCount,
+          smokeNode: smokeNode.contentMd,
+          noteImages: noteImages
+        }, null, 2);
+      document.body.dataset.done = "1";
+    }
+
+    run().catch(function (error) {
+      document.getElementById("summary").textContent = "FAILED: " + (error && error.message ? error.message : String(error));
+      document.body.dataset.done = "1";
+    });
+  </script>
+</body>
+</html>
