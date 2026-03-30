@@ -972,6 +972,83 @@ body{
   background:linear-gradient(180deg,#fffaf6,#fff);
   box-shadow:0 8px 20px rgba(191,64,41,.05);
 }
+.sidebar-tree-toolbar{
+  padding:10px 12px 8px;
+  border-top:1px solid #f1f3f6;
+  border-bottom:1px solid #f1f3f6;
+  background:rgba(255,255,255,.96);
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.sidebar-tree-toolbar-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.sidebar-tree-search{
+  position:relative;
+  flex:1;
+  min-width:0;
+}
+.sidebar-tree-search input{
+  width:100%;
+  height:36px;
+  padding:6px 32px 6px 32px;
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  background:#faf7f2;
+  outline:none;
+  font-size:13px;
+}
+.sidebar-tree-search input:focus{
+  border-color:#e7a97f;
+  box-shadow:0 0 0 3px rgba(231,169,127,.18);
+}
+.sidebar-tree-search .search-icon{
+  left:11px;
+  font-size:12px;
+}
+.sidebar-tree-search .search-clear{
+  right:10px;
+  display:block;
+}
+.sidebar-tree-search-meta{
+  min-height:16px;
+  font-size:11px;
+  color:#8a6f57;
+  padding:0 2px;
+}
+.knowledge-tree-node.is-search-match{
+  background:#fff8e8;
+  box-shadow:inset 0 0 0 1px #f6d68f;
+}
+.sidebar-status-block{
+  display:block;
+}
+body.sidebar-tree-focus .sidebar-tools,
+body.sidebar-tree-focus .quiz-block,
+body.sidebar-tree-focus .sidebar-status-block{
+  display:none;
+}
+body.sidebar-tree-focus .sidebar-logo{
+  padding:12px 14px 10px;
+}
+body.sidebar-tree-focus .runtime-badge{
+  display:none;
+}
+body.errors-top-collapsed #tabContentErrors .errors-header,
+body.errors-top-collapsed #tabContentErrors .date-filter-bar{
+  display:none;
+}
+body.errors-top-collapsed #tabContentErrors .content-header{
+  top:0;
+  padding-top:9px;
+  padding-bottom:9px;
+}
+body.errors-top-collapsed #tabContentErrors .expand-btns{
+  display:none;
+}
 .nav-section-title{padding:10px 18px 6px;color:#b08968}
 .nav-type-header,.nav-subtype,.nav-sub2,.nav-item{min-height:34px}
 .knowledge-tree-node{
@@ -1403,6 +1480,17 @@ body{
       <div class="prog-bar-bg"><div class="prog-bar-fill" id="progFill" style="width:0%"></div></div>
     </div>
   </div>
+  <div class="sidebar-tree-toolbar">
+    <div class="sidebar-tree-toolbar-row">
+      <div class="sidebar-tree-search">
+        <span class="search-icon">🔎</span>
+        <input type="text" id="knowledgeTreeSearchInput" placeholder="搜索知识树节点..." oninput="onKnowledgeTreeSearchInput()">
+        <button class="search-clear" id="knowledgeTreeSearchClear" type="button" onclick="clearKnowledgeTreeSearch()" aria-label="清空知识树搜索">✕</button>
+      </div>
+      <button class="btn btn-secondary" id="knowledgeTreeFocusBtn" type="button" onclick="toggleKnowledgeTreeFocusMode()">专注树</button>
+    </div>
+    <div class="sidebar-tree-search-meta" id="knowledgeTreeSearchMeta"></div>
+  </div>
   <div class="nav-scroll" id="navScroll"></div>
 </div>
 
@@ -1481,6 +1569,7 @@ body{
             <button class="btn btn-sm btn-secondary" onclick="collapseAll()">收起全部</button>
           </div>
           <div class="stats-bar" id="statsBar"></div>
+          <button class="btn btn-sm btn-secondary" id="errorsTopToggleBtn" type="button" onclick="toggleErrorsTopCollapsed()">收起头部</button>
         </div>
       </div>
       <div class="errors-list" id="errorList"></div>
@@ -2058,6 +2147,9 @@ let noteEditing = false;    // 笔记是否处于编辑模式（默认预览）
 let knowledgeTree = null;
 let knowledgeNotes = {};
 let selectedKnowledgeNodeId = null;
+let knowledgeErrorCountCacheVersion = 0;
+let knowledgeErrorCountCache = { version: -1, direct: new Map(), aggregate: new Map() };
+const knowledgeNoteRenderCache = new Map();
 let knowledgeNodeFilter = null;
 let pendingKnowledgeMoveErrorId = null;
 let pendingKnowledgeMoveTargetId = null;
@@ -2067,6 +2159,11 @@ let knowledgeExpanded = new Set();
 let knowledgeExpandedLoaded = false;
 let knowledgeNodeModalState = { mode: '', nodeId: null, parentId: null, targetId: null, fallbackTitle: '' };
 let knowledgeRelatedMode = 'direct';
+const UI_KEY_ERRORS_TOP_COLLAPSED = 'xc_ui_errors_top_collapsed';
+const UI_KEY_KNOWLEDGE_TREE_FOCUS = 'xc_ui_knowledge_tree_focus';
+let errorsTopCollapsed = false;
+let knowledgeTreeFocusMode = false;
+let knowledgeTreeSearchQuery = '';
 
 // 错因分组定义（每个 reason 含简介 desc）
 const REASON_GROUPS = [
@@ -2142,6 +2239,102 @@ let modalKnowledgeNodeId = null;
 
 let todayDate = '';
 let todayDone = 0;
+
+function readUiBool(key, fallback){
+  try{
+    const raw = localStorage.getItem(key);
+    if(raw === null) return !!fallback;
+    return raw === 'true' || raw === '1';
+  }catch(e){
+    return !!fallback;
+  }
+}
+function writeUiBool(key, value){
+  try{ localStorage.setItem(key, value ? '1' : '0'); }catch(e){}
+}
+function hasKnowledgeTreeSearch(){
+  return !!String(knowledgeTreeSearchQuery || '').trim();
+}
+function getKnowledgeTreeSearchTerms(){
+  return String(knowledgeTreeSearchQuery || '').toLowerCase().split(/\s+/).filter(Boolean);
+}
+function getKnowledgeTreeNodeSearchText(node){
+  if(!node) return '';
+  const path = collapseKnowledgePathTitles(getKnowledgePathTitles(node.id)).join(' ');
+  return `${node.title||''} ${path}`.toLowerCase();
+}
+function isKnowledgeNodeSearchMatch(node){
+  const terms = getKnowledgeTreeSearchTerms();
+  if(!terms.length || !node) return false;
+  const text = getKnowledgeTreeNodeSearchText(node);
+  return terms.every(term => text.includes(term));
+}
+function isKnowledgeNodeVisibleBySearch(node){
+  if(!node) return false;
+  if(!hasKnowledgeTreeSearch()) return true;
+  if(isKnowledgeNodeSearchMatch(node)) return true;
+  return (node.children || []).some(child => isKnowledgeNodeVisibleBySearch(child));
+}
+function countVisibleKnowledgeNodes(nodes){
+  return (nodes || []).reduce((sum, node) => {
+    if(!isKnowledgeNodeVisibleBySearch(node)) return sum;
+    return sum + 1 + countVisibleKnowledgeNodes(node.children || []);
+  }, 0);
+}
+function syncKnowledgeTreeSearchUi(){
+  const input = document.getElementById('knowledgeTreeSearchInput');
+  const clearBtn = document.getElementById('knowledgeTreeSearchClear');
+  const meta = document.getElementById('knowledgeTreeSearchMeta');
+  if(input && input.value !== knowledgeTreeSearchQuery) input.value = knowledgeTreeSearchQuery;
+  if(clearBtn) clearBtn.style.display = hasKnowledgeTreeSearch() ? 'block' : 'none';
+  if(meta){
+    if(hasKnowledgeTreeSearch()){
+      const visibleCount = countVisibleKnowledgeNodes(getKnowledgeRootNodes());
+      meta.textContent = visibleCount ? '\u547D\u4E2D ' + visibleCount + ' \u4E2A\u8282\u70B9' : '\u672A\u627E\u5230\u5339\u914D\u8282\u70B9';
+    }else{
+      meta.textContent = '\u652F\u6301\u6309\u8282\u70B9\u540D\u548C\u8DEF\u5F84\u641C\u7D22';
+    }
+  }
+}
+function onKnowledgeTreeSearchInput(){
+  const input = document.getElementById('knowledgeTreeSearchInput');
+  knowledgeTreeSearchQuery = input ? input.value.trim() : '';
+  renderSidebar();
+}
+function clearKnowledgeTreeSearch(){
+  knowledgeTreeSearchQuery = '';
+  const input = document.getElementById('knowledgeTreeSearchInput');
+  if(input) input.value = '';
+  renderSidebar();
+  if(input) input.focus();
+}
+function applyErrorsTopCollapsedState(){
+  document.body.classList.toggle('errors-top-collapsed', errorsTopCollapsed);
+  const btn = document.getElementById('errorsTopToggleBtn');
+  if(btn) btn.textContent = errorsTopCollapsed ? '\u5C55\u5F00\u5934\u90E8' : '\u6536\u8D77\u5934\u90E8';
+}
+function toggleErrorsTopCollapsed(){
+  errorsTopCollapsed = !errorsTopCollapsed;
+  writeUiBool(UI_KEY_ERRORS_TOP_COLLAPSED, errorsTopCollapsed);
+  applyErrorsTopCollapsedState();
+}
+function applyKnowledgeTreeFocusMode(){
+  document.body.classList.toggle('sidebar-tree-focus', knowledgeTreeFocusMode);
+  const btn = document.getElementById('knowledgeTreeFocusBtn');
+  if(btn) btn.textContent = knowledgeTreeFocusMode ? '\u9000\u51FA\u4E13\u6CE8' : '\u4E13\u6CE8\u6811';
+}
+function toggleKnowledgeTreeFocusMode(){
+  knowledgeTreeFocusMode = !knowledgeTreeFocusMode;
+  writeUiBool(UI_KEY_KNOWLEDGE_TREE_FOCUS, knowledgeTreeFocusMode);
+  applyKnowledgeTreeFocusMode();
+}
+function initUiChromePrefs(){
+  errorsTopCollapsed = readUiBool(UI_KEY_ERRORS_TOP_COLLAPSED, false);
+  knowledgeTreeFocusMode = readUiBool(UI_KEY_KNOWLEDGE_TREE_FOCUS, false);
+  applyErrorsTopCollapsedState();
+  applyKnowledgeTreeFocusMode();
+  syncKnowledgeTreeSearchUi();
+}
 
 // 答题状态
 let quizQueue    = [];
@@ -2338,6 +2531,7 @@ async function loadData() {
   setWorkspaceSyncSnapshot();
 }
 function saveData()    {
+  knowledgeErrorCountCacheVersion += 1;
   DB.set(KEY_ERRORS, JSON.stringify(errors))
     .catch(e => showToast('本地存储失败: ' + e.message, 'error'));
   scheduleCloudSave();
@@ -2394,6 +2588,7 @@ function saveNotesByType() {
 }
 function saveKnowledgeState() {
   syncKnowledgeNotesFromTree();
+  knowledgeErrorCountCacheVersion += 1;
   DB.set(KEY_KNOWLEDGE_TREE, JSON.stringify(knowledgeTree));
   DB.set(KEY_KNOWLEDGE_NOTES, JSON.stringify(knowledgeNotes));
   scheduleCloudSave();
@@ -5805,6 +6000,21 @@ function renderSidebar() {
   html+='<div class="nav-section-title" style="margin-top:4px;border-top:1px solid #eee;padding-top:8px">知识树</div>';
   html += renderSidebarKnowledgeTreeV2(getKnowledgeRootNodes(), 0) || '<div style="color:#ccc;font-size:12px;padding:14px">暂无知识树</div>';
   document.getElementById('navScroll').innerHTML=html;
+  const navScroll = document.getElementById('navScroll');
+  if(navScroll){
+    const titles = navScroll.querySelectorAll('.nav-section-title');
+    if(titles.length > 1){
+      titles[0].textContent = '\u72B6\u6001';
+      titles[1].textContent = '\u77E5\u8BC6\u6811';
+      const statusBlock = document.createElement('div');
+      statusBlock.className = 'sidebar-status-block';
+      while(navScroll.firstChild && navScroll.firstChild !== titles[1]){
+        statusBlock.appendChild(navScroll.firstChild);
+      }
+      navScroll.insertBefore(statusBlock, titles[1]);
+    }
+  }
+  syncKnowledgeTreeSearchUi();
 }
 function toggleReasonSection(){
   const k='__reasonSection_CLOSED__';
@@ -6360,6 +6570,27 @@ function selectImportMode(m){
 }
 function openImportModal(){ importKnowledgeNodeId = null; document.getElementById('importText').value='';selectImportMode('merge');openModal('importModal'); }
 
+function getKnowledgeContextDepth(context) {
+  if (!context) return 0;
+  if (context.subSubtype) return 3;
+  if (context.subtype) return 2;
+  if (context.type) return 1;
+  return 0;
+}
+
+function getImportedErrorTargetNodeId(item, context) {
+  if (item?.noteNodeId) return item.noteNodeId;
+  if (!importKnowledgeNodeId || !context?.node) return '';
+  const selectedDepth = getKnowledgeContextDepth(context);
+  const effectiveContext = {
+    type: item.type || context.type || '',
+    subtype: item.subtype || context.subtype || '',
+    subSubtype: item.subSubtype || context.subSubtype || ''
+  };
+  const itemDepth = getKnowledgeContextDepth(effectiveContext);
+  return selectedDepth >= itemDepth ? importKnowledgeNodeId : '';
+}
+
 function getKnowledgeContextForEntry(nodeId) {
   const node = nodeId ? getKnowledgeNodeById(nodeId) : null;
   const titles = node ? getKnowledgePathTitles(node.id) : [];
@@ -6469,7 +6700,7 @@ function normalizeImportedErrorsForCurrentKnowledge(list, defaultKind) {
     type: item.type || context?.type || '其他',
     subtype: item.subtype || context?.subtype || '未分类',
     subSubtype: item.subSubtype || context?.subSubtype || '',
-    noteNodeId: item.noteNodeId || importKnowledgeNodeId || '',
+    noteNodeId: getImportedErrorTargetNodeId(item, context),
     addDate: item.addDate || today(),
     quiz: item.quiz || null,
     status: item.status || 'focus',
@@ -8067,7 +8298,7 @@ function collapseDuplicateKnowledgeWrappers(nodes) {
   let changed = false;
   const list = Array.isArray(nodes) ? nodes : [];
   for (let idx = 0; idx < list.length; idx += 1) {
-    const node = list[idx];
+    let node = list[idx];
     if (!node) continue;
     if (collapseDuplicateKnowledgeWrappers(node.children || [])) changed = true;
     while (
@@ -8085,6 +8316,7 @@ function collapseDuplicateKnowledgeWrappers(nodes) {
       child.level = node.level;
       migrateKnowledgeNodeReference(node.id, child.id);
       list[idx] = child;
+      node = child;
       changed = true;
     }
   }
@@ -8183,11 +8415,41 @@ function getKnowledgeDescendantNodeIds(node) {
   });
   return ids;
 }
+function getKnowledgeErrorCountMaps() {
+  if (knowledgeErrorCountCache.version === knowledgeErrorCountCacheVersion) {
+    return knowledgeErrorCountCache;
+  }
+  const direct = new Map();
+  getErrorEntries().forEach(item => {
+    const nodeId = String(item && item.noteNodeId || '');
+    if (!nodeId) return;
+    direct.set(nodeId, (direct.get(nodeId) || 0) + 1);
+  });
+  const aggregate = new Map();
+  function walk(node) {
+    if (!node || !node.id) return 0;
+    let total = direct.get(node.id) || 0;
+    (node.children || []).forEach(child => {
+      total += walk(child);
+    });
+    aggregate.set(node.id, total);
+    return total;
+  }
+  getKnowledgeRootNodes().forEach(root => walk(root));
+  knowledgeErrorCountCache = {
+    version: knowledgeErrorCountCacheVersion,
+    direct,
+    aggregate
+  };
+  return knowledgeErrorCountCache;
+}
 function countErrorsForKnowledgeNode(nodeId, includeDescendants) {
   const node = getKnowledgeNodeById(nodeId);
   if (!node) return 0;
-  const nodeIds = includeDescendants === false ? [node.id] : getKnowledgeDescendantNodeIds(node);
-  return getErrorEntries().filter(item => nodeIds.includes(item.noteNodeId)).length;
+  const maps = getKnowledgeErrorCountMaps();
+  return includeDescendants === false
+    ? (maps.direct.get(node.id) || 0)
+    : (maps.aggregate.get(node.id) || 0);
 }
 function getKnowledgeAssignableNodesForPath(type, subtype, subSubtype) {
   const path = getKnowledgePathConfig(type, subtype, subSubtype);
@@ -8250,6 +8512,9 @@ function ensureKnowledgeState(opts) {
   const allNodes = collectKnowledgeNodes();
   if ((!selectedKnowledgeNodeId || !getKnowledgeNodeById(selectedKnowledgeNodeId)) && allNodes.length > 0) {
     selectedKnowledgeNodeId = allNodes[0].id;
+  }
+  if (changed) {
+    knowledgeErrorCountCacheVersion += 1;
   }
   syncKnowledgeNotesFromTree();
   if (options.persist && changed) {
@@ -9530,6 +9795,30 @@ function renderKnowledgeNotesView() {
   content.innerHTML = `${workspaceBar}${bodyHtml}`;
   updateKnowledgeWorkspaceChrome(currentNode, linkedCount);
 }
+function getKnowledgeNoteRenderBundle(node) {
+  const safeNode = node || {};
+  const nodeId = String(safeNode.id || '');
+  const noteContent = String(safeNode.contentMd || '');
+  const updatedAt = String(safeNode.updatedAt || '');
+  const cached = knowledgeNoteRenderCache.get(nodeId);
+  if (cached && cached.content === noteContent && cached.updatedAt === updatedAt) {
+    return cached;
+  }
+  const anchorPrefix = getKnowledgeNoteAnchorPrefix(nodeId);
+  const headings = extractMdHeadings(noteContent);
+  const bundle = {
+    content: noteContent,
+    updatedAt,
+    anchorPrefix,
+    headings,
+    tocHtml: renderFloatingHeadingPanel(headings, anchorPrefix),
+    previewHtml: noteContent
+      ? renderMd(noteContent, { anchorPrefix })
+      : '<div style="color:#c0c4cc;font-size:13px;font-style:italic;padding:18px 0">当前节点还没有笔记，直接在这里记录规则、易错点和行动建议。</div>'
+  };
+  knowledgeNoteRenderCache.set(nodeId, bundle);
+  return bundle;
+}
 function renderKnowledgeNotesViewV2() {
   ensureKnowledgeState();
   const content = document.getElementById('notesContent');
@@ -9551,13 +9840,12 @@ function renderKnowledgeNotesViewV2() {
       <span class="knowledge-node-pill-count">${childCount}题</span>
     </button>`;
   }).join('');
-  const noteContent = currentNode.contentMd || '';
-  const noteAnchorPrefix = getKnowledgeNoteAnchorPrefix(currentNode.id);
-  const noteHeadings = extractMdHeadings(noteContent);
-  const tocHtml = renderFloatingHeadingPanel(noteHeadings, noteAnchorPrefix);
-  const previewHtml = noteContent
-    ? renderMd(noteContent, { anchorPrefix: noteAnchorPrefix })
-    : '<div style="color:#c0c4cc;font-size:13px;font-style:italic;padding:18px 0">当前节点还没有笔记，直接在这里记录规则、易错点和行动建议。</div>';
+  const noteBundle = getKnowledgeNoteRenderBundle(currentNode);
+  const noteContent = noteBundle.content;
+  const noteAnchorPrefix = noteBundle.anchorPrefix;
+  const noteHeadings = noteBundle.headings;
+  const tocHtml = noteBundle.tocHtml;
+  const previewHtml = noteBundle.previewHtml;
   const workspaceBar = `<div class="knowledge-workspace-bar">
     <div class="knowledge-workspace-meta">
       <div class="knowledge-workspace-kicker">知识点笔记</div>
@@ -10538,6 +10826,7 @@ async function refreshRuntimeBadge() {
   saveExpMain();
   syncNotesWithErrors();
   await refreshRuntimeBadge();
+  initUiChromePrefs();
   renderSidebar();
   renderAll();
   renderNotesByType();
