@@ -336,6 +336,8 @@ body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;backg
 .status-select{padding:4px 8px;border:1px solid #ddd;border-radius:4px;font-size:12px;color:#555;outline:none;cursor:pointer;background:#fff}
 .del-btn{background:none;border:none;color:#ccc;cursor:pointer;font-size:13px;padding:3px 6px;border-radius:4px;transition:.15s;margin-left:auto}
 .del-btn:hover{color:#e74c3c;background:#fff2f0}
+.del-btn.del-btn-danger{display:inline-flex;align-items:center;gap:4px;background:#fff2f0;color:#cf1322;border:1px solid #ffccc7;padding:4px 10px;border-radius:999px;font-weight:600}
+.del-btn.del-btn-danger:hover{background:#fff1f0;color:#a8071a;border-color:#ff7875}
 
 .highlight{background:#ffe082;border-radius:2px;padding:0 1px}
 
@@ -1569,8 +1571,15 @@ body.errors-top-collapsed #tabContentErrors .expand-btns{
             <button class="btn btn-sm btn-secondary" onclick="collapseAll()">收起全部</button>
           </div>
           <div class="stats-bar" id="statsBar"></div>
+          <button class="btn btn-sm btn-secondary" id="batchToggleBtn" type="button" onclick="toggleBatchMode()">批量操作</button>
           <button class="btn btn-sm btn-secondary" id="errorsTopToggleBtn" type="button" onclick="toggleErrorsTopCollapsed()">收起头部</button>
         </div>
+      </div>
+      <div class="batch-bar hidden" id="batchBar">
+        <span id="batchCount">已选 0 题</span>
+        <button class="btn btn-sm btn-secondary" type="button" onclick="openBatchKnowledgeMove()">批量改挂载</button>
+        <button class="btn btn-sm btn-secondary" type="button" onclick="executeBatch('delete')">批量删除</button>
+        <button class="btn btn-sm btn-secondary" type="button" onclick="toggleBatchMode()">完成</button>
       </div>
       <div class="errors-list" id="errorList"></div>
     </div>
@@ -1594,7 +1603,7 @@ body.errors-top-collapsed #tabContentErrors .expand-btns{
 <!-- ===== 添加/编辑弹窗 ===== -->
 <div class="modal-mask" id="addModal">
   <div class="modal entry-modal">
-    <button class="modal-close" onclick="closeModal('addModal')">✕</button>
+    <button class="modal-close" id="addModalCloseBtn" onclick="closeModal('addModal')">✕</button>
     <h2 id="addModalTitle">添加错题</h2>
     <div id="entryFlowBanner" class="entry-flow-banner" style="display:none"></div>
     <div class="entry-section entry-section-primary">
@@ -1725,7 +1734,7 @@ body.errors-top-collapsed #tabContentErrors .expand-btns{
       </div>
     </details>
     <div class="modal-btns">
-      <button class="btn btn-secondary" onclick="closeModal('addModal')">取消</button>
+      <button class="btn btn-secondary" id="cancelSaveErrorBtn" onclick="closeModal('addModal')">取消</button>
       <button class="btn btn-primary" id="saveErrorBtn" onclick="saveError()">保存这道题</button>
     </div>
   </div>
@@ -2152,6 +2161,7 @@ let knowledgeErrorCountCache = { version: -1, direct: new Map(), aggregate: new 
 const knowledgeNoteRenderCache = new Map();
 let knowledgeNodeFilter = null;
 let pendingKnowledgeMoveErrorId = null;
+let pendingKnowledgeMoveErrorIds = [];
 let pendingKnowledgeMoveTargetId = null;
 let draggingKnowledgeNodeId = null;
 let draggingErrorId = null;
@@ -2236,9 +2246,24 @@ let editingId    = null;
 let importMode   = 'merge';
 let importKnowledgeNodeId = null;
 let modalKnowledgeNodeId = null;
+let saveErrorBusy = false;
 
 let todayDate = '';
 let todayDone = 0;
+
+function setSaveErrorBusyState(next) {
+  saveErrorBusy = !!next;
+  const saveBtn = document.getElementById('saveErrorBtn');
+  const cancelBtn = document.getElementById('cancelSaveErrorBtn');
+  const closeBtn = document.getElementById('addModalCloseBtn');
+  const loadingText = editingId ? '保存修改中...' : '保存中...';
+  if (saveBtn) {
+    saveBtn.disabled = saveErrorBusy;
+    saveBtn.textContent = saveErrorBusy ? loadingText : '保存这道题';
+  }
+  if (cancelBtn) cancelBtn.disabled = saveErrorBusy;
+  if (closeBtn) closeBtn.disabled = saveErrorBusy;
+}
 
 function readUiBool(key, fallback){
   try{
@@ -6408,7 +6433,7 @@ function renderCard(e){
       <button class="btn btn-sm btn-secondary" onclick='openProcessImageEditor(${idLit},"card")'>&#36807;&#31243;&#22270;</button>
       <button class="btn btn-sm btn-secondary" onclick='openEditModal(${idLit})'>✏ 编辑</button>
       <button class="btn btn-sm btn-secondary" style="color:#4e8ef7;border-color:#adc6ff" onclick='startInlineQuiz(${idLit})'>📝 做题</button>
-      <button class="del-btn" onclick='deleteError(${idLit})'>🗑</button>
+      <button class="del-btn del-btn-danger" onclick='deleteError(${idLit})'>🗑 删除</button>
     </div>
   </div>`;
 }
@@ -6476,6 +6501,7 @@ function clearAllData(){
 // ============================================================
 function openAddModal(){
   editingId=null; editImgBase64=null; editImgDeleted=false; editAnalysisImgBase64=null; editAnalysisImgDeleted=false;
+  setSaveErrorBusyState(false);
   modalKnowledgeNodeId = null;
   resetAIAnalyzeState();
   document.getElementById('addModalTitle').textContent='添加错题';
@@ -6499,6 +6525,7 @@ function openAddModal(){
 function openEditModal(id){
   const e=findErrorById(id);if(!e)return;
   editingId=normalizeErrorId(id); editImgBase64=null; editImgDeleted=false; editAnalysisImgBase64=null; editAnalysisImgDeleted=false;
+  setSaveErrorBusyState(false);
   modalKnowledgeNodeId = null;
   resetAIAnalyzeState();
   document.getElementById('addModalTitle').textContent = isClaudeBankEntry(e) ? '编辑题库题' : '编辑错题';
@@ -6982,7 +7009,7 @@ function renderClaudeBankCard(item) {
       <button class="btn btn-sm btn-secondary" onclick='openEditModal(${idLit})'>编辑</button>
       <button class="btn btn-sm btn-secondary" style="color:#4e8ef7;border-color:#adc6ff" onclick='startInlineQuiz(${idLit})'>做题</button>
       <button class="btn btn-sm btn-primary" onclick='convertClaudeBankToError(${idLit})'>转为错题</button>
-      <button class="del-btn" onclick='deleteError(${idLit})'>🗑</button>
+      <button class="del-btn del-btn-danger" onclick='deleteError(${idLit})'>🗑 删除</button>
     </div>
   </div>`;
 }
@@ -9065,6 +9092,7 @@ function moveErrorToKnowledgeNode(errorId, preferredNodeId) {
   const targetId = normalizeErrorId(errorId);
   const errorItem = findErrorById(targetId);
   if (!errorItem) return;
+  pendingKnowledgeMoveErrorIds = [targetId];
   pendingKnowledgeMoveErrorId = targetId;
   pendingKnowledgeMoveTargetId = preferredNodeId || errorItem.noteNodeId || null;
   const currentText = errorItem.noteNodeId
@@ -9077,7 +9105,23 @@ function moveErrorToKnowledgeNode(errorId, preferredNodeId) {
   renderKnowledgeMoveOptions();
   openModal('knowledgeMoveModal');
 }
+function openBatchKnowledgeMove() {
+  if (!batchSelected.size) {
+    showToast('请先勾选题目', 'warning');
+    return;
+  }
+  pendingKnowledgeMoveErrorIds = Array.from(batchSelected).map(id => normalizeErrorId(id));
+  pendingKnowledgeMoveErrorId = pendingKnowledgeMoveErrorIds[0] || null;
+  pendingKnowledgeMoveTargetId = pendingKnowledgeMoveErrorId ? (getErrorKnowledgeNodeId(pendingKnowledgeMoveErrorId) || null) : null;
+  const currentEl = document.getElementById('knowledgeMoveCurrent');
+  if (currentEl) currentEl.textContent = `已选 ${pendingKnowledgeMoveErrorIds.length} 题，确认后将统一改挂载`;
+  const search = document.getElementById('knowledgeMoveSearch');
+  if (search) search.value = '';
+  renderKnowledgeMoveOptions();
+  openModal('knowledgeMoveModal');
+}
 function closeKnowledgeMoveModal() {
+  pendingKnowledgeMoveErrorIds = [];
   pendingKnowledgeMoveErrorId = null;
   pendingKnowledgeMoveTargetId = null;
   closeModal('knowledgeMoveModal');
@@ -9111,8 +9155,11 @@ function getErrorKnowledgeNodeId(errorId) {
   return errorItem ? (errorItem.noteNodeId || null) : null;
 }
 function applyKnowledgeMove() {
-  const errorItem = errors.find(item => item.id === pendingKnowledgeMoveErrorId);
-  if (!errorItem) {
+  const targetIds = pendingKnowledgeMoveErrorIds.length
+    ? pendingKnowledgeMoveErrorIds.slice()
+    : (pendingKnowledgeMoveErrorId ? [pendingKnowledgeMoveErrorId] : []);
+  const matched = errors.filter(item => targetIds.includes(normalizeErrorId(item.id)));
+  if (!matched.length) {
     closeKnowledgeMoveModal();
     return;
   }
@@ -9126,7 +9173,24 @@ function applyKnowledgeMove() {
     return;
   }
   closeKnowledgeMoveModal();
-  assignErrorToKnowledgeNode(errorItem.id, targetNode.id, { focusNode: true });
+  if (matched.length === 1) {
+    assignErrorToKnowledgeNode(matched[0].id, targetNode.id, { focusNode: true });
+    return;
+  }
+  const now = new Date().toISOString();
+  matched.forEach(errorItem => {
+    errorItem.noteNodeId = targetNode.id;
+    errorItem.updatedAt = now;
+    recordErrorUpsert(errorItem);
+  });
+  batchSelected.clear();
+  saveData();
+  saveKnowledgeState();
+  renderSidebar();
+  renderAll();
+  renderNotesByType();
+  updateBatchBar();
+  showToast(`已批量改挂载 ${matched.length} 题`, 'success');
 }
 function openKnowledgeForError(errorId) {
   const errorItem = findErrorById(errorId);
@@ -9366,8 +9430,11 @@ function executeBatch(action) {
   }
   batchSelected.clear();
   saveData();
+  syncNotesWithErrors();
+  saveKnowledgeState();
   renderSidebar();
   renderAll();
+  renderNotesByType();
   updateBatchBar();
 }
 
@@ -9375,7 +9442,10 @@ function executeBatch(action) {
 // 弹窗控制
 // ============================================================
 function openModal(id){ document.getElementById(id).classList.add('open'); }
-function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+function closeModal(id){
+  if(id==='addModal' && saveErrorBusy) return;
+  document.getElementById(id).classList.remove('open');
+}
 document.querySelectorAll('.modal-mask').forEach(mask=>{
   mask.addEventListener('click',function(e){
     if(e.target===this&&this.id!=='quizModal') closeModal(this.id);
@@ -10558,6 +10628,7 @@ async function analyzeEntryWithAI() {
 
 // 修改添加错题函数，增加联动
 async function saveError(){
+  if (saveErrorBusy) return;
   const type = document.getElementById('editType').value;
   const subtype = document.getElementById('editSubtype').value.trim();
   const subSubtype = document.getElementById('editSubSubtype').value.trim();
@@ -10573,82 +10644,92 @@ async function saveError(){
   const srcYear     = document.getElementById('editSrcYear').value;
   const srcProvince = document.getElementById('editSrcProvince').value;
   const srcOrigin   = document.getElementById('editSrcOrigin').value.trim();
-  const noteNodeId  = resolveKnowledgeNodeIdForSave(type, subtype, subSubtype);
 
   if(!question && !editImgBase64){ showToast('题目不能为空', 'warning'); return; }
   if(!subtype){ showToast('子类型不能为空', 'warning'); document.getElementById('editSubtype').focus(); return; }
   if(!answer){ showToast('正确答案不能为空', 'warning'); document.getElementById('editAnswer').focus(); return; }
+  setSaveErrorBusyState(true);
+  try {
+    const noteNodeId  = resolveKnowledgeNodeIdForSave(type, subtype, subSubtype);
+    const id = editingId ? normalizeErrorId(editingId) : null; // JS 变量，openAddModal/openEditModal 时设置
 
-  const id = editingId ? normalizeErrorId(editingId) : null; // JS 变量，openAddModal/openEditModal 时设置
+    // 图片：有新图用新图；主动删除置 null；否则保留原图
+    const existing = id ? findErrorById(id) : null;
+    const prevImgData = existing?.imgData || null;
+    const prevAnalysisImgData = existing?.analysisImgData || null;
 
-  // 图片：有新图用新图；主动删除置 null；否则保留原图
-  const existing = id ? findErrorById(id) : null;
-  const prevImgData = existing?.imgData || null;
-  const prevAnalysisImgData = existing?.analysisImgData || null;
-
-  let imgData;
-  if (editImgDeleted) {
-    imgData = null;
-    await unrefImageValue(prevImgData);
-  } else if (editImgBase64) {
-    imgData = await uploadImageValue(editImgBase64);
-    if (prevImgData && prevImgData !== imgData) await unrefImageValue(prevImgData);
-  } else {
-    imgData = prevImgData;
-  }
-
-  let analysisImgData;
-  if (editAnalysisImgDeleted) {
-    analysisImgData = null;
-    await unrefImageValue(prevAnalysisImgData);
-  } else if (editAnalysisImgBase64) {
-    analysisImgData = await uploadImageValue(editAnalysisImgBase64);
-    if (prevAnalysisImgData && prevAnalysisImgData !== analysisImgData) await unrefImageValue(prevAnalysisImgData);
-  } else {
-    analysisImgData = prevAnalysisImgData;
-  }
-
-  const data = {
-    type, subtype, subSubtype, question, options, answer, myAnswer, rootReason, errorReason, analysis, status, difficulty,
-    imgData, analysisImgData, srcYear, srcProvince, srcOrigin, noteNodeId
-  };
-  if(existing){
-    const old = existing;
-    if (!old.id) old.id = newId();
-    old.id = normalizeErrorId(old.id);
-    const oldType = old ? old.type : null;
-    Object.assign(old, data);
-    old.updatedAt = new Date().toISOString();
-    // 题型改名 → 同步笔记 key
-    if (oldType && oldType !== type && notesByType[oldType] !== undefined) {
-      if (!notesByType[type]) notesByType[type] = notesByType[oldType];
-      // 旧 key 仅在没有其他错题使用时才删除
-      const stillUsed = errors.some(e => e.type === oldType);
-      if (!stillUsed) delete notesByType[oldType];
-      saveNotesByType();
+    let imgData;
+    if (editImgDeleted) {
+      imgData = null;
+      await unrefImageValue(prevImgData);
+    } else if (editImgBase64) {
+      imgData = await uploadImageValue(editImgBase64);
+      if (prevImgData && prevImgData !== imgData) await unrefImageValue(prevImgData);
+    } else {
+      imgData = prevImgData;
     }
-    recordErrorUpsert(old);
-    showToast('修改成功', 'success');
-  }else{
-    const newErr = {
-      id:newId(),
-      entryKind:'error',
-      addDate:today(),
-      updatedAt:new Date().toISOString(),
-      masteryLevel:'not_mastered',
-      masteryUpdatedAt:null,
-      lastPracticedAt:null,
-      ...data
+
+    let analysisImgData;
+    if (editAnalysisImgDeleted) {
+      analysisImgData = null;
+      await unrefImageValue(prevAnalysisImgData);
+    } else if (editAnalysisImgBase64) {
+      analysisImgData = await uploadImageValue(editAnalysisImgBase64);
+      if (prevAnalysisImgData && prevAnalysisImgData !== analysisImgData) await unrefImageValue(prevAnalysisImgData);
+    } else {
+      analysisImgData = prevAnalysisImgData;
+    }
+
+    const data = {
+      type, subtype, subSubtype, question, options, answer, myAnswer, rootReason, errorReason, analysis, status, difficulty,
+      imgData, analysisImgData, srcYear, srcProvince, srcOrigin, noteNodeId
     };
-    errors.push(newErr);
-    recordErrorUpsert(newErr);
-    showToast('添加成功', 'success');
+    if(existing){
+      const old = existing;
+      if (!old.id) old.id = newId();
+      old.id = normalizeErrorId(old.id);
+      const oldType = old ? old.type : null;
+      Object.assign(old, data);
+      old.updatedAt = new Date().toISOString();
+      // 题型改名 → 同步笔记 key
+      if (oldType && oldType !== type && notesByType[oldType] !== undefined) {
+        if (!notesByType[type]) notesByType[type] = notesByType[oldType];
+        // 旧 key 仅在没有其他错题使用时才删除
+        const stillUsed = errors.some(e => e.type === oldType);
+        if (!stillUsed) delete notesByType[oldType];
+        saveNotesByType();
+      }
+      recordErrorUpsert(old);
+      showToast('修改成功', 'success');
+    }else{
+      const newErr = {
+        id:newId(),
+        entryKind:'error',
+        addDate:today(),
+        updatedAt:new Date().toISOString(),
+        masteryLevel:'not_mastered',
+        masteryUpdatedAt:null,
+        lastPracticedAt:null,
+        ...data
+      };
+      errors.push(newErr);
+      recordErrorUpsert(newErr);
+      showToast('添加成功', 'success');
+    }
+    saveData();
+    setSaveErrorBusyState(false);
+    closeModal('addModal');
+    renderSidebar();
+    renderAll();
+    // 同步笔记结构（自动补充子类型标题）
+    syncNotesWithErrors();
+    saveKnowledgeState();
+    renderNotesByType();
+  } catch (e) {
+    showToast(e && e.message ? e.message : '保存失败，请重试', 'error');
+  } finally {
+    if (saveErrorBusy) setSaveErrorBusyState(false);
   }
-  saveData();closeModal('addModal');renderSidebar();renderAll();
-  // 同步笔记结构（自动补充子类型标题）
-  syncNotesWithErrors();
-  saveKnowledgeState();
-  renderNotesByType();
 }
 
 // 修改删除错题函数，增加联动
