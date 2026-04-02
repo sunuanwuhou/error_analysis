@@ -120,7 +120,7 @@ def main() -> None:
             method='POST',
             payload={'username': username, 'password': password},
         )
-        if status == 403:
+        if status in {403, 404}:
             ensure_test_user(username, password)
             status, login_payload = request_json(
                 opener,
@@ -196,6 +196,41 @@ def main() -> None:
             },
         )
         assert status == 200 and practice_log.get('ok') is True
+
+        status, attempts_save = request_json(
+            opener,
+            f'{base_url}/api/practice/attempts/batch',
+            method='POST',
+            payload={
+                'items': [
+                    {
+                        'sessionMode': 'smoke',
+                        'source': 'self-test',
+                        'questionId': 'question-smoke-1',
+                        'errorId': '',
+                        'type': '数量关系',
+                        'subtype': '工程问题',
+                        'subSubtype': '',
+                        'questionText': 'smoke question',
+                        'myAnswer': 'A',
+                        'correctAnswer': 'B',
+                        'result': 'wrong',
+                        'durationSec': 12,
+                        'statusTag': 'review',
+                        'confidence': 2,
+                        'solvingNote': 'smoke note',
+                        'scratchData': {'mode': 'smoke'},
+                        'noteNodeId': '',
+                        'meta': {'case': 'practice-attempts'},
+                    }
+                ]
+            },
+        )
+        assert status == 200 and attempts_save.get('ok') is True and len(attempts_save.get('items', [])) == 1
+
+        status, attempts_list = request_json(opener, f'{base_url}/api/practice/attempts?limit=5')
+        assert status == 200 and attempts_list.get('ok') is True
+        assert any(item.get('questionId') == 'question-smoke-1' for item in attempts_list.get('items', []))
 
         status, daily_payload = request_json(opener, f'{base_url}/api/practice/daily')
         assert status == 200 and daily_payload.get('ok') is True

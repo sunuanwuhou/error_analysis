@@ -1,5 +1,18 @@
 # xingce_v3_lab
 
+## Read first
+
+Before changing code or shipping a new build, read these docs in order:
+
+1. `docs/PROJECT_RULES.md`
+2. `docs/CURRENT_SCOPE.md`
+3. `docs/HANDOFF_CONTEXT.md`
+4. `docs/DEVLOG.md`
+5. `docs/RELEASE_CHECKLIST.md`
+6. `docs/SELF_TEST_REPORT.md`
+
+These files are now the repository source of truth for project goals, current phase, delivery rules, handoff context, and what was actually tested.
+
 `xingce_v3_lab` is the current authenticated study workbench for error analysis, knowledge-note editing, cloud sync, and AI-assisted review.
 
 ## Current Product State

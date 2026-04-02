@@ -35,6 +35,8 @@ EXPECTED_ROUTES: dict[tuple[str, str], str] = {
     ('GET', '/api/sync'): 'app.routers.sync.sync_pull',
     ('POST', '/api/sync'): 'app.routers.sync.sync_push',
     ('POST', '/api/practice/log'): 'app.routers.practice.create_practice_log',
+    ('POST', '/api/practice/attempts/batch'): 'app.routers.practice.save_practice_attempts',
+    ('GET', '/api/practice/attempts'): 'app.routers.practice.list_practice_attempts',
     ('GET', '/api/practice/daily'): 'app.routers.practice.get_practice_daily',
     ('POST', '/api/ai/evaluate-answer'): 'app.routers.ai.evaluate_answer',
     ('POST', '/api/ai/generate-question'): 'app.routers.ai.generate_question',
