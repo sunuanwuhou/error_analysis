@@ -61,6 +61,16 @@ from app.schemas import (
 )
 from app.security import clear_session, create_user_account, get_user_by_token, issue_session, parse_iso_datetime, utcnow, verify_password
 
+ENTITY_SYNC_OPS: dict[str, tuple[str, str]] = {
+    "error": ("error_upsert", "error_delete"),
+    "note_type": ("note_type_upsert", "note_type_delete"),
+    "note_image": ("note_image_upsert", "note_image_delete"),
+    "knowledge_node": ("knowledge_node_upsert", "knowledge_node_delete"),
+    "setting": ("setting_upsert", "setting_delete"),
+}
+UPSERT_TO_ENTITY_TYPE: dict[str, str] = {ops[0]: entity_type for entity_type, ops in ENTITY_SYNC_OPS.items()}
+DELETE_TO_ENTITY_TYPE: dict[str, str] = {ops[1]: entity_type for entity_type, ops in ENTITY_SYNC_OPS.items()}
+
 def on_startup() -> None:
     init_db()
     with get_conn() as conn:

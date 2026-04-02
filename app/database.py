@@ -104,6 +104,35 @@ def init_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_plog_user_date
               ON practice_log(user_id, date);
 
+            CREATE TABLE IF NOT EXISTS practice_attempts (
+              id TEXT PRIMARY KEY,
+              user_id TEXT NOT NULL,
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL,
+              session_mode TEXT NOT NULL DEFAULT '',
+              source TEXT NOT NULL DEFAULT '',
+              question_id TEXT NOT NULL DEFAULT '',
+              error_id TEXT NOT NULL DEFAULT '',
+              type TEXT NOT NULL DEFAULT '',
+              subtype TEXT NOT NULL DEFAULT '',
+              sub_subtype TEXT NOT NULL DEFAULT '',
+              question_text TEXT NOT NULL DEFAULT '',
+              my_answer TEXT NOT NULL DEFAULT '',
+              correct_answer TEXT NOT NULL DEFAULT '',
+              result TEXT NOT NULL DEFAULT '',
+              duration_sec INTEGER NOT NULL DEFAULT 0,
+              status_tag TEXT NOT NULL DEFAULT '',
+              confidence INTEGER NOT NULL DEFAULT 0,
+              solving_note TEXT NOT NULL DEFAULT '',
+              scratch_data_json TEXT NOT NULL DEFAULT '{}',
+              note_node_id TEXT NOT NULL DEFAULT '',
+              meta_json TEXT NOT NULL DEFAULT '{}',
+              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_practice_attempts_user_time
+              ON practice_attempts(user_id, created_at DESC);
+
             CREATE TABLE IF NOT EXISTS codex_threads (
               id TEXT PRIMARY KEY,
               user_id TEXT NOT NULL,

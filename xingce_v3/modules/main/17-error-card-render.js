@@ -23,22 +23,24 @@ function renderCard(e){
     const pills=[];
     if(e.myAnswer) pills.push(`<span class="detail-pill wrong-pill">我选 ${escapeHtml(e.myAnswer)} ✗</span>`);
     pills.push(`<span class="detail-pill correct-pill">正确答案 ${escapeHtml(e.answer||'—')} ✓</span>`);
-    if(e.rootReason){
-      pills.push(`<span class="detail-pill" style="background:#fff0f6;color:#c41d7f;border:1px solid #ffadd2;font-size:11px">⚡ 根本主因：${escapeHtml(e.rootReason)}</span>`);
+    const _mistakeType = e.mistakeType || e.rootReason || '';
+    const _triggerPoint = e.triggerPoint || e.errorReason || '';
+    const _correctModel = e.correctModel || e.analysis || '';
+    if(_mistakeType){
+      pills.push(`<span class="detail-pill" style="background:#fff0f6;color:#c41d7f;border:1px solid #ffadd2;font-size:11px">⚡ 错误类型：${escapeHtml(_mistakeType)}</span>`);
     }
-    if(e.errorReason){
-      const rg = getReasonGroup(e.errorReason);
-      const rd = getReasonDesc(e.errorReason);
-      const catBadge = rg ? `<span style="background:${rg.color}22;color:${rg.color};border:1px solid ${rg.color}44;border-radius:4px;padding:0 4px;font-size:10px;margin-right:3px">${escapeHtml(rg.label)}</span>` : '';
-      const descTip = rd ? `<span style="color:#aaa;font-size:11px"> · ${escapeHtml(rd)}</span>` : '';
-      pills.push(`<span class="detail-pill reason-pill">⚠ 直接原因：${catBadge}${escapeHtml(e.errorReason)}${descTip}</span>`);
+    if(_triggerPoint){
+      pills.push(`<span class="detail-pill reason-pill">🎯 触发点：${escapeHtml(_triggerPoint)}</span>`);
+    }
+    if(e.nextAction){
+      pills.push(`<span class="detail-pill meta-pill">➡ 下次动作：${escapeHtml(e.nextAction)}</span>`);
     }
     if(quizInfoStr) pills.push(`<span class="detail-pill meta-pill">${escapeHtml(quizInfoStr)}</span>`);
     // 错误历史
     const hist='';
     detailHtml=`<div class="card-detail">
       <div class="detail-meta-row">${pills.join('')}</div>
-      ${e.analysis?`<div class="detail-analysis">${renderAnalysis(e.analysis,searchKw)}</div>`:''}
+      ${_correctModel?`<div class="detail-analysis"><strong>正确模型：</strong>${renderAnalysis(_correctModel,searchKw)}</div>`:''}
       ${e.analysisImgData?`<img src="${escapeHtml(e.analysisImgData)}" class="cuoti-img" onclick="this.classList.toggle('expanded')" title="点击放大/缩小" style="border:1px solid #e0e4ff;margin-top:6px">`:''}
       ${hist}
     </div>`;

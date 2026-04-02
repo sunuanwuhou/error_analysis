@@ -7,7 +7,7 @@ function openAddModal(){
   modalKnowledgeNodeId = null;
   resetAIAnalyzeState();
   document.getElementById('addModalTitle').textContent='添加错题';
-  ['editSubtype','editSubSubtype','editQuestion','editOptions','editAnswer','editMyAnswer','editRootReason','editErrorReason','editAnalysis','editSrcOrigin'].forEach(id=>document.getElementById(id).value='');
+  ['editSubtype','editSubSubtype','editQuestion','editOptions','editAnswer','editMyAnswer','editRootReason','editErrorReason','editAnalysis','editNextAction','editSrcOrigin'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('editSrcYear').value='';
   document.getElementById('editSrcProvince').value='';
   document.getElementById('editType').value='言语理解与表达';
@@ -49,8 +49,10 @@ function openEditModal(id){
   document.getElementById('editSrcOrigin').value=e.srcOrigin||'';
   _modalDiff = e.difficulty || 0;
   updateModalDiffStars();
-  document.getElementById('editRootReason').value = e.rootReason||'';
-  setReasonFormValue(e.errorReason||'');
+  document.getElementById('editRootReason').value = e.mistakeType || e.rootReason || '';
+  setReasonFormValue(e.triggerPoint || e.errorReason || '');
+  document.getElementById('editAnalysis').value = e.correctModel || e.analysis || '';
+  const _nextActionEl = document.getElementById('editNextAction'); if(_nextActionEl) _nextActionEl.value = e.nextAction || '';
   refreshKnowledgePicker(e.noteNodeId || '');
   setEntryAdvancedOpen(Boolean((e.status && e.status !== 'focus') || e.difficulty || e.srcYear || e.srcProvince || e.srcOrigin));
   updateEntryFlowBanner(getKnowledgeContextForEntry(e.noteNodeId || selectedKnowledgeNodeId));

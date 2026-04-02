@@ -129,3 +129,32 @@ class DiscoverPatternsPayload(BaseModel):
 class SuggestRestructurePayload(BaseModel):
     tree: Any = None
     notes: dict[str, Any] = Field(default_factory=dict)
+
+
+
+class PracticeAttemptItemPayload(BaseModel):
+    id: str = ""
+    createdAt: str = ""
+    updatedAt: str = ""
+    sessionMode: str = ""
+    source: str = ""
+    questionId: str = ""
+    errorId: str = ""
+    type: str = ""
+    subtype: str = ""
+    subSubtype: str = ""
+    questionText: str = ""
+    myAnswer: str = ""
+    correctAnswer: str = ""
+    result: str = ""
+    durationSec: int = Field(default=0, ge=0)
+    statusTag: str = ""
+    confidence: int = Field(default=0, ge=0, le=5)
+    solvingNote: str = ""
+    scratchData: dict[str, Any] = Field(default_factory=dict)
+    noteNodeId: str = ""
+    meta: dict[str, Any] = Field(default_factory=dict)
+
+
+class PracticeAttemptsBatchPayload(BaseModel):
+    items: list[PracticeAttemptItemPayload] = Field(default_factory=list)

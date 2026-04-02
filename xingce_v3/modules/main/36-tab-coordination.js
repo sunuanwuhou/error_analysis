@@ -922,9 +922,9 @@ function getAIFieldLabel(key) {
     type: '题型',
     subtype: '子类型',
     subSubtype: '细分类型',
-    rootReason: '根本主因',
-    errorReason: '直接原因',
-    analysis: 'AI解析'
+    rootReason: '错误类型',
+    errorReason: '触发点',
+    analysis: '正确模型'
   })[key] || key;
 }
 
@@ -1080,6 +1080,10 @@ async function saveError(){
   const rootReason = document.getElementById('editRootReason').value.trim();
   const errorReason = document.getElementById('editErrorReason').value.trim();
   const analysis = document.getElementById('editAnalysis').value.trim();
+  const nextAction = (document.getElementById('editNextAction')?.value || '').trim();
+  const mistakeType = rootReason;
+  const triggerPoint = errorReason;
+  const correctModel = analysis;
   const status = document.getElementById('editStatus').value;
   const difficulty = _modalDiff || 0;
   const srcYear     = document.getElementById('editSrcYear').value;
@@ -1089,6 +1093,9 @@ async function saveError(){
   if(!question && !editImgBase64){ showToast('题目不能为空', 'warning'); return; }
   if(!subtype){ showToast('子类型不能为空', 'warning'); document.getElementById('editSubtype').focus(); return; }
   if(!answer){ showToast('正确答案不能为空', 'warning'); document.getElementById('editAnswer').focus(); return; }
+  if(!mistakeType){ showToast('错误类型不能为空', 'warning'); document.getElementById('editRootReason').focus(); return; }
+  if(!triggerPoint){ showToast('触发点不能为空', 'warning'); document.getElementById('editErrorReason').focus(); return; }
+  if(!correctModel){ showToast('正确模型不能为空', 'warning'); document.getElementById('editAnalysis').focus(); return; }
   setSaveErrorBusyState(true);
   try {
     const noteNodeId  = resolveKnowledgeNodeIdForSave(type, subtype, subSubtype);
@@ -1121,9 +1128,11 @@ async function saveError(){
       analysisImgData = prevAnalysisImgData;
     }
 
+    let savedErrorId = '';
     const data = {
       type, subtype, subSubtype, question, options, answer, myAnswer, rootReason, errorReason, analysis, status, difficulty,
-      imgData, analysisImgData, srcYear, srcProvince, srcOrigin, noteNodeId
+      imgData, analysisImgData, srcYear, srcProvince, srcOrigin, noteNodeId,
+      mistakeType, triggerPoint, correctModel, nextAction
     };
     if(existing){
       const old = existing;
@@ -1141,6 +1150,7 @@ async function saveError(){
         saveNotesByType();
       }
       recordErrorUpsert(old);
+      savedErrorId = normalizeErrorId(old.id);
       showToast('修改成功', 'success');
     }else{
       const newErr = {
@@ -1155,9 +1165,23 @@ async function saveError(){
       };
       errors.push(newErr);
       recordErrorUpsert(newErr);
+      savedErrorId = normalizeErrorId(newErr.id);
       showToast('添加成功', 'success');
     }
     saveData();
+    try {
+      if (window.__pendingAttemptLink && typeof window.syncAttemptLinkAfterSave === 'function') {
+        window.syncAttemptLinkAfterSave({
+          attemptId: window.__pendingAttemptLink.attemptId || '',
+          errorId: savedErrorId,
+          noteNodeId,
+          mistakeType,
+          triggerPoint,
+          correctModel,
+          nextAction
+        });
+      }
+    } catch (linkErr) { console.warn('attempt link sync failed', linkErr); }
     setSaveErrorBusyState(false);
     closeModal('addModal');
     renderSidebar();

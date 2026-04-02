@@ -47,6 +47,7 @@ async function loadLegacyModules() {
     await loadScript('/assets/vendor/mathjax/tex-svg.js', { defer: true });
     await loadLegacyModules();
     await loadScript('/v51-static/assets/v53-shell.js');
+    await loadScript('/v51-static/assets/final-flow.js');
   } catch (error) {
     console.error(error);
     document.body.innerHTML = `
