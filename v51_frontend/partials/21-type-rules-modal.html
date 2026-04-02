@@ -1,0 +1,14 @@
+<div class="modal-mask" id="typeRulesModal">
+<div class="modal" style="width:640px;max-width:96vw;max-height:92vh">
+<button class="modal-close" data-onclick="closeModal('typeRulesModal')">✕</button>
+<h2>🔧 题型自动识别规则</h2>
+<p style="font-size:12px;color:#999;margin-bottom:12px">录入题目时自动匹配题型（按顺序匹配，先命中的规则生效）</p>
+<div id="typeRulesList" style="max-height:55vh;overflow-y:auto"></div>
+<div class="modal-btns">
+<button class="btn btn-sm btn-secondary" data-onclick="addTypeRule()">＋ 添加规则</button>
+<button class="btn btn-sm btn-secondary" data-onclick="resetTypeRules()">恢复默认</button>
+<button class="btn btn-secondary" data-onclick="closeModal('typeRulesModal')">取消</button>
+<button class="btn btn-primary" data-onclick="saveTypeRules()">保存规则</button>
+</div>
+</div>
+</div>

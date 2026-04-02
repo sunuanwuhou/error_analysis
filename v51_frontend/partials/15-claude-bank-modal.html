@@ -1,0 +1,16 @@
+<div class="modal-mask" id="claudeBankModal">
+<div class="modal" style="width:1120px;max-width:96vw;max-height:92vh;overflow-y:auto">
+<button class="modal-close" data-onclick="closeModal('claudeBankModal')">✕</button>
+<h2 style="margin-bottom:6px">📚 Claude 题库</h2>
+<div style="font-size:12px;color:#7a8599;line-height:1.8;margin-bottom:14px">
+      这里存放 Claude 生成或导入的题目。它们默认不算错题，不参与复习和错题统计；需要时可以一键转为错题。
+    </div>
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+<input data-oninput="renderClaudeBankModal()" id="claudeBankSearch" placeholder="搜索题干、题型、解析..." style="flex:1;min-width:240px;padding:9px 12px;border:1px solid #d9d9d9;border-radius:8px;font-size:13px;outline:none" type="text"/>
+<button class="btn btn-secondary btn-sm" data-onclick="document.getElementById('claudeBankSearch').value='';renderClaudeBankModal()">清空搜索</button>
+<button class="btn btn-secondary btn-sm" data-onclick="openModal('claudeModal')">继续导入</button>
+</div>
+<div id="claudeBankSummary" style="font-size:12px;color:#667085;margin-bottom:12px"></div>
+<div id="claudeBankList"></div>
+</div>
+</div>

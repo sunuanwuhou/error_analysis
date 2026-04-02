@@ -15,6 +15,7 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 COPY app /app/app
 COPY scripts /app/scripts
 COPY xingce_v3 /app/xingce_v3
+COPY v51_frontend /app/v51_frontend
 
 EXPOSE 8000
 

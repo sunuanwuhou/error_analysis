@@ -1,0 +1,7 @@
+/* ===== 难度星 ===== */
+.star-disp{display:inline-flex;gap:1px;align-items:center;cursor:pointer}
+.star-disp .s{font-size:12px;color:#e0e0e0;line-height:1}
+.star-disp .s.on{color:#fa8c16}
+.star-edit{display:flex;gap:6px;align-items:center}
+.star-edit-btn{background:none;border:none;cursor:pointer;font-size:22px;color:#e0e0e0;padding:0;line-height:1;transition:.1s}
+.star-edit-btn.on{color:#fa8c16}

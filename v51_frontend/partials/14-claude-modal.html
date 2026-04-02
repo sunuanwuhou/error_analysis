@@ -1,0 +1,22 @@
+<div class="modal-mask" id="claudeModal">
+<div class="claude-modal">
+<button class="modal-close" data-onclick="closeModal('claudeModal')" style="float:right">✕</button>
+<h2 style="font-size:16px;font-weight:700;color:#2c3e50;margin-bottom:4px">🤖 导入 Claude 题库</h2>
+<p style="font-size:12px;color:#999;margin-bottom:16px">粘贴题目 → 复制模板 → 发到 Claude.ai → 粘贴结果导入到题库</p>
+<div class="step-label"><span class="step-num">1</span>粘贴原始题目（可多题）</div>
+<textarea id="rawQuestion" placeholder="直接粘贴题目原文，包括选项..." rows="5" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;font-family:inherit;resize:vertical;outline:none"></textarea>
+<div style="margin-top:8px"><button class="btn btn-primary btn-sm" data-onclick="genClaudeTemplate()">生成发送模板 →</button></div>
+<div id="templateArea" style="display:none;margin-top:16px">
+<div class="step-label"><span class="step-num">2</span>复制下方内容，发给 Claude.ai <span class="copy-hint" id="copyHint">✓ 已复制！</span></div>
+<textarea class="template-out" id="templateText" readonly="" rows="10"></textarea>
+<button class="btn btn-secondary btn-sm" data-onclick="copyTemplate()" style="margin-top:6px">📋 一键复制</button>
+</div>
+<hr class="divider"/>
+<div class="step-label"><span class="step-num">3</span>粘贴 Claude.ai 返回的 JSON</div>
+<textarea id="claudeResult" placeholder='[{"type":"判断推理","question":"...","answer":"A","analysis":"..."}]' rows="6" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:12px;font-family:monospace;resize:vertical;outline:none"></textarea>
+<div style="margin-top:8px">
+<button class="btn btn-primary btn-sm" data-onclick="importFromClaude()">导入到Claude题库</button>
+<span style="font-size:11px;color:#aaa;margin-left:8px">自动合并，不会重复，也不会算进错题</span>
+</div>
+</div>
+</div>

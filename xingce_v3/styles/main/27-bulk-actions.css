@@ -1,0 +1,6 @@
+/* ===== 批量操作 ===== */
+.batch-cb{display:none;position:absolute;top:10px;left:8px;z-index:2;width:16px;height:16px;cursor:pointer}
+.batch-mode-on .error-card{position:relative;padding-left:32px!important}
+.batch-mode-on .batch-cb{display:block}
+.batch-bar{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#2c3e50;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.25);padding:10px 20px;display:flex;align-items:center;gap:10px;z-index:600;font-size:13px;color:#fff;white-space:nowrap;transition:opacity .2s}
+.batch-bar.hidden{display:none}

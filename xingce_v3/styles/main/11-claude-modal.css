@@ -1,0 +1,7 @@
+/* ===== Claude 助手弹窗 ===== */
+.claude-modal{background:#fff;border-radius:14px;padding:22px;width:600px;max-width:95vw;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.step-label{font-size:13px;font-weight:600;color:#555;display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.step-num{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;background:#e74c3c;color:#fff;border-radius:50%;font-size:11px;font-weight:700;flex-shrink:0}
+.template-out{width:100%;padding:8px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:12px;font-family:monospace;background:#f9f9f9;resize:vertical;min-height:110px;color:#444}
+.copy-hint{font-size:11px;color:#52c41a;display:none}
+.divider{border:none;border-top:1px solid #f0f0f0;margin:16px 0}

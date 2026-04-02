@@ -1,0 +1,4 @@
+/* ===== 答题弹窗跳过 ===== */
+.quiz-skip-btn{background:none;border:1px solid #ddd;color:#aaa;font-size:12px;padding:4px 12px;border-radius:4px;cursor:pointer;transition:.15s;margin-right:auto}
+.quiz-skip-btn:hover{border-color:#fa8c16;color:#fa8c16}
+.quiz-bottom-row{display:flex;align-items:center;gap:10px;margin-top:8px}

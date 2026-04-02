@@ -1,0 +1,15 @@
+<div class="modal-mask" id="chapterFilterModal">
+<div class="modal" style="width:500px;max-width:95vw">
+<button class="modal-close" data-onclick="closeModal('chapterFilterModal')">✕</button>
+<h2>选择练习范围</h2>
+<div style="margin-bottom:10px;display:flex;gap:8px">
+<button class="btn btn-sm btn-secondary" data-onclick="chapterFilterSelectAll(true)">全选</button>
+<button class="btn btn-sm btn-secondary" data-onclick="chapterFilterSelectAll(false)">全不选</button>
+</div>
+<div id="chapterFilterList" style="max-height:60vh;overflow-y:auto"></div>
+<div class="modal-btns">
+<button class="btn btn-secondary" data-onclick="closeModal('chapterFilterModal')">取消</button>
+<button class="btn btn-primary" data-onclick="startFullPracticeFiltered()">开始练习</button>
+</div>
+</div>
+</div>

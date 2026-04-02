@@ -1,0 +1,4 @@
+/* ===== 题型规则 ===== */
+.rule-row{display:flex;gap:6px;align-items:flex-start;padding:8px;border:1px solid #f0f0f0;border-radius:6px;margin-bottom:6px;background:#fff}
+.rule-row input,.rule-row select{padding:4px 8px;border:1px solid #ddd;border-radius:4px;font-size:12px;outline:none}
+.rule-row input:focus,.rule-row select:focus{border-color:#e74c3c}

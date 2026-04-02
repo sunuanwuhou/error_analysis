@@ -1,0 +1,78 @@
+<div class="modal-mask" id="aiToolsModal">
+<div class="modal" style="width:860px;max-width:96vw;max-height:92vh;overflow-y:auto">
+<button class="modal-close" data-onclick="closeModal('aiToolsModal')">✕</button>
+<h2 style="margin-bottom:4px">🧠 AI 工具台</h2>
+<p style="font-size:12px;color:#888;margin-bottom:14px">基于你的真实错题数据，不是通用建议</p>
+<!-- Tab 切换 -->
+<div style="display:flex;gap:4px;margin-bottom:14px;border-bottom:1px solid #eee;padding-bottom:0">
+<button class="ai-tab-btn active" data-onclick="switchAITab('diagnose')" id="aiTab_diagnose">📊 弱点诊断</button>
+<button class="ai-tab-btn" data-onclick="switchAITab('chat')" id="aiTab_chat">💬 问AI</button>
+<button class="ai-tab-btn" data-onclick="switchAITab('generate')" id="aiTab_generate">🎯 针对出题</button>
+<button class="ai-tab-btn" data-onclick="switchAITab('summary')" id="aiTab_summary">📋 摘要导出</button>
+</div>
+<!-- 弱点诊断 Tab -->
+<div class="ai-tab-content" id="aiTabContent_diagnose">
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+<div style="font-size:13px;color:#555">分析当前筛选范围内的错题，找出真实短板</div>
+<button class="btn btn-primary btn-sm" data-onclick="runAIDiagnosis()" id="diagnoseBtnMain">🔍 立即诊断</button>
+</div>
+<!-- 本地统计卡片（不需要AI，秒出） -->
+<div id="localStatsCards" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px"></div>
+<!-- AI深度分析 -->
+<div id="aiDiagnoseOutput" style="min-height:100px;padding:12px;border-radius:10px;background:#f8faff;border:1px solid #dbeafe;line-height:1.8;color:#1e3a5f;font-size:13px;white-space:pre-wrap">点击「立即诊断」获取基于你错题数据的深度分析。</div>
+</div>
+<!-- 问AI Tab -->
+<div class="ai-tab-content" id="aiTabContent_chat" style="display:none">
+<!-- 快捷问法 -->
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+<button class="btn btn-secondary btn-sm" data-onclick="quickAsk('这周我应该优先复习哪个题型？')">这周先攻哪块？</button>
+<button class="btn btn-secondary btn-sm" data-onclick="quickAsk('我的言语理解错题有什么共同规律？')">言语规律？</button>
+<button class="btn btn-secondary btn-sm" data-onclick="quickAsk('判断推理最高频的错误原因是什么，怎么针对性练习？')">判断推理怎么练？</button>
+<button class="btn btn-secondary btn-sm" data-onclick="quickAsk('根据我的错题，给我制定一个3天专项复习计划')">制定3天计划</button>
+</div>
+<textarea id="aiChatInput" placeholder="例如：我的逻辑判断错了很多，有什么规律？怎么在2周内提升？" rows="3" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;resize:vertical;font:inherit;margin-bottom:8px"></textarea>
+<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+<button class="btn btn-primary" data-onclick="submitAIChat()">发送</button>
+<button class="btn btn-secondary" data-onclick="clearAIChat()">清空对话</button>
+<span id="aiChatStatus" style="font-size:12px;color:#888"></span>
+</div>
+<div id="aiChatOutput" style="min-height:120px;padding:12px;border-radius:10px;background:#f8faff;border:1px solid #dbeafe;line-height:1.8;color:#1e3a5f;font-size:13px;white-space:pre-wrap">AI会结合你的错题数据来回答，不是通用建议。</div>
+</div>
+<!-- 针对出题 Tab -->
+<div class="ai-tab-content" id="aiTabContent_generate" style="display:none">
+<div style="font-size:13px;color:#555;margin-bottom:10px">
+        针对你的弱点生成原创练习题。先在左侧知识树选中一个节点，或在下方指定题型。
+      </div>
+<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+<select id="genTypeSelect" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;flex:1;min-width:140px">
+<option value="">-- 选题型 --</option>
+<option>言语理解与表达</option>
+<option>判断推理</option>
+<option>数量关系</option>
+<option>资料分析</option>
+<option>常识判断</option>
+</select>
+<select id="genSubtypeSelect" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;flex:1;min-width:140px">
+<option value="">-- 选子题型（可选）--</option>
+<option>逻辑填空</option><option>片段阅读</option>
+<option>逻辑判断</option><option>图形推理</option><option>定义判断</option><option>类比推理</option>
+<option>数学运算</option><option>综合分析</option>
+</select>
+<button class="btn btn-primary" data-onclick="generateFromWeakpoint()">🎲 出3题</button>
+</div>
+<div id="aiGenerateOutput" style="min-height:100px;padding:12px;border-radius:10px;background:#f8faff;border:1px solid #dbeafe;line-height:1.8;color:#1e3a5f;font-size:13px"></div>
+</div>
+<!-- 摘要导出 Tab（发给Claude用）-->
+<div class="ai-tab-content" id="aiTabContent_summary" style="display:none">
+<div style="font-size:13px;color:#555;margin-bottom:8px">
+        生成一段结构化摘要，复制后直接发给 Claude（本产品外的AI对话窗口），让它帮你出题、制定计划、或分析某个专项。
+      </div>
+<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+<button class="btn btn-secondary btn-sm" data-onclick="buildClaudeSummary()">📦 生成全量摘要</button>
+<button class="btn btn-secondary btn-sm" data-onclick="buildClaudeSummaryFiltered()">🔍 仅当前筛选</button>
+<button class="btn btn-secondary btn-sm" data-onclick="copyAISummary()" id="copySummaryBtn" style="display:none">📋 一键复制</button>
+</div>
+<textarea id="aiModuleSummaryOutput" placeholder="点击上方按钮生成..." readonly="" rows="14" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font:12px/1.6 Consolas,monospace;background:#fff;resize:vertical"></textarea>
+</div>
+</div>
+</div>

@@ -1,0 +1,13 @@
+/* ===== 内联做题 ===== */
+.iq-area{margin-top:8px;padding:10px 12px;background:#f8faff;border-radius:8px;border:1px solid #e8eeff}
+.iq-hint{font-size:11px;color:#999;margin-bottom:8px}
+.iq-opts{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.iq-opt{padding:8px 12px;border:2px solid #e8e8e8;border-radius:6px;cursor:pointer;font-size:13px;background:#fff;text-align:left;transition:.2s;line-height:1.5;width:100%}
+.iq-opt:hover:not(:disabled){border-color:#4e8ef7;background:#f0f5ff;color:#4e8ef7}
+.iq-opt.correct{border-color:#52c41a!important;background:#f6ffed!important;color:#52c41a!important;font-weight:600}
+.iq-opt.wrong{border-color:#e74c3c!important;background:#fff2f0!important;color:#e74c3c!important;font-weight:600}
+.iq-opt:disabled{cursor:default}
+.iq-result{padding:8px 12px;border-radius:6px;font-size:13px;line-height:1.6;margin-bottom:6px}
+.iq-result.ok{background:#f6ffed;color:#389e0d;border:1px solid #b7eb8f}
+.iq-result.fail{background:#fff2f0;color:#cf1322;border:1px solid #ffa39e}
+.iq-actions{display:flex;gap:8px;align-items:center}

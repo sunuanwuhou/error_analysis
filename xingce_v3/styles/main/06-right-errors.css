@@ -1,0 +1,65 @@
+/* ===== 右侧错题区域 ===== */
+.errors-area{width:420px;min-width:420px;background:#fff;border-left:1px solid #e8e8e8;display:flex;flex-direction:column;overflow:hidden}
+.errors-header{padding:10px 16px;border-bottom:1px solid #e8e8e8;background:#fff;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.errors-header h2{font-size:16px;margin:0;color:#2c3e50}
+.errors-header .btn{font-size:12px;padding:6px 12px}
+.errors-list{flex:1;overflow:auto;padding:0;background:#fff}
+.errors-list::-webkit-scrollbar{width:6px}
+.errors-list::-webkit-scrollbar-thumb{background:#ddd;border-radius:4px}
+.error-card{border-bottom:1px solid #f0f0f0;padding:12px}
+.error-card .card-question{font-size:13px;color:#2c3e50;margin-bottom:8px}
+.error-card .card-options{font-size:12px;color:#555;margin-bottom:8px}
+.error-card .card-actions{display:flex;gap:6px;flex-wrap:wrap}
+.error-card .btn{font-size:11px;padding:4px 8px}
+.error-card .badge{font-size:11px;background:#f0f0f0;color:#666;border-radius:10px;padding:2px 6px;margin-left:6px}
+.error-card .nav-item{padding:6px 10px;border-radius:6px;border:1px solid #eee;background:#fafafa;color:#666;cursor:pointer;font-size:12px;transition:.2s}
+.error-card .nav-item:hover{background:#f0f0f0;color:#333}
+.error-card .nav-item.active{background:#fff2f0;color:#e74c3c;border-color:#ffe4e1}
+.note-view{font-size:13px;line-height:1.8;color:#555}
+.note-view h2,.note-view h3,.note-view h4{font-weight:700;margin:4px 0 2px;color:#2c3e50}
+.note-view h2{font-size:15px}.note-view h3{font-size:14px}.note-view h4{font-size:13px}
+.note-view strong{font-weight:700;color:#2c3e50}
+.note-view em{font-style:italic;color:#666}
+.note-view code{background:#f0f0f0;padding:1px 5px;border-radius:3px;font-size:12px;font-family:monospace}
+.note-view li{margin:2px 0 2px 16px;list-style:disc}
+.note-placeholder{color:#ccc;font-size:12px;font-style:italic}
+.note-textarea{width:100%;padding:8px 10px;border:1px solid #f59e0b;border-radius:6px;font-size:13px;font-family:inherit;resize:vertical;min-height:80px;outline:none}
+.note-action-btns{display:flex;gap:8px;margin-top:6px}
+.note-tree-item{margin-bottom:4px;border:1px solid #e8e8e8;border-radius:8px;background:#fff;transition:.2s}
+.note-tree-header{padding:8px 10px;background:#fafafa;border-bottom:1px solid #f0f0f0;border-radius:8px 8px 0 0;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:.2s}
+.note-tree-header:hover{background:#f5f5f5}
+.note-tree-header .note-tree-arrow{font-size:12px;color:#999;transition:.2s}
+.note-tree-header .note-tree-arrow.open{transform:rotate(90deg)}
+.note-tree-title{font-size:13px;color:#333;font-weight:600;flex:1}
+.note-tree-count{font-size:11px;color:#888;background:#f0f0f0;padding:2px 6px;border-radius:10px}
+.note-tree-content{padding:8px 10px;border-radius:0 0 8px 8px}
+.note-content-preview{font-size:12px;color:#666;line-height:1.5;margin-bottom:8px}
+.note-tree-actions{display:flex;gap:6px}
+.note-action-btn{padding:2px 8px;border-radius:6px;border:1px solid #ddd;background:#fff;color:#333;font-size:11px;cursor:pointer;transition:.2s}
+.note-action-btn:hover{background:#f0f0f0;border-color:#ccc}
+.note-action-btn[title="添加子节点"]{background:#e3f2fd;color:#1976d2;border-color:#90caf9}
+.note-action-btn[title="添加子节点"]:hover{background:#bbdefb}
+.knowledge-node-actions{display:flex;gap:4px;margin-left:6px;opacity:0;pointer-events:none;transition:.15s}
+.nav-type-header:hover .knowledge-node-actions,.nav-type-header.active .knowledge-node-actions,.nav-subtype:hover .knowledge-node-actions,.nav-subtype.active .knowledge-node-actions,.nav-sub2:hover .knowledge-node-actions,.nav-sub2.active .knowledge-node-actions{opacity:1;pointer-events:auto}
+.nav-item.knowledge-drop-over{background:#fff7e6;border-left:3px solid #d4b106;padding-left:11px}
+.nav-item.knowledge-dragging{opacity:.55}
+.note-save-btn{padding:4px 14px;background:#f59e0b;color:#fff;border:none;border-radius:5px;font-size:12px;cursor:pointer;font-weight:600}
+.note-save-btn:hover{background:#d97706}
+.note-header-actions{padding:10px;border-bottom:1px solid #f0f0f0;background:#fafafa;display:flex;gap:10px}
+/* 分栏编辑 */
+.notes-panel.editing{max-height:360px}
+.notes-body.editing{max-height:310px}
+.notes-edit-wrap{display:flex;gap:10px;min-height:140px}
+.notes-edit-wrap textarea{flex:1;padding:8px 10px;border:1px solid #f59e0b;border-radius:6px;font-size:13px;font-family:monospace;resize:none;outline:none;min-height:140px;line-height:1.6}
+.notes-edit-preview{flex:1;overflow-y:auto;border:1px solid #f0e8d0;border-radius:6px;padding:8px 12px;min-height:140px;background:#fffef9}
+/* 表格 */
+.note-view table{border-collapse:collapse;margin:6px 0;font-size:12px}
+.note-view th,.note-view td{border:1px solid #ddd;padding:4px 10px;text-align:left}
+.note-view th{background:#f5f5f5;font-weight:700;color:#333}
+.note-view td{color:#444}
+/* 代码块 */
+.note-view pre{background:#1e1e1e;color:#d4d4d4;padding:10px 12px;border-radius:6px;font-size:12px;font-family:monospace;overflow-x:auto;margin:6px 0;line-height:1.6;white-space:pre}
+.note-view pre code{background:none;padding:0;color:inherit;font-size:inherit}
+/* 图片 */
+.note-view img{max-width:100%;max-height:280px;object-fit:contain;border-radius:6px;margin:6px 0;display:block;box-shadow:0 1px 4px rgba(0,0,0,.1);cursor:zoom-in;transition:max-height .25s ease}
+.note-view img.expanded{max-height:none;cursor:zoom-out}

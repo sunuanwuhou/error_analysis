@@ -1,0 +1,4 @@
+/* ===== MD工具栏 ===== */
+.md-toolbar{display:flex;flex-wrap:wrap;gap:4px;padding:4px 0 6px;border-bottom:1px solid #fae5a0;margin-bottom:6px}
+.md-toolbar button{padding:2px 9px;background:#fff8e1;border:1px solid #f0c060;border-radius:4px;font-size:12px;cursor:pointer;color:#7b4f00;transition:.15s;font-weight:500}
+.md-toolbar button:hover{background:#fef3c7;border-color:#e8a800}

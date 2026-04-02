@@ -2629,3 +2629,345 @@ textarea {
   flex-wrap: wrap;
   margin-bottom: 10px;
 }
+
+/* Responsive workspace shell split */
+.workspace-shell--responsive {
+  position: relative;
+}
+
+.workspace-mobile-header,
+.workspace-mobile-tabbar {
+  display: none;
+}
+
+.workspace-mobile-header {
+  padding: 12px 14px;
+}
+
+.workspace-mobile-header__top {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.workspace-mobile-header__title-group {
+  min-width: 0;
+}
+
+.workspace-mobile-header__eyebrow {
+  color: #8b735d;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.workspace-mobile-header__title {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: #0f172a;
+  font-size: 16px;
+}
+
+.workspace-mobile-tabbar {
+  position: sticky;
+  bottom: 12px;
+  z-index: 25;
+  display: none;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px;
+}
+
+.workspace-mobile-tabbar__item {
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: transparent;
+  padding: 10px 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.workspace-mobile-tabbar__item.is-active {
+  background: #fff4e8;
+  border-color: rgba(234, 88, 12, 0.18);
+  color: #b45309;
+}
+
+.workspace-mobile-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+}
+
+.workspace-mobile-drawer__mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(2px);
+}
+
+.workspace-mobile-drawer__panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: min(92vw, 420px);
+  height: 100%;
+  padding: 14px;
+  background: linear-gradient(180deg, rgba(248, 243, 234, 0.96), rgba(237, 243, 248, 0.96));
+  box-shadow: 22px 0 44px rgba(15, 23, 42, 0.16);
+  overflow: auto;
+}
+
+.workspace-mobile-drawer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 4px 4px 0;
+}
+
+.workspace-mobile-drawer__body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.workspace-modal__close--inline {
+  position: static;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+}
+
+.workspace-left-column--drawer {
+  padding-bottom: 16px;
+}
+
+.workspace-modal--responsive-sheet {
+  width: min(1100px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+}
+
+.workspace-shell--responsive .workspace-main-area {
+  min-width: 0;
+}
+
+.workspace-shell--responsive .workspace-main {
+  min-width: 0;
+}
+
+@media (max-width: 1080px) {
+  body {
+    min-width: 0;
+  }
+
+  .workspace-shell.workspace-shell--legacy.workspace-shell--responsive {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+    padding: 14px;
+    min-height: 100vh;
+  }
+
+  .workspace-mobile-header,
+  .workspace-mobile-tabbar {
+    display: grid;
+  }
+
+  .workspace-shell--responsive .workspace-main-area {
+    gap: 14px;
+  }
+
+  .workspace-shell--responsive .workspace-toolbar {
+    order: 0;
+  }
+
+  .workspace-shell--responsive .workspace-toolbar,
+  .workspace-shell--responsive .workspace-main,
+  .workspace-shell--responsive .knowledge-notes-panel,
+  .workspace-shell--responsive .transfer-panel,
+  .workspace-shell--responsive .error-list,
+  .workspace-shell--responsive .tree-panel,
+  .workspace-shell--responsive .cloud-status {
+    border-radius: 20px;
+  }
+
+  .workspace-shell--responsive .workspace-toolbar {
+    padding: 12px 14px !important;
+  }
+
+  .workspace-shell--responsive .workspace-toolbar__row {
+    align-items: stretch;
+  }
+
+  .workspace-shell--responsive .workspace-toolbar__search {
+    min-width: 0;
+    max-width: none;
+    width: 100%;
+  }
+
+  .workspace-shell--responsive .workspace-tabs,
+  .workspace-shell--responsive .workspace-toolbar__filters,
+  .workspace-shell--responsive .workspace-toolbar__actions,
+  .workspace-shell--responsive .cloud-status__toolbar-actions,
+  .workspace-shell--responsive .error-list__header-actions {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .workspace-shell--responsive .workspace-tabs::-webkit-scrollbar,
+  .workspace-shell--responsive .workspace-toolbar__filters::-webkit-scrollbar,
+  .workspace-shell--responsive .workspace-toolbar__actions::-webkit-scrollbar,
+  .workspace-shell--responsive .cloud-status__toolbar-actions::-webkit-scrollbar,
+  .workspace-shell--responsive .error-list__header-actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .workspace-shell--responsive .workspace-tab,
+  .workspace-shell--responsive .ghost-button {
+    flex: 0 0 auto;
+  }
+
+  .workspace-shell--responsive .knowledge-workspace__title-row,
+  .workspace-shell--responsive .knowledge-workspace__stats,
+  .workspace-shell--responsive .knowledge-workspace__actions,
+  .workspace-shell--responsive .knowledge-workspace__children,
+  .workspace-shell--responsive .knowledge-workspace__move-controls,
+  .workspace-shell--responsive .panel__header,
+  .workspace-shell--responsive .error-card__actions,
+  .workspace-shell--responsive .transfer-message.practice-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .workspace-shell--responsive .note-preview-layout,
+  .workspace-shell--responsive .knowledge-workspace__editor-split,
+  .workspace-shell--responsive .knowledge-workspace__note-shell,
+  .workspace-shell--responsive .knowledge-workspace-shell,
+  .workspace-shell--responsive .error-list__cards,
+  .workspace-shell--responsive .stats-grid,
+  .workspace-shell--responsive .knowledge-related-inline__list {
+    grid-template-columns: 1fr !important;
+  }
+
+  .workspace-shell--responsive .cloud-status__toolbar,
+  .workspace-shell--responsive .cloud-status__details,
+  .workspace-shell--responsive .cloud-status--sidebar .cloud-status__toolbar {
+    display: flex !important;
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  .workspace-shell--responsive .cloud-status__toolbar-actions {
+    margin-left: 0;
+  }
+
+  .workspace-shell--responsive .cloud-status__details {
+    gap: 10px;
+  }
+
+  .workspace-shell--responsive .tree-list {
+    max-height: none !important;
+  }
+
+  .workspace-shell--responsive .workspace-modal--responsive-sheet {
+    width: calc(100vw - 16px);
+    max-height: calc(100vh - 16px);
+    margin: 8px;
+    padding: 44px 14px 14px;
+    border-radius: 18px;
+  }
+
+  .workspace-shell--responsive .workspace-modal__panel-label {
+    top: 14px;
+    left: 14px;
+  }
+
+  .workspace-shell--responsive .workspace-modal__close {
+    top: 10px;
+    right: 10px;
+  }
+}
+
+@media (max-width: 720px) {
+  .workspace-shell.workspace-shell--legacy.workspace-shell--responsive {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .workspace-mobile-header {
+    padding: 10px 12px;
+  }
+
+  .workspace-mobile-header__top {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .workspace-shell--responsive .panel__header {
+    padding: 16px;
+  }
+
+  .workspace-shell--responsive .workspace-toolbar {
+    padding: 10px 12px !important;
+  }
+
+  .workspace-shell--responsive .workspace-tab {
+    padding: 9px 12px;
+  }
+
+  .workspace-shell--responsive .cloud-status,
+  .workspace-shell--responsive .tree-panel,
+  .workspace-shell--responsive .knowledge-notes-panel,
+  .workspace-shell--responsive .transfer-panel,
+  .workspace-shell--responsive .error-list,
+  .workspace-shell--responsive .workspace-toolbar {
+    border-radius: 18px;
+  }
+
+  .workspace-shell--responsive .workspace-more-menu__panel {
+    position: static;
+    display: flex;
+    min-width: 0;
+    margin-top: 8px;
+    box-shadow: none;
+  }
+
+  .workspace-shell--responsive .workspace-more-menu[open] summary {
+    margin-bottom: 8px;
+  }
+
+  .workspace-shell--responsive .error-card,
+  .workspace-shell--responsive .knowledge-related-inline,
+  .workspace-shell--responsive .stats-box,
+  .workspace-shell--responsive .quick-create-box,
+  .workspace-shell--responsive .transfer-preview {
+    border-radius: 16px;
+  }
+
+  .workspace-shell--responsive .editor-grid,
+  .workspace-shell--responsive .quick-create-grid,
+  .workspace-shell--responsive .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-shell--responsive .ghost-button {
+    min-width: 0;
+  }
+
+  .workspace-shell--responsive .workspace-mobile-tabbar {
+    bottom: 8px;
+    padding: 8px;
+    border-radius: 18px;
+  }
+
+  .workspace-mobile-drawer__panel {
+    width: min(96vw, 360px);
+    padding: 12px;
+  }
+}

@@ -1,0 +1,65 @@
+<div class="modal-mask" id="exportModal">
+<div class="modal" style="width:520px;max-width:95vw">
+<button class="modal-close" data-onclick="closeModal('exportModal')">✕</button>
+<h2>⬇ 导出</h2>
+<div style="margin-bottom:14px">
+<div style="font-size:12px;font-weight:600;color:#555;margin-bottom:8px">导出格式</div>
+<div style="display:flex;gap:8px">
+<label class="export-fmt-card active" data-onclick="selectExportFmt('json')" id="efmt_json">
+<input checked="" name="exportFmt" style="display:none" type="radio" value="json"/>
+<div style="font-size:22px;margin-bottom:4px">📦</div>
+<div style="font-size:13px;font-weight:700">数据导出</div>
+<div style="font-size:11px;color:#999;margin-top:2px">题目、笔记、模块包</div>
+</label>
+<label class="export-fmt-card" data-onclick="selectExportFmt('print')" id="efmt_print">
+<input name="exportFmt" style="display:none" type="radio" value="print"/>
+<div style="font-size:22px;margin-bottom:4px">🖨️</div>
+<div style="font-size:13px;font-weight:700">打印 / PDF</div>
+<div style="font-size:11px;color:#999;margin-top:2px">排版后打印或另存PDF</div>
+</label>
+<label class="export-fmt-card" data-onclick="selectExportFmt('full')" id="efmt_full">
+<input name="exportFmt" style="display:none" type="radio" value="full"/>
+<div style="font-size:22px;margin-bottom:4px">📱</div>
+<div style="font-size:13px;font-weight:700">完整备份</div>
+<div style="font-size:11px;color:#999;margin-top:2px">错题＋笔记＋设置</div>
+</label>
+</div>
+</div>
+<div id="exportJsonOpts">
+<div style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px">导出内容</div>
+<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px">
+<label style="font-size:13px;cursor:pointer"><input checked="" name="exportDataMode" type="radio" value="questions"/> 仅题目</label>
+<label style="font-size:13px;cursor:pointer"><input name="exportDataMode" type="radio" value="questions_notes"/> 题目 + 笔记</label>
+<label style="font-size:13px;cursor:pointer"><input name="exportDataMode" type="radio" value="module_backup"/> 模块备份</label>
+</div>
+<div style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px">导出范围</div>
+<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px">
+<label style="font-size:13px;cursor:pointer"><input checked="" name="exportDataScope" type="radio" value="all"/> 全部错题</label>
+<label style="font-size:13px;cursor:pointer"><input name="exportDataScope" type="radio" value="filtered"/> 当前筛选</label>
+<label style="font-size:13px;cursor:pointer"><input name="exportDataScope" type="radio" value="current"/> 当前模块/知识点</label>
+</div>
+<div style="font-size:11px;color:#999;line-height:1.7">
+        “题目 + 笔记”适合发给外部 Claude 或单独存专题；“模块备份”会导出当前范围内的题目、知识树和笔记，便于以后单独恢复。
+      </div>
+</div>
+<div id="exportPrintOpts" style="display:none">
+<div style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px">内容选项</div>
+<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px">
+<label style="font-size:13px;cursor:pointer"><input checked="" data-onchange="refreshPrintModuleList()" name="printContent" type="radio" value="q"/> 仅题目</label>
+<label style="font-size:13px;cursor:pointer"><input data-onchange="refreshPrintModuleList()" name="printContent" type="radio" value="qa"/> 题目 + 答案</label>
+<label style="font-size:13px;cursor:pointer"><input data-onchange="refreshPrintModuleList()" name="printContent" type="radio" value="qaa"/> 题目 + 答案 + 解析</label>
+<label style="font-size:13px;cursor:pointer"><input data-onchange="refreshPrintModuleList()" name="printContent" type="radio" value="notes"/> 学习笔记</label>
+</div>
+<div style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px">选择模块</div>
+<div style="margin-bottom:6px;display:flex;gap:8px">
+<button class="btn btn-sm btn-secondary" data-onclick="exportSelectAll(true)">全选</button>
+<button class="btn btn-sm btn-secondary" data-onclick="exportSelectAll(false)">全不选</button>
+</div>
+<div id="exportModuleList" style="max-height:180px;overflow-y:auto;border:1px solid #f0f0f0;border-radius:6px;padding:8px"></div>
+</div>
+<div class="modal-btns">
+<button class="btn btn-secondary" data-onclick="closeModal('exportModal')">取消</button>
+<button class="btn btn-primary" data-onclick="doExport()">导出</button>
+</div>
+</div>
+</div>

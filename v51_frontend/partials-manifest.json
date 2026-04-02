@@ -1,0 +1,22 @@
+[
+  "00-mobile-topbar.html",
+  "01-sidebar.html",
+  "02-mobile-toggle.html",
+  "03-mobile-mask.html",
+  "04-main-area.html",
+  "10-add-modal.html",
+  "11-knowledge-move-modal.html",
+  "12-knowledge-node-modal.html",
+  "13-import-modal.html",
+  "14-claude-modal.html",
+  "15-claude-bank-modal.html",
+  "16-quiz-modal.html",
+  "17-chapter-filter-modal.html",
+  "18-dashboard-modal.html",
+  "19-history-modal.html",
+  "20-ai-tools-modal.html",
+  "21-type-rules-modal.html",
+  "22-export-modal.html",
+  "23-dir-modal.html",
+  "24-mobile-bottombar.html"
+]

@@ -1,0 +1,28 @@
+<div class="modal-mask" id="importModal">
+<div class="modal">
+<button class="modal-close" data-onclick="closeModal('importModal')">✕</button>
+<h2>导入 JSON</h2>
+<div style="margin-bottom:14px;padding:10px 12px;background:#f0f7ff;border:1px solid #d0e8ff;border-radius:8px">
+<div style="font-size:12px;font-weight:600;color:#1677ff;margin-bottom:6px">📱 完整备份文件（换设备用）</div>
+<input accept=".json" data-onchange="doFileImport(event)" id="importFileInput" style="font-size:12px;color:#555" type="file"/>
+<div style="font-size:11px;color:#888;margin-top:5px">选择完整备份 .json 后自动识别，支持「完整恢复」或「合并」</div>
+</div>
+<div style="font-size:11px;color:#aaa;text-align:center;margin-bottom:10px">── 或手动粘贴错题 JSON ──</div>
+<div class="import-modes">
+<div class="import-mode-btn active" data-onclick="selectImportMode('merge')" id="modeBtn_merge">
+<div class="mode-title">合并更新</div>
+<div class="mode-desc">按题目内容匹配<br/>有则更新，无则新增</div>
+</div>
+<div class="import-mode-btn" data-onclick="selectImportMode('replace')" id="modeBtn_replace">
+<div class="mode-title">完全替换</div>
+<div class="mode-desc">清空现有数据<br/>⚠ 不可恢复</div>
+</div>
+</div>
+<div class="form-group"><label>粘贴 JSON 内容</label>
+<textarea id="importText" placeholder='[{"type":"...","question":"..."}]' rows="10" style="font-family:monospace;font-size:12px"></textarea></div>
+<div class="modal-btns">
+<button class="btn btn-secondary" data-onclick="closeModal('importModal')">取消</button>
+<button class="btn btn-primary" data-onclick="doImport()">开始导入</button>
+</div>
+</div>
+</div>

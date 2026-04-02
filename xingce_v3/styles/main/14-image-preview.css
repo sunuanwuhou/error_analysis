@@ -1,0 +1,8 @@
+/* ===== 图片预览 ===== */
+.img-upload-area{border:2px dashed #ddd;border-radius:8px;padding:12px;text-align:center;cursor:pointer;transition:.2s;margin-top:4px}
+.img-upload-area:hover{border-color:#e74c3c;background:#fff5f5}
+.img-upload-area.has-img{border-style:solid;border-color:#52c41a}
+.img-preview-wrap{position:relative;display:inline-block}
+.img-preview-wrap img{max-width:100%;max-height:160px;border-radius:6px;display:block}
+.img-del-btn{position:absolute;top:-8px;right:-8px;background:#e74c3c;color:#fff;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:12px;line-height:20px;text-align:center;padding:0}
+.card-img{max-width:100%;border-radius:6px;margin:8px 0;display:block}

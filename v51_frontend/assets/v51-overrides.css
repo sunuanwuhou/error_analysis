@@ -1,0 +1,54 @@
+body.v51-shell-loading {
+  margin: 0;
+  min-height: 100vh;
+  background: #f5f7fb;
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+.v51-boot {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: linear-gradient(180deg, #f5f7fb 0%, #eef3f9 100%);
+}
+.v51-boot-card {
+  width: min(420px, 100%);
+  padding: 28px 24px;
+  border-radius: 20px;
+  background: rgba(255,255,255,.95);
+  box-shadow: 0 18px 50px rgba(15,23,42,.12);
+  text-align: center;
+}
+.v51-boot-title { font-size: 24px; font-weight: 700; color: #1f2937; }
+.v51-boot-sub { margin-top: 10px; font-size: 14px; color: #6b7280; line-height: 1.7; }
+.v51-retry {
+  margin-top: 16px; border: 0; border-radius: 12px; padding: 10px 16px; cursor: pointer;
+  background: #2563eb; color: #fff; font-weight: 600;
+}
+body:not(.v51-shell-loading) .v51-boot { display:none; }
+
+/* 5.1 mobile polish while keeping original layout */
+@media (max-width: 960px) {
+  .sidebar { width: 310px; max-width: calc(100vw - 44px); }
+  .main-area { margin-left: 0 !important; width: 100% !important; min-width: 0; }
+}
+@media (max-width: 720px) {
+  .sidebar-tools-row.workspace-entry-row { flex-direction: column; }
+  .sidebar-tools-row.workspace-entry-row .btn { width: 100%; }
+  .sidebar { padding-bottom: 92px; }
+  .main-area { padding-top: 56px; }
+  .errors-header, .notes-header, .content-header { gap: 8px; flex-wrap: wrap; }
+  .errors-header-actions { width: 100%; justify-content: space-between; }
+  .search-box { flex: 1; min-width: 0; }
+  .date-filter-bar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .codex-inbox-layout { grid-template-columns: 1fr !important; }
+  .modal, .quiz-modal, .claude-modal { width: min(96vw, 100%) !important; max-width: 96vw !important; }
+  .entry-modal { max-height: 92vh; }
+}
+@media (max-width: 560px) {
+  .sidebar-tools, .quiz-block, .sidebar-tree-toolbar, .nav-scroll { padding-left: 12px; padding-right: 12px; }
+  .sidebar-logo { padding-left: 12px; padding-right: 12px; }
+  .btn { min-height: 40px; }
+  input, select, textarea { font-size: 16px !important; }
+}

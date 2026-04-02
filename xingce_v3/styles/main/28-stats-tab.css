@@ -1,0 +1,17 @@
+/* ===== 统计 Tab ===== */
+.dash-tab-bar{display:flex;border-bottom:2px solid #f0f0f0;margin-bottom:16px;overflow-x:auto;flex-shrink:0}
+.dash-tab-btn{padding:8px 14px;background:none;border:none;cursor:pointer;font-size:13px;color:#888;white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-2px;transition:.15s;flex-shrink:0}
+.dash-tab-btn:hover{color:#333;background:#fafafa}
+.dash-tab-btn.active{color:#e74c3c;font-weight:700;border-bottom-color:#e74c3c}
+.dash-tab-pane{display:none}
+.dash-tab-pane.active{display:block}
+.dash-module-card{background:#fafafa;border-radius:8px;padding:12px 14px;margin-bottom:12px;border:1px solid #f0f0f0}
+.dash-module-stat-row{display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.dash-module-stat{flex:1;min-width:60px;text-align:center;padding:8px;background:#fff;border-radius:6px;border:1px solid #f0f0f0}
+.dash-module-num{font-size:20px;font-weight:700;color:#e74c3c;line-height:1.2}
+.dash-module-num.green{color:#52c41a}
+.dash-module-num.blue{color:#4e8ef7}
+.dash-module-label{font-size:10px;color:#999;margin-top:2px}
+.trend-toggle{display:flex;gap:4px;margin-bottom:8px}
+.trend-toggle-btn{padding:3px 10px;border:1px solid #e0e0e0;border-radius:4px;font-size:11px;cursor:pointer;background:#fff;color:#888;transition:.15s}
+.trend-toggle-btn.active{background:#e74c3c;color:#fff;border-color:#e74c3c}

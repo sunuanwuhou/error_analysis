@@ -1,0 +1,6 @@
+/* ===== 章节筛选 ===== */
+.chapter-filter-type{margin-bottom:10px}
+.chapter-filter-type-label{font-size:13px;font-weight:700;color:#333;padding:6px 0;display:flex;align-items:center;gap:6px;cursor:pointer}
+.chapter-filter-subs{padding-left:20px}
+.chapter-filter-item{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px;color:#555;cursor:pointer}
+.chapter-filter-item input[type=checkbox]{cursor:pointer;width:14px;height:14px}

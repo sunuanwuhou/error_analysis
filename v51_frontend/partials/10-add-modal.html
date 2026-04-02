@@ -1,0 +1,137 @@
+<div class="modal-mask" id="addModal">
+<div class="modal entry-modal">
+<button class="modal-close" data-onclick="closeModal('addModal')" id="addModalCloseBtn">✕</button>
+<h2 id="addModalTitle">添加错题</h2>
+<div class="entry-flow-banner" id="entryFlowBanner" style="display:none"></div>
+<div class="entry-section entry-section-primary">
+<div class="entry-section-title">
+<div>
+<strong>先完成最小录入</strong>
+<div class="entry-section-sub">先录题干、选项、答案和知识点。只要这几项对了，这道题就能先存下来。</div>
+</div>
+<span class="entry-required-badge">优先必填</span>
+</div>
+<div class="form-group"><label>题型</label>
+<select data-onchange="onTypeChange()" id="editType">
+<option>言语理解与表达</option><option>数量关系</option><option>判断推理</option>
+<option>资料分析</option><option>常识判断</option><option>其他</option>
+</select></div>
+<div class="form-group"><label>子类型 <span style="color:#e74c3c">*</span></label><input data-oninput="onSubtypeInput()" id="editSubtype" placeholder="如：逻辑判断、数字推理...（必填）" type="text"/></div>
+<div class="form-group"><label>细分类型 <span style="font-size:11px;color:#aaa">（可选，第三级）</span></label><input data-oninput="refreshKnowledgePicker()" id="editSubSubtype" placeholder="如：充分条件、成语辨析..." type="text"/></div>
+<div class="form-group">
+<label>关联知识点 <span style="font-size:11px;color:#aaa">（节点本身可写笔记，也可继续新增下级）</span></label>
+<div style="display:flex;gap:8px;align-items:center">
+<select data-onchange="syncKnowledgePickerHint(this.value)" id="editKnowledgeLeaf" style="flex:1;min-width:0;padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none">
+<option value="">自动创建默认知识点</option>
+</select>
+<button class="btn btn-secondary btn-sm" data-onclick="createKnowledgeLeafFromModal()" type="button">+ 新建节点</button>
+</div>
+<div id="editKnowledgeHint" style="font-size:11px;color:#888;margin-top:6px;line-height:1.5">未分类 &gt; 未分类 &gt; 未细分 &gt; 保存时默认挂到当前节点</div>
+</div>
+<div class="form-group">
+<label style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+<span>题目（必填）</span>
+<span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+<input accept="image/*" data-onchange="handleQuestionOCRFile(event)" id="ocrQuestionFileInput" style="display:none" type="file"/>
+<button class="btn btn-secondary btn-sm" data-onclick="document.getElementById('ocrQuestionFileInput').click()" id="ocrQuestionBtn" type="button">识别题图</button>
+<button class="btn btn-secondary btn-sm" data-onclick="runQuestionOCRFromCurrentImage()" id="ocrCurrentImgBtn" style="display:none" type="button">识别当前图</button>
+<span id="ocrQuestionStatus" style="font-size:12px;color:#888"></span>
+</span>
+</label>
+<textarea data-oninput="autoDetectType(this.value)" id="editQuestion" placeholder="粘贴题目原文..." rows="4"></textarea>
+<div id="ocrQuestionPanel" style="display:none;margin-top:10px;padding:10px 12px;background:#fafafa;border:1px solid #eee;border-radius:10px;font-size:12px;line-height:1.7"></div>
+</div>
+<div style="font-size:11px;color:#aaa;margin-top:-8px;margin-bottom:6px">💡 在题目框中直接 Ctrl+V 粘贴图片可自动附加</div>
+<div class="form-group" id="imgFormGroup" style="display:none;margin-bottom:10px">
+<img id="imgPreview" src="" style="max-width:100%;max-height:200px;border-radius:6px;border:1px solid #e0e0e0;display:block"/>
+<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:4px">
+<button class="btn btn-secondary btn-sm" data-onclick="runQuestionOCRFromCurrentImage()" type="button">识别当前图</button>
+<button data-onclick="clearEditImg(true)" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:12px" type="button">✕ 删除图片</button>
+</div>
+</div>
+<div class="form-group"><label>选项（用 | 分隔，如 A. xxx|B. xxx|C. xxx|D. xxx）</label><textarea id="editOptions" placeholder="A. ...|B. ...|C. ...|D. ..." rows="3"></textarea></div>
+<div class="form-group"><label>正确答案 <span style="color:#e74c3c">*</span></label><input id="editAnswer" placeholder="如：A（必填）" type="text"/></div>
+<div class="form-group"><label>我的错误答案（可选）</label><input id="editMyAnswer" placeholder="如：B" type="text"/></div>
+</div>
+<div class="entry-section">
+<div class="entry-section-title">
+<div>
+<strong>再补分析和错因</strong>
+<div class="entry-section-sub">这里更适合在题目已经确认后处理，AI 也优先服务这一段。</div>
+</div>
+<span class="entry-inline-tip">可稍后补</span>
+</div>
+<div class="form-group">
+<label>AI 辅助分析</label>
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+<button class="btn btn-secondary btn-sm" data-onclick="analyzeEntryWithAI()" id="aiAnalyzeBtn" type="button">AI识别并分析</button>
+<button class="btn btn-secondary btn-sm" data-onclick="applyAISuggestions()" id="aiApplyAllBtn" style="display:none" type="button">全部采纳</button>
+<span id="aiAnalyzeStatus" style="font-size:12px;color:#888"></span>
+</div>
+<div id="aiAnalyzePanel" style="display:none;margin-top:8px;padding:10px 12px;background:#fafafa;border:1px solid #eee;border-radius:8px;font-size:12px;line-height:1.7"></div>
+</div>
+<div class="form-group">
+<label>根本主因 <span style="color:#e74c3c">*</span> <span style="font-size:11px;color:#aaa;font-weight:400">（深层原因，如：该方法未掌握）</span></label>
+<input id="editRootReason" placeholder="为什么会犯这个错？深层原因是什么？" type="text"/>
+</div>
+<div class="form-group">
+<label>直接原因 <span style="font-size:11px;color:#aaa;font-weight:400">（当时的现象，如：没时间/看错选项）</span></label>
+<input data-oninput="updateReasonDesc()" id="editErrorReason" list="editReasonDatalist" placeholder="当时发生了什么？" type="text"/>
+<datalist id="editReasonDatalist"></datalist>
+<div id="editReasonDescBox" style="display:none;font-size:11px;color:#888;margin-top:3px;padding:3px 6px;background:#fafafa;border-radius:4px;border-left:3px solid #ddd"></div>
+</div>
+<div class="form-group"><label>AI解析 / 总结</label><textarea id="editAnalysis" placeholder="解题思路、错误原因... (支持 Ctrl+V 粘贴图片)" rows="3"></textarea></div>
+<div id="analysisImgFormGroup" style="display:none;margin-top:-6px;margin-bottom:10px">
+<img id="analysisImgPreview" src="" style="max-width:100%;max-height:160px;border-radius:6px;border:1px solid #e0e0e0;display:block"/>
+<button data-onclick="clearEditAnalysisImg(true)" style="margin-top:4px;background:none;border:none;color:#e74c3c;cursor:pointer;font-size:12px" type="button">✕ 删除解析图片</button>
+</div>
+</div>
+<details class="entry-advanced" id="entryAdvancedDetails">
+<summary>
+<span>补充信息</span>
+<span class="entry-inline-tip">状态、难度、出处这些可以最后再补</span>
+</summary>
+<div class="entry-advanced-body">
+<div class="entry-advanced-hint">如果你现在只是想先把题收进去，可以直接跳过这一段，后面再回来补。</div>
+<div class="form-group"><label>状态</label>
+<select id="editStatus"><option value="focus">重点复习</option><option value="review">待复习</option><option value="mastered">已掌握</option></select></div>
+<div class="form-group"><label>难度 <span style="font-size:11px;color:#aaa">（可选，1-3星）</span></label>
+<div class="star-edit">
+<button class="star-edit-btn" data-onclick="setModalDiff(1)" id="dstar1" type="button">★</button>
+<button class="star-edit-btn" data-onclick="setModalDiff(2)" id="dstar2" type="button">★</button>
+<button class="star-edit-btn" data-onclick="setModalDiff(3)" id="dstar3" type="button">★</button>
+<span id="dstarLabel" style="font-size:12px;color:#aaa;margin-left:6px"></span>
+</div>
+</div>
+<div class="form-group">
+<label>出处 <span style="font-size:11px;color:#aaa">（可选）</span></label>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<select id="editSrcYear" style="flex:1;min-width:90px;padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none">
+<option value="">年份</option>
+<option>2025</option><option>2024</option><option>2023</option><option>2022</option>
+<option>2021</option><option>2020</option><option>2019</option><option>2018</option>
+<option>2017</option><option>2016</option><option>2015</option><option>2014</option>
+<option>2013</option><option>2012</option><option>2011</option><option>2010</option>
+</select>
+<select id="editSrcProvince" style="flex:1;min-width:100px;padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none">
+<option value="">省份/级别</option>
+<option>国考</option>
+<option>北京</option><option>天津</option><option>上海</option><option>重庆</option>
+<option>河北</option><option>山西</option><option>辽宁</option><option>吉林</option><option>黑龙江</option>
+<option>江苏</option><option>浙江</option><option>安徽</option><option>福建</option><option>江西</option>
+<option>山东</option><option>河南</option><option>湖北</option><option>湖南</option><option>广东</option>
+<option>广西</option><option>海南</option><option>四川</option><option>贵州</option><option>云南</option>
+<option>西藏</option><option>陕西</option><option>甘肃</option><option>青海</option><option>宁夏</option>
+<option>新疆</option><option>内蒙古</option>
+</select>
+<input id="editSrcOrigin" placeholder="来源（自填）" style="flex:2;min-width:120px;padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none" type="text"/>
+</div>
+</div>
+</div>
+</details>
+<div class="modal-btns">
+<button class="btn btn-secondary" data-onclick="closeModal('addModal')" id="cancelSaveErrorBtn">取消</button>
+<button class="btn btn-primary" data-onclick="saveError()" id="saveErrorBtn">保存这道题</button>
+</div>
+</div>
+</div>

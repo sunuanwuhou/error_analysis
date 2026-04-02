@@ -1,0 +1,51 @@
+/* ===== 弹窗通用 ===== */
+.modal-mask{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center}
+.modal-mask.open{display:flex}
+.modal{background:#fff;border-radius:12px;padding:22px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal h2{font-size:16px;font-weight:700;color:#2c3e50;margin-bottom:16px}
+.modal-close{float:right;background:none;border:none;font-size:20px;color:#999;cursor:pointer;line-height:1;margin-top:-2px}
+.modal-close:hover{color:#333}
+.form-group{margin-bottom:12px}
+.form-group label{display:block;font-size:12px;color:#555;margin-bottom:5px;font-weight:500}
+.form-group input,.form-group textarea,.form-group select{width:100%;padding:7px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none;font-family:inherit;transition:.2s}
+.form-group input:focus,.form-group textarea:focus,.form-group select:focus{border-color:#e74c3c;box-shadow:0 0 0 2px rgba(231,76,60,.1)}
+.form-group textarea{resize:vertical;min-height:70px}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.entry-modal{width:min(920px,96vw);max-height:92vh}
+.entry-flow-banner{display:grid;gap:10px;margin:0 0 16px;padding:14px 16px;border:1px solid #e2e8f0;border-radius:14px;background:linear-gradient(180deg,#f8fbff 0%,#f8fafc 100%)}
+.entry-flow-title{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.entry-flow-title strong{font-size:13px;color:#0f172a}
+.entry-flow-sub{font-size:12px;line-height:1.7;color:#64748b}
+.entry-flow-steps{display:flex;gap:8px;flex-wrap:wrap}
+.entry-flow-chip{padding:6px 10px;border-radius:999px;background:#fff;border:1px solid #dbeafe;font-size:12px;color:#334155}
+.entry-flow-chip strong{color:#0f172a}
+.entry-quick-row{display:flex;gap:8px;flex-wrap:wrap}
+.entry-inline-tip{font-size:12px;color:#64748b}
+.entry-section{margin:0 0 14px;padding:16px;border:1px solid #e5e7eb;border-radius:16px;background:#fff}
+.entry-section-primary{border-color:#dbeafe;background:linear-gradient(180deg,#ffffff 0%,#f8fbff 100%)}
+.entry-section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.entry-section-title strong{font-size:14px;color:#0f172a}
+.entry-section-sub{font-size:12px;color:#64748b;line-height:1.7}
+.entry-required-badge{padding:4px 8px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-size:11px;font-weight:600}
+.entry-advanced{margin:0 0 14px;border:1px solid #e5e7eb;border-radius:16px;background:#fff;overflow:hidden}
+.entry-advanced summary{display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;list-style:none;padding:14px 16px;font-weight:600;color:#0f172a}
+.entry-advanced summary::-webkit-details-marker{display:none}
+.entry-advanced-body{padding:0 16px 16px}
+.entry-advanced-hint{font-size:12px;color:#64748b;line-height:1.7;margin:0 0 12px}
+.ocr-alt-grid{display:grid;gap:8px}
+.ocr-alt-card{padding:10px 12px;border:1px solid #e2e8f0;border-radius:12px;background:#fff}
+.ocr-alt-card.active{border-color:#93c5fd;background:#eff6ff}
+.ocr-alt-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.ocr-alt-meta{font-size:11px;color:#64748b}
+#addModal .modal-btns{position:sticky;bottom:-22px;padding:14px 0 0;margin-top:18px;background:linear-gradient(180deg,rgba(255,255,255,0) 0%, #fff 36%)}
+#addModal textarea{min-height:88px}
+#addModal #editQuestion{min-height:128px}
+#addModal #editAnalysis{min-height:110px}
+#addModal .form-group{margin-bottom:14px}
+.import-modes{display:flex;gap:10px;margin-bottom:12px}
+.import-mode-btn{flex:1;padding:10px;border:2px solid #e0e0e0;border-radius:8px;cursor:pointer;text-align:center;transition:.2s;background:#fff}
+.import-mode-btn:hover{border-color:#e74c3c}
+.import-mode-btn.active{border-color:#e74c3c;background:#fff2f0}
+.import-mode-btn .mode-title{font-size:13px;font-weight:700;color:#333;margin-bottom:3px}
+.import-mode-btn.active .mode-title{color:#e74c3c}
+.import-mode-btn .mode-desc{font-size:11px;color:#999;line-height:1.4}

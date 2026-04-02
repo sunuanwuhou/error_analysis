@@ -1,0 +1,36 @@
+<div class="modal-mask" id="dirModal">
+<div class="modal" style="width:700px;max-width:96vw;max-height:92vh">
+<button class="modal-close" data-onclick="closeModal('dirModal')">✕</button>
+<h2>📂 目录管理</h2>
+<p style="font-size:12px;color:#999;margin-bottom:12px">管理三级分类树，添加题目时子类型可从下拉选择，与题型规则联动</p>
+<div class="dir-panel">
+<!-- 一级：题型（固定） -->
+<div class="dir-col">
+<div class="dir-col-hd">题型（一级）</div>
+<div class="dir-list" id="dirCol1"></div>
+</div>
+<!-- 二级：子类型 -->
+<div class="dir-col">
+<div class="dir-col-hd">子类型（二级）</div>
+<div class="dir-list" id="dirCol2"></div>
+<div class="dir-add-row">
+<input data-onkeydown="if(event.key==='Enter')dirAddItem(2)" id="dirAddSub" placeholder="新子类型名称..." type="text"/>
+<button class="dir-add-btn" data-onclick="dirAddItem(2)">＋ 添加</button>
+</div>
+</div>
+<!-- 三级：细分类型 -->
+<div class="dir-col">
+<div class="dir-col-hd">细分类型（三级）</div>
+<div class="dir-list" id="dirCol3"></div>
+<div class="dir-add-row">
+<input data-onkeydown="if(event.key==='Enter')dirAddItem(3)" id="dirAddSub2" placeholder="新细分名称..." type="text"/>
+<button class="dir-add-btn" data-onclick="dirAddItem(3)">＋ 添加</button>
+</div>
+</div>
+</div>
+<div style="margin-top:12px;display:flex;gap:8px;justify-content:space-between;align-items:center">
+<button class="btn btn-sm btn-secondary" data-onclick="resetDirTree()">恢复默认</button>
+<button class="btn btn-primary" data-onclick="closeModal('dirModal')">完成</button>
+</div>
+</div>
+</div>

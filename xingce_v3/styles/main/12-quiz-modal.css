@@ -1,0 +1,45 @@
+/* ===== 答题弹窗 ===== */
+.quiz-modal{background:#fff;border-radius:16px;padding:26px;width:680px;max-width:95vw;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.quiz-header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:16px}
+.quiz-header-main{display:flex;align-items:center;gap:12px;min-width:0}
+.quiz-title{font-size:16px;font-weight:700;color:#2c3e50}
+.quiz-progress{font-size:12px;color:#999}
+.quiz-close-btn{flex-shrink:0;padding:8px 14px;border:1px solid #f3d7d2;border-radius:999px;background:#fff7f6;color:#c2410c;font-size:12px;font-weight:700;cursor:pointer;transition:.15s}
+.quiz-close-btn:hover{background:#fff1ef;border-color:#f0b9ad}
+.quiz-prog-bar{height:4px;background:#f0f0f0;border-radius:2px;margin-bottom:20px;overflow:hidden}
+.quiz-prog-fill{height:100%;background:linear-gradient(90deg,#e74c3c,#ff8f85);transition:width .4s}
+.quiz-question-box{font-size:15px;line-height:1.8;color:#333;padding:14px 16px;background:#fafafa;border-radius:8px;margin-bottom:14px}
+.quiz-opt-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;align-items:start}
+.quiz-opt-btn{padding:12px 16px;border:2px solid #e8e8e8;border-radius:8px;cursor:pointer;font-size:14px;color:#333;background:#fff;text-align:left;transition:.2s;line-height:1.5}
+.quiz-opt-btn:hover:not(:disabled){border-color:#e74c3c;background:#fff5f5;color:#e74c3c}
+.quiz-opt-btn.selected{border-color:#4e8ef7;background:#f0f5ff;color:#4e8ef7;font-weight:600}
+.quiz-opt-btn.correct{border-color:#52c41a;background:#f6ffed;color:#52c41a;font-weight:600}
+.quiz-opt-btn.wrong{border-color:#e74c3c;background:#fff2f0;color:#e74c3c;font-weight:600}
+.quiz-opt-btn:disabled{cursor:default}
+.quiz-next-btn{width:100%;padding:12px;background:#e74c3c;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;transition:.2s;display:none}
+.quiz-next-btn:hover{background:#c0392b}
+
+/* 答题完成 - 结果回顾 */
+.quiz-review-item{padding:14px 16px;border:1px solid #f0f0f0;border-radius:8px;margin-bottom:10px}
+.quiz-review-item.right{border-left:4px solid #52c41a;background:#fafff7}
+.quiz-review-item.wrong{border-left:4px solid #e74c3c;background:#fff9f9}
+.review-meta{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:12px}
+.review-verdict{font-weight:700;font-size:13px}
+.review-verdict.right{color:#52c41a}
+.review-verdict.wrong{color:#e74c3c}
+.review-answer-row{display:flex;gap:16px;margin-bottom:8px;font-size:13px}
+.review-answer-row span{padding:2px 10px;border-radius:4px}
+.my-ans{background:#fff0f0;color:#e74c3c}
+.my-ans.ok{background:#f6ffed;color:#52c41a}
+.correct-ans{background:#f0f5ff;color:#4e8ef7;font-weight:700}
+.review-analysis{font-size:13px;color:#555;line-height:1.7;padding:8px 12px;background:#f6f8ff;border-radius:6px;border-left:3px solid #4e8ef7}
+.quiz-review-title{font-size:15px;font-weight:700;color:#2c3e50;margin-bottom:16px;text-align:center}
+.quiz-summary-bar{display:flex;gap:20px;justify-content:center;margin-bottom:20px}
+.sum-stat{text-align:center}
+.sum-num{font-size:28px;font-weight:700;color:#e74c3c}
+.sum-num.green{color:#52c41a}
+.sum-label{font-size:12px;color:#999;margin-top:2px}
+
+.empty{text-align:center;padding:60px 20px;color:#bbb}
+.empty .emoji{font-size:48px;margin-bottom:12px}
+.empty p{font-size:14px}

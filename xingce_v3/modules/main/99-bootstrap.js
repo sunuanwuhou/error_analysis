@@ -1,0 +1,81 @@
+// 引导 & 移动端壳层
+function openMobileSidebar() {
+  if (!isMobileViewport()) return;
+  document.body.classList.add('mobile-sidebar-open');
+}
+function closeMobileSidebar() {
+  document.body.classList.remove('mobile-sidebar-open');
+}
+function toggleMobileSidebar() {
+  if (!isMobileViewport()) return;
+  document.body.classList.toggle('mobile-sidebar-open');
+}
+function syncMobileSidebarState() {
+  if (!isMobileViewport()) {
+    document.body.classList.remove('mobile-sidebar-open');
+  }
+}
+
+async function refreshRuntimeBadge() {
+  const badge = document.getElementById('runtimeBadge');
+  if (!badge) return;
+  try {
+    const res = await fetch('/api/runtime-info', { credentials: 'same-origin', cache: 'no-store' });
+    if (!res.ok) throw new Error('runtime-info failed');
+    const data = await res.json();
+    const mode = String(data.mode || 'unknown');
+    const label = String(data.label || 'Unknown runtime');
+    const origin = String(data.origin || '');
+    badge.dataset.mode = mode;
+    badge.textContent = label;
+    badge.title = origin ? `${label}\n${origin}` : label;
+  } catch (error) {
+    badge.dataset.mode = 'unknown';
+    badge.textContent = 'Runtime: unknown';
+    badge.title = 'Failed to load runtime info';
+  }
+}
+
+(async () => {
+  const ALL_KEYS = [
+    KEY_ERRORS, KEY_REVEALED, KEY_EXP_TYPES, KEY_EXP_MAIN, KEY_EXP_SUB2,
+    KEY_GLOBAL_NOTE, KEY_TODAY_DATE, KEY_TODAY_DONE, KEY_HISTORY,
+    KEY_TYPE_RULES, KEY_NOTES_BY_TYPE, KEY_NOTE_IMAGES, KEY_DIR_TREE,
+    KEY_KNOWLEDGE_TREE, KEY_KNOWLEDGE_NOTES
+  ];
+  await DB.migrateFromLocalStorage(ALL_KEYS);
+  await loadData();
+  await refreshCloudSession();
+  ensureKnowledgeState({ persist: true });
+  const allTypes=[...new Set(errors.map(e=>e.type))];
+  allTypes.forEach(t=>expMain.add(t));
+  errors.forEach(e=>{
+    expMainSub.add('sub:'+(e.type||'')+'::'+((e.subtype)||'未分类'));
+    if(e.subSubtype) expMainSub2.add('s2:'+(e.type||'')+'::'+((e.subtype)||'未分类')+'::'+e.subSubtype);
+  });
+  saveExpMain();
+  syncNotesWithErrors();
+  await refreshRuntimeBadge();
+  initUiChromePrefs();
+  syncMobileSidebarState();
+  window.addEventListener('resize', syncMobileSidebarState);
+  document.getElementById('navScroll')?.addEventListener('click', () => { if (isMobileViewport()) closeMobileSidebar(); });
+  renderSidebar();
+  renderAll();
+  renderNotesByType();
+  renderCodexContextLine();
+  checkStorageUsage();
+
+  window.addEventListener('beforeunload', () => {
+    if (cloudSaveTimer) {
+      clearTimeout(cloudSaveTimer);
+      saveCloudBackup({ silent: true });
+    }
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && cloudSaveTimer) {
+      clearTimeout(cloudSaveTimer);
+      saveCloudBackup({ silent: true });
+    }
+  });
+})();

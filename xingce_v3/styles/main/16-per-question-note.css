@@ -1,0 +1,5 @@
+/* ===== 每题笔记 ===== */
+.card-note-area{margin-top:8px}
+.card-note-label{font-size:11px;color:#999;margin-bottom:4px;font-weight:600}
+.card-note-ta{width:100%;padding:6px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:12px;font-family:inherit;resize:vertical;min-height:50px;outline:none;color:#555;transition:.2s}
+.card-note-ta:focus{border-color:#f59e0b;box-shadow:0 0 0 2px rgba(245,158,11,.15)}

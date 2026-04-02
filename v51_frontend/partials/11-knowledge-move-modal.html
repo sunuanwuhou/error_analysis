@@ -1,0 +1,16 @@
+<div class="modal-mask" id="knowledgeMoveModal">
+<div class="modal" style="width:640px;max-width:96vw">
+<button class="modal-close" data-onclick="closeKnowledgeMoveModal()">✕</button>
+<h2>改挂载知识点</h2>
+<div style="font-size:12px;color:#666;line-height:1.7;margin-bottom:12px">
+<div id="knowledgeMoveCurrent" style="margin-bottom:6px">当前知识点：未关联</div>
+<div>选择新的知识点节点后，题目会立即切换到对应笔记和错题视图。</div>
+</div>
+<input class="knowledge-move-search" data-oninput="renderKnowledgeMoveOptions()" id="knowledgeMoveSearch" placeholder="搜索知识点名称或路径..." type="text"/>
+<div class="knowledge-move-list" id="knowledgeMoveList"></div>
+<div class="modal-btns">
+<button class="btn btn-secondary" data-onclick="closeKnowledgeMoveModal()">取消</button>
+<button class="btn btn-primary" data-onclick="applyKnowledgeMove()">确认挂载</button>
+</div>
+</div>
+</div>

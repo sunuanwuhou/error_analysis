@@ -1,0 +1,5 @@
+/* ===== 统一图片自适应 ===== */
+.cuoti-img{max-width:100%;max-height:280px;width:auto;height:auto;object-fit:contain;border-radius:6px;margin:6px 0;display:block;cursor:zoom-in;transition:max-height .25s ease}
+.cuoti-img.expanded{max-height:none;cursor:zoom-out}
+.cuoti-img-wrap{position:relative;display:inline-block;max-width:100%}
+.cuoti-img-hint{font-size:10px;color:#bbb;margin-top:-2px;margin-bottom:4px;user-select:none}

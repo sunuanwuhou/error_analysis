@@ -1,0 +1,19 @@
+<div class="modal-mask" id="knowledgeNodeModal">
+<div class="modal" style="width:640px;max-width:96vw">
+<button class="modal-close" data-onclick="closeKnowledgeNodeModal()">✕</button>
+<h2 id="knowledgeNodeModalTitle">知识点操作</h2>
+<div class="knowledge-node-dialog-subtitle" id="knowledgeNodeModalSubtitle"></div>
+<div class="form-group" id="knowledgeNodeTitleGroup">
+<label id="knowledgeNodeTitleLabel">节点名称</label>
+<input data-onkeydown="handleKnowledgeNodeTitleKeydown(event)" id="knowledgeNodeTitleInput" placeholder="输入知识点名称" type="text"/>
+</div>
+<div id="knowledgeNodeTargetGroup" style="display:none">
+<input class="knowledge-move-search" data-oninput="renderKnowledgeNodeTargetOptions()" id="knowledgeNodeTargetSearch" placeholder="搜索目标知识点名称或路径..." type="text"/>
+<div class="knowledge-move-list" id="knowledgeNodeTargetList"></div>
+</div>
+<div class="modal-btns">
+<button class="btn btn-secondary" data-onclick="closeKnowledgeNodeModal()">取消</button>
+<button class="btn btn-primary" data-onclick="submitKnowledgeNodeModal()">确认</button>
+</div>
+</div>
+</div>

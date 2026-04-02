@@ -1,0 +1,50 @@
+/* ===== 错题卡片 ===== */
+.error-card{padding:12px 14px 12px 26px;border-bottom:1px solid #f5f5f5;transition:.15s}
+.error-card:last-child{border-bottom:none}
+.error-card:hover{background:#fffaf9}
+.card-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.card-drag-handle{
+  margin-left:auto;
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  padding:4px 8px;
+  border:1px dashed #d7dee8;
+  border-radius:999px;
+  background:#fff;
+  color:#7b8794;
+  font-size:11px;
+  line-height:1;
+  cursor:grab;
+  user-select:none;
+}
+.card-drag-handle:hover{border-color:#b8c4d1;color:#475569;background:#f8fafc}
+.card-drag-handle:active{cursor:grabbing}
+.card-num{font-size:11px;color:#bbb;font-weight:600}
+.status-tag{padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+.status-tag.focus{background:#fff0f0;color:#e74c3c}
+.status-tag.review{background:#fffbe6;color:#fa8c16}
+.status-tag.mastered{background:#f6ffed;color:#52c41a}
+.card-question{font-size:14px;color:#333;line-height:1.7;margin-bottom:8px}
+.card-options{font-size:13px;color:#555;line-height:1.9;padding:8px 12px;background:#fafafa;border-radius:6px;border-left:3px solid #e8e8e8;margin-bottom:8px}
+.card-options p{margin:1px 0}
+
+/* 收起的详情区 */
+.card-reveal-btn{background:none;border:1px dashed #ddd;color:#aaa;font-size:12px;padding:4px 14px;border-radius:4px;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:4px}
+.card-reveal-btn:hover{border-color:#e74c3c;color:#e74c3c}
+.card-detail{margin-top:8px;display:flex;flex-direction:column;gap:8px}
+.detail-meta-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.detail-pill{padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
+.detail-pill.wrong-pill{background:#fff0f0;color:#e74c3c;border:1px solid #ffd0cc}
+.detail-pill.correct-pill{background:#f6ffed;color:#52c41a;border:1px solid #b7eb8f}
+.detail-pill.meta-pill{background:#f5f5f5;color:#999;font-weight:400;border:1px solid #e8e8e8;font-size:11px}
+.detail-pill.reason-pill{background:#fff7e6;color:#d46b08;border:1px solid #ffd591;font-size:11px}
+.detail-history{margin-top:8px;padding:8px 10px;background:#fafafa;border-radius:6px;border:1px solid #f0f0f0;font-size:11px;color:#888;line-height:1.8}
+.card-actions{margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.status-select{padding:4px 8px;border:1px solid #ddd;border-radius:4px;font-size:12px;color:#555;outline:none;cursor:pointer;background:#fff}
+.del-btn{background:none;border:none;color:#ccc;cursor:pointer;font-size:13px;padding:3px 6px;border-radius:4px;transition:.15s;margin-left:auto}
+.del-btn:hover{color:#e74c3c;background:#fff2f0}
+.del-btn.del-btn-danger{display:inline-flex;align-items:center;gap:4px;background:#fff2f0;color:#cf1322;border:1px solid #ffccc7;padding:4px 10px;border-radius:999px;font-weight:600}
+.del-btn.del-btn-danger:hover{background:#fff1f0;color:#a8071a;border-color:#ff7875}
+
+.highlight{background:#ffe082;border-radius:2px;padding:0 1px}
