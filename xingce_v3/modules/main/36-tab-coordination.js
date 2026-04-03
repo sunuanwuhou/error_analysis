@@ -1189,9 +1189,6 @@ async function saveError(){
       if (savedErrorId && typeof window.invalidatePracticeAttemptSummaries === 'function') {
         window.invalidatePracticeAttemptSummaries([savedErrorId]);
       }
-      if (savedErrorId && typeof window.invalidatePracticeAttemptSummaries === 'function') {
-        window.invalidatePracticeAttemptSummaries([savedErrorId]);
-      }
     } catch (linkErr) { console.warn('attempt link sync failed', linkErr); }
     setSaveErrorBusyState(false);
     closeModal('addModal');

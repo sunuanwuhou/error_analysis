@@ -172,7 +172,6 @@ function invalidatePracticeAttemptSummaries(errorIds){
 
 window.queueVisiblePracticeSummaryLoad = queueVisiblePracticeSummaryLoad;
 window.invalidatePracticeAttemptSummaries = invalidatePracticeAttemptSummaries;
-
 if (typeof window.openCanvas !== 'function') {
   window.openCanvas = function openCanvas(id) {
     let canvas = document.getElementById('canvas-layer');
@@ -245,17 +244,11 @@ function renderCard(e){
     }
     if(quizInfoStr) pills.push(`<span class="detail-pill meta-pill">${escapeHtml(quizInfoStr)}</span>`);
     if(practiceSummaryMeta) pills.push(`<span class="detail-pill meta-pill">${escapeHtml(practiceSummaryMeta)}</span>`);
-    if(practiceSummaryMeta) pills.push(`<span class="detail-pill meta-pill">${escapeHtml(practiceSummaryMeta)}</span>`);
-    if(practiceSummaryMeta) pills.push(`<span class="detail-pill meta-pill">${escapeHtml(practiceSummaryMeta)}</span>`);
-    if(practiceSummaryMeta) pills.push(`<span class="detail-pill meta-pill">${escapeHtml(practiceSummaryMeta)}</span>`);
     // 错误历史
     const hist='';
     detailHtml=`<div class="card-detail">
       <div class="detail-meta-row">${pills.join('')}</div>
       ${_correctModel?`<div class="detail-analysis"><strong>正确模型：</strong>${renderAnalysis(_correctModel,searchKw)}</div>`:''}
-      ${renderPracticeSummaryBlock(practiceSummary)}
-      ${renderPracticeSummaryBlock(practiceSummary)}
-      ${renderPracticeSummaryBlock(practiceSummary)}
       ${renderPracticeSummaryBlock(practiceSummary)}
       ${e.analysisImgData?`<img src="${escapeHtml(e.analysisImgData)}" class="cuoti-img" onclick="this.classList.toggle('expanded')" title="点击放大/缩小" style="border:1px solid #e0e4ff;margin-top:6px">`:''}
       ${hist}
@@ -353,8 +346,6 @@ function renderCard(e){
     </div>
   </div>`;
 }
-
-window.renderCard = renderCard;
 
 window.renderCard = renderCard;
 

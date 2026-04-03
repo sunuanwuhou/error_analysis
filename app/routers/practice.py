@@ -419,6 +419,7 @@ def _build_practice_insights(
     retrain_queue = _pack_queue(retrain_candidates, "先做复训")
 
     advice: list[dict[str, Any]] = []
+    behavior_total = len(behavior_map)
     if review_queue:
         advice.append({
             "key": "review_queue",
@@ -451,6 +452,20 @@ def _build_practice_insights(
         for name, count in type_counter.most_common(5)
     ]
 
+    mission = {
+        "total": len(daily_queue),
+        "reviewCount": len(review_queue),
+        "retrainCount": len(retrain_queue),
+        "suggestedDailyCount": min(max(8, len(review_queue) + len(retrain_queue)), max(len(daily_queue), 8)),
+        "suggestedReviewCount": min(max(4, len(review_queue)), max(len(review_queue), 4)),
+        "suggestedRetrainCount": min(max(4, len(retrain_queue)), max(len(retrain_queue), 4)),
+    }
+
+    behavior = {
+        "recentTrackedCount": behavior_total,
+        "lowConfidenceCount": sum(1 for item in behavior_map.values() if int(item.get("lastConfidence") or 0) and int(item.get("lastConfidence") or 0) <= 2),
+        "recentWrongCount": sum(int(item.get("recentWrongCount") or 0) for item in behavior_map.values()),
+    }
     return {
         "dailyQueue": daily_queue,
         "reviewQueue": review_queue,
@@ -459,6 +474,8 @@ def _build_practice_insights(
         "weakestReasons": weakest_reasons,
         "weakestTypes": weakest_types,
         "attemptSummaryCount": len(behavior_map),
+        "mission": mission,
+        "behavior": behavior,
     }
 
 
@@ -489,24 +506,6 @@ def list_practice_attempts(
     user = require_user(xingce_session)
     items = _read_practice_attempts(user["id"], limit)
     return {"ok": True, "items": items}
-
-
-@router.get("/api/practice/attempts/summary")
-def list_practice_attempt_summaries(
-    error_ids: str = Query(default=""),
-    question_ids: str = Query(default=""),
-    xingce_session: Optional[str] = Cookie(default=None),
-) -> dict[str, Any]:
-    user = require_user(xingce_session)
-    normalized_error_ids = [item.strip() for item in str(error_ids or "").split(",") if item.strip()]
-    normalized_question_ids = [item.strip() for item in str(question_ids or "").split(",") if item.strip()]
-    summary_map = _build_attempt_summary_map(
-        user["id"],
-        error_ids=normalized_error_ids,
-        question_ids=normalized_question_ids,
-        limit=max(len(normalized_error_ids) + len(normalized_question_ids), 50),
-    )
-    return {"ok": True, "items": summary_map}
 
 
 @router.get("/api/practice/attempts/summary")

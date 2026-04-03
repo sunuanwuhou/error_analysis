@@ -160,6 +160,22 @@ function renderDashOverview(idx) {
     :'<div style="color:#ccc;font-size:12px;text-align:center;padding:12px">暂无复习记录</div>';
 
   const trendBars = buildTrendBars(_dashTrendDays);
+  const localTaskPack = typeof buildPracticeTaskPack === 'function' ? buildPracticeTaskPack(12) : null;
+  const taskMissionHtml = localTaskPack ? `
+    <div class="dash-section">
+      <div class="dash-section-title">🎒 今日任务包</div>
+      <div class="dash-summary-row" style="margin-top:0">
+        <div class="dash-summary-card"><div class="dash-summary-num">${localTaskPack.mission.total}</div><div class="dash-summary-label">今日任务</div></div>
+        <div class="dash-summary-card"><div class="dash-summary-num" style="color:#d46b08">${localTaskPack.mission.reviewCount}</div><div class="dash-summary-label">待复盘</div></div>
+        <div class="dash-summary-card"><div class="dash-summary-num" style="color:#722ed1">${localTaskPack.mission.retrainCount}</div><div class="dash-summary-label">待复训</div></div>
+        <div class="dash-summary-card"><div class="dash-summary-num blue">${localTaskPack.behavior.accuracy}%</div><div class="dash-summary-label">近7日正确率</div></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button class="btn btn-sm btn-primary" onclick="startPracticeQueue('daily')">开始今日任务（${localTaskPack.mission.suggestedDailyCount}）</button>
+        <button class="btn btn-sm btn-secondary" onclick="startPracticeQueue('review')">先补待复盘（${localTaskPack.mission.suggestedReviewCount}）</button>
+        <button class="btn btn-sm btn-secondary" onclick="startPracticeQueue('retrain')">先做待复训（${localTaskPack.mission.suggestedRetrainCount}）</button>
+      </div>
+    </div>` : '';
 
   document.getElementById('dashpane_'+idx).innerHTML=`
     <div class="dash-summary-row">
@@ -169,6 +185,7 @@ function renderDashOverview(idx) {
       <div class="dash-summary-card"><div class="dash-summary-num" style="color:#fa8c16">${reviewN}</div><div class="dash-summary-label">待复习</div></div>
       <div class="dash-summary-card"><div class="dash-summary-num" style="color:#4e8ef7">${totalReviews}</div><div class="dash-summary-label">总复习次</div></div>
     </div>
+    ${taskMissionHtml}
     <div class="dash-section">
       <div class="dash-section-title">📚 各模块掌握度对比</div>
       ${typeBars||'<div style="color:#ccc;font-size:12px">暂无数据</div>'}

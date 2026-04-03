@@ -1,27 +1,56 @@
 // ============================================================
 // 答题流程（新版：选项点击 → 全部完成 → 批量回顾 → 保存）
 // ============================================================
-async function startQuiz() {
-  let serverItems = [];
-  try{
-    const data = await fetchJsonWithAuth('/api/practice/daily?limit=12');
-    serverItems = data.items || [];
-    const advice = Array.isArray(data.advice) ? data.advice[0] : null;
-    if (advice && advice.title) {
-      window.__dailyPracticeAdviceTitle = advice.title;
-    }
-  }catch(e){
+function buildQuizQueueFromItems(items) {
+  return (items || []).map(item => ({ ...findErrorById(item.id), ...item })).filter(isErrorEntry);
+}
+
+async function startPracticeQueue(mode) {
+  const normalizedMode = String(mode || 'daily');
+  let serverPayload = null;
+  try {
+    serverPayload = await fetchJsonWithAuth('/api/practice/daily?limit=12');
+  } catch (e) {
     console.warn('daily practice fallback:', e);
   }
-  quizQueue = serverItems.length
-    ? serverItems.map(item => ({ ...findErrorById(item.id), ...item })).filter(isErrorEntry)
-    : getDueList();
-  if (!quizQueue.length) { showToast('今日暂无需要复习的题目', 'warning'); return; }
-  quizSessionMode = 'daily';
+
+  const localPack = typeof buildPracticeTaskPack === 'function' ? buildPracticeTaskPack(12) : null;
+  const serverDaily = buildQuizQueueFromItems(serverPayload && serverPayload.items);
+  const serverReview = buildQuizQueueFromItems(serverPayload && serverPayload.reviewQueue);
+  const serverRetrain = buildQuizQueueFromItems(serverPayload && serverPayload.retrainQueue);
+
+  let title = '📝 今日复习';
+  if (normalizedMode === 'review') title = '🧩 待复盘训练';
+  else if (normalizedMode === 'retrain') title = '🔁 待复训训练';
+
+  if (normalizedMode === 'daily') {
+    const advice = Array.isArray(serverPayload && serverPayload.advice) ? serverPayload.advice[0] : null;
+    const fallbackTitle = localPack && localPack.advice && localPack.advice[0] ? localPack.advice[0].title : '';
+    if (advice && advice.title) title = `📝 今日复习 · ${advice.title}`;
+    else if (fallbackTitle) title = `📝 今日复习 · ${fallbackTitle}`;
+    quizQueue = serverDaily.length ? serverDaily : (localPack ? localPack.dailyQueue : getDueList());
+  } else if (normalizedMode === 'review') {
+    quizQueue = serverReview.length ? serverReview : ((localPack && localPack.reviewQueue) || (typeof getTaskPackQueueByMode === 'function' ? getTaskPackQueueByMode('review', 12) : []));
+  } else if (normalizedMode === 'retrain') {
+    quizQueue = serverRetrain.length ? serverRetrain : ((localPack && localPack.retrainQueue) || (typeof getTaskPackQueueByMode === 'function' ? getTaskPackQueueByMode('retrain', 12) : []));
+  } else {
+    quizQueue = serverDaily.length ? serverDaily : (localPack ? localPack.dailyQueue : getDueList());
+  }
+
+  if (!quizQueue.length) {
+    const msg = normalizedMode === 'review' ? '当前没有待复盘题' : (normalizedMode === 'retrain' ? '当前没有待复训题' : '今日暂无需要复习的题目');
+    showToast(msg, 'warning');
+    return;
+  }
+  quizSessionMode = normalizedMode;
   quizIdx = 0; quizAnswers = []; quizSkipped = new Set();
-  document.getElementById('quizTitleText').textContent = window.__dailyPracticeAdviceTitle ? `📝 今日复习 · ${window.__dailyPracticeAdviceTitle}` : '📝 今日复习';
+  document.getElementById('quizTitleText').textContent = title;
   openModal('quizModal');
   renderQuizQuestion();
+}
+
+async function startQuiz() {
+  return startPracticeQueue('daily');
 }
 
 function startFullPractice() {
@@ -66,10 +95,13 @@ function startFullPracticeFiltered() {
   });
   if(!selected.size){showToast('请至少选择一个章节', 'warning');return;}
   quizQueue = getErrorEntries().filter(e=>{
-    if(e.status==='mastered') return false;
+    if(normalizeErrorStatusValue(e.status)==='mastered') return false;
     const key=e.type+'::::'+(e.subtype||'未分类');
     return selected.has(key);
   }).slice().sort((a,b)=>{
+    const aScore = typeof computePracticeScore === 'function' ? computePracticeScore(a).score : 0;
+    const bScore = typeof computePracticeScore === 'function' ? computePracticeScore(b).score : 0;
+    if (bScore !== aScore) return bScore - aScore;
     const tc=(a.type||'').localeCompare(b.type||'','zh');
     return tc!==0?tc:(a.subtype||'').localeCompare(b.subtype||'','zh');
   });
@@ -284,9 +316,13 @@ function renderQuizReview() {
 
 async function saveQuizResults() {
   const realAnswers = quizAnswers.filter(a=>!a.skipped);
+  const attemptPayload = [];
+  const touchedIds = [];
+  const nowIso = new Date().toISOString();
   realAnswers.forEach(a => {
     const e = errors.find(x=>x.id===a.id);
     if (!e) return;
+    normalizeErrorForWorkflow(e);
     if (!e.quiz) e.quiz = {streak:0,wrongCount:0,reviewCount:0,lastReview:null,nextReview:null};
     e.quiz.reviewCount++;
     e.quiz.lastReview = today();
@@ -294,17 +330,55 @@ async function saveQuizResults() {
     e.quiz.history.push({date:today(), answer:a.userAnswer, correct:a.correct});
     if (a.correct) {
       e.quiz.streak = (e.quiz.streak||0) + 1;
-      if (e.quiz.streak>=6) e.status = 'mastered';
-      else if (e.quiz.streak>=3) e.status = 'review';
+      if (e.quiz.streak>=6) {
+        e.status = 'mastered';
+        e.masteryLevel = 'mastered';
+      } else if (e.quiz.streak>=3) {
+        e.status = 'review';
+        e.masteryLevel = 'fuzzy';
+      } else {
+        e.status = 'review';
+        e.masteryLevel = 'not_mastered';
+      }
     } else {
       e.quiz.streak = 0;
       e.quiz.wrongCount = (e.quiz.wrongCount||0)+1;
       e.status = 'focus';
+      e.masteryLevel = 'not_mastered';
       e.myAnswer = a.userAnswer;
     }
+    e.lastPracticedAt = nowIso;
+    e.masteryUpdatedAt = nowIso;
     e.quiz.nextReview = addDays(today(), INTERVALS[Math.min(e.quiz.streak||0, INTERVALS.length-1)]);
+    e.nextReviewAt = e.quiz.nextReview;
+    touchErrorUpdatedAt(e);
+    touchedIds.push(String(e.id));
+    attemptPayload.push({
+      sessionMode: quizSessionMode === 'full' ? 'full' : 'daily',
+      source: quizSessionMode === 'full' ? 'phase13_22_full' : 'phase13_22_daily',
+      questionId: String(e.id || ''),
+      errorId: String(e.id || ''),
+      type: String(e.type || ''),
+      subtype: String(e.subtype || ''),
+      subSubtype: String(e.subSubtype || ''),
+      questionText: String(e.question || ''),
+      myAnswer: String(a.userAnswer || ''),
+      correctAnswer: String(e.answer || ''),
+      result: a.correct ? 'correct' : 'wrong',
+      durationSec: 0,
+      statusTag: String(e.status || ''),
+      confidence: a.correct ? (e.quiz.streak >= 3 ? 4 : 3) : 1,
+      solvingNote: String(e.note || ''),
+      scratchData: {},
+      noteNodeId: String(e.noteNodeId || ''),
+      meta: {
+        mistakeType: String(e.rootReason || e.errorReason || ''),
+        triggerPoint: String(e.triggerPoint || ''),
+        correctModel: String(e.analysis || e.correctModel || ''),
+        nextAction: String(e.nextAction || (a.correct ? '继续下一轮复训' : '先回看错因与解析') || ''),
+      },
+    });
   });
-  // 记录练习历史
   const sessionType = quizSessionMode === 'full' ? '全量练习' : '今日复习';
   pushHistory({
     date: today()+' '+new Date().toTimeString().slice(0,5),
@@ -330,6 +404,20 @@ async function saveQuizResults() {
   }catch(e){
     console.warn('practice log sync failed:', e);
   }
+  if (attemptPayload.length) {
+    try {
+      await fetchJsonWithAuth('/api/practice/attempts/batch', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ items: attemptPayload })
+      });
+      if (typeof window.invalidatePracticeAttemptSummaries === 'function') {
+        window.invalidatePracticeAttemptSummaries(touchedIds);
+      }
+    } catch (e) {
+      console.warn('practice attempts batch sync failed:', e);
+    }
+  }
   todayDone += realAnswers.length;
   saveTodayDone();
   saveData();
@@ -338,3 +426,5 @@ async function saveQuizResults() {
   renderAll();
   showToast('记录已保存', 'success');
 }
+
+window.startPracticeQueue = startPracticeQueue;
