@@ -129,6 +129,91 @@ function getReasonDesc(reason){
 }
 function escapeAttrStr(s){ return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
 
+const ERROR_STATUS_OPTIONS = [
+  { value:'focus', label:'重点复习', color:'#e74c3c' },
+  { value:'review', label:'待复习', color:'#fa8c16' },
+  { value:'mastered', label:'已掌握', color:'#52c41a' },
+];
+const ERROR_STATUS_LABEL_MAP = Object.fromEntries(ERROR_STATUS_OPTIONS.map(item => [item.value, item.label]));
+const ERROR_WORKFLOW_STAGE_META = {
+  new: { label:'待补全', shortLabel:'待补全', color:'#8c8c8c', bg:'#fafafa', border:'#d9d9d9' },
+  captured: { label:'已入库', shortLabel:'已入库', color:'#1677ff', bg:'#f0f5ff', border:'#adc6ff' },
+  review_ready: { label:'待复盘', shortLabel:'待复盘', color:'#722ed1', bg:'#f9f0ff', border:'#d3adf7' },
+  pending_retry: { label:'待复训', shortLabel:'待复训', color:'#d46b08', bg:'#fff7e6', border:'#ffd591' },
+  mastered: { label:'已掌握', shortLabel:'已掌握', color:'#389e0d', bg:'#f6ffed', border:'#b7eb8f' },
+};
+
+function normalizeErrorStatusValue(raw){
+  const value = String(raw || '').trim();
+  if(value === 'mastered') return 'mastered';
+  if(value === 'review') return 'review';
+  return 'focus';
+}
+function normalizeMasteryLevelValue(raw){
+  const value = String(raw || '').trim();
+  if(value === 'mastered') return 'mastered';
+  if(value === 'fuzzy') return 'fuzzy';
+  return 'not_mastered';
+}
+function getPracticeSummarySnapshotForError(errorLike){
+  const normalizedId = normalizeErrorId(errorLike && errorLike.id);
+  if(normalizedId && practiceAttemptSummaryByErrorId && Object.prototype.hasOwnProperty.call(practiceAttemptSummaryByErrorId, normalizedId)) return practiceAttemptSummaryByErrorId[normalizedId];
+  const questionId = String((errorLike && errorLike.id) || '').trim();
+  if(questionId && practiceAttemptSummaryByErrorId && Object.prototype.hasOwnProperty.call(practiceAttemptSummaryByErrorId, questionId)) return practiceAttemptSummaryByErrorId[questionId];
+  return null;
+}
+function getErrorStatusLabel(status){
+  return ERROR_STATUS_LABEL_MAP[normalizeErrorStatusValue(status)] || '重点复习';
+}
+function getErrorWorkflowStage(errorLike){
+  const error = errorLike || {};
+  const status = normalizeErrorStatusValue(error.status);
+  const masteryLevel = normalizeMasteryLevelValue(error.masteryLevel);
+  const summary = getPracticeSummarySnapshotForError(error);
+  const hasAttemptSummary = !!(summary && (summary.lastTime || summary.lastResult || summary.lastConfidence || summary.lastDuration));
+  const hasReason = !!String(error.rootReason || error.errorReason || error.mistakeType || error.triggerPoint || '').trim();
+  const hasModel = !!String(error.analysis || error.correctModel || '').trim();
+  const processImage = typeof getProcessImageUrl === 'function' ? getProcessImageUrl(error) : '';
+  const hasReviewArtifact = !!String(error.note || error.nextAction || error.processCanvasData || processImage || '').trim();
+  if(masteryLevel === 'mastered' || status === 'mastered') return 'mastered';
+  if(hasAttemptSummary) return 'pending_retry';
+  if(hasReviewArtifact || status === 'review') return 'review_ready';
+  if(hasReason || hasModel || status === 'focus') return 'captured';
+  return 'new';
+}
+function getErrorWorkflowStageMeta(errorLike){
+  const key = getErrorWorkflowStage(errorLike);
+  return { key, ...(ERROR_WORKFLOW_STAGE_META[key] || ERROR_WORKFLOW_STAGE_META.new) };
+}
+function normalizeErrorForWorkflow(errorLike){
+  const error = errorLike || {};
+  error.status = normalizeErrorStatusValue(error.status);
+  error.masteryLevel = normalizeMasteryLevelValue(error.masteryLevel);
+  return error;
+}
+function touchErrorUpdatedAt(errorLike){
+  if(errorLike && typeof errorLike === 'object') errorLike.updatedAt = new Date().toISOString();
+}
+function refreshWorkspaceAfterErrorMutation(options){
+  const cfg = Object.assign({ save:true, reveal:false, syncNotes:false, saveKnowledge:false, renderNotes:false }, options || {});
+  if(cfg.save && typeof saveData === 'function') saveData();
+  if(cfg.reveal && typeof saveReveal === 'function') saveReveal();
+  if(cfg.syncNotes && typeof syncNotesWithErrors === 'function') syncNotesWithErrors();
+  if(cfg.saveKnowledge && typeof saveKnowledgeState === 'function') saveKnowledgeState();
+  if(typeof renderSidebar === 'function') renderSidebar();
+  if(typeof renderAll === 'function') renderAll();
+  if(cfg.renderNotes && typeof renderNotesByType === 'function') renderNotesByType();
+}
+
+window.normalizeErrorStatusValue = normalizeErrorStatusValue;
+window.normalizeMasteryLevelValue = normalizeMasteryLevelValue;
+window.getErrorWorkflowStage = getErrorWorkflowStage;
+window.getErrorWorkflowStageMeta = getErrorWorkflowStageMeta;
+window.getErrorStatusLabel = getErrorStatusLabel;
+window.normalizeErrorForWorkflow = normalizeErrorForWorkflow;
+window.touchErrorUpdatedAt = touchErrorUpdatedAt;
+window.refreshWorkspaceAfterErrorMutation = refreshWorkspaceAfterErrorMutation;
+
 let statusFilter = 'all';
 let typeFilter   = null;   // {level:'type'|'subtype'|'sub2', value, type?, subtype?}
 let searchKw     = '';
@@ -136,6 +221,9 @@ let quizSessionMode = 'daily';
 let reasonFilter = null;   // 错因筛选，null 表示不筛选
 let editingId    = null;
 let importMode   = 'merge';
+let practiceAttemptSummaryByErrorId = {};
+let practiceAttemptSummaryRequestKey = '';
+let practiceAttemptSummaryLoading = false;
 let importKnowledgeNodeId = null;
 let modalKnowledgeNodeId = null;
 let saveErrorBusy = false;

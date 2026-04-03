@@ -192,9 +192,9 @@ function refreshPrintModuleList() {
 function exportSelectAll(v) {
   document.querySelectorAll('.export-mod-cb').forEach(cb => cb.checked = v);
 }
-function doExport() {
+async function doExport() {
   if (_exportFmt === 'full') {
-    exportFullBackup();
+    await exportFullBackup();
     closeModal('exportModal');
     return;
   }
@@ -210,7 +210,7 @@ function doExport() {
       showToast('当前范围内没有可导出的错题', 'warning');
       return;
     }
-    const payload = buildScopedExportPayload(contentMode, scopeInfo);
+    const payload = await buildPortableBackupPayload(buildScopedExportPayload(contentMode, scopeInfo));
     const suffix = sanitizeExportLabel(scopeInfo.label);
     const fileName = contentMode === 'module_backup'
       ? `xingce_module_backup_${suffix}_${today()}.json`

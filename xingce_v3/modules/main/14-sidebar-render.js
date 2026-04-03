@@ -63,9 +63,9 @@ function renderSidebar() {
   updateSidebar();
   ensureKnowledgeState();
   const errorEntries = getErrorEntries();
-  const focusN    = errorEntries.filter(e=>e.status==='focus').length;
-  const reviewN   = errorEntries.filter(e=>e.status==='review').length;
-  const masteredN = errorEntries.filter(e=>e.status==='mastered').length;
+  const focusN    = errorEntries.filter(e=>normalizeErrorStatusValue(e.status)==='focus').length;
+  const reviewN   = errorEntries.filter(e=>normalizeErrorStatusValue(e.status)==='review').length;
+  const masteredN = errorEntries.filter(e=>normalizeErrorStatusValue(e.status)==='mastered').length;
   const statusItems = [
     {key:'all',    label:'全部题目',  dot:'#aaa',    count:errorEntries.length},
     {key:'focus',  label:'重点复习',  dot:'#e74c3c', count:focusN},

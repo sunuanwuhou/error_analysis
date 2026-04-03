@@ -1,8 +1,8 @@
 // ============================================================
 // 完整备份 / 恢复
 // ============================================================
-function exportFullBackup() {
-  const backup = getFullBackupPayload();
+async function exportFullBackup() {
+  const backup = await buildPortableBackupPayload(getFullBackupPayload());
   download('xingce_backup_' + today() + '.json', JSON.stringify(backup));
 }
 

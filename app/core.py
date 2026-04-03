@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
+import mimetypes
 import os
 import re
 import secrets
@@ -880,6 +882,40 @@ def normalize_error_sync_record(raw: Any, fallback_updated_at: str) -> Optional[
     record["updatedAt"] = record.get("updatedAt") or fallback_updated_at or utcnow().isoformat()
     return record
 
+IMAGE_API_REF_RE = re.compile(r"^/api/images/([a-f0-9]{32,64})$", re.I)
+
+def materialize_backup_image_value(
+    user_id: str,
+    value: Any,
+    conn: sqlite3.Connection,
+) -> Any:
+    if not isinstance(value, str):
+        return value
+    match = IMAGE_API_REF_RE.match(value.strip())
+    if not match:
+        return value
+    sha256 = match.group(1)
+    row = conn.execute(
+        "SELECT content_type FROM user_images WHERE hash = ? AND user_id = ?",
+        (sha256, user_id),
+    ).fetchone()
+    img_path = IMAGES_DIR / user_id / sha256
+    if not row or not img_path.exists():
+        return value
+    content_type = str(row["content_type"] or "").strip() or (mimetypes.guess_type(img_path.name)[0] or "image/jpeg")
+    encoded = base64.b64encode(img_path.read_bytes()).decode("ascii")
+    return f"data:{content_type};base64,{encoded}"
+
+def materialize_backup_error_images(
+    user_id: str,
+    error: dict[str, Any],
+    conn: sqlite3.Connection,
+) -> dict[str, Any]:
+    record = dict(error or {})
+    record["imgData"] = materialize_backup_image_value(user_id, record.get("imgData"), conn)
+    record["analysisImgData"] = materialize_backup_image_value(user_id, record.get("analysisImgData"), conn)
+    return record
+
 def normalize_note_type_sync_record(entity_id: str, raw: Any, fallback_updated_at: str) -> dict[str, Any]:
     payload = raw if isinstance(raw, dict) else {"value": raw}
     value = payload.get("value") if isinstance(payload, dict) and "value" in payload else raw
@@ -1272,7 +1308,7 @@ def build_workspace_snapshot_from_entities(user_id: str, conn: sqlite3.Connectio
         if entity_type == "error":
             record = normalize_error_sync_record(payload, updated_at)
             if record:
-                errors.append(record)
+                errors.append(materialize_backup_error_images(user_id, record, conn))
             continue
         if entity_type == "note_type":
             record = normalize_note_type_sync_record(entity_id, payload, updated_at)
@@ -1488,43 +1524,132 @@ def filter_errors(errors: list[dict[str, Any]], payload: ModuleSummaryPayload) -
             break
     return result
 
-def compute_daily_practice(errors: list[dict[str, Any]], limit: int = 12) -> list[dict[str, Any]]:
+def compute_daily_practice(
+    errors: list[dict[str, Any]],
+    limit: int = 12,
+    behavior_map: Optional[dict[str, dict[str, Any]]] = None,
+) -> list[dict[str, Any]]:
     now = utcnow().date()
-    ranked: list[tuple[int, dict[str, Any]]] = []
+    behavior_map = behavior_map or {}
+    ranked: list[tuple[int, dict[str, Any], dict[str, Any]]] = []
+
+    def _safe_days_between(value: Any) -> Optional[int]:
+        text = str(value or "").strip()[:10]
+        if not text:
+            return None
+        try:
+            return max((now - datetime.fromisoformat(text).date()).days, 0)
+        except ValueError:
+            return None
+
     for error in errors:
         answer = str(error.get("answer") or "").strip()
         if not answer:
             continue
+
+        error_id = str(error.get("id") or "").strip()
+        behavior = behavior_map.get(error_id) or behavior_map.get(str(error.get("questionId") or "").strip()) or {}
+
         score = 0
+        reasons: list[str] = []
+
         mastery = str(error.get("masteryLevel") or "not_mastered")
         if mastery == "not_mastered":
-            score += 30
+            score += 28
+            reasons.append("未掌握")
         elif mastery == "fuzzy":
-            score += 20
+            score += 18
+            reasons.append("掌握模糊")
         elif mastery == "mastered":
-            score += 8
+            score += 6
+
         status = str(error.get("status") or "")
         if status == "focus":
-            score += 18
+            score += 16
+            reasons.append("重点复习")
         elif status == "review":
             score += 10
-        try:
-            date_text = str(error.get("lastPracticedAt") or error.get("updatedAt") or error.get("addDate") or "")[:10]
-            if date_text:
-                delta = (now - datetime.fromisoformat(date_text).date()).days
-                score += min(max(delta, 0), 20)
-        except ValueError:
-            score += 5
-        if str(error.get("addDate") or "")[:10]:
-            try:
-                recent = (now - datetime.fromisoformat(str(error.get("addDate"))[:10]).date()).days
-                if recent <= 7:
-                    score += 10
-            except ValueError:
-                pass
-        ranked.append((score, error))
-    ranked.sort(key=lambda item: (-item[0], str(item[1].get("updatedAt") or ""), str(item[1].get("id") or "")))
-    return [summarize_error(error) | {"practiceScore": score} for score, error in ranked[:limit]]
+            reasons.append("待复习")
+
+        stale_days = _safe_days_between(error.get("lastPracticedAt") or error.get("updatedAt") or error.get("addDate"))
+        if stale_days is None:
+            score += 4
+        else:
+            score += min(stale_days, 18)
+            if stale_days >= 10:
+                reasons.append("长期未练")
+
+        recent_days = _safe_days_between(error.get("addDate"))
+        if recent_days is not None and recent_days <= 7:
+            score += 8
+            reasons.append("新近错题")
+
+        attempt_count = int(behavior.get("recentAttemptCount") or 0)
+        wrong_count = int(behavior.get("recentWrongCount") or 0)
+        correct_count = int(behavior.get("recentCorrectCount") or 0)
+        confidence = int(behavior.get("lastConfidence") or 0)
+        duration = int(behavior.get("lastDuration") or 0)
+        avg_duration = int(behavior.get("avgDuration") or 0)
+        closure_done = bool(behavior.get("closureDone"))
+        last_result = str(behavior.get("lastResult") or "")
+        solved_but_unstable = bool(behavior.get("solvedButUnstable"))
+        review_gap_days = _safe_days_between(behavior.get("lastTime"))
+
+        if wrong_count >= 2:
+            score += 18 + min(wrong_count * 2, 8)
+            reasons.append("近期反复做错")
+        elif last_result == "wrong":
+            score += 12
+            reasons.append("最近一次做错")
+
+        if confidence and confidence <= 2:
+            score += 10
+            reasons.append("把握度低")
+        elif confidence == 3:
+            score += 4
+
+        duration_threshold = max(avg_duration, duration)
+        if duration_threshold >= 180:
+            score += 10
+            reasons.append("高耗时")
+        elif duration_threshold >= 90:
+            score += 6
+
+        if attempt_count and not closure_done:
+            score += 12
+            reasons.append("已练未补全")
+        if closure_done and wrong_count == 0 and correct_count > 0 and status != "mastered":
+            score += 8
+            reasons.append("已复盘待复训")
+        if solved_but_unstable:
+            score += 8
+            reasons.append("做对但不稳")
+        if review_gap_days is not None and review_gap_days >= 5 and attempt_count:
+            score += 6
+            reasons.append("复训间隔过长")
+
+        if not reasons:
+            reasons.append("基础兜底排序")
+
+        ranked.append((score, error, {
+            "recentAttemptCount": attempt_count,
+            "recentWrongCount": wrong_count,
+            "recentCorrectCount": correct_count,
+            "lastConfidence": confidence,
+            "lastDuration": duration,
+            "avgDuration": avg_duration,
+            "lastResult": last_result,
+            "lastTime": behavior.get("lastTime") or "",
+            "closureDone": closure_done,
+            "solvedButUnstable": solved_but_unstable,
+            "priorityReasons": reasons[:3],
+        }))
+
+    ranked.sort(key=lambda item: (-item[0], str(item[2].get("lastTime") or item[1].get("updatedAt") or ""), str(item[1].get("id") or "")))
+    result: list[dict[str, Any]] = []
+    for score, error, behavior in ranked[:limit]:
+        result.append(summarize_error(error) | {"practiceScore": score} | behavior)
+    return result
 
 def write_practice_log(user_id: str, payload: PracticeLogPayload) -> dict[str, Any]:
     entry = {

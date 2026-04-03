@@ -48,6 +48,11 @@ async function loadLegacyModules() {
     await loadLegacyModules();
     await loadScript('/v51-static/assets/v53-shell.js');
     await loadScript('/v51-static/assets/final-flow.js');
+    const pcCss = document.createElement('link');
+    pcCss.rel = 'stylesheet';
+    pcCss.href = '/v51-static/assets/process-canvas-ultimate.css';
+    document.head.appendChild(pcCss);
+    await loadScript('/v51-static/assets/process-canvas-ultimate.js');
   } catch (error) {
     console.error(error);
     document.body.innerHTML = `

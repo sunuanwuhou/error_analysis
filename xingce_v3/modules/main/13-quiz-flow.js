@@ -6,6 +6,10 @@ async function startQuiz() {
   try{
     const data = await fetchJsonWithAuth('/api/practice/daily?limit=12');
     serverItems = data.items || [];
+    const advice = Array.isArray(data.advice) ? data.advice[0] : null;
+    if (advice && advice.title) {
+      window.__dailyPracticeAdviceTitle = advice.title;
+    }
   }catch(e){
     console.warn('daily practice fallback:', e);
   }
@@ -15,7 +19,7 @@ async function startQuiz() {
   if (!quizQueue.length) { showToast('今日暂无需要复习的题目', 'warning'); return; }
   quizSessionMode = 'daily';
   quizIdx = 0; quizAnswers = []; quizSkipped = new Set();
-  document.getElementById('quizTitleText').textContent = '📝 今日复习';
+  document.getElementById('quizTitleText').textContent = window.__dailyPracticeAdviceTitle ? `📝 今日复习 · ${window.__dailyPracticeAdviceTitle}` : '📝 今日复习';
   openModal('quizModal');
   renderQuizQuestion();
 }

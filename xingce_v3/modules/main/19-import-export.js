@@ -1,12 +1,14 @@
 // ============================================================
 // 导出 / 导入
 // ============================================================
-function exportAll(){
-  download('cuoti_all_'+today()+'.json',JSON.stringify(errors,null,2));
+async function exportAll(){
+  const payload = await buildPortableBackupPayload(errors);
+  download('cuoti_all_'+today()+'.json',JSON.stringify(payload,null,2));
 }
-function exportFiltered(){
+async function exportFiltered(){
   const list=getFiltered();
-  download('cuoti_filtered_'+today()+'.json',JSON.stringify(list,null,2));
+  const payload = await buildPortableBackupPayload(list);
+  download('cuoti_filtered_'+today()+'.json',JSON.stringify(payload,null,2));
 }
 function download(name,content){
   const a=document.createElement('a');

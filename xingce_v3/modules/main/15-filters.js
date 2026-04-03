@@ -83,7 +83,7 @@ function onSearch(){
 function clearFilter(){ statusFilter='all';typeFilter=null;reasonFilter=null;knowledgeNodeFilter=null;searchKw='';dateFrom='';dateTo='';document.getElementById('searchInput').value='';document.getElementById('dateFrom').value='';document.getElementById('dateTo').value='';updateSearchClear();renderSidebar();renderAll(); }
 function getFiltered(){
   return getErrorEntries().filter(e=>{
-    if(statusFilter!=='all'&&e.status!==statusFilter)return false;
+    if(statusFilter!=='all' && normalizeErrorStatusValue(e.status)!==statusFilter) return false;
     if(knowledgeNodeFilter){
       const currentNode = getKnowledgeNodeById(knowledgeNodeFilter);
       const nodeIds = currentNode ? getKnowledgeDescendantNodeIds(currentNode) : [knowledgeNodeFilter];

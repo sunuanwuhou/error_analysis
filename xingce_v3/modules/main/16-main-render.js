@@ -2,9 +2,9 @@
 // 渲染主列表
 // ============================================================
 function renderStats(list){
-  const f=list.filter(e=>e.status==='focus').length;
-  const r=list.filter(e=>e.status==='review').length;
-  const m=list.filter(e=>e.status==='mastered').length;
+  const f=list.filter(e=>normalizeErrorStatusValue(e.status)==='focus').length;
+  const r=list.filter(e=>normalizeErrorStatusValue(e.status)==='review').length;
+  const m=list.filter(e=>normalizeErrorStatusValue(e.status)==='mastered').length;
   document.getElementById('statsBar').innerHTML=`
     <div class="stat-item"><div class="stat-num">${list.length}</div><div class="stat-label">共计</div></div>
     <div class="stat-item"><div class="stat-num" style="color:#e74c3c">${f}</div><div class="stat-label">重点</div></div>
@@ -15,7 +15,7 @@ function renderStats(list){
     if(typeFilter.level==='type') crumb=typeFilter.value;
     else if(typeFilter.level==='subtype') crumb=`${typeFilter.type} › ${typeFilter.value}`;
     else if(typeFilter.level==='sub2') crumb=`${typeFilter.type} › ${typeFilter.subtype} › ${typeFilter.value}`;
-  } else if(statusFilter!=='all') crumb={focus:'重点复习',review:'待复习',mastered:'已掌握'}[statusFilter]||statusFilter;
+  } else if(statusFilter!=='all') crumb=getErrorStatusLabel(statusFilter);
   if(reasonFilter) crumb+=(crumb==='全部题目'?'':`，`)+'错因: '+reasonFilter;
   if(searchKw) crumb+=` › 搜索"${escapeHtml(searchKw)}"`;
   document.getElementById('breadcrumb').innerHTML=crumb==='全部题目'?'全部题目':
@@ -102,8 +102,15 @@ function renderAll(){
     html+='</div>';
   });
   const el = document.getElementById('errorList');
+  if (!el) {
+    console.error('[FATAL] errorList container missing');
+    return;
+  }
   el.innerHTML = html;
   el.classList.toggle('batch-mode-on', batchMode);
+  if (typeof queueVisiblePracticeSummaryLoad === 'function') {
+    queueVisiblePracticeSummaryLoad(list);
+  }
   if (typeof window.refreshKnowledgeWorkspaceCards === 'function') {
     window.refreshKnowledgeWorkspaceCards();
   }

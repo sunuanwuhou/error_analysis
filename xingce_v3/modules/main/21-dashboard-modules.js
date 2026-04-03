@@ -2,8 +2,9 @@
 // Dashboard（Tab分模块版）
 // ============================================================
 let _dashTrendDays = 7; // 7 或 30
+let _practiceInsightsState = { loading:false, loaded:false, error:'', data:null };
 
-function openDashboard() {
+async function openDashboard() {
   const tabs = ['总览', ...new Set(getErrorEntries().map(e=>e.type))];
   const tabBtns = tabs.map((t,i) =>
     `<button class="dash-tab-btn ${i===0?'active':''}" id="dashtab_${i}" onclick="switchDashTab(${i})">${escapeHtml(t)}</button>`
@@ -16,6 +17,59 @@ function openDashboard() {
   // 渲染总览
   renderDashOverview(0);
   openModal('dashboardModal');
+  await ensurePracticeInsightsLoaded();
+}
+
+
+async function ensurePracticeInsightsLoaded(force) {
+  if (_practiceInsightsState.loading) return;
+  if (_practiceInsightsState.loaded && !force) return;
+  _practiceInsightsState.loading = true;
+  _practiceInsightsState.error = '';
+  try {
+    const data = await fetchJsonWithAuth('/api/practice/insights?limit=6');
+    _practiceInsightsState.data = data || null;
+    _practiceInsightsState.loaded = !!(data && data.ok !== false);
+  } catch (err) {
+    console.warn('practice insights load failed:', err);
+    _practiceInsightsState.error = err?.message || '加载失败';
+  } finally {
+    _practiceInsightsState.loading = false;
+    const pane = document.getElementById('dashpane_0');
+    if (pane) {
+      pane.dataset.rendered = '';
+      renderDashOverview(0);
+    }
+  }
+}
+
+function renderPracticeInsightList(items, emptyText, reasonKey) {
+  if (!Array.isArray(items) || !items.length) {
+    return `<div style="color:#bbb;font-size:12px;padding:10px 0">${escapeHtml(emptyText)}</div>`;
+  }
+  return items.map((item, idx) => {
+    const confidence = item.lastConfidence ? ` · 把握度${item.lastConfidence}` : '';
+    const duration = item.lastDuration ? ` · ${item.lastDuration}s` : '';
+    const queueReason = item[reasonKey] || '';
+    return `<div class="dash-weak-item" style="align-items:flex-start">
+      <span style="flex:1;font-size:12px;color:#333;line-height:1.5">${idx+1}. ${escapeHtml((item.question||'').slice(0,34))}${(item.question||'').length>34?'…':''}<br><span style="font-size:11px;color:#999">${escapeHtml(queueReason)}${escapeHtml(confidence)}${escapeHtml(duration)}</span></span>
+      <button class="btn btn-sm btn-secondary" style="margin-left:8px;white-space:nowrap" onclick='revealCard(${idArg(''+(item.id||''))})'>查看</button>
+    </div>`;
+  }).join('');
+}
+
+function renderPracticeAdvice(items) {
+  if (!Array.isArray(items) || !items.length) {
+    return '<div style="color:#bbb;font-size:12px;padding:10px 0">暂无行动建议</div>';
+  }
+  return items.map(item => `<div class="dash-weak-item" style="align-items:flex-start"><span style="flex:1"><div style="font-size:12px;color:#333;font-weight:600">${escapeHtml(item.title||'')}</div><div style="font-size:11px;color:#888;line-height:1.5">${escapeHtml(item.description||'')}</div></span></div>`).join('');
+}
+
+function renderInsightChips(items) {
+  if (!Array.isArray(items) || !items.length) {
+    return '<div style="color:#bbb;font-size:12px;padding:10px 0">暂无可用数据</div>';
+  }
+  return items.map(item => `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:#f5f5f5;color:#555;font-size:12px;margin:0 8px 8px 0">${escapeHtml(item.name||'')}<strong style="color:#111">${Number(item.count||0)}</strong></span>`).join('');
 }
 
 function switchDashTab(idx) {
@@ -135,6 +189,27 @@ function renderDashOverview(idx) {
     <div class="dash-section">
       <div class="dash-section-title">🎯 Top3 薄弱题</div>
       ${weakHtml}
+    </div>
+    <div class="dash-section">
+      <div class="dash-section-title">🧭 今日行动建议</div>
+      ${_practiceInsightsState.loading ? '<div style="color:#999;font-size:12px;padding:10px 0">正在生成建议...</div>' : renderPracticeAdvice(_practiceInsightsState.data?.advice || [])}
+    </div>
+    <div class="dash-section">
+      <div class="dash-section-title">🗂 今日待复盘</div>
+      ${_practiceInsightsState.loading ? '<div style="color:#999;font-size:12px;padding:10px 0">加载中...</div>' : renderPracticeInsightList(_practiceInsightsState.data?.reviewQueue || [], '暂无待复盘队列', 'queueReason')}
+    </div>
+    <div class="dash-section">
+      <div class="dash-section-title">🔁 今日待复训</div>
+      ${_practiceInsightsState.loading ? '<div style="color:#999;font-size:12px;padding:10px 0">加载中...</div>' : renderPracticeInsightList(_practiceInsightsState.data?.retrainQueue || [], '暂无待复训队列', 'queueReason')}
+    </div>
+    <div class="dash-section">
+      <div class="dash-section-title">📌 当前高频错因</div>
+      ${_practiceInsightsState.loading ? '<div style="color:#999;font-size:12px;padding:10px 0">加载中...</div>' : renderInsightChips(_practiceInsightsState.data?.weakestReasons || [])}
+    </div>
+    <div class="dash-section">
+      <div class="dash-section-title">📚 当前高频薄弱模块</div>
+      ${_practiceInsightsState.loading ? '<div style="color:#999;font-size:12px;padding:10px 0">加载中...</div>' : renderInsightChips(_practiceInsightsState.data?.weakestTypes || [])}
+      ${_practiceInsightsState.error ? `<div style="color:#cf1322;font-size:12px;margin-top:8px">调度数据加载失败：${escapeHtml(_practiceInsightsState.error)}</div>` : ''}
     </div>`;
 }
 
@@ -214,5 +289,26 @@ function renderDashModule(idx, type) {
     <div class="dash-section">
       <div class="dash-section-title">🎯 Top3 薄弱题</div>
       ${weakHtml}
+    </div>
+    <div class="dash-section">
+      <div class="dash-section-title">🧭 今日行动建议</div>
+      ${_practiceInsightsState.loading ? '<div style="color:#999;font-size:12px;padding:10px 0">正在生成建议...</div>' : renderPracticeAdvice(_practiceInsightsState.data?.advice || [])}
+    </div>
+    <div class="dash-section">
+      <div class="dash-section-title">🗂 今日待复盘</div>
+      ${_practiceInsightsState.loading ? '<div style="color:#999;font-size:12px;padding:10px 0">加载中...</div>' : renderPracticeInsightList(_practiceInsightsState.data?.reviewQueue || [], '暂无待复盘队列', 'queueReason')}
+    </div>
+    <div class="dash-section">
+      <div class="dash-section-title">🔁 今日待复训</div>
+      ${_practiceInsightsState.loading ? '<div style="color:#999;font-size:12px;padding:10px 0">加载中...</div>' : renderPracticeInsightList(_practiceInsightsState.data?.retrainQueue || [], '暂无待复训队列', 'queueReason')}
+    </div>
+    <div class="dash-section">
+      <div class="dash-section-title">📌 当前高频错因</div>
+      ${_practiceInsightsState.loading ? '<div style="color:#999;font-size:12px;padding:10px 0">加载中...</div>' : renderInsightChips(_practiceInsightsState.data?.weakestReasons || [])}
+    </div>
+    <div class="dash-section">
+      <div class="dash-section-title">📚 当前高频薄弱模块</div>
+      ${_practiceInsightsState.loading ? '<div style="color:#999;font-size:12px;padding:10px 0">加载中...</div>' : renderInsightChips(_practiceInsightsState.data?.weakestTypes || [])}
+      ${_practiceInsightsState.error ? `<div style="color:#cf1322;font-size:12px;margin-top:8px">调度数据加载失败：${escapeHtml(_practiceInsightsState.error)}</div>` : ''}
     </div>`;
 }

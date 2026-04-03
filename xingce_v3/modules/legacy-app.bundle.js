@@ -810,6 +810,50 @@ function getFullBackupPayload() {
     history: _history || []
   };
 }
+function isPortableImageApiRef(value) {
+  return typeof value === 'string' && /^\/api\/images\/[a-f0-9]{32,64}$/i.test(value.trim());
+}
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error || new Error('read blob failed'));
+    reader.readAsDataURL(blob);
+  });
+}
+const portableImageCache = new Map();
+async function materializePortableImageValue(value) {
+  if (!value || typeof value !== 'string') return value || '';
+  const trimmed = value.trim();
+  if (!isPortableImageApiRef(trimmed)) return trimmed;
+  if (portableImageCache.has(trimmed)) return portableImageCache.get(trimmed);
+  try {
+    const res = await fetch(trimmed, { credentials: 'include' });
+    if (!res.ok) throw new Error(`image fetch failed: ${res.status}`);
+    const dataUrl = await blobToDataUrl(await res.blob());
+    const portable = dataUrl || trimmed;
+    portableImageCache.set(trimmed, portable);
+    return portable;
+  } catch (err) {
+    console.warn('[materializePortableImageValue] fallback to original ref', trimmed, err);
+    return trimmed;
+  }
+}
+async function buildPortableErrorExport(errorLike) {
+  const item = cloneJson(errorLike || {});
+  item.imgData = await materializePortableImageValue(item.imgData || '');
+  item.analysisImgData = await materializePortableImageValue(item.analysisImgData || '');
+  return item;
+}
+async function buildPortableBackupPayload(payload) {
+  if (Array.isArray(payload)) {
+    return Promise.all((payload || []).map(buildPortableErrorExport));
+  }
+  const backup = cloneJson(payload || {});
+  backup.errors = await Promise.all(((backup.errors || [])).map(buildPortableErrorExport));
+  return backup;
+}
+window.buildPortableBackupPayload = buildPortableBackupPayload;
 function getDefaultCloudMeta() {
   return {
     restoreDecisions: {},
@@ -4541,12 +4585,14 @@ openEditModal = function(id) {
 // ============================================================
 // 导出 / 导入
 // ============================================================
-function exportAll(){
-  download('cuoti_all_'+today()+'.json',JSON.stringify(errors,null,2));
+async function exportAll(){
+  const payload = await buildPortableBackupPayload(errors);
+  download('cuoti_all_'+today()+'.json',JSON.stringify(payload,null,2));
 }
-function exportFiltered(){
+async function exportFiltered(){
   const list=getFiltered();
-  download('cuoti_filtered_'+today()+'.json',JSON.stringify(list,null,2));
+  const payload = await buildPortableBackupPayload(list);
+  download('cuoti_filtered_'+today()+'.json',JSON.stringify(payload,null,2));
 }
 function download(name,content){
   const a=document.createElement('a');
@@ -5606,9 +5652,9 @@ function refreshPrintModuleList() {
 function exportSelectAll(v) {
   document.querySelectorAll('.export-mod-cb').forEach(cb => cb.checked = v);
 }
-function doExport() {
+async function doExport() {
   if (_exportFmt === 'full') {
-    exportFullBackup();
+    await exportFullBackup();
     closeModal('exportModal');
     return;
   }
@@ -5624,7 +5670,7 @@ function doExport() {
       showToast('当前范围内没有可导出的错题', 'warning');
       return;
     }
-    const payload = buildScopedExportPayload(contentMode, scopeInfo);
+    const payload = await buildPortableBackupPayload(buildScopedExportPayload(contentMode, scopeInfo));
     const suffix = sanitizeExportLabel(scopeInfo.label);
     const fileName = contentMode === 'module_backup'
       ? `xingce_module_backup_${suffix}_${today()}.json`
@@ -5731,8 +5777,8 @@ function doPrintNotes() {
 // ============================================================
 // 完整备份 / 恢复
 // ============================================================
-function exportFullBackup() {
-  const backup = getFullBackupPayload();
+async function exportFullBackup() {
+  const backup = await buildPortableBackupPayload(getFullBackupPayload());
   download('xingce_backup_' + today() + '.json', JSON.stringify(backup));
 }
 
@@ -7680,7 +7726,10 @@ function filterNoteErrorList() {
   });
 
   list.innerHTML = filteredErrors.map(e => `
-    <div class="error-card" onclick="highlightNoteChapter('${escapeHtml(e.type || '')}', '${escapeHtml(e.subtype || '')}', '${escapeHtml(e.subSubtype || '')}')">
+    <div class="error-card" id="card-${escapeHtml(String(e.id || ''))}" data-error-id="${escapeHtml(String(e.id || ''))}" onclick="highlightNoteChapter('${escapeHtml(e.type || '')}', '${escapeHtml(e.subtype || '')}', '${escapeHtml(e.subSubtype || '')}')">
+      <div class="card-top">
+        <span class="card-num">#${escapeHtml(String(e.id || ''))}</span>
+      </div>
       <div class="card-question">${escapeHtml(e.question)}</div>
       <div class="card-options">${escapeHtml(e.options)}</div>
       <div class="card-actions">
@@ -10584,4 +10633,3 @@ async function refreshRuntimeBadge() {
   window.resetAllStudyData = resetAllStudyData;
 })();
 /* END: modules/data-management.js */
-

@@ -220,6 +220,9 @@
       meta
     });
     await saveAttemptsBatch([item]);
+    if(payload.errorId && typeof window.invalidatePracticeAttemptSummaries === 'function'){
+      window.invalidatePracticeAttemptSummaries([payload.errorId]);
+    }
     window.__pendingAttemptLink = null;
   }
 
@@ -232,6 +235,10 @@
         body: JSON.stringify({ items })
       });
       attemptsCache = Array.isArray(res.items) ? res.items.concat(attemptsCache).slice(0, 400) : attemptsCache;
+      const touchedErrorIds = (Array.isArray(items) ? items : []).map(it => String(it && it.errorId || '').trim()).filter(Boolean);
+      if(touchedErrorIds.length && typeof window.invalidatePracticeAttemptSummaries === 'function'){
+        window.invalidatePracticeAttemptSummaries(touchedErrorIds);
+      }
     }catch(e){
       console.warn('save attempts failed:', e);
       window.showToast && showToast('做题记录同步失败，已保留在本地会话', 'warning');

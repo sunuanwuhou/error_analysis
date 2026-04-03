@@ -124,7 +124,10 @@ function filterNoteErrorList() {
   });
 
   list.innerHTML = filteredErrors.map(e => `
-    <div class="error-card" onclick="highlightNoteChapter('${escapeHtml(e.type || '')}', '${escapeHtml(e.subtype || '')}', '${escapeHtml(e.subSubtype || '')}')">
+    <div class="error-card" id="card-${escapeHtml(String(e.id || ''))}" data-error-id="${escapeHtml(String(e.id || ''))}" onclick="highlightNoteChapter('${escapeHtml(e.type || '')}', '${escapeHtml(e.subtype || '')}', '${escapeHtml(e.subSubtype || '')}')">
+      <div class="card-top">
+        <span class="card-num">#${escapeHtml(String(e.id || ''))}</span>
+      </div>
       <div class="card-question">${escapeHtml(e.question)}</div>
       <div class="card-options">${escapeHtml(e.options)}</div>
       <div class="card-actions">
@@ -1084,7 +1087,7 @@ async function saveError(){
   const mistakeType = rootReason;
   const triggerPoint = errorReason;
   const correctModel = analysis;
-  const status = document.getElementById('editStatus').value;
+  const status = normalizeErrorStatusValue(document.getElementById('editStatus').value);
   const difficulty = _modalDiff || 0;
   const srcYear     = document.getElementById('editSrcYear').value;
   const srcProvince = document.getElementById('editSrcProvince').value;
@@ -1140,7 +1143,8 @@ async function saveError(){
       old.id = normalizeErrorId(old.id);
       const oldType = old ? old.type : null;
       Object.assign(old, data);
-      old.updatedAt = new Date().toISOString();
+      normalizeErrorForWorkflow(old);
+      touchErrorUpdatedAt(old);
       // 题型改名 → 同步笔记 key
       if (oldType && oldType !== type && notesByType[oldType] !== undefined) {
         if (!notesByType[type]) notesByType[type] = notesByType[oldType];
@@ -1163,12 +1167,13 @@ async function saveError(){
         lastPracticedAt:null,
         ...data
       };
+      normalizeErrorForWorkflow(newErr);
       errors.push(newErr);
       recordErrorUpsert(newErr);
       savedErrorId = normalizeErrorId(newErr.id);
       showToast('添加成功', 'success');
     }
-    saveData();
+    refreshWorkspaceAfterErrorMutation({ save:true, syncNotes:true, saveKnowledge:true, renderNotes:true });
     try {
       if (window.__pendingAttemptLink && typeof window.syncAttemptLinkAfterSave === 'function') {
         window.syncAttemptLinkAfterSave({
@@ -1181,15 +1186,15 @@ async function saveError(){
           nextAction
         });
       }
+      if (savedErrorId && typeof window.invalidatePracticeAttemptSummaries === 'function') {
+        window.invalidatePracticeAttemptSummaries([savedErrorId]);
+      }
+      if (savedErrorId && typeof window.invalidatePracticeAttemptSummaries === 'function') {
+        window.invalidatePracticeAttemptSummaries([savedErrorId]);
+      }
     } catch (linkErr) { console.warn('attempt link sync failed', linkErr); }
     setSaveErrorBusyState(false);
     closeModal('addModal');
-    renderSidebar();
-    renderAll();
-    // 同步笔记结构（自动补充子类型标题）
-    syncNotesWithErrors();
-    saveKnowledgeState();
-    renderNotesByType();
   } catch (e) {
     showToast(e && e.message ? e.message : '保存失败，请重试', 'error');
   } finally {
@@ -1211,7 +1216,7 @@ function deleteError(id){
   errors = errors.filter(e => normalizeErrorId(e.id) !== targetId);
   revealed.delete(targetId);
   recordErrorDelete(targetId);
-  saveData();saveReveal();renderSidebar();renderAll();
+  refreshWorkspaceAfterErrorMutation({ save:true, reveal:true });
 
   // 题型整体为空时，询问是否删除对应笔记（notesByType 是扁平结构，key 为题型名）
   const typeCount = getErrorEntries().filter(e => e.type === error.type).length;
@@ -1222,8 +1227,7 @@ function deleteError(id){
     }
   }
 
-  syncNotesWithErrors();
-  renderNotesByType();
+  refreshWorkspaceAfterErrorMutation({ save:false, syncNotes:true, renderNotes:true });
   showToast(`Question #${targetId} deleted`, 'success');
 }
 
@@ -1239,10 +1243,7 @@ function addError(data) {
   ensureNoteChapterExists(data.type, data.subtype, data.subSubtype);
 
   // 4. 重新渲染
-  saveData();
-  renderSidebar();
-  renderAll();
-  renderNotesByType();
+  refreshWorkspaceAfterErrorMutation({ save:true, syncNotes:true, renderNotes:true });
 }
 
 // 确保笔记章节存在
