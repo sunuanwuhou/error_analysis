@@ -22,6 +22,26 @@ ${raw}
 4. errorReason 限制在 8 个字以内。
 5. rootReason 和 errorReason 都必须短句化、结论化，禁止空话、套话。
 6. analysis 里先写【根本主因分析】，再写【解题思路】。
+7. actualDurationSec = 当前这道题实际用时，单位秒；也就是“实际用时”。如果题面里没有明确时间，就填 0。
+8. targetDurationSec = 这道题理想用时，单位秒；也就是“预计用时/应该用时”。如果无法合理判断，就按题型经验估计，不要留空。
+9. problemType = 问题类型，只能填以下英文值，并按对应中文含义理解：
+   - cognition = 认知问题
+   - execution = 执行问题
+   - mixed = 混合问题
+   - unknown = 待观察 / 暂不确定
+10. workflowStage = 当前阶段，只能填以下英文值，并按对应中文含义理解：
+   - captured = 新录入
+   - diagnosing = 待补原因
+   - review_ready = 待复盘
+   - retrain_due = 待复训
+   - mastered = 已掌握
+11. tip = 给下次做题的提醒或技巧，短句化，也就是“下次提醒 / 技巧总结”。
+12. nextActionType = 下一步建议，只能填以下英文值，并按对应中文含义理解：
+   - review_note = 回看笔记
+   - retrain = 继续复训
+   - mixed_train = 先看笔记再训练
+   - observe = 继续观察
+13. confidence = 当前把握度，取值 0-5，不清楚填 0；可理解为“你对这题有多大把握”。
 
 【errorReason 可选范围】
 审题：粗心看错题目 / 题目没读完 / 选项没看全 / 关键词漏看
@@ -43,9 +63,16 @@ ${raw}
     "options": "A. 选项一|B. 选项二|C. 选项三|D. 选项四",
     "answer": "A",
     "myAnswer": "B",
+    "actualDurationSec": 95,
+    "targetDurationSec": 60,
+    "problemType": "cognition",
     "rootReason": "条件链提炼能力不稳",
     "errorReason": "逆命题误判",
     "analysis": "【根本主因分析】......\n\n【解题思路】......",
+    "tip": "先把条件链顺着写清，再判断能否逆推。",
+    "nextActionType": "review_note",
+    "confidence": 2,
+    "workflowStage": "review_ready",
     "difficulty": 2,
     "status": "focus"
   }
@@ -54,6 +81,26 @@ ${raw}
 【再次强调】
 - rootReason：必须写本质短板，20 字内
 - errorReason：必须写表象失误，8 字内
+- actualDurationSec：实际用时，单位秒，没有就填 0
+- targetDurationSec：预计用时/应该用时，单位秒，必须返回数字
+- problemType：只能是 cognition / execution / mixed / unknown
+  - cognition = 认知问题
+  - execution = 执行问题
+  - mixed = 混合问题
+  - unknown = 待观察
+- workflowStage：只能是 captured / diagnosing / review_ready / retrain_due / mastered
+  - captured = 新录入
+  - diagnosing = 待补原因
+  - review_ready = 待复盘
+  - retrain_due = 待复训
+  - mastered = 已掌握
+- nextActionType：只能是 review_note / retrain / mixed_train / observe
+  - review_note = 回看笔记
+  - retrain = 继续复训
+  - mixed_train = 先看笔记再训练
+  - observe = 继续观察
+- confidence：0-5 的整数，表示把握度
+- tip：短句提醒，给下次做题用
 - 只返回 JSON，不要任何额外说明`;
   document.getElementById('templateText').value=tmpl;
   document.getElementById('templateArea').style.display='block';
@@ -113,13 +160,16 @@ function renderClaudeBankCard(item) {
   const processImageTag = renderProcessImagePreview(item, 'card');
   let detailHtml = '';
   if (isRev) {
+    const tipText = item.tip || item.nextAction || '';
     detailHtml = `<div class="card-detail">
       <div class="detail-meta-row">
         <span class="detail-pill correct-pill">正确答案 ${escapeHtml(item.answer || '未填写')}</span>
         ${item.rootReason ? `<span class="detail-pill" style="background:#fff0f6;color:#c41d7f;border:1px solid #ffadd2;font-size:11px">根因：${escapeHtml(item.rootReason)}</span>` : ''}
         ${item.errorReason ? `<span class="detail-pill reason-pill">表象：${escapeHtml(item.errorReason)}</span>` : ''}
+        ${tipText ? `<span class="detail-pill meta-pill">💡 技巧：${escapeHtml(tipText)}</span>` : ''}
       </div>
       ${item.analysis ? `<div class="detail-analysis">${renderAnalysis(item.analysis)}</div>` : '<div style="font-size:12px;color:#bbb">暂无解析</div>'}
+      ${tipText ? `<div class="detail-analysis"><strong>技巧：</strong>${renderAnalysis(tipText)}</div>` : ''}
       ${item.analysisImgData ? `<img src="${escapeHtml(item.analysisImgData)}" class="cuoti-img" onclick="this.classList.toggle('expanded')" title="点击放大/缩小" style="border:1px solid #e0e4ff;margin-top:6px">` : ''}
     </div>`;
   }

@@ -168,12 +168,7 @@ function renderQuizQuestion() {
   </div>`;
   const imgTag = e.imgData ? `<img src="${escapeHtml(e.imgData)}" class="cuoti-img" onclick="this.classList.toggle('expanded')" title="点击放大/缩小" style="margin-bottom:10px">` : '';
   const processImageTag = renderProcessImagePreview(e, 'quiz');
-  document.getElementById('quizContent').innerHTML = `
-    ${chapterTag}
-    <div class="quiz-question-box">${escapeHtml(e.question)}</div>
-    ${imgTag}
-    ${processImageTag}
-    <div class="quiz-opt-grid">${optBtns || (e.imgData ? '' : '<p style="color:#aaa;font-size:13px">（无选项，直接点下方判断）</p>')}</div>
+  const quizOptionArea = `${optBtns || (e.imgData ? '' : '<p style="color:#aaa;font-size:13px">（无选项，直接点下方判断）</p>')}
     ${!opts.length ? (e.imgData ? `
       <div class="quiz-opt-grid">
         ${['A','B','C','D'].map(l=>`<button class="quiz-opt-btn" id="qopt_${l}" onclick="selectQuizAnswer('${l}')" style="text-align:center;font-size:16px;font-weight:700">${l}</button>`).join('')}
@@ -181,9 +176,21 @@ function renderQuizQuestion() {
       <div style="display:flex;gap:12px">
         <button class="quiz-opt-btn" style="flex:1;text-align:center;border-color:#52c41a;color:#52c41a" onclick="selectQuizAnswer('✓')">✅ 答对了</button>
         <button class="quiz-opt-btn" style="flex:1;text-align:center;border-color:#e74c3c;color:#e74c3c" onclick="selectQuizAnswer('✗')">❌ 答错了</button>
-      </div>`) : ''}
+      </div>`) : ''}`;
+  const quizCanvasHost = `
+    <div class="quiz-process-canvas-host error-card" data-error-id="${escapeHtml(String(e.id || ''))}">
+      <div class="card-question quiz-question-box">${escapeHtml(e.question)}</div>
+      ${imgTag}
+      ${processImageTag}
+      <div class="quiz-canvas-options-wrap">
+        <div class="quiz-opt-grid">${quizOptionArea}</div>
+      </div>
+    </div>`;
+  document.getElementById('quizContent').innerHTML = `
+    ${chapterTag}
+    ${quizCanvasHost}
     <div class="quiz-bottom-row">
-      <button class="quiz-skip-btn" type="button" onclick='openProcessImageEditor(${idLit},"quiz")' style="background:#fff7ed;color:#c2410c;border-color:#fdba74">&#36807;&#31243;&#22270;</button>
+      <button class="quiz-skip-btn" type="button" id="quizCanvasToggleBtn" onclick='toggleQuizProcessCanvas(${idLit}, this)' style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd">画布</button>
       <button class="quiz-skip-btn" id="quizSkipBtn" onclick="skipQuizQuestion()">跳过 ⏭</button>
       <button class="quiz-next-btn" id="quizNextBtn" onclick="nextQuizQuestion()" style="display:none;flex:1">
         ${quizIdx+1 < quizQueue.length ? '下一题 →' : '查看结果 →'}

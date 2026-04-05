@@ -3,7 +3,7 @@
 <button class="btn btn-secondary" data-onclick="openCodexInboxModal()" id="codexInboxBtn" style="position:fixed;right:18px;bottom:18px;z-index:1200;box-shadow:0 10px 24px rgba(15,23,42,.18)">Codex 留言</button>
 <div class="modal-mask" id="codexInboxModal">
 <div class="modal" style="width:1120px;max-width:96vw;max-height:92vh;overflow-y:auto">
-<button class="modal-close" data-onclick="closeModal('codexInboxModal')">✕</button>
+<button class="modal-close" data-onclick="closeModal('codexInboxModal')">×</button>
 <h2 style="margin-bottom:6px">Codex 留言箱</h2>
 <div class="codex-chat-note" style="margin-bottom:14px">这是异步留言，不是实时聊天。你发出去后会先进入待处理队列，Codex 默认每小时扫描一次并把回复写回这里。</div>
 <div class="codex-inbox-layout">
@@ -38,24 +38,54 @@
 </div>
 </div>
 </div>
-<!-- Tab内容区域 -->
+
+<div class="app-view app-view-home active" id="homeView">
+<div class="home-shell">
+<div class="home-shell-header">
+<div>
+<div class="home-shell-kicker">学习首页</div>
+<h2>先决定今天做什么，再进入工作台执行</h2>
+<div class="home-shell-sub">首页负责调度任务、弱点和必看笔记；进入工作台后再录题、看错题和写笔记。</div>
+</div>
+<div class="home-shell-actions">
+<button class="btn btn-primary" data-onclick="openWorkspaceView('errors')">进入错题工作台</button>
+<button class="btn btn-secondary" data-onclick="openWorkspaceQuickAdd()">继续录题</button>
+</div>
+</div>
+<div id="homeDashboardContent"></div>
+</div>
+</div>
+
+<div class="app-view app-view-workspace" id="workspaceView">
+<div class="workspace-switch-bar">
+<div class="workspace-switch-title">
+<strong>错题工作台</strong>
+<span>录题、改错因、看列表、写笔记都在这里完成</span>
+</div>
+<div class="workspace-switch-actions">
+<button class="btn btn-secondary" data-onclick="switchAppView('home')">返回首页</button>
+<button class="btn btn-secondary active" data-onclick="switchTab('errors')" id="tabErrors" type="button">错题列表</button>
+<button class="btn btn-secondary" data-onclick="switchTab('notes')" id="tabNotes" type="button">学习笔记</button>
+</div>
+</div>
+
 <div class="tab-content" id="tabContentErrors">
 <div class="errors-area">
 <div class="errors-header">
 <h2>错题列表</h2>
 <div class="errors-header-actions">
 <div class="search-box">
-<span class="search-icon">🔍</span>
+<span class="search-icon">搜索</span>
 <input data-oninput="onSearch();updateSearchClear()" data-onkeydown="if(event.key==='Enter')onSearch()" id="searchInput" placeholder="搜索题目、解析..." type="text"/>
-<button class="search-clear" data-onclick="clearSearchInput()" id="searchClear">✕</button>
+<button class="search-clear" data-onclick="clearSearchInput()" id="searchClear">×</button>
 </div>
 <button class="btn btn-secondary global-search-launch" data-onclick="openGlobalSearchModal()" title="Ctrl+K">全局搜索</button>
 </div>
 </div>
 <div class="date-filter-bar">
-        📅 录入日期：
-        <input data-onchange="applyDateFilter()" id="dateFrom" type="date"/>
-<span style="color:#ccc">—</span>
+录入日期：
+<input data-onchange="applyDateFilter()" id="dateFrom" type="date"/>
+<span style="color:#ccc">至</span>
 <input data-onchange="applyDateFilter()" id="dateTo" type="date"/>
 <button class="btn btn-sm btn-secondary" data-onclick="clearDateFilter()">清除日期</button>
 <span style="margin-left:4px;color:#bbb">|</span>
@@ -82,6 +112,7 @@
 <div class="errors-list" id="errorList"></div>
 </div>
 </div>
+
 <div class="tab-content active" id="tabContentNotes">
 <div class="notes-area">
 <div class="notes-header">
@@ -89,10 +120,11 @@
 <div style="display:flex;gap:8px">
 <button class="btn btn-secondary" data-onclick="openGlobalSearchModal()">全局搜索</button>
 <button class="btn btn-secondary" data-onclick="deleteSelectedKnowledgeNode()">删除知识点</button>
-<button class="btn btn-secondary" data-onclick="clearNotes()">🗑 清空</button>
+<button class="btn btn-secondary" data-onclick="clearNotes()">清空</button>
 </div>
 </div>
 <div class="notes-content" id="notesContent"></div>
+</div>
 </div>
 </div>
 </div>

@@ -62,43 +62,9 @@ function renderSidebarKnowledgeTreeV2(nodes, depth) {
 function renderSidebar() {
   updateSidebar();
   ensureKnowledgeState();
-  const errorEntries = getErrorEntries();
-  const focusN    = errorEntries.filter(e=>normalizeErrorStatusValue(e.status)==='focus').length;
-  const reviewN   = errorEntries.filter(e=>normalizeErrorStatusValue(e.status)==='review').length;
-  const masteredN = errorEntries.filter(e=>normalizeErrorStatusValue(e.status)==='mastered').length;
-  const statusItems = [
-    {key:'all',    label:'全部题目',  dot:'#aaa',    count:errorEntries.length},
-    {key:'focus',  label:'重点复习',  dot:'#e74c3c', count:focusN},
-    {key:'review', label:'待复习',    dot:'#fa8c16', count:reviewN},
-    {key:'mastered',label:'已掌握',   dot:'#52c41a', count:masteredN},
-  ];
-  let html='<div class="nav-section-title">状态</div>';
-  statusItems.forEach(item=>{
-    const act=statusFilter===item.key&&!typeFilter&&!knowledgeNodeFilter?'active':'';
-    html+=`<div class="nav-item ${act}" onclick="setStatusFilter('${item.key}')">
-      <span class="nav-label"><span class="nav-dot" style="background:${item.dot}"></span>${escapeHtml(item.label)}</span>
-      <span class="nav-count">${item.count}</span></div>`;
-  });
-  html += `<div class="nav-item ${knowledgeNodeFilter ? '' : 'active'}" onclick="knowledgeNodeFilter=null;renderSidebar();renderAll();">
-    <span class="nav-label"><span class="nav-dot" style="background:#4e8ef7"></span>全部知识点</span>
-    <span class="nav-count">${collectKnowledgeNodes().length}</span></div>`;
-  html+='<div class="nav-section-title" style="margin-top:4px;border-top:1px solid #eee;padding-top:8px">知识树</div>';
+  let html='<div class="nav-section-title">知识树</div>';
   html += renderSidebarKnowledgeTreeV2(getKnowledgeRootNodes(), 0) || '<div style="color:#ccc;font-size:12px;padding:14px">暂无知识树</div>';
   document.getElementById('navScroll').innerHTML=html;
-  const navScroll = document.getElementById('navScroll');
-  if(navScroll){
-    const titles = navScroll.querySelectorAll('.nav-section-title');
-    if(titles.length > 1){
-      titles[0].textContent = '\u72B6\u6001';
-      titles[1].textContent = '\u77E5\u8BC6\u6811';
-      const statusBlock = document.createElement('div');
-      statusBlock.className = 'sidebar-status-block';
-      while(navScroll.firstChild && navScroll.firstChild !== titles[1]){
-        statusBlock.appendChild(navScroll.firstChild);
-      }
-      navScroll.insertBefore(statusBlock, titles[1]);
-    }
-  }
   syncKnowledgeTreeSearchUi();
 }
 function toggleReasonSection(){

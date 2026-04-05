@@ -25,9 +25,6 @@ from app.config import (
     DEEPSEEK_API_URL,
     DEEPSEEK_CHAT_MODEL,
     DEFAULT_MINIMAX_MODEL,
-    FRONTEND_ASSETS_DIR,
-    FRONTEND_DIST_DIR,
-    FRONTEND_INDEX_PATH,
     HTML_PATH,
     IMAGES_DIR,
     JSON_RESPONSE_TASKS,
@@ -1491,10 +1488,18 @@ def summarize_error(error: dict[str, Any]) -> dict[str, Any]:
         "answer": clean_short_text(error.get("answer"), 20),
         "myAnswer": clean_short_text(error.get("myAnswer"), 20),
         "status": clean_short_text(error.get("status"), 20),
+        "workflowStage": clean_short_text(error.get("workflowStage"), 30),
+        "problemType": clean_short_text(error.get("problemType"), 30),
+        "nextActionType": clean_short_text(error.get("nextActionType"), 30),
+        "confidence": max(0, min(5, int(error.get("confidence") or 0))),
+        "isClassic": bool(error.get("isClassic")),
         "difficulty": int(error.get("difficulty") or 2),
+        "actualDurationSec": max(0, int(error.get("actualDurationSec") or 0)),
+        "targetDurationSec": max(0, int(error.get("targetDurationSec") or 0)),
         "errorReason": clean_short_text(error.get("errorReason"), 40),
         "rootReason": clean_short_text(error.get("rootReason"), 80),
         "analysis": clean_multiline_text(error.get("analysis"), 320),
+        "tip": clean_multiline_text(error.get("tip") or error.get("nextAction"), 160),
         "masteryLevel": clean_short_text(error.get("masteryLevel"), 30),
         "updatedAt": clean_short_text(error.get("updatedAt") or error.get("addDate"), 40),
         "noteNodeId": clean_short_text(error.get("noteNodeId"), 60),
@@ -1775,13 +1780,3 @@ def build_local_diagnosis_safe(errors: list[dict[str, Any]]) -> dict[str, Any]:
         "weakPoints": weak_points,
         "model": "local-fallback",
     }
-
-def frontend_not_ready_response() -> Response:
-    return JSONResponse(
-        {
-            "ok": False,
-            "error": "new frontend build is not ready yet",
-            "expected": str(FRONTEND_INDEX_PATH),
-        },
-        status_code=503,
-    )

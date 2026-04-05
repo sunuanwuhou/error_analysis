@@ -5,6 +5,7 @@
   const DEFAULT_WIDTH = 3;
   const stateMap = new Map();
   let statsBtnInjected = false;
+  let quizCanvasCardId = '';
 
   function nowIso(){ return new Date().toISOString(); }
   function esc(s){ return typeof window.escapeHtml === 'function' ? window.escapeHtml(String(s ?? '')) : String(s ?? ''); }
@@ -679,6 +680,14 @@
       state.dirty = false;
       state.saving = false;
     }
+    if (card?.classList?.contains('quiz-process-canvas-host')) {
+      toggleQuizCanvasButton(false);
+    }
+    const closingId = normalizeId(card?.dataset?.errorId || card?.id?.replace(/^card-/, ''));
+    if (closingId && closingId === quizCanvasCardId) {
+      quizCanvasCardId = '';
+      syncQuizUnderlay(false);
+    }
     updateToolbarState(card);
   }
   function afterOpenEditor(stage){
@@ -714,6 +723,80 @@
     patchLegacyButtons(card);
     updateToolbarState(card);
   }
+  function syncQuizUnderlay(active){
+    const quizModal = document.getElementById('quizModal');
+    if (!quizModal) return;
+    quizModal.classList.toggle('process-canvas-underlay', !!active);
+  }
+  function getQuizCanvasHost(errorId){
+    const targetId = normalizeId(errorId);
+    if (!targetId) return null;
+    try {
+      return document.querySelector(`.quiz-process-canvas-host[data-error-id="${CSS.escape(targetId)}"]`);
+    } catch (e) {
+      return document.querySelector('.quiz-process-canvas-host');
+    }
+  }
+  function toggleQuizCanvasButton(isEditing, btn){
+    const target = btn || document.getElementById('quizCanvasToggleBtn');
+    if (!target) return;
+    target.textContent = isEditing ? '退出画布' : '画布';
+  }
+  function toggleQuizProcessCanvas(errorId, btn){
+    const host = getQuizCanvasHost(errorId);
+    if (!host) {
+      if (typeof window.showToast === 'function') window.showToast('当前题目还没有可画区域', 'warning');
+      return false;
+    }
+    host.dataset.errorId = normalizeId(errorId);
+    if (host.classList.contains('pc-editing')) {
+      closeEditor(host, true);
+      toggleQuizCanvasButton(false, btn);
+      return true;
+    }
+    openEditor(host);
+    toggleQuizCanvasButton(true, btn);
+    host.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return true;
+  }
+  function openEditorByErrorId(errorId, opts){
+    const targetId = normalizeId(errorId);
+    if (!targetId) return false;
+    const options = opts || {};
+    if (typeof window.openWorkspaceView === 'function') window.openWorkspaceView('errors');
+    else if (typeof window.switchTab === 'function') window.switchTab('errors');
+    const openAttempt = (attempt) => {
+      const card = document.getElementById(`card-${targetId}`);
+      if (!card) {
+        if (attempt === 0) {
+          if (typeof window.setTaskFilter === 'function') window.setTaskFilter('all');
+          if (typeof window.renderAll === 'function') window.renderAll();
+        }
+        if (attempt < 8) {
+          setTimeout(() => openAttempt(attempt + 1), 90);
+          return;
+        }
+        if (typeof window.showToast === 'function') window.showToast('未找到对应题目的画布入口', 'warning');
+        if (options.fromQuiz) syncQuizUnderlay(false);
+      return;
+      }
+      if (options.fromQuiz) {
+        quizCanvasCardId = targetId;
+        syncQuizUnderlay(true);
+      }
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (card.classList.contains('pc-editing')) {
+        closeEditor(card, true);
+        if (options.fromQuiz) {
+          quizCanvasCardId = targetId;
+          syncQuizUnderlay(true);
+        }
+      }
+      openEditor(card);
+    };
+    openAttempt(0);
+    return true;
+  }
   function allCards(){ return Array.from(document.querySelectorAll('.error-card[id^="card-"]')); }
   function openSummaryModal(){
     let mask = document.getElementById('processCanvasSummaryModal');
@@ -744,85 +827,16 @@
     mask.classList.add('open');
   }
   function injectStatsEntry(){
-    const quizBlock = document.querySelector('.quiz-block');
-    if (!quizBlock || statsBtnInjected || quizBlock.querySelector('.pc-sidebar-btn')) return;
-    const btn = document.createElement('button');
-    btn.className = 'quiz-btn pc-sidebar-btn';
-    btn.innerHTML = '<span>🖍 画布联动</span><span class="badge" style="background:#fee2e2;color:#991b1b">V2</span>';
-    btn.addEventListener('click', openSummaryModal);
-    quizBlock.appendChild(btn);
-    statsBtnInjected = true;
+    return;
   }
   function patchQuizPanel(){
-    const panel = document.getElementById('quizAttemptPanel');
-    if (!panel || panel.querySelector('[data-pc-quiz-row]')) return;
-    const row = document.createElement('div');
-    row.className = 'quiz-attempt-row';
-    row.setAttribute('data-pc-quiz-row','1');
-    row.innerHTML = '<span class="quiz-attempt-label">画布</span><div class="quiz-attempt-chip-wrap"><button type="button" class="quiz-attempt-chip" id="quizCanvasBridgeBtn">回到题卡打开</button></div>';
-    panel.appendChild(row);
-    row.querySelector('#quizCanvasBridgeBtn').addEventListener('click', () => {
-      const item = window.quizQueue?.[window.quizIdx];
-      if (!item) return;
-      if (typeof window.closeQuizModal === 'function') window.closeQuizModal(true);
-      if (typeof window.switchTab === 'function') window.switchTab('errors');
-      setTimeout(() => {
-        const card = document.getElementById(`card-${normalizeId(item.id || item.questionId)}`);
-        if (card) {
-          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          openEditor(card);
-        }
-      }, 160);
-    });
+    return;
   }
   function openCanvasFromQuizFlow(){
-    const item = window.quizQueue?.[window.quizIdx];
-    if (!item) {
-      showGlobalToast('当前练习题未就绪');
-      return;
-    }
-    try {
-      if (typeof window.closeModal === 'function') window.closeModal('quizModal');
-    } catch (e) {}
-    try {
-      if (typeof window.switchTab === 'function') window.switchTab('errors');
-    } catch (e) {}
-    setTimeout(() => {
-      const targetId = normalizeId(item.id || item.questionId);
-      const card = document.getElementById(`card-${targetId}`);
-      if (!card) {
-        showGlobalToast('未找到对应题卡，稍后再试');
-        return;
-      }
-      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      openEditor(card);
-    }, 180);
+    return;
   }
   function patchQuizQuestionActions(){
-    const row = document.querySelector('#quizContent .quiz-bottom-row');
-    if (!row) return;
-    const legacyBtn = Array.from(row.querySelectorAll('button')).find((btn) => ((btn.textContent || '').trim() === '过程图'));
-    if (legacyBtn) {
-      legacyBtn.setAttribute('data-pc-quiz-open', '1');
-      legacyBtn.textContent = '画布';
-      legacyBtn.style.background = '#eff6ff';
-      legacyBtn.style.color = '#1d4ed8';
-      legacyBtn.style.borderColor = '#93c5fd';
-      legacyBtn.onclick = null;
-      legacyBtn.addEventListener('click', openCanvasFromQuizFlow);
-      return;
-    }
-    if (row.querySelector('[data-pc-quiz-open]')) return;
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'quiz-skip-btn';
-    btn.setAttribute('data-pc-quiz-open', '1');
-    btn.textContent = '画布';
-    btn.style.background = '#eff6ff';
-    btn.style.color = '#1d4ed8';
-    btn.style.borderColor = '#93c5fd';
-    btn.addEventListener('click', openCanvasFromQuizFlow);
-    row.insertBefore(btn, row.firstChild);
+    return;
   }
   function patchExportModal(){
     const modal = document.querySelector('#exportModal #exportJsonOpts');
@@ -919,8 +933,14 @@
       getEvents: () => JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'),
       getStats: () => getErrors().filter(item => item?.processCanvas?.savedAt).map(item => ({ id: item.id, type: item.type, sub: item.subtype, stats: item.processCanvas.stats || {} })),
       openSummary: openSummaryModal,
+      openEditorByErrorId,
+      toggleQuizProcessCanvas,
       refreshCards: () => { allCards().forEach(queueCard); scheduleSupportPatches(); },
     };
+    window.openProcessCanvasForQuiz = function openProcessCanvasForQuiz(errorId){
+      return openEditorByErrorId(errorId, { fromQuiz: true });
+    };
+    window.toggleQuizProcessCanvas = toggleQuizProcessCanvas;
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once:true });
   else init();

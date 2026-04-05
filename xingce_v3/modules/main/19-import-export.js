@@ -2,18 +2,38 @@
 // 导出 / 导入
 // ============================================================
 async function exportAll(){
-  const payload = await buildPortableBackupPayload(errors);
+  const payload = await buildPortableBackupPayload(errors.map(sanitizeExportRecord));
   download('cuoti_all_'+today()+'.json',JSON.stringify(payload,null,2));
 }
 async function exportFiltered(){
   const list=getFiltered();
-  const payload = await buildPortableBackupPayload(list);
+  const payload = await buildPortableBackupPayload(list.map(sanitizeExportRecord));
   download('cuoti_filtered_'+today()+'.json',JSON.stringify(payload,null,2));
 }
 function download(name,content){
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([content],{type:'application/json'}));
   a.download=name;a.click();URL.revokeObjectURL(a.href);
+}
+function sanitizeExportRecord(item) {
+  const kind = normalizeEntryKind(item && item.entryKind, 'error');
+  const record = normalizeEntryRecord(item, kind);
+  const createdAt = String(record.createdAt || record.sentAt || record.sharedAt || record.ccSentAt || record.claudeSentAt || record.codexSentAt || '').trim();
+  return {
+    ...record,
+    tip: String(record.tip || record.nextAction || '').trim(),
+    workflowStage: String(record.workflowStage || ''),
+    problemType: String(record.problemType || ''),
+    nextActionType: String(record.nextActionType || ''),
+    confidence: Number(record.confidence || 0) || 0,
+    isClassic: !!record.isClassic,
+    addDate: String(record.addDate || ''),
+    updatedAt: String(record.updatedAt || record.modifiedAt || record.lastModifiedAt || ''),
+    masteryUpdatedAt: String(record.masteryUpdatedAt || record.masteredAt || ''),
+    createdAt,
+    sentAt: String(record.sentAt || createdAt || ''),
+    sharedAt: String(record.sharedAt || createdAt || '')
+  };
 }
 function selectImportMode(m){
   importMode=m;
@@ -31,6 +51,18 @@ function getKnowledgeContextDepth(context) {
 
 function getImportedErrorTargetNodeId(item, context) {
   if (item?.noteNodeId) return item.noteNodeId;
+  const explicitType = String(item?.type || '').trim();
+  const explicitSubtype = String(item?.subtype || '').trim();
+  const explicitSubSubtype = String(item?.subSubtype || '').trim();
+  if (explicitType || explicitSubtype || explicitSubSubtype) {
+    const branch = ensureKnowledgeBranchPath(
+      explicitType || context?.type || '鍏朵粬',
+      explicitSubtype || context?.subtype || '鏈垎绫?',
+      explicitSubSubtype || context?.subSubtype || ''
+    );
+    ensureKnowledgeNoteRecord(branch.sub2);
+    return branch.sub2.id;
+  }
   if (!importKnowledgeNodeId || !context?.node) return '';
   const selectedDepth = getKnowledgeContextDepth(context);
   const effectiveContext = {
@@ -161,6 +193,34 @@ function normalizeImportedErrorsForCurrentKnowledge(list, defaultKind) {
   }));
 }
 
+function normalizeImportedErrorsForCurrentKnowledge(list, defaultKind) {
+  const context = importKnowledgeNodeId ? getKnowledgeContextForEntry(importKnowledgeNodeId) : null;
+  return (list || []).map(item => {
+    const normalizedType = item.type || context?.type || '鍏朵粬';
+    const normalizedSubtype = item.subtype || context?.subtype || '鏈垎绫?';
+    const normalizedSubSubtype = item.subSubtype || context?.subSubtype || '';
+    return {
+      ...normalizeEntryRecord(item, defaultKind || 'error'),
+      id: item.id ? normalizeErrorId(item.id) : newId(),
+      type: normalizedType,
+      subtype: normalizedSubtype,
+      subSubtype: normalizedSubSubtype,
+      noteNodeId: getImportedErrorTargetNodeId({
+        ...item,
+        type: normalizedType,
+        subtype: normalizedSubtype,
+        subSubtype: normalizedSubSubtype
+      }, context),
+      addDate: item.addDate || today(),
+      quiz: item.quiz || null,
+      status: item.status || 'focus',
+      masteryLevel: item.masteryLevel || 'not_mastered',
+      masteryUpdatedAt: item.masteryUpdatedAt || null,
+      lastPracticedAt: item.lastPracticedAt || null
+    };
+  });
+}
+
 function tryParseJson(text){
   try{return JSON.parse(text);}catch(e){}
   try{const m=text.match(/\[[\s\S]*\]/);if(m)return JSON.parse(m[0]);}catch(e){}
@@ -170,7 +230,8 @@ function tryParseJson(text){
   }catch(e){}
   return null;
 }
-function mergeImport(data, defaultKind){
+function mergeImport(data, defaultKind, opts){
+  opts = opts || {};
   const normalizeKey = (kind, q) => `${kind}::${(q||'').trim().slice(0,100)}`;
   const questionMap={};
   const idMap={};
@@ -198,13 +259,20 @@ function mergeImport(data, defaultKind){
     const targetIndex = idMap[imp.id] !== undefined ? idMap[imp.id] : questionMap[k];
     if(targetIndex!==undefined){
       const old=errors[targetIndex];
+      const preservedNoteNodeId = opts.preserveExistingNoteNodeId ? String(old.noteNodeId || '').trim() : '';
       errors[targetIndex]={
         ...old,
         ...imp,
         id: old.id ? normalizeErrorId(old.id) : imp.id,
         entryKind: normalizeEntryKind(old.entryKind, kind),
         quiz: old.quiz || imp.quiz,
-        addDate: old.addDate || imp.addDate
+        addDate: old.addDate || imp.addDate,
+        updatedAt: imp.updatedAt || old.updatedAt || '',
+        masteryUpdatedAt: imp.masteryUpdatedAt || old.masteryUpdatedAt || null,
+        createdAt: imp.createdAt || old.createdAt || old.sentAt || '',
+        sentAt: imp.sentAt || old.sentAt || old.createdAt || '',
+        sharedAt: imp.sharedAt || old.sharedAt || old.createdAt || '',
+        noteNodeId: preservedNoteNodeId || imp.noteNodeId || old.noteNodeId || ''
       };
       questionMap[k] = targetIndex;
       idMap[errors[targetIndex].id] = targetIndex;

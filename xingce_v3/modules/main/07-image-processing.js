@@ -505,6 +505,10 @@ function openProcessImageEditor(errorId, source) {
     return;
   }
   const mask = ensureProcessImageEditorModal();
+  const quizModal = document.getElementById('quizModal');
+  if (quizModal && quizModal.classList.contains('open')) {
+    quizModal.classList.add('process-image-underlay');
+  }
   const frame = document.getElementById('processImageEditorFrame');
   frame.src = `/assets/process_image_editor.html?errorId=${encodeURIComponent(payload.id)}&embed=1&source=${encodeURIComponent(source || 'card')}`;
   mask.classList.add('open');
@@ -522,6 +526,7 @@ function closeProcessImageEditorModal(force) {
   }
   mask.classList.remove('open');
   document.body.classList.remove('process-image-modal-open');
+  document.getElementById('quizModal')?.classList.remove('process-image-underlay');
 }
 function ensureGlobalSearchModal() {
   let mask = document.getElementById('globalSearchModal');

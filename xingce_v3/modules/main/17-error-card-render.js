@@ -207,6 +207,27 @@ if (typeof window.openCanvas !== 'function') {
 function renderCard(e){
   normalizeErrorForWorkflow(e);
   const stageMeta = getErrorWorkflowStageMeta(e);
+  const problemTypeLabelMap = {
+    cognition: '认知问题',
+    execution: '执行问题',
+    mixed: '混合问题',
+    unknown: '待观察'
+  };
+  const nextActionLabelMap = {
+    review_note: '先回看笔记',
+    retrain: '进入复训',
+    mixed_train: '先笔记后训练',
+    observe: '继续观察'
+  };
+  const problemTypeLabel = problemTypeLabelMap[e.problemType] || '待观察';
+  const nextActionTypeLabel = nextActionLabelMap[e.nextActionType] || '';
+  const workflowStageOptions = [
+    { value:'captured', label:'新录入' },
+    { value:'diagnosing', label:'待判因' },
+    { value:'review_ready', label:'待复盘' },
+    { value:'retrain_due', label:'待复训' },
+    { value:'mastered', label:'已掌握' }
+  ];
   const opts=e.options?e.options.split(/\n|\|/).map(o=>`<p>${hl(o.trim(),searchKw)}</p>`).join(''):'';  
   const normalizedId = normalizeErrorId(e.id);
   const isRev=revealed.has(normalizedId);
@@ -233,14 +254,30 @@ function renderCard(e){
     const _mistakeType = e.mistakeType || e.rootReason || '';
     const _triggerPoint = e.triggerPoint || e.errorReason || '';
     const _correctModel = e.correctModel || e.analysis || '';
+    const _tip = e.tip || e.nextAction || '';
     if(_mistakeType){
       pills.push(`<span class="detail-pill" style="background:#fff0f6;color:#c41d7f;border:1px solid #ffadd2;font-size:11px">⚡ 错误类型：${escapeHtml(_mistakeType)}</span>`);
     }
     if(_triggerPoint){
       pills.push(`<span class="detail-pill reason-pill">🎯 触发点：${escapeHtml(_triggerPoint)}</span>`);
     }
-    if(e.nextAction){
-      pills.push(`<span class="detail-pill meta-pill">➡ 下次动作：${escapeHtml(e.nextAction)}</span>`);
+    if (Number(e.actualDurationSec) > 0 || Number(e.targetDurationSec) > 0) {
+      const durationBits = [];
+      if (Number(e.actualDurationSec) > 0) durationBits.push(`当前 ${Number(e.actualDurationSec)}s`);
+      if (Number(e.targetDurationSec) > 0) durationBits.push(`应该 ${Number(e.targetDurationSec)}s`);
+      pills.push(`<span class="detail-pill meta-pill">⏱ ${escapeHtml(durationBits.join(' / '))}</span>`);
+    }
+    if (e.problemType && e.problemType !== 'unknown') {
+      pills.push(`<span class="detail-pill meta-pill">🧭 ${escapeHtml(problemTypeLabel)}</span>`);
+    }
+    if (Number(e.confidence || 0) > 0) {
+      pills.push(`<span class="detail-pill meta-pill">把握度 ${escapeHtml(String(e.confidence))}/5</span>`);
+    }
+    if (nextActionTypeLabel) {
+      pills.push(`<span class="detail-pill meta-pill">下一步：${escapeHtml(nextActionTypeLabel)}</span>`);
+    }
+    if(_tip){
+      pills.push(`<span class="detail-pill meta-pill">💡 技巧：${escapeHtml(_tip)}</span>`);
     }
     if(quizInfoStr) pills.push(`<span class="detail-pill meta-pill">${escapeHtml(quizInfoStr)}</span>`);
     if(practiceSummaryMeta) pills.push(`<span class="detail-pill meta-pill">${escapeHtml(practiceSummaryMeta)}</span>`);
@@ -249,6 +286,9 @@ function renderCard(e){
     detailHtml=`<div class="card-detail">
       <div class="detail-meta-row">${pills.join('')}</div>
       ${_correctModel?`<div class="detail-analysis"><strong>正确模型：</strong>${renderAnalysis(_correctModel,searchKw)}</div>`:''}
+      ${_tip?`<div class="detail-analysis"><strong>技巧：</strong>${renderAnalysis(_tip,searchKw)}</div>`:''}
+      ${e.problemType && e.problemType !== 'unknown' ? `<div class="detail-analysis"><strong>问题类型：</strong>${escapeHtml(problemTypeLabel)}</div>` : ''}
+      ${nextActionTypeLabel ? `<div class="detail-analysis"><strong>建议动作：</strong>${escapeHtml(nextActionTypeLabel)}</div>` : ''}
       ${renderPracticeSummaryBlock(practiceSummary)}
       ${e.analysisImgData?`<img src="${escapeHtml(e.analysisImgData)}" class="cuoti-img" onclick="this.classList.toggle('expanded')" title="点击放大/缩小" style="border:1px solid #e0e4ff;margin-top:6px">`:''}
       ${hist}
@@ -309,8 +349,9 @@ function renderCard(e){
       ${e.subSubtype?`<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#f0f5ff;color:#4e8ef7">${escapeHtml(e.subSubtype)}</span>`:''}
       ${starHtml}
       ${(e.srcYear||e.srcProvince||e.srcOrigin)?`<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#f6ffed;color:#52c41a;border:1px solid #b7eb8f" title="出处">📌 ${[e.srcYear,e.srcProvince,e.srcOrigin].filter(Boolean).join(' · ')}</span>`:''}
+      ${e.isClassic ? `<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#fff7e6;color:#ad6800;border:1px solid #ffd591" title="经典题/样题">样题</span>` : ''}
       ${e.addDate?`<span style="font-size:11px;color:#999">${e.addDate}</span>`:''}
-      ${practiceSummaryMeta?`<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#ecfeff;color:#155e75;border:1px solid #a5f3fc" title="最近练习">🧾 ${escapeHtml(practiceSummaryMeta)}</span>`:''}
+      ${e.problemType && e.problemType !== 'unknown' ? `<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe" title="问题类型">${escapeHtml(problemTypeLabel)}</span>` : ''}
       <span style="font-size:11px;padding:1px 7px;border-radius:8px;background:${stageMeta.bg};color:${stageMeta.color};border:1px solid ${stageMeta.border}" title="阶段状态">阶段：${escapeHtml(stageMeta.shortLabel)}</span>
       ${practiceSummaryMeta?`<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#ecfeff;color:#155e75;border:1px solid #a5f3fc" title="最近练习">🧾 ${escapeHtml(practiceSummaryMeta)}</span>`:''}
       <span class="card-drag-handle" title="拖到左侧知识点可改挂载" draggable="true" ondragstart='startErrorDrag(${idLit}, event)' ondragend="endErrorDrag()" onclick="event.preventDefault();event.stopPropagation()">⋮⋮ 拖挂载</span>
@@ -325,12 +366,14 @@ function renderCard(e){
     </button>
     ${iqHtml}
     <div class="card-actions">
-      <button class="btn btn-sm btn-secondary" onclick='openKnowledgeForError(${idLit})'>知识点</button>
       <button class="btn btn-sm btn-secondary" onclick='moveErrorToKnowledgeNode(${idLit}, ${noteNodeLit})'>改挂载</button>
       <select class="status-select" onchange='updateStatus(${idLit},this.value)'>
         <option value="focus" ${normalizeErrorStatusValue(e.status)==='focus'?'selected':''}>重点复习</option>
         <option value="review" ${normalizeErrorStatusValue(e.status)==='review'?'selected':''}>待复习</option>
         <option value="mastered" ${normalizeErrorStatusValue(e.status)==='mastered'?'selected':''}>已掌握</option>
+      </select>
+      <select class="status-select" onchange='updateWorkflowStage(${idLit},this.value)' title="推进任务阶段">
+        ${workflowStageOptions.map(item => `<option value="${item.value}" ${String(e.workflowStage||'')===item.value?'selected':''}>${item.label}</option>`).join('')}
       </select>
       ${(()=>{
         const ml=e.masteryLevel||'not_mastered';
@@ -338,8 +381,6 @@ function renderCard(e){
         const c=cfg[ml]||cfg.not_mastered;
         return `<button class="btn btn-sm" style="color:${c.color};background:${c.bg};border:1px solid ${c.border}" onclick='cyclemastery(${idLit})' title="点击切换掌握状态">◎ ${c.label}</button>`;
       })()}
-      <button class="btn btn-sm btn-secondary" onclick='openCanvas(${idLit})'>画布</button>
-      <button class="btn btn-sm btn-secondary" onclick='openProcessImageEditor(${idLit},"card")'>&#36807;&#31243;&#22270;</button>
       <button class="btn btn-sm btn-secondary" onclick='openEditModal(${idLit})'>✏ 编辑</button>
       <button class="btn btn-sm btn-secondary" style="color:#4e8ef7;border-color:#adc6ff" onclick='startInlineQuiz(${idLit})'>📝 做题</button>
       <button class="del-btn del-btn-danger" onclick='deleteError(${idLit})'>🗑 删除</button>
@@ -383,6 +424,21 @@ function saveCardNote(id, val) {
   refreshWorkspaceAfterErrorMutation({ save:true });
 }
 function updateStatus(id,s){ const e=findErrorById(id); if(!e) return; e.status = normalizeErrorStatusValue(s); if(e.status === 'mastered') e.masteryLevel = 'mastered'; if(e.status !== 'mastered' && normalizeMasteryLevelValue(e.masteryLevel) === 'mastered') e.masteryLevel = 'fuzzy'; touchErrorUpdatedAt(e); recordErrorUpsert(e); refreshWorkspaceAfterErrorMutation({ save:true }); }
+function updateWorkflowStage(id, stage) {
+  const e = findErrorById(id);
+  if (!e) return;
+  e.workflowStage = normalizeWorkflowStageValue(stage);
+  if (e.workflowStage === 'mastered') {
+    e.status = 'mastered';
+    e.masteryLevel = 'mastered';
+  } else if (normalizeErrorStatusValue(e.status) === 'mastered') {
+    e.status = 'review';
+    if (normalizeMasteryLevelValue(e.masteryLevel) === 'mastered') e.masteryLevel = 'fuzzy';
+  }
+  touchErrorUpdatedAt(e);
+  recordErrorUpsert(e);
+  refreshWorkspaceAfterErrorMutation({ save:true });
+}
 function cyclemastery(id){
   const e=findErrorById(id);if(!e)return;
   const cycle={not_mastered:'fuzzy',fuzzy:'mastered',mastered:'not_mastered'};

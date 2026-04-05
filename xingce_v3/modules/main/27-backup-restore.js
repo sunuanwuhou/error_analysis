@@ -140,6 +140,95 @@ function _applyFullBackup(data, mode, opts) {
   }
 }
 
+function mergeBackupMapPreservingCurrent(currentValue, incomingValue) {
+  const currentMap = currentValue && typeof currentValue === 'object' ? currentValue : {};
+  const incomingMap = incomingValue && typeof incomingValue === 'object' ? incomingValue : {};
+  return { ...incomingMap, ...currentMap };
+}
+
+function _applyFullBackup(data, mode, opts) {
+  opts = opts || {};
+  if (mode === 'restore') {
+    errors = (data.errors || []).map((e) => ({
+      ...e,
+      entryKind: normalizeEntryKind(e.entryKind, 'error'),
+      id: String(e.id || crypto.randomUUID()),
+      addDate: e.addDate || today(),
+      quiz: e.quiz || null,
+      status: e.status || 'focus',
+      updatedAt: e.updatedAt || new Date().toISOString(),
+      masteryLevel: e.masteryLevel || 'not_mastered',
+      masteryUpdatedAt: e.masteryUpdatedAt || null,
+      lastPracticedAt: e.lastPracticedAt || null
+    }));
+    revealed = new Set((data.revealed || []).map(String));
+    expTypes = new Set((data.expTypes || []).map(String));
+    expMain = new Set((data.expMain || []).map(String));
+    expMainSub = new Set((data.expMainSub || []).map(String));
+    expMainSub2 = new Set((data.expMainSub2 || []).map(String));
+    saveData();
+    saveReveal();
+    saveExpTypes();
+    saveExpMain();
+    _typeRules = data.typeRules || null;
+    _dirTree = data.dirTree || null;
+    globalNote = data.globalNote !== undefined ? data.globalNote : '';
+    knowledgeExpanded = new Set((data.knowledgeExpanded || []).map(String));
+    knowledgeExpandedLoaded = true;
+    todayDate = data.todayDate || today();
+    todayDone = Number(data.todayDone || 0);
+    _history = Array.isArray(data.history) ? data.history : [];
+    DB.set(KEY_TYPE_RULES, JSON.stringify(_typeRules));
+    DB.set(KEY_DIR_TREE, JSON.stringify(_dirTree));
+    DB.set(KEY_GLOBAL_NOTE, globalNote);
+    DB.set(KEY_KNOWLEDGE_EXPANDED, JSON.stringify(Array.from(knowledgeExpanded)));
+    DB.set(KEY_TODAY_DATE, todayDate);
+    DB.set(KEY_TODAY_DONE, String(todayDone));
+    DB.set(KEY_HISTORY, JSON.stringify(_history));
+  } else {
+    const { added, updated } = mergeImport(data.errors || [], 'error', {
+      preserveExistingNoteNodeId: true
+    });
+    saveData();
+    console.log(`[merge] added ${added}, updated ${updated}`);
+  }
+
+  if (data.notesByType) {
+    notesByType = mode === 'restore'
+      ? data.notesByType
+      : mergeBackupMapPreservingCurrent(notesByType, data.notesByType);
+    DB.set(KEY_NOTES_BY_TYPE, JSON.stringify(notesByType));
+  }
+  if (data.noteImages) {
+    noteImages = mode === 'restore'
+      ? data.noteImages
+      : mergeBackupMapPreservingCurrent(noteImages, data.noteImages);
+    DB.set(KEY_NOTE_IMAGES, JSON.stringify(noteImages));
+  }
+  if (mode === 'restore') {
+    knowledgeTree = data.knowledgeTree || null;
+    knowledgeNotes = data.knowledgeNotes || {};
+  }
+  DB.set(KEY_KNOWLEDGE_TREE, JSON.stringify(knowledgeTree));
+  DB.set(KEY_KNOWLEDGE_NOTES, JSON.stringify(knowledgeNotes));
+  ensureKnowledgeState({ syncErrors: true, persist: true });
+
+  closeModal('importModal');
+  saveReveal();
+  renderSidebar();
+  renderAll();
+
+  const errCount = errors.length;
+  const noteCount = Object.keys(notesByType || {}).length;
+  const knowledgeCount = collectKnowledgeNodes().length;
+  if (!opts.skipCompletionAlert) {
+    alert(mode === 'restore'
+      ? `完整恢复完成：${errCount} 条错题，${noteCount} 个笔记模块，${knowledgeCount} 个知识点`
+      : `合并完成：当前共 ${errCount} 条错题，${noteCount} 个笔记模块，${knowledgeCount} 个知识点`
+    );
+  }
+}
+
 async function _applyCloudBackupStaged(data, updatedAt, opts) {
   opts = opts || {};
   const syncAt = updatedAt || data.exportTime || '';

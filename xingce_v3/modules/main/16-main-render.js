@@ -1,7 +1,24 @@
 // ============================================================
 // 渲染主列表
 // ============================================================
+function renderTaskFilterBar(){
+  const host = document.getElementById('taskFilterBar');
+  if(!host) return;
+  const allEntries = getErrorEntries();
+  const items = [
+    { key:'all', label:'全部', count:allEntries.length },
+    { key:'diagnose', label:'待判因', count:allEntries.filter(e => matchTaskFilter(e, 'diagnose')).length },
+    { key:'review_ready', label:'待复盘', count:allEntries.filter(e => matchTaskFilter(e, 'review_ready')).length },
+    { key:'retrain', label:'待复训', count:allEntries.filter(e => matchTaskFilter(e, 'retrain')).length },
+  ];
+  host.innerHTML = items.map(item => `
+    <button class="btn btn-sm ${taskFilter===item.key?'btn-primary':'btn-secondary'}" onclick="setTaskFilter('${item.key}')">
+      ${escapeHtml(item.label)}（${item.count}）
+    </button>
+  `).join('');
+}
 function renderStats(list){
+  renderTaskFilterBar();
   const f=list.filter(e=>normalizeErrorStatusValue(e.status)==='focus').length;
   const r=list.filter(e=>normalizeErrorStatusValue(e.status)==='review').length;
   const m=list.filter(e=>normalizeErrorStatusValue(e.status)==='mastered').length;
@@ -15,6 +32,8 @@ function renderStats(list){
     if(typeFilter.level==='type') crumb=typeFilter.value;
     else if(typeFilter.level==='subtype') crumb=`${typeFilter.type} › ${typeFilter.value}`;
     else if(typeFilter.level==='sub2') crumb=`${typeFilter.type} › ${typeFilter.subtype} › ${typeFilter.value}`;
+  } else if(taskFilter!=='all') {
+    crumb=`任务视角：${getTaskFilterLabel(taskFilter)}`;
   } else if(statusFilter!=='all') crumb=getErrorStatusLabel(statusFilter);
   if(reasonFilter) crumb+=(crumb==='全部题目'?'':`，`)+'错因: '+reasonFilter;
   if(searchKw) crumb+=` › 搜索"${escapeHtml(searchKw)}"`;

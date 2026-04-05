@@ -16,6 +16,25 @@ async function injectPartials() {
   }
 }
 
+const deferredActionCalls = [];
+
+function installDeferredAction(name) {
+  if (typeof window[name] === 'function') return;
+  window[name] = function deferredBootstrapAction() {
+    deferredActionCalls.push({ name, args: Array.from(arguments) });
+  };
+}
+
+function flushDeferredActions() {
+  const queued = deferredActionCalls.splice(0, deferredActionCalls.length);
+  queued.forEach(item => {
+    const fn = window[item.name];
+    if (typeof fn === 'function' && fn !== window.__deferredNoop) {
+      try { fn.apply(window, item.args || []); } catch (error) { console.warn(`deferred action failed: ${item.name}`, error); }
+    }
+  });
+}
+
 function loadScript(src, { defer = false } = {}) {
   return new Promise((resolve, reject) => {
     const script = document.createElement('script');
@@ -42,6 +61,16 @@ async function loadLegacyModules() {
 
 (async () => {
   try {
+    [
+      'switchAppView',
+      'openWorkspaceView',
+      'openWorkspaceTaskView',
+      'openWorkspaceQuickAdd',
+      'switchTab',
+      'openQuickAddModal',
+      'startQuiz',
+      'startFullPractice'
+    ].forEach(installDeferredAction);
     await injectPartials();
     await loadScript('/assets/modules/mathjax-config.js');
     await loadScript('/assets/vendor/mathjax/tex-svg.js', { defer: true });
@@ -53,6 +82,8 @@ async function loadLegacyModules() {
     pcCss.href = '/v51-static/assets/process-canvas-ultimate.css';
     document.head.appendChild(pcCss);
     await loadScript('/v51-static/assets/process-canvas-ultimate.js');
+    flushDeferredActions();
+    document.body.classList.remove('v51-shell-loading');
   } catch (error) {
     console.error(error);
     document.body.innerHTML = `

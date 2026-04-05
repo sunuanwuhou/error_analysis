@@ -27,8 +27,49 @@ function groupByType(displayData) {
 }
 
 // Tab切换函数
+function syncAppViewChrome() {
+  document.body.classList.toggle('app-view-home', appView === 'home');
+  document.body.classList.toggle('app-view-workspace', appView === 'workspace');
+  const homeView = document.getElementById('homeView');
+  const workspaceView = document.getElementById('workspaceView');
+  const sidebarHomeBtn = document.getElementById('sidebarHomeBtn');
+  const sidebarWorkspaceBtn = document.getElementById('sidebarWorkspaceBtn');
+  if (homeView) homeView.classList.toggle('active', appView === 'home');
+  if (workspaceView) workspaceView.classList.toggle('active', appView === 'workspace');
+  if (sidebarHomeBtn) sidebarHomeBtn.classList.toggle('active', appView === 'home');
+  if (sidebarWorkspaceBtn) sidebarWorkspaceBtn.classList.toggle('active', appView === 'workspace');
+}
+
+function switchAppView(nextView, opts) {
+  appView = nextView === 'workspace' ? 'workspace' : 'home';
+  syncAppViewChrome();
+  if (appView === 'home') {
+    if (typeof renderHomeDashboard === 'function') renderHomeDashboard();
+    return;
+  }
+  const options = opts || {};
+  switchTab(options.tab === 'notes' ? 'notes' : 'errors');
+}
+
+function openWorkspaceView(tabName) {
+  switchAppView('workspace', { tab: tabName === 'notes' ? 'notes' : 'errors' });
+}
+
+function openWorkspaceTaskView(taskMode) {
+  openWorkspaceView(taskMode === 'notes' ? 'notes' : 'errors');
+}
+
+function openWorkspaceQuickAdd() {
+  openWorkspaceView('errors');
+  openQuickAddModal();
+}
+
 function switchTab(tabName) {
   const activeTab = tabName === 'errors' ? 'errors' : 'notes';
+  if (appView !== 'workspace') {
+    appView = 'workspace';
+  }
+  syncAppViewChrome();
   document.body.classList.toggle('tab-errors-active', activeTab === 'errors');
   document.body.classList.toggle('tab-notes-active', activeTab === 'notes');
   const tabErrors = document.getElementById('tabErrors');
@@ -1284,3 +1325,13 @@ function setNoteNodeByKey(notesData, key, level, node) {
     setNoteNodeByKey(notesData[currentKey].children, key, level + 1, node);
   }
 }
+window.syncAppViewChrome = syncAppViewChrome;
+window.switchAppView = switchAppView;
+window.openWorkspaceView = openWorkspaceView;
+window.openWorkspaceTaskView = openWorkspaceTaskView;
+window.openWorkspaceQuickAdd = openWorkspaceQuickAdd;
+window.switchTab = switchTab;
+setTimeout(() => {
+  syncAppViewChrome();
+  if (appView === 'home' && typeof renderHomeDashboard === 'function') renderHomeDashboard();
+}, 0);

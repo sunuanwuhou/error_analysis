@@ -82,6 +82,12 @@
 </div>
 <div class="form-group"><label>正确模型 <span style="color:#e74c3c">*</span></label><textarea id="editAnalysis" placeholder="这类题正确做法的一句话模型" rows="3"></textarea></div>
 <div class="form-group"><label>下次动作 <span style="font-size:11px;color:#aaa;font-weight:400">（如：再做3题同类）</span></label><input id="editNextAction" placeholder="下次准备怎么练、怎么防" type="text"/></div>
+<div class="form-group">
+<label style="display:flex;align-items:center;gap:8px">
+<input id="editIsClassic" type="checkbox"/>
+<span>经典题 / 样题 <span style="font-size:11px;color:#aaa">（这类题默认直接进入已掌握，不进今日任务主池）</span></span>
+</label>
+</div>
 <div id="analysisImgFormGroup" style="display:none;margin-top:-6px;margin-bottom:10px">
 <img id="analysisImgPreview" src="" style="max-width:100%;max-height:160px;border-radius:6px;border:1px solid #e0e0e0;display:block"/>
 <button data-onclick="clearEditAnalysisImg(true)" style="margin-top:4px;background:none;border:none;color:#e74c3c;cursor:pointer;font-size:12px" type="button">✕ 删除解析图片</button>
@@ -102,6 +108,13 @@
 <button class="star-edit-btn" data-onclick="setModalDiff(2)" id="dstar2" type="button">★</button>
 <button class="star-edit-btn" data-onclick="setModalDiff(3)" id="dstar3" type="button">★</button>
 <span id="dstarLabel" style="font-size:12px;color:#aaa;margin-left:6px"></span>
+</div>
+</div>
+<div class="form-group">
+<label>时间 <span style="font-size:11px;color:#aaa">（单位：秒）</span></label>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<input id="editActualDurationSec" placeholder="当前用时" style="flex:1;min-width:120px;padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none" type="number" min="0"/>
+<input id="editTargetDurationSec" placeholder="应该用时" style="flex:1;min-width:120px;padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none" type="number" min="0"/>
 </div>
 </div>
 <div class="form-group">

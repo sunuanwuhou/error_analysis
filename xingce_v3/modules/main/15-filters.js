@@ -1,10 +1,46 @@
 // ============================================================
 // 筛选
 // ============================================================
-function setStatusFilter(s){ statusFilter=s;typeFilter=null;knowledgeNodeFilter=null;renderSidebar();renderAll(); }
-function setTypeFilter(t){ typeFilter={level:'type',value:t};knowledgeNodeFilter=null;renderSidebar();renderAll(); }
-function setSubFilter(t,s){ typeFilter={level:'subtype',type:t,value:s};knowledgeNodeFilter=null;renderSidebar();renderAll(); }
-function setReasonFilter(r){ reasonFilter=(reasonFilter===r)?null:r; knowledgeNodeFilter=null; renderSidebar();renderAll(); }
+function getTaskFilterLabel(mode){
+  const key = String(mode || 'all');
+  if (key === 'diagnose') return '待判因';
+  if (key === 'review_ready') return '待复盘';
+  if (key === 'retrain') return '待复训';
+  return '全部任务';
+}
+function matchTaskFilter(errorLike, mode){
+  const key = String(mode || 'all');
+  if (key === 'all') return true;
+  const e = typeof normalizeErrorForWorkflow === 'function' ? normalizeErrorForWorkflow({ ...(errorLike || {}) }) : (errorLike || {});
+  const stage = String(e.workflowStage || '');
+  if (key === 'diagnose') return stage === 'captured' || stage === 'diagnosing';
+  if (key === 'review_ready') return stage === 'review_ready';
+  if (key === 'retrain') return stage === 'retrain_due';
+  return true;
+}
+function setTaskFilter(mode){
+  taskFilter = ['diagnose', 'review_ready', 'retrain'].includes(String(mode || '')) ? String(mode) : 'all';
+  statusFilter='all';
+  typeFilter=null;
+  reasonFilter=null;
+  knowledgeNodeFilter=null;
+  searchKw='';
+  dateFrom='';
+  dateTo='';
+  const searchInput = document.getElementById('searchInput');
+  const dateFromInput = document.getElementById('dateFrom');
+  const dateToInput = document.getElementById('dateTo');
+  if (searchInput) searchInput.value = '';
+  if (dateFromInput) dateFromInput.value = '';
+  if (dateToInput) dateToInput.value = '';
+  if (typeof updateSearchClear === 'function') updateSearchClear();
+  renderSidebar();
+  renderAll();
+}
+function setStatusFilter(s){ taskFilter='all';statusFilter=s;typeFilter=null;knowledgeNodeFilter=null;renderSidebar();renderAll(); }
+function setTypeFilter(t){ taskFilter='all';typeFilter={level:'type',value:t};knowledgeNodeFilter=null;renderSidebar();renderAll(); }
+function setSubFilter(t,s){ taskFilter='all';typeFilter={level:'subtype',type:t,value:s};knowledgeNodeFilter=null;renderSidebar();renderAll(); }
+function setReasonFilter(r){ taskFilter='all';reasonFilter=(reasonFilter===r)?null:r; knowledgeNodeFilter=null; renderSidebar();renderAll(); }
 
 // ---- 错因表单逻辑（大类过滤 + 自由手填）----
 function initReasonCatSelect(){
@@ -67,6 +103,7 @@ function setSub2Filter(t,s,s2){
   } else {
     typeFilter={level:'sub2',type:t,subtype:s,value:s2};
   }
+  taskFilter='all';
   knowledgeNodeFilter=null;
   renderSidebar();renderAll();
 }
@@ -80,9 +117,10 @@ function onSearch(){
   // 高亮匹配项（可选：在菜单项中用 hl 函数高亮）
   renderAll();
 }
-function clearFilter(){ statusFilter='all';typeFilter=null;reasonFilter=null;knowledgeNodeFilter=null;searchKw='';dateFrom='';dateTo='';document.getElementById('searchInput').value='';document.getElementById('dateFrom').value='';document.getElementById('dateTo').value='';updateSearchClear();renderSidebar();renderAll(); }
+function clearFilter(){ taskFilter='all';statusFilter='all';typeFilter=null;reasonFilter=null;knowledgeNodeFilter=null;searchKw='';dateFrom='';dateTo='';document.getElementById('searchInput').value='';document.getElementById('dateFrom').value='';document.getElementById('dateTo').value='';updateSearchClear();renderSidebar();renderAll(); }
 function getFiltered(){
   return getErrorEntries().filter(e=>{
+    if(!matchTaskFilter(e, taskFilter)) return false;
     if(statusFilter!=='all' && normalizeErrorStatusValue(e.status)!==statusFilter) return false;
     if(knowledgeNodeFilter){
       const currentNode = getKnowledgeNodeById(knowledgeNodeFilter);
@@ -106,3 +144,6 @@ function getFiltered(){
     return true;
   });
 }
+
+window.getTaskFilterLabel = getTaskFilterLabel;
+window.matchTaskFilter = matchTaskFilter;

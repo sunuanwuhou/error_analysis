@@ -104,26 +104,25 @@ function buildPracticeTaskPack(limit) {
   const maxItems = Math.max(Number(limit) || 12, 4);
   const entries = getErrorEntries().filter(e => normalizeErrorStatusValue(e.status) !== 'mastered');
   const ranked = entries.map(e => {
-    const pack = computePracticeScore(e);
-    return { ...e, practiceScore: pack.score, priorityReasons: pack.reasons };
+    const normalized = typeof normalizeErrorForWorkflow === 'function' ? normalizeErrorForWorkflow({ ...e }) : { ...e };
+    const pack = computePracticeScore(normalized);
+    return { ...normalized, practiceScore: pack.score, priorityReasons: pack.reasons };
   }).sort((a, b) => {
     if (b.practiceScore !== a.practiceScore) return b.practiceScore - a.practiceScore;
     return String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''), 'zh');
   });
 
   const reviewQueue = ranked.filter(e => {
-    const hasReviewArtifact = !!String(e.rootReason || e.errorReason || e.analysis || e.note || e.nextAction || e.processCanvasData || '').trim();
-    const reviewCount = Number((e.quiz && e.quiz.reviewCount) || 0);
-    return reviewCount > 0 && !hasReviewArtifact;
+    const stage = String(e.workflowStage || '');
+    return stage === 'captured' || stage === 'diagnosing';
   }).slice(0, Math.min(6, maxItems));
 
+  const reviewReadyQueue = ranked.filter(e => String(e.workflowStage || '') === 'review_ready')
+    .slice(0, Math.min(6, maxItems));
+
   const retrainQueue = ranked.filter(e => {
-    const hasReviewArtifact = !!String(e.rootReason || e.errorReason || e.analysis || e.note || e.nextAction || e.processCanvasData || '').trim();
-    const reviewCount = Number((e.quiz && e.quiz.reviewCount) || 0);
-    const wrongCount = Number((e.quiz && e.quiz.wrongCount) || 0);
-    const summary = typeof getPracticeSummarySnapshotForError === 'function' ? (getPracticeSummarySnapshotForError(e) || {}) : {};
-    const lowConfidence = Number(summary.lastConfidence || 0) > 0 && Number(summary.lastConfidence || 0) <= 2;
-    return hasReviewArtifact && (reviewCount === 0 || wrongCount > 0 || lowConfidence);
+    const stage = String(e.workflowStage || '');
+    return stage === 'retrain_due';
   }).slice(0, Math.min(6, maxItems));
 
   const dailyQueue = ranked.slice(0, maxItems);
@@ -146,27 +145,29 @@ function buildPracticeTaskPack(limit) {
   Object.entries(typeMap).sort((a,b)=>b[1]-a[1]).slice(0,5).forEach(([name,count]) => weakestTypes.push({ name, count }));
 
   const advice = [];
-  if (reviewQueue.length) advice.push({ key:'review_queue', title:`先补 ${reviewQueue.length} 道待复盘题`, description:'这些题已经练过，但错因/总结/过程图还不完整。' });
-  if (retrainQueue.length) advice.push({ key:'retrain_queue', title:`优先复训 ${retrainQueue.length} 道不稳定题`, description:'这些题已有复盘痕迹，但最近仍做错、低把握或高耗时。' });
+  if (reviewQueue.length) advice.push({ key:'diagnose_queue', title:`先补 ${reviewQueue.length} 道待判因题`, description:'这些题已经录入，但判因、技巧或时间字段还不完整。' });
+  if (reviewReadyQueue.length) advice.push({ key:'review_ready_queue', title:`处理 ${reviewReadyQueue.length} 道待复盘题`, description:'这些题的判因信息已齐，可以优先复盘并进入训练。' });
+  if (retrainQueue.length) advice.push({ key:'retrain_queue', title:`优先复训 ${retrainQueue.length} 道不稳定题`, description:'这些题最近仍做错、低把握或高耗时，适合定向复训。' });
   if (dailyQueue.length) advice.push({ key:'daily_queue', title:`今天先练 ${dailyQueue.length} 道高优先级题`, description:'已按反复错、低把握、未掌握、长期未练综合排序。' });
 
   const mission = {
     total: dailyQueue.length,
-    reviewCount: reviewQueue.length,
+    diagnoseCount: reviewQueue.length,
+    reviewCount: reviewReadyQueue.length,
     retrainCount: retrainQueue.length,
     topScore: dailyQueue[0] ? Number(dailyQueue[0].practiceScore || 0) : 0,
-    suggestedDailyCount: Math.min(Math.max(8, reviewQueue.length + retrainQueue.length), Math.max(dailyQueue.length, 8)),
+    suggestedDailyCount: Math.min(Math.max(8, reviewQueue.length + reviewReadyQueue.length + retrainQueue.length), Math.max(dailyQueue.length, 8)),
     suggestedReviewCount: Math.min(Math.max(4, reviewQueue.length), Math.max(reviewQueue.length, 4)),
     suggestedRetrainCount: Math.min(Math.max(4, retrainQueue.length), Math.max(retrainQueue.length, 4)),
   };
 
-  return { dailyQueue, reviewQueue, retrainQueue, weakestReasons, weakestTypes, advice, mission, behavior: getPracticeBehaviorSnapshot(7) };
+  return { dailyQueue, reviewQueue, reviewReadyQueue, retrainQueue, weakestReasons, weakestTypes, advice, mission, behavior: getPracticeBehaviorSnapshot(7) };
 }
 
 function getTaskPackQueueByMode(mode, limit) {
   const taskPack = buildPracticeTaskPack(limit || 12);
   const normalized = String(mode || 'daily');
-  if (normalized === 'review') return taskPack.reviewQueue || [];
+  if (normalized === 'review') return taskPack.reviewReadyQueue || [];
   if (normalized === 'retrain') return taskPack.retrainQueue || [];
   return taskPack.dailyQueue || [];
 }
@@ -183,7 +184,7 @@ function updateSidebar() {
   const btn = document.getElementById('quizBtn');
   if (btn) {
     btn.classList.toggle('disabled', dueN===0);
-    btn.title = dueN ? `今日任务 ${dueN} 题 · 待复盘 ${taskPack.reviewQueue.length} · 待复训 ${taskPack.retrainQueue.length}` : '今日暂无任务';
+    btn.title = dueN ? `今日任务 ${dueN} 题 · 待判因 ${taskPack.reviewQueue.length} · 待复盘 ${taskPack.reviewReadyQueue.length} · 待复训 ${taskPack.retrainQueue.length}` : '今日暂无任务';
   }
   const fullN = getErrorEntries().filter(e => normalizeErrorStatusValue(e.status) !== 'mastered').length;
   const fullPracticeBadge = document.getElementById('fullPracticeBadge');

@@ -161,6 +161,14 @@ function copyAISummary() {
   });
 }
 
+async function openCCSummaryFromMore() {
+  openAIToolsModal();
+  switchAITab('summary');
+  const hasScopedContext = !!(typeFilter || reasonFilter || (statusFilter && statusFilter !== 'all') || dateFrom || dateTo || knowledgeNodeFilter || selectedKnowledgeNodeId);
+  if (hasScopedContext) await buildClaudeSummaryFiltered();
+  else await buildClaudeSummary();
+}
+
 async function buildClaudeSummaryFiltered() {
   // 用当前筛选状态生成摘要
   const output = document.getElementById('aiModuleSummaryOutput');

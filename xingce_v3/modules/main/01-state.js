@@ -66,6 +66,7 @@ const UI_KEY_KNOWLEDGE_TREE_FOCUS = 'xc_ui_knowledge_tree_focus';
 let errorsTopCollapsed = false;
 let knowledgeTreeFocusMode = false;
 let knowledgeTreeSearchQuery = '';
+let appView = 'home';
 
 // 错因分组定义（每个 reason 含简介 desc）
 const REASON_GROUPS = [
@@ -375,6 +376,17 @@ function isErrorEntry(item) {
 function normalizeEntryRecord(item, fallbackKind) {
   const record = item && typeof item === 'object' ? { ...item } : {};
   record.entryKind = normalizeEntryKind(record.entryKind, fallbackKind);
+  const addDate = String(record.addDate || '').trim();
+  const updatedAt = String(record.updatedAt || record.modifiedAt || record.lastModifiedAt || '').trim();
+  const masteryUpdatedAt = String(record.masteryUpdatedAt || record.masteredAt || '').trim();
+  const createdAt = String(record.createdAt || record.sentAt || record.sharedAt || record.ccSentAt || record.claudeSentAt || record.codexSentAt || '').trim();
+  if (addDate) record.addDate = addDate;
+  if (updatedAt) record.updatedAt = updatedAt;
+  if (masteryUpdatedAt) record.masteryUpdatedAt = masteryUpdatedAt;
+  if (createdAt) {
+    record.createdAt = createdAt;
+    if (!record.sentAt) record.sentAt = createdAt;
+  }
   return record;
 }
 function getErrorEntries() {

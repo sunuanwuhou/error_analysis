@@ -5,21 +5,24 @@
 </div>
 <div class="sidebar-tools">
 <div class="sidebar-tools-row workspace-entry-row">
-<button class="btn btn-secondary" disabled="" type="button">行测工作台</button>
+<button class="btn btn-secondary" data-onclick="switchAppView('home')" id="sidebarHomeBtn" type="button">学习首页</button>
+<button class="btn btn-secondary" data-onclick="openWorkspaceView('errors')" id="sidebarWorkspaceBtn" type="button">错题工作台</button>
 <button class="btn btn-secondary" data-onclick="window.location.href='/shenlun'" type="button">申论工作台</button>
 </div>
 <div class="sidebar-tools-row">
-<button class="btn btn-primary" data-onclick="openQuickAddModal()">＋ 添加</button>
+<button class="btn btn-primary" data-onclick="openQuickAddModal()">+ 添加</button>
 <div class="more-menu" id="moreMenu">
 <button class="btn btn-secondary" data-onclick="toggleMoreMenu(event)">更多</button>
 <div class="more-menu-panel" id="moreMenuPanel">
-<button class="btn btn-secondary" data-onclick="closeMoreMenu();openQuickImportModal()">⬆ 导入错题</button>
-<button class="btn btn-secondary" data-onclick="closeMoreMenu();openExportModal()">⬇ 导出</button>
-<button class="btn btn-secondary" data-onclick="closeMoreMenu();clearCurrentModuleErrors()">🧹 清空当前模块</button>
-<button class="btn btn-secondary" data-onclick="closeMoreMenu();clearAllErrorsData()">🗑 清空全部错题</button>
-<button class="btn btn-secondary" data-onclick="closeMoreMenu();resetAllStudyData()">♻ 重置全部学习数据</button>
-<button class="btn btn-secondary" data-onclick="closeMoreMenu();openDashboard()">📊 统计</button>
-<button class="btn btn-secondary" data-onclick="closeMoreMenu();printList()">🖨 打印</button>
+<button class="btn btn-secondary" data-onclick="closeMoreMenu();openQuickImportModal()">导入错题</button>
+<button class="btn btn-secondary" data-onclick="closeMoreMenu();openExportModal()">导出</button>
+<button class="btn btn-secondary" data-onclick="closeMoreMenu();openClaudeHelper()">发给CC</button>
+<button class="btn btn-secondary" data-onclick="closeMoreMenu();switchAppView('home')">首页</button>
+<button class="btn btn-secondary" data-onclick="closeMoreMenu();openDashboard()">学习统计</button>
+<button class="btn btn-secondary" data-onclick="closeMoreMenu();clearCurrentModuleErrors()">清空当前模块</button>
+<button class="btn btn-secondary" data-onclick="closeMoreMenu();clearAllErrorsData()">清空全部错题</button>
+<button class="btn btn-secondary" data-onclick="closeMoreMenu();resetAllStudyData()">重置全部学习数据</button>
+<button class="btn btn-secondary" data-onclick="closeMoreMenu();printList()">打印</button>
 </div>
 </div>
 </div>
@@ -42,11 +45,11 @@
 </div>
 <div class="quiz-block">
 <button class="quiz-btn" data-onclick="startQuiz()" id="quizBtn">
-<span>📝 今日训练</span>
+<span>今日训练</span>
 <span class="badge" id="quizBadge">0</span>
 </button>
 <button class="quiz-btn" data-onclick="startFullPractice()" id="fullPracticeBtn" style="margin-top:6px;background:linear-gradient(135deg,#3498db,#2471a3)">
-<span>📚 全量练习</span>
+<span>全量练习</span>
 <span class="badge" id="fullPracticeBadge">0</span>
 </button>
 <div class="today-progress">
@@ -57,9 +60,9 @@
 <div class="sidebar-tree-toolbar">
 <div class="sidebar-tree-toolbar-row">
 <div class="sidebar-tree-search">
-<span class="search-icon">🔎</span>
+<span class="search-icon">搜索</span>
 <input data-oninput="onKnowledgeTreeSearchInput()" id="knowledgeTreeSearchInput" placeholder="搜索知识树节点..." type="text"/>
-<button aria-label="清空知识树搜索" class="search-clear" data-onclick="clearKnowledgeTreeSearch()" id="knowledgeTreeSearchClear" type="button">✕</button>
+<button aria-label="清空知识树搜索" class="search-clear" data-onclick="clearKnowledgeTreeSearch()" id="knowledgeTreeSearchClear" type="button">×</button>
 </div>
 <button class="btn btn-secondary" data-onclick="toggleKnowledgeTreeFocusMode()" id="knowledgeTreeFocusBtn" type="button">专注树</button>
 </div>

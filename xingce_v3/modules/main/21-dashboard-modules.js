@@ -329,3 +329,68 @@ function renderDashModule(idx, type) {
       ${_practiceInsightsState.error ? `<div style="color:#cf1322;font-size:12px;margin-top:8px">调度数据加载失败：${escapeHtml(_practiceInsightsState.error)}</div>` : ''}
     </div>`;
 }
+
+function renderHomeDashboard() {
+  const mount = document.getElementById('homeDashboardContent');
+  if (!mount) return;
+  const taskPack = typeof buildPracticeTaskPack === 'function' ? buildPracticeTaskPack(12) : null;
+  if (!taskPack) {
+    mount.innerHTML = '<div class="home-dashboard-card">首页数据暂不可用</div>';
+    return;
+  }
+  const reviewQueue = taskPack.reviewQueue || [];
+  const retrainQueue = taskPack.retrainQueue || [];
+  const dailyQueue = taskPack.dailyQueue || [];
+  const weakestReasons = taskPack.weakestReasons || [];
+  const actionItems = (taskPack.advice || []).slice(0, 4).map(item => `
+    <div class="home-action-item">
+      <strong>${escapeHtml(item.title || '')}</strong>
+      <span>${escapeHtml(item.description || '')}</span>
+    </div>
+  `).join('');
+  const noteItems = reviewQueue.slice(0, 4).map(item => `
+    <div class="home-note-item">
+      <strong>${escapeHtml((item.question || '').slice(0, 40) || '待复盘题目')}</strong>
+      <span>${escapeHtml((item.priorityReasons || []).join(' / ') || '先补复盘')}</span>
+    </div>
+  `).join('');
+  const reasonItems = weakestReasons.slice(0, 4).map(item => `
+    <div class="home-action-item">
+      <strong>${escapeHtml(item.name || '')}</strong>
+      <span>最近出现 ${Number(item.count || 0)} 次</span>
+    </div>
+  `).join('');
+  mount.innerHTML = `
+    <div class="home-dashboard-grid">
+      <div class="home-dashboard-card">
+        <h3>今日任务</h3>
+        <div class="home-metric-row">
+          <div class="home-metric"><strong>${dailyQueue.length}</strong><span>今日建议</span></div>
+          <div class="home-metric"><strong>${reviewQueue.length}</strong><span>待复盘</span></div>
+          <div class="home-metric"><strong>${retrainQueue.length}</strong><span>待复训</span></div>
+          <div class="home-metric"><strong>${taskPack.behavior ? taskPack.behavior.accuracy : 0}%</strong><span>近 7 日正确率</span></div>
+        </div>
+        <div class="home-shell-actions" style="margin-top:14px">
+          <button class="btn btn-primary" data-onclick="startPracticeQueue('daily')">开始今日任务</button>
+          <button class="btn btn-secondary" data-onclick="startPracticeQueue('review')">先补待复盘</button>
+          <button class="btn btn-secondary" data-onclick="startPracticeQueue('retrain')">先做待复训</button>
+          <button class="btn btn-secondary" data-onclick="openDashboard()">看完整统计</button>
+        </div>
+        <div class="home-action-list" style="margin-top:16px">
+          ${actionItems || '<div class="home-action-item"><strong>暂无任务建议</strong><span>可以直接进入错题工作台继续整理。</span></div>'}
+        </div>
+      </div>
+      <div class="home-dashboard-card">
+        <h3>当前最该先补的题</h3>
+        <div class="home-note-list">
+          ${noteItems || '<div class="home-note-item"><strong>暂无待复盘题</strong><span>当前可以直接进入工作台录题或开始训练。</span></div>'}
+        </div>
+        <h3 style="margin-top:18px">高频弱点</h3>
+        <div class="home-action-list">
+          ${reasonItems || '<div class="home-action-item"><strong>暂无明显弱点</strong><span>继续保持当前节奏即可。</span></div>'}
+        </div>
+      </div>
+    </div>`;
+}
+
+window.renderHomeDashboard = renderHomeDashboard;

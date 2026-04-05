@@ -63,6 +63,8 @@ async function refreshRuntimeBadge() {
   renderSidebar();
   renderAll();
   renderNotesByType();
+  if (typeof syncAppViewChrome === 'function') syncAppViewChrome();
+  if (typeof renderHomeDashboard === 'function') renderHomeDashboard();
   renderCodexContextLine();
   checkStorageUsage();
 

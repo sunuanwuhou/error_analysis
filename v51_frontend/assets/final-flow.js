@@ -318,16 +318,7 @@
   }
 
   function injectSidebarEntry(){
-    const quizBlock = document.querySelector('.quiz-block');
-    if(!quizBlock || document.getElementById('attemptsBtn')) return;
-    const btn = document.createElement('button');
-    btn.className = 'quiz-btn';
-    btn.id = 'attemptsBtn';
-    btn.style.marginTop = '6px';
-    btn.style.background = 'linear-gradient(135deg,#0f766e,#115e59)';
-    btn.innerHTML = '<span>🧾 做题记录</span><span class="badge" style="background:#ecfeff;color:#155e75">New</span>';
-    btn.addEventListener('click', openPracticeAttemptsModal);
-    quizBlock.appendChild(btn);
+    return;
   }
 
   function simplifyChrome(){
