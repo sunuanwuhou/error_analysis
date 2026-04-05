@@ -239,6 +239,12 @@
       if(touchedErrorIds.length && typeof window.invalidatePracticeAttemptSummaries === 'function'){
         window.invalidatePracticeAttemptSummaries(touchedErrorIds);
       }
+      if(typeof window.invalidatePracticeWorkbench === 'function'){
+        window.invalidatePracticeWorkbench();
+      }
+      if(typeof window.renderHomeDashboard === 'function' && (window.currentAppView === 'home' || document.getElementById('homeView')?.classList.contains('active'))){
+        window.renderHomeDashboard();
+      }
     }catch(e){
       console.warn('save attempts failed:', e);
       window.showToast && showToast('做题记录同步失败，已保留在本地会话', 'warning');

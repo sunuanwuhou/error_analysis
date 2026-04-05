@@ -3,6 +3,7 @@
 // ============================================================
 let _dashTrendDays = 7; // 7 或 30
 let _practiceInsightsState = { loading:false, loaded:false, error:'', data:null };
+let _practiceWorkbenchState = { loading:false, loaded:false, error:'', data:null };
 
 async function openDashboard() {
   const tabs = ['总览', ...new Set(getErrorEntries().map(e=>e.type))];
@@ -41,6 +42,31 @@ async function ensurePracticeInsightsLoaded(force) {
       renderDashOverview(0);
     }
   }
+}
+
+async function ensurePracticeWorkbenchLoaded(force) {
+  if (_practiceWorkbenchState.loading) return;
+  if (_practiceWorkbenchState.loaded && !force) return;
+  _practiceWorkbenchState.loading = true;
+  _practiceWorkbenchState.error = '';
+  try {
+    const data = await fetchJsonWithAuth('/api/practice/workbench?limit=6');
+    _practiceWorkbenchState.data = data || null;
+    _practiceWorkbenchState.loaded = !!(data && data.ok !== false);
+  } catch (err) {
+    console.warn('practice workbench load failed:', err);
+    _practiceWorkbenchState.error = err?.message || '鍔犺浇澶辫触';
+  } finally {
+    _practiceWorkbenchState.loading = false;
+    if (typeof renderHomeDashboard === 'function') renderHomeDashboard();
+  }
+}
+
+function invalidatePracticeWorkbench() {
+  _practiceWorkbenchState.loaded = false;
+  _practiceWorkbenchState.loading = false;
+  _practiceWorkbenchState.error = '';
+  _practiceWorkbenchState.data = null;
 }
 
 function renderPracticeInsightList(items, emptyText, reasonKey) {
@@ -333,16 +359,25 @@ function renderDashModule(idx, type) {
 function renderHomeDashboard() {
   const mount = document.getElementById('homeDashboardContent');
   if (!mount) return;
+  if (!_practiceWorkbenchState.loaded && !_practiceWorkbenchState.loading) {
+    ensurePracticeWorkbenchLoaded();
+  }
   const taskPack = typeof buildPracticeTaskPack === 'function' ? buildPracticeTaskPack(12) : null;
   if (!taskPack) {
     mount.innerHTML = '<div class="home-dashboard-card">首页数据暂不可用</div>';
     return;
   }
-  const reviewQueue = taskPack.reviewQueue || [];
-  const retrainQueue = taskPack.retrainQueue || [];
-  const dailyQueue = taskPack.dailyQueue || [];
-  const weakestReasons = taskPack.weakestReasons || [];
-  const actionItems = (taskPack.advice || []).slice(0, 4).map(item => `
+  const remotePack = _practiceWorkbenchState.loaded ? (_practiceWorkbenchState.data || {}) : null;
+  const reviewQueue = remotePack?.reviewQueue || taskPack.reviewQueue || [];
+  const retrainQueue = remotePack?.retrainQueue || taskPack.retrainQueue || [];
+  const dailyQueue = remotePack?.dailyQueue || taskPack.dailyQueue || [];
+  const weakestReasons = remotePack?.weaknessGroups || remotePack?.weakestReasons || taskPack.weakestReasons || [];
+  const behavior = remotePack?.behavior || taskPack.behavior || {};
+  const overview = remotePack?.overview || {};
+  const loadingHint = _practiceWorkbenchState.loading
+    ? '<div class="home-action-item"><strong>任务工作台已接入</strong><span>正在后台刷新今日任务和弱点汇总。</span></div>'
+    : '';
+  const actionItems = (remotePack?.advice || taskPack.advice || []).slice(0, 4).map(item => `
     <div class="home-action-item">
       <strong>${escapeHtml(item.title || '')}</strong>
       <span>${escapeHtml(item.description || '')}</span>
@@ -356,7 +391,7 @@ function renderHomeDashboard() {
   `).join('');
   const reasonItems = weakestReasons.slice(0, 4).map(item => `
     <div class="home-action-item">
-      <strong>${escapeHtml(item.name || '')}</strong>
+      <strong>${escapeHtml(item.name || item.topType || '')}</strong>
       <span>最近出现 ${Number(item.count || 0)} 次</span>
     </div>
   `).join('');
@@ -368,7 +403,7 @@ function renderHomeDashboard() {
           <div class="home-metric"><strong>${dailyQueue.length}</strong><span>今日建议</span></div>
           <div class="home-metric"><strong>${reviewQueue.length}</strong><span>待复盘</span></div>
           <div class="home-metric"><strong>${retrainQueue.length}</strong><span>待复训</span></div>
-          <div class="home-metric"><strong>${taskPack.behavior ? taskPack.behavior.accuracy : 0}%</strong><span>近 7 日正确率</span></div>
+          <div class="home-metric"><strong>${behavior ? (behavior.accuracy || 0) : 0}%</strong><span>近 7 日正确率</span></div>
         </div>
         <div class="home-shell-actions" style="margin-top:14px">
           <button class="btn btn-primary" data-onclick="startPracticeQueue('daily')">开始今日任务</button>
@@ -377,7 +412,7 @@ function renderHomeDashboard() {
           <button class="btn btn-secondary" data-onclick="openDashboard()">看完整统计</button>
         </div>
         <div class="home-action-list" style="margin-top:16px">
-          ${actionItems || '<div class="home-action-item"><strong>暂无任务建议</strong><span>可以直接进入错题工作台继续整理。</span></div>'}
+          ${actionItems || loadingHint || '<div class="home-action-item"><strong>暂无任务建议</strong><span>可以直接进入错题工作台继续整理。</span></div>'}
         </div>
       </div>
       <div class="home-dashboard-card">
@@ -394,3 +429,4 @@ function renderHomeDashboard() {
 }
 
 window.renderHomeDashboard = renderHomeDashboard;
+window.invalidatePracticeWorkbench = invalidatePracticeWorkbench;

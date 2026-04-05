@@ -562,6 +562,115 @@ def get_practice_daily(
     }
 
 
+@router.get("/api/practice/workbench")
+def get_practice_workbench(
+    limit: int = 6,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    user = require_user(xingce_session)
+    errors = get_backup_errors(user["id"])
+    normalized_limit = max(1, min(limit, 12))
+    behavior_map = _read_attempt_behavior_map(
+        user["id"],
+        error_ids=[str(e.get("id") or "") for e in errors],
+        question_ids=[str(e.get("questionId") or e.get("id") or "") for e in errors],
+        limit=max(len(errors) * 4, 200),
+    )
+    insights = _build_practice_insights(
+        errors,
+        behavior_map,
+        daily_limit=max(normalized_limit * 2, 12),
+        review_limit=normalized_limit,
+    )
+
+    review_queue = list(insights.get("reviewQueue") or [])
+    retrain_queue = list(insights.get("retrainQueue") or [])
+    daily_queue = list(insights.get("dailyQueue") or [])
+
+    stable_candidates: list[dict[str, Any]] = []
+    weakness_groups: dict[str, dict[str, Any]] = {}
+    review_ids = {str(item.get("id") or "") for item in review_queue}
+    retrain_ids = {str(item.get("id") or "") for item in retrain_queue}
+
+    for error in errors:
+        error_id = str(error.get("id") or "").strip()
+        if not error_id:
+            continue
+        behavior = behavior_map.get(error_id) or {}
+        review_done = bool(behavior.get("closureDone")) or any(
+            str(error.get(key) or "").strip()
+            for key in ("rootReason", "errorReason", "analysis", "nextAction", "tip")
+        )
+        recent_attempt_count = int(behavior.get("recentAttemptCount") or 0)
+        recent_wrong_count = int(behavior.get("recentWrongCount") or 0)
+        recent_correct_count = int(behavior.get("recentCorrectCount") or 0)
+        confidence = int(behavior.get("lastConfidence") or 0)
+        last_result = str(behavior.get("lastResult") or "")
+
+        if error_id not in review_ids and error_id not in retrain_ids and review_done and recent_attempt_count > 0:
+            if recent_correct_count >= 1 and recent_wrong_count <= 1 and (last_result == "correct" or confidence >= 3):
+                stable_candidates.append(summarize_error(error) | behavior)
+
+        weakness_name = str(
+            error.get("rootReason")
+            or behavior.get("lastMistakeType")
+            or error.get("errorReason")
+            or ""
+        ).strip()
+        if weakness_name:
+            group = weakness_groups.setdefault(
+                weakness_name,
+                {
+                    "name": weakness_name,
+                    "count": 0,
+                    "ids": [],
+                    "items": [],
+                    "types": Counter(),
+                },
+            )
+            group["count"] += 1
+            group["ids"].append(error_id)
+            if len(group["items"]) < normalized_limit:
+                group["items"].append(summarize_error(error) | behavior)
+            type_name = str(error.get("type") or "").strip()
+            if type_name:
+                group["types"][type_name] += 1
+
+    stable_queue = stable_candidates[:normalized_limit]
+    weakness_list: list[dict[str, Any]] = []
+    for entry in weakness_groups.values():
+        types_counter = entry.pop("types")
+        top_type = types_counter.most_common(1)[0][0] if types_counter else "未分类"
+        weakness_list.append({**entry, "topType": top_type})
+    weakness_list.sort(key=lambda item: (-int(item.get("count") or 0), str(item.get("name") or "")))
+
+    total = len(errors)
+    overview = {
+        "totalErrors": total,
+        "reviewCount": len(review_queue),
+        "retrainCount": len(retrain_queue),
+        "stabilizingCount": len(stable_queue),
+        "stableCount": max(total - len(review_queue) - len(retrain_queue) - len(stable_queue), 0),
+        "attemptTrackedCount": len(behavior_map),
+    }
+
+    return {
+        "ok": True,
+        "overview": overview,
+        "advice": insights.get("advice") or [],
+        "mission": insights.get("mission") or {},
+        "behavior": insights.get("behavior") or {},
+        "weakestTypes": insights.get("weakestTypes") or [],
+        "weakestReasons": insights.get("weakestReasons") or [],
+        "dailyQueue": daily_queue[: normalized_limit * 2],
+        "reviewQueue": review_queue[:normalized_limit],
+        "retrainQueue": retrain_queue[:normalized_limit],
+        "stabilizingQueue": stable_queue,
+        "stableQueue": [],
+        "weaknessGroups": weakness_list[:normalized_limit],
+    }
+
+
 @router.get("/api/practice/insights")
 def get_practice_insights(
     limit: int = 6,
