@@ -443,6 +443,15 @@ function setNextIncrementalSyncAt(at) {
   cloudMeta.nextIncrementalSyncAt = String(at || '');
   saveCloudMeta();
 }
+function scheduleDeferredSlowSync() {
+  const dueAt = new Date(Date.now() + AUTO_SYNC_DELAY_MS).toISOString();
+  setNextIncrementalSyncAt(dueAt);
+  if (incrementalSyncTimer) clearTimeout(incrementalSyncTimer);
+  incrementalSyncTimer = setTimeout(() => {
+    incrementalSyncTimer = null;
+    syncWithServer({ forceFullPull: true });
+  }, AUTO_SYNC_DELAY_MS);
+}
 function isScheduledAtDue(isoText) {
   const value = Date.parse(String(isoText || '').trim());
   if (!Number.isFinite(value)) return false;
@@ -1042,8 +1051,7 @@ async function saveCloudBackup(opts) {
     opts = { ...opts, forceOverwrite: true };
   }
   if (opts.silent && cloudConflictBlocked && !opts.forceOverwrite) {
-    setCloudSyncState('dirty', '云端版本有冲突，已暂停自动覆盖，请先确认后处理', cloudMeta.lastSeenBackupAt || '');
-    return;
+    cloudConflictBlocked = false;
   }
   if (cloudBusy) return;
   if (cloudSaveTimer) {
@@ -1077,6 +1085,14 @@ async function saveCloudBackup(opts) {
       if (data.currentUpdatedAt) {
         cloudMeta.lastSeenBackupAt = data.currentUpdatedAt;
         saveCloudMeta();
+      }
+      if (opts.silent) {
+        cloudConflictBlocked = false;
+        pendingCloudSave = true;
+        setCloudSyncState('dirty', '云端有更新，已切换为后台慢同步，本地改动会稍后自动继续合并', data.currentUpdatedAt || '');
+        scheduleDeferredSlowSync();
+        setNextCloudSaveAt(new Date(Date.now() + AUTO_SYNC_DELAY_MS).toISOString());
+        return;
       }
       cloudConflictBlocked = true;
       setCloudSyncState('dirty', '发现云端版本更新，已暂停自动覆盖，请先确认时间', data.currentUpdatedAt || '');
@@ -1117,11 +1133,6 @@ function scheduleCloudSave() {
   if (!cloudUser) {
     setCloudSyncState('dirty', '本地改动已记录，登录后再继续处理', '');
     pendingCloudSave = true;
-    return;
-  }
-  if (cloudConflictBlocked) {
-    pendingCloudSave = true;
-    setCloudSyncState('dirty', '云端版本有冲突，已暂停自动处理，请先点 Cloud Load 或手动 Cloud Save', cloudMeta.lastSeenBackupAt || '');
     return;
   }
   clearTimeout(cloudSaveTimer);
