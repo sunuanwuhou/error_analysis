@@ -6,7 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.config import BASE_DIR, FRONTEND_ASSETS_DIR, V51_STATIC_DIR
+from app.config import BASE_DIR, V51_STATIC_DIR
 from app.core import on_startup
 from app.routers import ai, auth, backup, codex, images, knowledge, practice, sync, web
 
@@ -30,14 +30,11 @@ def create_app() -> FastAPI:
     app.mount("/assets", StaticFiles(directory=str(BASE_DIR / "xingce_v3")), name="assets")
     if V51_STATIC_DIR.exists():
         app.mount("/v51-static", StaticFiles(directory=str(V51_STATIC_DIR)), name="v51-static")
-    if FRONTEND_ASSETS_DIR.exists():
-        app.mount("/new/assets", StaticFiles(directory=str(FRONTEND_ASSETS_DIR)), name="new-assets")
-
     @app.middleware("http")
     async def disable_static_cache_for_local_debug(request: Request, call_next):
         response = await call_next(request)
         path = request.url.path or ""
-        if path in {"/", "/legacy", "/new", "/v51", "/v53", "/login"} or path.startswith("/new/") or path.startswith("/v51/") or path.startswith("/v53/") or path.startswith("/assets/"):
+        if path in {"/", "/legacy", "/v51", "/v53", "/login"} or path.startswith("/v51/") or path.startswith("/v53/") or path.startswith("/assets/"):
             response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
             response.headers["Pragma"] = "no-cache"
             response.headers["Expires"] = "0"

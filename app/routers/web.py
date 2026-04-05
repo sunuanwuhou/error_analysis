@@ -98,7 +98,6 @@ def shenlun_root(xingce_session: Optional[str] = Cookie(default=None)) -> Respon
         },
     )
 
-@router.get("/new")
 @router.get("/v51")
 @router.get("/v53")
 def new_frontend_root(xingce_session: Optional[str] = Cookie(default=None)) -> Response:
@@ -107,7 +106,6 @@ def new_frontend_root(xingce_session: Optional[str] = Cookie(default=None)) -> R
         return RedirectResponse(url="/login", status_code=302)
     return RedirectResponse(url="/", status_code=302)
 
-@router.get("/new/{path:path}")
 @router.get("/v51/{path:path}")
 @router.get("/v53/{path:path}")
 def new_frontend_spa(path: str, xingce_session: Optional[str] = Cookie(default=None)) -> Response:
