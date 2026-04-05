@@ -75,9 +75,23 @@ async function refreshRuntimeBadge() {
     }
   });
   document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && typeof scheduleForegroundCloudWakeCheck === 'function') {
+      scheduleForegroundCloudWakeCheck();
+    }
     if (document.visibilityState === 'hidden' && cloudSaveTimer) {
       clearTimeout(cloudSaveTimer);
       saveCloudBackup({ silent: true });
     }
   });
+  window.addEventListener('focus', () => {
+    if (typeof scheduleForegroundCloudWakeCheck === 'function') {
+      scheduleForegroundCloudWakeCheck();
+    }
+  });
+  setInterval(() => {
+    if (document.visibilityState !== 'visible') return;
+    if (typeof scheduleForegroundCloudWakeCheck === 'function') {
+      scheduleForegroundCloudWakeCheck();
+    }
+  }, 3 * 60 * 1000);
 })();

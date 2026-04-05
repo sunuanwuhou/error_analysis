@@ -322,8 +322,12 @@ let cloudDetailsExpanded = false;
 let cloudMeta = getDefaultCloudMeta();
 const LARGE_CLOUD_BACKUP_BYTES = 1.5 * 1024 * 1024;
 const MOBILE_DEFERRED_RESTORE_BYTES = 600 * 1024;
+const STARTUP_CLOUD_META_TTL_MS = 5 * 60 * 1000;
+const STARTUP_INCREMENTAL_SYNC_TTL_MS = 45 * 1000;
+const FOREGROUND_CLOUD_CHECK_TTL_MS = 2 * 60 * 1000;
 let deferredCloudRestorePromise = null;
 let deferredCloudRestoreUpdatedAt = '';
+let backgroundCloudBootstrapTimer = null;
 function toggleCloudDetails() {
   cloudDetailsExpanded = !cloudDetailsExpanded;
   renderCloudUi();
@@ -403,11 +407,85 @@ function getDefaultCloudMeta() {
     lastSeenBackupAt: '',
     lastLoadedAt: '',
     lastSavedAt: '',
-    lastLocalChangeAt: ''
+    lastLocalChangeAt: '',
+    lastMetaCheckAt: '',
+    lastIncrementalSyncAt: ''
   };
 }
 function saveCloudMeta() {
   DB.set(KEY_CLOUD_META, JSON.stringify(cloudMeta || getDefaultCloudMeta()));
+}
+function getIsoAgeMs(isoText) {
+  const value = Date.parse(String(isoText || '').trim());
+  if (!Number.isFinite(value)) return Number.POSITIVE_INFINITY;
+  return Math.max(0, Date.now() - value);
+}
+function markCloudMetaChecked(at) {
+  if (!cloudMeta || typeof cloudMeta !== 'object') cloudMeta = getDefaultCloudMeta();
+  cloudMeta.lastMetaCheckAt = String(at || new Date().toISOString());
+  saveCloudMeta();
+}
+function markIncrementalSyncChecked(at) {
+  if (!cloudMeta || typeof cloudMeta !== 'object') cloudMeta = getDefaultCloudMeta();
+  cloudMeta.lastIncrementalSyncAt = String(at || new Date().toISOString());
+  saveCloudMeta();
+}
+function hasPendingIncrementalOps() {
+  return getPendingOps().length > 0;
+}
+function shouldCheckCloudMetaOnStartup() {
+  if (!hasLocalWorkspaceData()) return true;
+  return getIsoAgeMs(cloudMeta && cloudMeta.lastMetaCheckAt) >= STARTUP_CLOUD_META_TTL_MS;
+}
+function shouldRunIncrementalSyncOnStartup() {
+  if (hasPendingIncrementalOps()) return true;
+  return getIsoAgeMs(cloudMeta && cloudMeta.lastIncrementalSyncAt) >= STARTUP_INCREMENTAL_SYNC_TTL_MS;
+}
+function shouldCheckCloudMetaInForeground() {
+  if (!hasLocalWorkspaceData()) return true;
+  return getIsoAgeMs(cloudMeta && cloudMeta.lastMetaCheckAt) >= FOREGROUND_CLOUD_CHECK_TTL_MS;
+}
+function shouldRunIncrementalSyncInForeground() {
+  if (hasPendingIncrementalOps()) return true;
+  return getIsoAgeMs(cloudMeta && cloudMeta.lastIncrementalSyncAt) >= FOREGROUND_CLOUD_CHECK_TTL_MS;
+}
+async function runBackgroundCloudBootstrap(strategy) {
+  const run = async () => {
+    if (!cloudUser) return;
+    try {
+      const mode = String(strategy || 'startup');
+      const checkMeta = mode === 'startup' ? shouldCheckCloudMetaOnStartup() : shouldCheckCloudMetaInForeground();
+      const checkIncremental = mode === 'startup' ? shouldRunIncrementalSyncOnStartup() : shouldRunIncrementalSyncInForeground();
+      if (checkMeta) {
+        await maybeRestoreCloudBackup();
+      }
+      if (checkIncremental) {
+        await syncWithServer();
+      }
+    } finally {
+      renderCloudUi();
+      if (pendingCloudSave) {
+        pendingCloudSave = false;
+        scheduleCloudSave();
+      }
+    }
+  };
+  return run();
+}
+function scheduleBackgroundCloudBootstrap(strategy) {
+  const run = () => { runBackgroundCloudBootstrap(strategy); };
+  if (typeof window.requestIdleCallback === 'function') {
+    window.requestIdleCallback(() => { run(); }, { timeout: 1200 });
+    return;
+  }
+  setTimeout(() => { run(); }, 120);
+}
+function scheduleForegroundCloudWakeCheck() {
+  if (backgroundCloudBootstrapTimer) clearTimeout(backgroundCloudBootstrapTimer);
+  backgroundCloudBootstrapTimer = setTimeout(() => {
+    backgroundCloudBootstrapTimer = null;
+    scheduleBackgroundCloudBootstrap('foreground');
+  }, 180);
 }
 function getCloudBackupBytes(meta) {
   return Number(meta && meta.payloadBytes || 0);
@@ -683,6 +761,7 @@ async function maybeRestoreCloudBackup() {
   cloudBusy = true;
   try {
     const meta = await fetchCloudBackupMeta();
+    markCloudMetaChecked();
     if (!meta.exists) return;
     const updatedAt = meta.updatedAt || '';
     const originKey = getCloudOriginKey();
@@ -780,29 +859,29 @@ function renderCloudUi() {
 }
 function getCloudSyncBadgeLabel(state) {
   return ({
-    idle: '待同步',
-    dirty: '本地有改动',
-    saving: '同步中',
-    synced: '已同步',
-    error: '同步失败'
+    idle: '就绪',
+    dirty: '本地较新',
+    saving: '后台处理中',
+    synced: '已对齐',
+    error: '需处理'
   })[state] || state;
 }
 function getCloudFreshnessText(localIso, cloudIso) {
   const localMs = toCloudTimeMs(localIso);
   const cloudMs = toCloudTimeMs(cloudIso);
   if (!localMs && !cloudMs) return '';
-  if (localMs && !cloudMs) return '当前只有本地记录，云端还没有备份时间';
-  if (!localMs && cloudMs) return '当前只有云端记录，本地还没有变更时间';
-  if (localMs > cloudMs) return '本地比云端更新，下一次保存会把新改动推到云端';
-  if (cloudMs > localMs) return '云端比本地更新，建议先看详情确认再覆盖';
+  if (localMs && !cloudMs) return '当前只有本地记录，云端还没有备份';
+  if (!localMs && cloudMs) return '当前只有云端记录，本地还没有记录';
+  if (localMs > cloudMs) return '本地时间更新，后续会在后台继续对齐';
+  if (cloudMs > localMs) return '云端时间更新，建议先确认后再覆盖';
   return '本地与云端时间一致';
 }
 function getCloudActionHint(state) {
-  if (state === 'error') return '可直接点 Cloud Save 重试';
-  if (state === 'dirty') return '本地改动已记录，等待自动同步';
-  if (state === 'saving') return '正在上传当前页面数据，请先不要重复点击';
-  if (state === 'synced') return '当前页面的数据已经写到云端';
-  return '本地修改会自动尝试同步到云端';
+  if (state === 'error') return '可点 Cloud Load 或 Cloud Save 重新处理';
+  if (state === 'dirty') return '本地改动已记住，系统会在后台继续处理';
+  if (state === 'saving') return '正在后台处理，不需要重复点击';
+  if (state === 'synced') return '当前入口和云端已经对齐';
+  return '默认先使用本地数据，必要时再后台检查云端';
 }
 renderCloudUi = function() {
   const badge = document.getElementById('cloudUserBadge');
@@ -871,14 +950,9 @@ async function refreshCloudSession() {
     window.location.replace('/login');
     return;
   }
-  setCloudSyncState('idle', '已登录，等待本地或云端同步动作', '');
-  await maybeRestoreCloudBackup();
-  await syncWithServer();
+  setCloudSyncState('idle', '已登录，默认优先显示本地数据', '');
   renderCloudUi();
-  if (pendingCloudSave) {
-    pendingCloudSave = false;
-    scheduleCloudSave();
-  }
+  scheduleBackgroundCloudBootstrap();
 }
 async function logoutCloud() {
   try {
@@ -896,7 +970,7 @@ async function loadCloudBackup(opts) {
   }
   if (cloudBusy) return;
   cloudBusy = true;
-  setCloudSyncState('saving', '正在拉取云端备份', '');
+  setCloudSyncState('saving', '正在检查云端备份', '');
   try {
     const meta = await fetchCloudBackupMeta();
     if (!meta.exists) {
@@ -923,7 +997,7 @@ async function loadCloudBackup(opts) {
     await applyCloudBackup({ ...data.backup, summary: data.summary || {} }, updatedAt || data.backup.exportTime || '', { ...opts, forceOverwriteLocal: true, staged: true, skipCompletionAlert: true });
     cloudConflictBlocked = false;
   } catch (e) {
-    setCloudSyncState('error', e.message || '云端加载失败，请稍后重试', '');
+    setCloudSyncState('error', e.message || '云端检查失败，请稍后重试', '');
     if (!opts.silent) showToast(e.message || '云端加载失败，请稍后重试', 'error');
   } finally {
     cloudBusy = false;
@@ -941,7 +1015,7 @@ async function saveCloudBackup(opts) {
     opts = { ...opts, forceOverwrite: true };
   }
   if (opts.silent && cloudConflictBlocked && !opts.forceOverwrite) {
-    setCloudSyncState('dirty', '云端版本有冲突，已暂停自动同步，请先处理冲突', cloudMeta.lastSeenBackupAt || '');
+    setCloudSyncState('dirty', '云端版本有冲突，已暂停自动覆盖，请先确认后处理', cloudMeta.lastSeenBackupAt || '');
     return;
   }
   if (cloudBusy) return;
@@ -956,7 +1030,7 @@ async function saveCloudBackup(opts) {
     cloudBusy = false;
     controller.abort();
   }, 30000);
-  setCloudSyncState('saving', '正在把本地改动保存到云端', '');
+  setCloudSyncState('saving', '正在后台保存本地改动', '');
   try {
     const res = await fetch('/api/backup', {
       method: 'PUT',
@@ -977,7 +1051,7 @@ async function saveCloudBackup(opts) {
         saveCloudMeta();
       }
       cloudConflictBlocked = true;
-      setCloudSyncState('dirty', '云端版本更新，已暂停自动同步，请先确认本地和云端时间', data.currentUpdatedAt || '');
+      setCloudSyncState('dirty', '发现云端版本更新，已暂停自动覆盖，请先确认时间', data.currentUpdatedAt || '');
       if (!opts.silent) {
         const shouldForceOverwrite = confirm('检测到云端比当前基线更新。\n\n如果要以当前页面为准覆盖云端，点击“确定”。\n如果暂时不覆盖，点击“取消”。');
         if (shouldForceOverwrite) {
@@ -995,7 +1069,7 @@ async function saveCloudBackup(opts) {
     rememberCloudDecision(data.updatedAt || '', 'saved');
     cloudConflictBlocked = false;
     await syncWithServer();
-    setCloudSyncState('synced', '本地改动已保存到云端', data.updatedAt || '');
+    setCloudSyncState('synced', '本地改动已写入云端', data.updatedAt || '');
     if (!opts.silent) showToast('Cloud backup saved', 'success');
   } catch (e) {
     if (e.name === 'AbortError') {
@@ -1013,18 +1087,18 @@ function scheduleCloudSave() {
   if (suppressCloudAutoSave > 0) return;
   markLocalChange();
   if (!cloudUser) {
-    setCloudSyncState('dirty', '本地改动已记录，登录后会继续同步', '');
+    setCloudSyncState('dirty', '本地改动已记录，登录后再继续处理', '');
     pendingCloudSave = true;
     return;
   }
   if (cloudConflictBlocked) {
     pendingCloudSave = true;
-    setCloudSyncState('dirty', '云端版本有冲突，已暂停自动同步，请先点 Cloud Load 或手动 Cloud Save 处理', cloudMeta.lastSeenBackupAt || '');
+    setCloudSyncState('dirty', '云端版本有冲突，已暂停自动处理，请先点 Cloud Load 或手动 Cloud Save', cloudMeta.lastSeenBackupAt || '');
     return;
   }
   clearTimeout(cloudSaveTimer);
   pendingCloudSave = false;
-  setCloudSyncState('dirty', '检测到改动，2.5 秒后自动同步', '');
+  setCloudSyncState('dirty', '检测到改动，稍后会在后台处理', '');
   cloudSaveTimer = setTimeout(() => {
     cloudSaveTimer = null;
     saveCloudBackup({ silent: true });
@@ -1096,9 +1170,9 @@ function recordOp(opType, entityId, payload, opts) {
   savePendingOps(pending);
   if (!opts.silentState) {
     if (cloudUser) {
-      setCloudSyncState('dirty', '错题改动已记录，准备增量同步', op.created_at);
+      setCloudSyncState('dirty', '错题改动已记录，稍后会在后台处理', op.created_at);
     } else {
-      setCloudSyncState('dirty', '本地错题改动已记录，登录后可增量同步', op.created_at);
+      setCloudSyncState('dirty', '本地错题改动已记录，登录后可继续处理', op.created_at);
     }
   }
   scheduleIncrementalSync();
@@ -1420,6 +1494,7 @@ async function syncWithServer(opts) {
       } catch (e) {}
     }
     rememberLastSyncCursor(serverTime);
+    markIncrementalSyncChecked(serverTime || new Date().toISOString());
     if (latestSnapshotAt) {
       cloudMeta.lastSeenBackupAt = latestSnapshotAt;
       saveCloudMeta();
