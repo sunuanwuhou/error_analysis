@@ -322,9 +322,10 @@ let cloudDetailsExpanded = false;
 let cloudMeta = getDefaultCloudMeta();
 const LARGE_CLOUD_BACKUP_BYTES = 1.5 * 1024 * 1024;
 const MOBILE_DEFERRED_RESTORE_BYTES = 600 * 1024;
+const AUTO_SYNC_DELAY_MS = 5 * 60 * 1000;
 const STARTUP_CLOUD_META_TTL_MS = 5 * 60 * 1000;
-const STARTUP_INCREMENTAL_SYNC_TTL_MS = 45 * 1000;
-const FOREGROUND_CLOUD_CHECK_TTL_MS = 2 * 60 * 1000;
+const STARTUP_INCREMENTAL_SYNC_TTL_MS = 5 * 60 * 1000;
+const FOREGROUND_CLOUD_CHECK_TTL_MS = 5 * 60 * 1000;
 let deferredCloudRestorePromise = null;
 let deferredCloudRestoreUpdatedAt = '';
 let backgroundCloudBootstrapTimer = null;
@@ -409,7 +410,9 @@ function getDefaultCloudMeta() {
     lastSavedAt: '',
     lastLocalChangeAt: '',
     lastMetaCheckAt: '',
-    lastIncrementalSyncAt: ''
+    lastIncrementalSyncAt: '',
+    nextCloudSaveAt: '',
+    nextIncrementalSyncAt: ''
   };
 }
 function saveCloudMeta() {
@@ -430,6 +433,27 @@ function markIncrementalSyncChecked(at) {
   cloudMeta.lastIncrementalSyncAt = String(at || new Date().toISOString());
   saveCloudMeta();
 }
+function setNextCloudSaveAt(at) {
+  if (!cloudMeta || typeof cloudMeta !== 'object') cloudMeta = getDefaultCloudMeta();
+  cloudMeta.nextCloudSaveAt = String(at || '');
+  saveCloudMeta();
+}
+function setNextIncrementalSyncAt(at) {
+  if (!cloudMeta || typeof cloudMeta !== 'object') cloudMeta = getDefaultCloudMeta();
+  cloudMeta.nextIncrementalSyncAt = String(at || '');
+  saveCloudMeta();
+}
+function isScheduledAtDue(isoText) {
+  const value = Date.parse(String(isoText || '').trim());
+  if (!Number.isFinite(value)) return false;
+  return Date.now() >= value;
+}
+function shouldRunCloudSaveDue() {
+  return Boolean(cloudMeta && cloudMeta.nextCloudSaveAt) && isScheduledAtDue(cloudMeta.nextCloudSaveAt);
+}
+function shouldRunIncrementalSyncDue() {
+  return Boolean(cloudMeta && cloudMeta.nextIncrementalSyncAt) && isScheduledAtDue(cloudMeta.nextIncrementalSyncAt);
+}
 function hasPendingIncrementalOps() {
   return getPendingOps().length > 0;
 }
@@ -438,7 +462,7 @@ function shouldCheckCloudMetaOnStartup() {
   return getIsoAgeMs(cloudMeta && cloudMeta.lastMetaCheckAt) >= STARTUP_CLOUD_META_TTL_MS;
 }
 function shouldRunIncrementalSyncOnStartup() {
-  if (hasPendingIncrementalOps()) return true;
+  if (hasPendingIncrementalOps()) return shouldRunIncrementalSyncDue();
   return getIsoAgeMs(cloudMeta && cloudMeta.lastIncrementalSyncAt) >= STARTUP_INCREMENTAL_SYNC_TTL_MS;
 }
 function shouldCheckCloudMetaInForeground() {
@@ -446,7 +470,7 @@ function shouldCheckCloudMetaInForeground() {
   return getIsoAgeMs(cloudMeta && cloudMeta.lastMetaCheckAt) >= FOREGROUND_CLOUD_CHECK_TTL_MS;
 }
 function shouldRunIncrementalSyncInForeground() {
-  if (hasPendingIncrementalOps()) return true;
+  if (hasPendingIncrementalOps()) return shouldRunIncrementalSyncDue();
   return getIsoAgeMs(cloudMeta && cloudMeta.lastIncrementalSyncAt) >= FOREGROUND_CLOUD_CHECK_TTL_MS;
 }
 async function runBackgroundCloudBootstrap(strategy) {
@@ -456,10 +480,13 @@ async function runBackgroundCloudBootstrap(strategy) {
       const mode = String(strategy || 'startup');
       const checkMeta = mode === 'startup' ? shouldCheckCloudMetaOnStartup() : shouldCheckCloudMetaInForeground();
       const checkIncremental = mode === 'startup' ? shouldRunIncrementalSyncOnStartup() : shouldRunIncrementalSyncInForeground();
+      const checkCloudSave = shouldRunCloudSaveDue();
       if (checkMeta) {
         await maybeRestoreCloudBackup();
       }
-      if (checkIncremental) {
+      if (checkCloudSave) {
+        await saveCloudBackup({ silent: true });
+      } else if (checkIncremental) {
         await syncWithServer();
       }
     } finally {
@@ -1023,6 +1050,7 @@ async function saveCloudBackup(opts) {
     clearTimeout(cloudSaveTimer);
     cloudSaveTimer = null;
   }
+  setNextCloudSaveAt('');
   pendingCloudSave = false;
   cloudBusy = true;
   const controller = new AbortController();
@@ -1098,11 +1126,13 @@ function scheduleCloudSave() {
   }
   clearTimeout(cloudSaveTimer);
   pendingCloudSave = false;
-  setCloudSyncState('dirty', '检测到改动，稍后会在后台处理', '');
+  const dueAt = new Date(Date.now() + AUTO_SYNC_DELAY_MS).toISOString();
+  setNextCloudSaveAt(dueAt);
+  setCloudSyncState('dirty', '检测到改动，约 5 分钟后自动同步', '');
   cloudSaveTimer = setTimeout(() => {
     cloudSaveTimer = null;
     saveCloudBackup({ silent: true });
-  }, 2500);
+  }, AUTO_SYNC_DELAY_MS);
 }
 // 生成笔记图片短 ID
 async function migrateIntegerIds() {
@@ -1181,9 +1211,11 @@ let incrementalSyncTimer = null;
 function scheduleIncrementalSync() {
   if (!cloudUser) return;
   clearTimeout(incrementalSyncTimer);
+  setNextIncrementalSyncAt(new Date(Date.now() + AUTO_SYNC_DELAY_MS).toISOString());
   incrementalSyncTimer = setTimeout(() => {
+    incrementalSyncTimer = null;
     syncWithServer();
-  }, 1500);
+  }, AUTO_SYNC_DELAY_MS);
 }
 function recordErrorUpsert(errorItem) {
   if (!errorItem) return;
@@ -1442,6 +1474,10 @@ async function syncWithServer(opts) {
   const options = opts || {};
   if (!cloudUser) return;
   if (incrementalSyncBusy) return;
+  if (incrementalSyncTimer) {
+    clearTimeout(incrementalSyncTimer);
+    incrementalSyncTimer = null;
+  }
   incrementalSyncBusy = true;
   try {
     const pending = getPendingOps();
@@ -1495,6 +1531,7 @@ async function syncWithServer(opts) {
     }
     rememberLastSyncCursor(serverTime);
     markIncrementalSyncChecked(serverTime || new Date().toISOString());
+    setNextIncrementalSyncAt('');
     if (latestSnapshotAt) {
       cloudMeta.lastSeenBackupAt = latestSnapshotAt;
       saveCloudMeta();
