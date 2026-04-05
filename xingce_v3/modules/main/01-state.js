@@ -216,6 +216,7 @@ window.touchErrorUpdatedAt = touchErrorUpdatedAt;
 window.refreshWorkspaceAfterErrorMutation = refreshWorkspaceAfterErrorMutation;
 
 let statusFilter = 'all';
+let taskFilter = 'all';
 let typeFilter   = null;   // {level:'type'|'subtype'|'sub2', value, type?, subtype?}
 let searchKw     = '';
 let quizSessionMode = 'daily';
