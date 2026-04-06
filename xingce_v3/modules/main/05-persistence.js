@@ -556,6 +556,24 @@ function getBackupSummary(meta) {
     knowledgeNotes: Number(summary.knowledgeNotes || 0)
   };
 }
+function getLocalWorkspaceSummary() {
+  return {
+    errors: getErrorEntries().length,
+    notesByType: Object.keys(notesByType || {}).length,
+    noteImages: Object.keys(noteImages || {}).length,
+    knowledgeNodes: typeof collectKnowledgeNodes === 'function' ? collectKnowledgeNodes().length : 0,
+    knowledgeNotes: Object.keys(knowledgeNotes || {}).length
+  };
+}
+function isSameBackupSummary(left, right) {
+  const a = left || {};
+  const b = right || {};
+  return Number(a.errors || 0) === Number(b.errors || 0)
+    && Number(a.notesByType || 0) === Number(b.notesByType || 0)
+    && Number(a.noteImages || 0) === Number(b.noteImages || 0)
+    && Number(a.knowledgeNodes || 0) === Number(b.knowledgeNodes || 0)
+    && Number(a.knowledgeNotes || 0) === Number(b.knowledgeNotes || 0);
+}
 async function clearWorkspaceStorageForRemoteRestore() {
   errors = [];
   revealed = new Set();
@@ -816,6 +834,20 @@ async function maybeRestoreCloudBackup() {
       return;
     }
     if (existingDecision && existingDecision.updatedAt === updatedAt) return;
+    const currentOrigin = mergeCurrentOriginStatus();
+    const localSummary = getLocalWorkspaceSummary();
+    const remoteSummary = getBackupSummary(meta);
+    const sameBackupVersion = !!updatedAt && [
+      currentOrigin.lastBackupUpdatedAt,
+      currentOrigin.lastLoadedAt,
+      currentOrigin.lastSavedAt,
+      cloudMeta.lastSeenBackupAt
+    ].some(value => String(value || '') === updatedAt);
+    if (sameBackupVersion && isSameBackupSummary(localSummary, remoteSummary)) {
+      rememberCloudDecision(updatedAt, 'loaded');
+      setCloudSyncState('synced', '当前入口已与云端对齐', updatedAt);
+      return;
+    }
     const ok = confirm('检测到该账号已有云端备份。是否恢复到当前入口？\n\n选择“取消”会保留当前入口本地数据，你仍可稍后点击 Cloud Load 手动恢复。');
     if (!ok) {
       rememberCloudDecision(updatedAt, 'kept_local');
@@ -1650,6 +1682,205 @@ async function fetchJsonWithAuth(url, options){
   }
   return data;
 }
+
+let localBackupState = { loading:false, items:[], loaded:false };
+let localBackupBusy = false;
+
+function formatLocalBackupTime(raw){
+  if(!raw) return '';
+  const normalized = /(?:Z|[+-]\d{2}:\d{2})$/.test(String(raw)) ? raw : `${raw}Z`;
+  const d = new Date(normalized);
+  if(Number.isNaN(d.getTime())) return raw;
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function formatBytesSimple(bytes){
+  const value = Number(bytes || 0);
+  if(value <= 0) return '0 B';
+  if(value < 1024) return `${value} B`;
+  if(value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+  if(value < 1024 * 1024 * 1024) return `${(value / 1024 / 1024).toFixed(1)} MB`;
+  return `${(value / 1024 / 1024 / 1024).toFixed(2)} GB`;
+}
+
+function renderLocalBackupList(items){
+  const summary = document.getElementById('localBackupSummary');
+  const list = document.getElementById('localBackupList');
+  if(!summary || !list) return;
+  const arr = Array.isArray(items) ? items : [];
+  summary.textContent = arr.length
+    ? `共 ${arr.length} 份快照，自动备份默认一天一次。恢复前会再自动补一份安全备份。`
+    : '当前还没有本地快照，建议先点一次“立即备份”。';
+  if(!arr.length){
+    list.innerHTML = '<div style="padding:18px;border:1px dashed #d0d5dd;border-radius:12px;color:#667085">暂无备份快照</div>';
+    return;
+  }
+  list.innerHTML = arr.map(item => {
+    const summaryObj = item.summary || {};
+    const badgeMap = {
+      manual:'手动',
+      auto:'自动',
+      before_restore:'恢复前',
+      before_import:'导入前'
+    };
+    const kindLabel = badgeMap[item.kind] || item.kind || '快照';
+    return `
+      <div style="padding:14px 16px;border:1px solid #e5e7eb;border-radius:14px;background:#fff;margin-bottom:10px;box-shadow:0 6px 18px rgba(15,23,42,.05)">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
+          <div style="flex:1;min-width:240px">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+              <strong style="font-size:14px;color:#111827">${escapeHtml(formatLocalBackupTime(item.createdAt) || item.id || '未命名快照')}</strong>
+              <span style="display:inline-flex;padding:2px 8px;border-radius:999px;background:#eef2ff;color:#4338ca;font-size:12px">${escapeHtml(kindLabel)}</span>
+            </div>
+            <div style="font-size:12px;color:#667085;line-height:1.8">
+              ${item.label ? `<div>备注：${escapeHtml(item.label)}</div>` : ''}
+              <div>错题 ${Number(summaryObj.errors || item.errorCount || 0)} 条 · 知识点 ${Number(summaryObj.knowledgeNodes || item.knowledgeNodeCount || 0)} 个 · 知识笔记 ${Number(summaryObj.knowledgeNotes || item.knowledgeNoteCount || 0)} 条</div>
+              <div>旧笔记模块 ${Number(summaryObj.notesByType || item.noteModuleCount || 0)} 个 · 图片引用 ${Number(summaryObj.noteImages || item.noteImageRefCount || 0)} 个 · 文件大小 ${escapeHtml(formatBytesSimple(item.sizeBytes || 0))}</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-secondary btn-sm" data-onclick="restoreLocalBackup('${String(item.id || '')}')">恢复</button>
+            <button class="btn btn-secondary btn-sm" data-onclick="deleteLocalBackup('${String(item.id || '')}')">删除</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function ensureLocalBackupMenuButton(){
+  const panel = document.getElementById('moreMenuPanel');
+  if(!panel || panel.querySelector('[data-role="local-backup-entry"]')) return;
+  const btn = document.createElement('button');
+  btn.className = 'btn btn-secondary';
+  btn.setAttribute('data-role', 'local-backup-entry');
+  btn.setAttribute('data-onclick', "closeMoreMenu();openLocalBackupModal()");
+  btn.textContent = '数据备份';
+  const exportBtn = panel.querySelector('[data-onclick="closeMoreMenu();openExportModal()"]');
+  if(exportBtn && exportBtn.nextSibling){
+    panel.insertBefore(btn, exportBtn.nextSibling);
+  }else if(exportBtn){
+    exportBtn.insertAdjacentElement('afterend', btn);
+  }else{
+    panel.appendChild(btn);
+  }
+}
+
+async function refreshLocalBackups(opts){
+  opts = opts || {};
+  if(localBackupState.loading && !opts.force) return localBackupState.items;
+  localBackupState.loading = true;
+  try{
+    const data = await fetchJsonWithAuth('/api/local-backups');
+    localBackupState.items = Array.isArray(data.items) ? data.items : [];
+    localBackupState.loaded = true;
+    renderLocalBackupList(localBackupState.items);
+    return localBackupState.items;
+  }catch(e){
+    const summary = document.getElementById('localBackupSummary');
+    const list = document.getElementById('localBackupList');
+    if(summary) summary.textContent = e.message || '备份列表加载失败';
+    if(list) list.innerHTML = `<div style="padding:18px;border:1px dashed #fecaca;border-radius:12px;color:#b91c1c">${escapeHtml(String(e.message || e))}</div>`;
+    if(!opts.silent) showToast(e.message || '备份列表加载失败', 'error');
+    throw e;
+  }finally{
+    localBackupState.loading = false;
+  }
+}
+
+async function openLocalBackupModal(){
+  ensureLocalBackupMenuButton();
+  openModal('localBackupModal');
+  await refreshLocalBackups({ force:true, silent:true });
+}
+
+async function createLocalBackup(kind, label, opts){
+  opts = opts || {};
+  if(localBackupBusy) return;
+  localBackupBusy = true;
+  try{
+    const data = await fetchJsonWithAuth('/api/local-backups/create', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        kind: kind || 'manual',
+        label: label || '',
+        skipRecentHours: Number(opts.skipRecentHours || 0)
+      })
+    });
+    localBackupState.items = Array.isArray(data.items) ? data.items : localBackupState.items;
+    renderLocalBackupList(localBackupState.items);
+    if(!opts.silent){
+      showToast(data.created === false ? '已存在最近自动备份，本次跳过' : '本地快照已创建', 'success');
+    }
+    return data;
+  }catch(e){
+    if(!opts.silent) showToast(e.message || '创建备份失败', 'error');
+    throw e;
+  }finally{
+    localBackupBusy = false;
+  }
+}
+
+async function createManualLocalBackup(){
+  await createLocalBackup('manual', '手动备份', {});
+}
+
+async function restoreLocalBackup(backupId){
+  if(!backupId) return;
+  const ok = confirm('恢复这份备份后，当前账号的数据会回到该时间点。\n\n恢复前会自动再做一份安全备份，确认继续吗？');
+  if(!ok) return;
+  try{
+    const data = await fetchJsonWithAuth('/api/local-backups/restore', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ backupId, createSafetyBackup:true })
+    });
+    localBackupState.items = Array.isArray(data.items) ? data.items : localBackupState.items;
+    renderLocalBackupList(localBackupState.items);
+    if(typeof loadCloudBackup === 'function'){
+      await loadCloudBackup({ silent:true });
+    } else {
+      window.location.reload();
+      return;
+    }
+    showToast('数据已恢复到所选快照', 'success');
+  }catch(e){
+    showToast(e.message || '恢复失败', 'error');
+  }
+}
+
+async function deleteLocalBackup(backupId){
+  if(!backupId) return;
+  if(!confirm('确认删除这份备份快照？此操作无法撤销。')) return;
+  try{
+    const data = await fetchJsonWithAuth(`/api/local-backups/${encodeURIComponent(backupId)}`, {
+      method:'DELETE'
+    });
+    localBackupState.items = Array.isArray(data.items) ? data.items : [];
+    renderLocalBackupList(localBackupState.items);
+    showToast('备份快照已删除', 'success');
+  }catch(e){
+    showToast(e.message || '删除备份失败', 'error');
+  }
+}
+
+async function ensureDailyLocalBackup(){
+  if(!cloudUser) return;
+  try{
+    await createLocalBackup('auto', '每日自动备份', { silent:true, skipRecentHours:20 });
+  }catch(e){
+    console.warn('daily local backup skipped:', e);
+  }
+}
+
+window.openLocalBackupModal = openLocalBackupModal;
+window.refreshLocalBackups = refreshLocalBackups;
+window.createManualLocalBackup = createManualLocalBackup;
+window.restoreLocalBackup = restoreLocalBackup;
+window.deleteLocalBackup = deleteLocalBackup;
+window.ensureDailyLocalBackup = ensureDailyLocalBackup;
+window.ensureLocalBackupMenuButton = ensureLocalBackupMenuButton;
 
 function formatCodexTime(raw){
   if(!raw) return '';

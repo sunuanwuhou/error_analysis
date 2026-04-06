@@ -5,6 +5,7 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = BASE_DIR / "data"
+BACKUPS_DIR = DATA_DIR / "backups"
 DB_PATH = DATA_DIR / "xingce.db"
 IMAGES_DIR = DATA_DIR / "images"
 HTML_PATH = BASE_DIR / "xingce_v3" / "xingce_v3.html"

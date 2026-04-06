@@ -41,6 +41,17 @@ class OriginStatusPayload(BaseModel):
     lastBackupUpdatedAt: Optional[str] = None
 
 
+class LocalBackupCreatePayload(BaseModel):
+    kind: str = Field(default="manual", max_length=32)
+    label: str = Field(default="", max_length=80)
+    skipRecentHours: int = Field(default=0, ge=0, le=720)
+
+
+class LocalBackupRestorePayload(BaseModel):
+    backupId: str = Field(min_length=8, max_length=120)
+    createSafetyBackup: bool = True
+
+
 class CodexThreadCreatePayload(BaseModel):
     title: str = Field(default="", max_length=80)
 

@@ -1,0 +1,15 @@
+<div class="modal-mask" id="localBackupModal">
+<div class="modal" style="width:760px;max-width:96vw;max-height:92vh;overflow-y:auto">
+<button class="modal-close" data-onclick="closeModal('localBackupModal')">✕</button>
+<h2>数据备份与恢复</h2>
+<div style="font-size:12px;color:#666;line-height:1.8;margin-bottom:12px">
+支持手动备份、每日自动备份和一键恢复。恢复前默认再做一次安全备份。
+</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+<button class="btn btn-primary" data-onclick="createManualLocalBackup()">立即备份</button>
+<button class="btn btn-secondary" data-onclick="refreshLocalBackups()">刷新列表</button>
+</div>
+<div id="localBackupSummary" style="font-size:12px;color:#667085;margin-bottom:12px">正在加载备份列表...</div>
+<div id="localBackupList"></div>
+</div>
+</div>

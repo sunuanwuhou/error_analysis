@@ -61,12 +61,16 @@ async function refreshRuntimeBadge() {
   window.addEventListener('resize', syncMobileSidebarState);
   document.getElementById('navScroll')?.addEventListener('click', () => { if (isMobileViewport()) closeMobileSidebar(); });
   renderSidebar();
+  if (typeof ensureLocalBackupMenuButton === 'function') ensureLocalBackupMenuButton();
   renderAll();
   renderNotesByType();
   if (typeof syncAppViewChrome === 'function') syncAppViewChrome();
   if (typeof renderHomeDashboard === 'function') renderHomeDashboard();
   renderCodexContextLine();
   checkStorageUsage();
+  setTimeout(() => {
+    if (typeof ensureDailyLocalBackup === 'function') ensureDailyLocalBackup();
+  }, 4000);
 
   window.addEventListener('beforeunload', () => {
     if (cloudSaveTimer) {
