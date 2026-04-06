@@ -21,6 +21,8 @@ COPY scripts /app/scripts
 COPY xingce_v3 /app/xingce_v3
 COPY v51_frontend /app/v51_frontend
 
+RUN python /app/scripts/build_legacy_assets.py
+
 EXPOSE 8000
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

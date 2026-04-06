@@ -1,15 +1,31 @@
 async function loadText(url) {
-  const res = await fetch(url, { cache: 'no-store', credentials: 'same-origin' });
+  const res = await fetch(url, { credentials: 'same-origin' });
   if (!res.ok) throw new Error(`Failed to load ${url}: ${res.status}`);
   return res.text();
 }
 
+let legacyAssetVersion = '';
+let legacyManifestPromise = null;
+
+async function loadLegacyManifest() {
+  if (!legacyManifestPromise) {
+    legacyManifestPromise = (async () => {
+      const manifestRes = await fetch('/assets/legacy-app.bundle.manifest.json', { cache: 'no-store', credentials: 'same-origin' });
+      if (!manifestRes.ok) throw new Error(`Failed to load legacy manifest: ${manifestRes.status}`);
+      const manifest = await manifestRes.json();
+      legacyAssetVersion = String(manifest?.built_at || manifest?.js_bundle?.sha256 || Date.now());
+      return manifest;
+    })();
+  }
+  return legacyManifestPromise;
+}
+
 async function injectPartials() {
-  const manifest = await (await fetch('/v51-static/partials-manifest.json', { cache: 'no-store', credentials: 'same-origin' })).json();
-  const htmlParts = await Promise.all(manifest.map(name => loadText(`/v51-static/partials/${name}`)));
+  await loadLegacyManifest();
+  const html = await loadText(withVersion('/v51-static/partials.bundle.html'));
   const mount = document.createElement('div');
   mount.id = 'v53ShellMount';
-  mount.innerHTML = htmlParts.join('\n');
+  mount.innerHTML = html;
   document.body.innerHTML = '';
   while (mount.firstChild) {
     document.body.appendChild(mount.firstChild);
@@ -46,17 +62,32 @@ function loadScript(src, { defer = false } = {}) {
   });
 }
 
+function toPublicAssetPath(rel) {
+  const normalized = String(rel || '').replace(/\\/g, '/').replace(/^\/+/, '');
+  return normalized.startsWith('xingce_v3/') ? normalized.slice('xingce_v3/'.length) : normalized;
+}
+
+function withVersion(url, explicitVersion) {
+  const version = String(explicitVersion || legacyAssetVersion || '').trim();
+  if (!version) return url;
+  return `${url}${url.includes('?') ? '&' : '?'}v=${encodeURIComponent(version)}`;
+}
+
 async function loadLegacyModules() {
-  const manifestRes = await fetch('/assets/legacy-app.bundle.manifest.json', { cache: 'no-store', credentials: 'same-origin' });
-  if (!manifestRes.ok) throw new Error(`Failed to load legacy manifest: ${manifestRes.status}`);
-  const manifest = await manifestRes.json();
+  const manifest = await loadLegacyManifest();
+  const version = String(legacyAssetVersion || manifest?.built_at || manifest?.js_bundle?.sha256 || Date.now());
+  const bundlePath = toPublicAssetPath(manifest?.js_bundle?.path || '');
+  if (bundlePath) {
+    await loadScript(withVersion(`/assets/${bundlePath}`, version));
+    return;
+  }
   const sources = [...(manifest?.js_bundle?.sources || [])];
   const bootstrapRel = 'modules/main/99-bootstrap.js';
   const filtered = sources.filter((rel) => rel !== bootstrapRel);
   for (const rel of filtered) {
-    await loadScript(`/assets/${rel}`);
+    await loadScript(withVersion(`/assets/${rel}`, version));
   }
-  await loadScript(`/assets/${bootstrapRel}`);
+  await loadScript(withVersion(`/assets/${bootstrapRel}`, version));
 }
 
 (async () => {
@@ -72,16 +103,16 @@ async function loadLegacyModules() {
       'startFullPractice'
     ].forEach(installDeferredAction);
     await injectPartials();
-    await loadScript('/assets/modules/mathjax-config.js');
-    await loadScript('/assets/vendor/mathjax/tex-svg.js', { defer: true });
+    await loadScript(withVersion('/assets/modules/mathjax-config.js'));
+    await loadScript(withVersion('/assets/vendor/mathjax/tex-svg.js'), { defer: true });
     await loadLegacyModules();
-    await loadScript('/v51-static/assets/v53-shell.js');
-    await loadScript('/v51-static/assets/final-flow.js');
+    await loadScript(withVersion('/v51-static/assets/v53-shell.js'));
+    await loadScript(withVersion('/v51-static/assets/final-flow.js'));
     const pcCss = document.createElement('link');
     pcCss.rel = 'stylesheet';
-    pcCss.href = '/v51-static/assets/process-canvas-ultimate.css';
+    pcCss.href = withVersion('/v51-static/assets/process-canvas-ultimate.css');
     document.head.appendChild(pcCss);
-    await loadScript('/v51-static/assets/process-canvas-ultimate.js');
+    await loadScript(withVersion('/v51-static/assets/process-canvas-ultimate.js'));
     flushDeferredActions();
     document.body.classList.remove('v51-shell-loading');
   } catch (error) {

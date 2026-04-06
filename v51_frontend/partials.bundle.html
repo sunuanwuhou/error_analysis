@@ -1,0 +1,737 @@
+<div class="v53-mobile-topbar">
+  <div class="v53-mobile-topbar-left">
+    <button aria-label="打开目录" class="v53-icon-btn" data-onclick="toggleMobileSidebar()" id="mobileTopbarMenuBtn" type="button">☰</button>
+    <div class="v53-mobile-title">
+      <div class="v53-mobile-title-main" id="mobileHeaderTitle">学习笔记</div>
+      <div class="v53-mobile-title-sub">Ashore 5.3</div>
+    </div>
+  </div>
+  <div class="v53-mobile-topbar-right">
+    <button aria-label="快速录题" class="v53-icon-btn" id="mobileHeaderAdd" type="button">＋</button>
+    <button aria-label="保存到云端" class="v53-icon-btn" id="mobileHeaderSave" type="button">☁</button>
+  </div>
+</div>
+<div class="sidebar">
+<div class="sidebar-logo">
+<div>Ashore</div>
+<div class="runtime-badge" data-mode="unknown" id="runtimeBadge">Runtime: loading</div>
+</div>
+<div class="sidebar-tools">
+<div class="sidebar-tools-row workspace-entry-row">
+<button class="btn btn-secondary" data-onclick="switchAppView('home')" id="sidebarHomeBtn" type="button">学习首页</button>
+<button class="btn btn-secondary" data-onclick="openWorkspaceView('errors')" id="sidebarWorkspaceBtn" type="button">错题工作台</button>
+<button class="btn btn-secondary" data-onclick="window.location.href='/shenlun'" type="button">申论工作台</button>
+</div>
+<div class="sidebar-tools-row">
+<button class="btn btn-primary" data-onclick="openQuickAddModal()">+ 添加</button>
+<div class="more-menu" id="moreMenu">
+<button class="btn btn-secondary" data-onclick="toggleMoreMenu(event)">更多</button>
+<div class="more-menu-panel" id="moreMenuPanel">
+<button class="btn btn-secondary" data-onclick="closeMoreMenu();openQuickImportModal()">导入错题</button>
+<button class="btn btn-secondary" data-onclick="closeMoreMenu();openExportModal()">导出</button>
+<button class="btn btn-secondary" data-onclick="closeMoreMenu();openClaudeHelper()">发给CC</button>
+<button class="btn btn-secondary" data-onclick="closeMoreMenu();switchAppView('home')">首页</button>
+<button class="btn btn-secondary" data-onclick="closeMoreMenu();openDashboard()">学习统计</button>
+<button class="btn btn-secondary" data-onclick="closeMoreMenu();clearCurrentModuleErrors()">清空当前模块</button>
+<button class="btn btn-secondary" data-onclick="closeMoreMenu();clearAllErrorsData()">清空全部错题</button>
+<button class="btn btn-secondary" data-onclick="closeMoreMenu();resetAllStudyData()">重置全部学习数据</button>
+<button class="btn btn-secondary" data-onclick="closeMoreMenu();printList()">打印</button>
+</div>
+</div>
+</div>
+<div class="cloud-controls sidebar-cloud-controls">
+<div class="cloud-meta">
+<div class="cloud-status-line">
+<span id="cloudUserBadge" style="font-size:12px;color:#666">Cloud: offline</span>
+<span class="cloud-status-badge" id="cloudSyncBadge">idle</span>
+<button class="cloud-details-toggle" data-onclick="toggleCloudDetails()" id="cloudDetailsToggle" type="button">详情</button>
+</div>
+<div class="cloud-status-hint" id="cloudSyncHint">Local cache is per origin.</div>
+<div class="cloud-origin-list" id="cloudOriginStatus"></div>
+</div>
+<div class="sidebar-tools-row sidebar-cloud-actions">
+<button class="btn btn-secondary" data-onclick="loadCloudBackup()">Cloud Load</button>
+<button class="btn btn-secondary" data-onclick="saveCloudBackup()">Cloud Save</button>
+<button class="btn btn-secondary" data-onclick="logoutCloud()" id="cloudLogoutBtn">Logout</button>
+</div>
+</div>
+</div>
+<div class="quiz-block">
+<button class="quiz-btn" data-onclick="startQuiz()" id="quizBtn">
+<span>今日训练</span>
+<span class="badge" id="quizBadge">0</span>
+</button>
+<button class="quiz-btn" data-onclick="startFullPractice()" id="fullPracticeBtn" style="margin-top:6px;background:linear-gradient(135deg,#3498db,#2471a3)">
+<span>全量练习</span>
+<span class="badge" id="fullPracticeBadge">0</span>
+</button>
+<div class="today-progress">
+<div class="prog-label"><span>今日进度</span><span id="progText">0/0</span></div>
+<div class="prog-bar-bg"><div class="prog-bar-fill" id="progFill" style="width:0%"></div></div>
+</div>
+</div>
+<div class="sidebar-tree-toolbar">
+<div class="sidebar-tree-toolbar-row">
+<div class="sidebar-tree-search">
+<span class="search-icon">搜索</span>
+<input data-oninput="onKnowledgeTreeSearchInput()" id="knowledgeTreeSearchInput" placeholder="搜索知识树节点..." type="text"/>
+<button aria-label="清空知识树搜索" class="search-clear" data-onclick="clearKnowledgeTreeSearch()" id="knowledgeTreeSearchClear" type="button">×</button>
+</div>
+<button class="btn btn-secondary" data-onclick="toggleKnowledgeTreeFocusMode()" id="knowledgeTreeFocusBtn" type="button">专注树</button>
+</div>
+<div class="sidebar-tree-search-meta" id="knowledgeTreeSearchMeta"></div>
+</div>
+<div class="nav-scroll" id="navScroll"></div>
+</div>
+<button aria-label="打开目录" class="mobile-sidebar-toggle" data-onclick="toggleMobileSidebar()" id="mobileSidebarToggle" type="button">☰</button>
+<div class="mobile-sidebar-mask" data-onclick="closeMobileSidebar()" id="mobileSidebarMask"></div>
+<div class="main-area">
+<div class="toast-stack" id="toastStack"></div>
+<button class="btn btn-secondary" data-onclick="openCodexInboxModal()" id="codexInboxBtn" style="position:fixed;right:18px;bottom:18px;z-index:1200;box-shadow:0 10px 24px rgba(15,23,42,.18)">Codex 留言</button>
+<div class="modal-mask" id="codexInboxModal">
+<div class="modal" style="width:1120px;max-width:96vw;max-height:92vh;overflow-y:auto">
+<button class="modal-close" data-onclick="closeModal('codexInboxModal')">×</button>
+<h2 style="margin-bottom:6px">Codex 留言箱</h2>
+<div class="codex-chat-note" style="margin-bottom:14px">这是异步留言，不是实时聊天。你发出去后会先进入待处理队列，Codex 默认每小时扫描一次并把回复写回这里。</div>
+<div class="codex-inbox-layout">
+<div class="codex-thread-panel">
+<div class="codex-thread-toolbar">
+<strong style="font-size:14px">会话列表</strong>
+<div style="display:flex;gap:8px">
+<button class="btn btn-sm btn-secondary" data-onclick="refreshCodexInbox()">刷新</button>
+<button class="btn btn-sm btn-primary" data-onclick="createCodexThread()">新建</button>
+</div>
+</div>
+<div class="codex-thread-list" id="codexThreadList"></div>
+</div>
+<div class="codex-chat-panel">
+<div class="codex-chat-toolbar">
+<div>
+<div id="codexThreadTitle" style="font-size:15px;font-weight:700;color:#243041">Codex 收件箱</div>
+<div id="codexThreadHint" style="font-size:12px;color:#8a94a6;margin-top:4px">等待加载会话…</div>
+</div>
+<button class="btn btn-sm btn-secondary" data-onclick="refreshCodexInbox()">手动刷新</button>
+</div>
+<div class="codex-context-line" id="codexContextLine"></div>
+<div class="codex-message-list" id="codexMessageList"></div>
+<div class="codex-chat-composer">
+<textarea id="codexMessageInput" placeholder="直接留言给 Codex。可以让它分析当前筛选结果、当前知识点、最近录入的问题。"></textarea>
+<div class="codex-chat-actions">
+<label><input checked="" id="codexIncludeContext" type="checkbox"/> 附带当前页面上下文</label>
+<button class="btn btn-primary" data-onclick="submitCodexMessage()" id="codexSendBtn">发送到队列</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="app-view app-view-home active" id="homeView">
+<div class="home-shell">
+<div class="home-shell-header">
+<div>
+<div class="home-shell-kicker">学习首页</div>
+<h2>先决定今天做什么，再进入工作台执行</h2>
+<div class="home-shell-sub">首页负责调度任务、弱点和必看笔记；进入工作台后再录题、看错题和写笔记。</div>
+</div>
+<div class="home-shell-actions">
+<button class="btn btn-primary" data-onclick="openWorkspaceView('errors')">进入错题工作台</button>
+<button class="btn btn-secondary" data-onclick="openWorkspaceQuickAdd()">继续录题</button>
+</div>
+</div>
+<div id="homeDashboardContent"></div>
+</div>
+</div>
+
+<div class="app-view app-view-workspace" id="workspaceView">
+<div class="workspace-switch-bar">
+<div class="workspace-switch-title">
+<strong>错题工作台</strong>
+<span>录题、改错因、看列表、写笔记都在这里完成</span>
+</div>
+<div class="workspace-switch-actions">
+<button class="btn btn-secondary" data-onclick="switchAppView('home')">返回首页</button>
+<button class="btn btn-secondary active" data-onclick="switchTab('errors')" id="tabErrors" type="button">错题列表</button>
+<button class="btn btn-secondary" data-onclick="switchTab('notes')" id="tabNotes" type="button">学习笔记</button>
+</div>
+</div>
+
+<div class="tab-content" id="tabContentErrors">
+<div class="errors-area">
+<div class="errors-header">
+<h2>错题列表</h2>
+<div class="errors-header-actions">
+<div class="search-box">
+<span class="search-icon">搜索</span>
+<input data-oninput="onSearch();updateSearchClear()" data-onkeydown="if(event.key==='Enter')onSearch()" id="searchInput" placeholder="搜索题目、解析..." type="text"/>
+<button class="search-clear" data-onclick="clearSearchInput()" id="searchClear">×</button>
+</div>
+<button class="btn btn-secondary global-search-launch" data-onclick="openGlobalSearchModal()" title="Ctrl+K">全局搜索</button>
+</div>
+</div>
+<div class="date-filter-bar">
+录入日期：
+<input data-onchange="applyDateFilter()" id="dateFrom" type="date"/>
+<span style="color:#ccc">至</span>
+<input data-onchange="applyDateFilter()" id="dateTo" type="date"/>
+<button class="btn btn-sm btn-secondary" data-onclick="clearDateFilter()">清除日期</button>
+<span style="margin-left:4px;color:#bbb">|</span>
+<button class="btn btn-sm btn-secondary" data-onclick="clearFilter()" style="color:#e74c3c;border-color:#ffd0cc">一键清除筛选</button>
+</div>
+<div class="content-header" style="padding:10px 16px;border-bottom:1px solid #f0f0f0;border-top:1px solid #f0f0f0">
+<div class="breadcrumb" id="breadcrumb">全部题目</div>
+<div style="display:flex;align-items:center;gap:10px">
+<div class="expand-btns">
+<button class="btn btn-sm btn-secondary" data-onclick="expandAll()">展开全部</button>
+<button class="btn btn-sm btn-secondary" data-onclick="collapseAll()">收起全部</button>
+</div>
+<div class="stats-bar" id="statsBar"></div>
+<button class="btn btn-sm btn-secondary" data-onclick="toggleBatchMode()" id="batchToggleBtn" type="button">批量操作</button>
+<button class="btn btn-sm btn-secondary" data-onclick="toggleErrorsTopCollapsed()" id="errorsTopToggleBtn" type="button">收起头部</button>
+</div>
+</div>
+<div class="batch-bar hidden" id="batchBar">
+<span id="batchCount">已选 0 题</span>
+<button class="btn btn-sm btn-secondary" data-onclick="openBatchKnowledgeMove()" type="button">批量改挂载</button>
+<button class="btn btn-sm btn-secondary" data-onclick="executeBatch('delete')" type="button">批量删除</button>
+<button class="btn btn-sm btn-secondary" data-onclick="toggleBatchMode()" type="button">完成</button>
+</div>
+<div class="errors-list" id="errorList"></div>
+</div>
+</div>
+
+<div class="tab-content active" id="tabContentNotes">
+<div class="notes-area">
+<div class="notes-header">
+<h2>学习笔记</h2>
+<div style="display:flex;gap:8px">
+<button class="btn btn-secondary" data-onclick="openGlobalSearchModal()">全局搜索</button>
+<button class="btn btn-secondary" data-onclick="deleteSelectedKnowledgeNode()">删除知识点</button>
+<button class="btn btn-secondary" data-onclick="clearNotes()">清空</button>
+</div>
+</div>
+<div class="notes-content" id="notesContent"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="modal-mask" id="addModal">
+<div class="modal entry-modal">
+<button class="modal-close" data-onclick="closeModal('addModal')" id="addModalCloseBtn">✕</button>
+<h2 id="addModalTitle">添加错题</h2>
+<div class="entry-flow-banner" id="entryFlowBanner" style="display:none"></div>
+<div class="entry-section entry-section-primary">
+<div class="entry-section-title">
+<div>
+<strong>先完成最小录入</strong>
+<div class="entry-section-sub">先录题干、选项、答案和知识点。只要这几项对了，这道题就能先存下来。</div>
+</div>
+<span class="entry-required-badge">优先必填</span>
+</div>
+<div class="form-group"><label>题型</label>
+<select data-onchange="onTypeChange()" id="editType">
+<option>言语理解与表达</option><option>数量关系</option><option>判断推理</option>
+<option>资料分析</option><option>常识判断</option><option>其他</option>
+</select></div>
+<div class="form-group"><label>子类型 <span style="color:#e74c3c">*</span></label><input data-oninput="onSubtypeInput()" id="editSubtype" placeholder="如：逻辑判断、数字推理...（必填）" type="text"/></div>
+<div class="form-group"><label>细分类型 <span style="font-size:11px;color:#aaa">（可选，第三级）</span></label><input data-oninput="refreshKnowledgePicker()" id="editSubSubtype" placeholder="如：充分条件、成语辨析..." type="text"/></div>
+<div class="form-group">
+<label>关联知识点 <span style="font-size:11px;color:#aaa">（节点本身可写笔记，也可继续新增下级）</span></label>
+<div style="display:flex;gap:8px;align-items:center">
+<select data-onchange="syncKnowledgePickerHint(this.value)" id="editKnowledgeLeaf" style="flex:1;min-width:0;padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none">
+<option value="">自动创建默认知识点</option>
+</select>
+<button class="btn btn-secondary btn-sm" data-onclick="createKnowledgeLeafFromModal()" type="button">+ 新建节点</button>
+</div>
+<div id="editKnowledgeHint" style="font-size:11px;color:#888;margin-top:6px;line-height:1.5">未分类 &gt; 未分类 &gt; 未细分 &gt; 保存时默认挂到当前节点</div>
+</div>
+<div class="form-group">
+<label style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+<span>题目（必填）</span>
+<span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+<input accept="image/*" data-onchange="handleQuestionOCRFile(event)" id="ocrQuestionFileInput" style="display:none" type="file"/>
+<button class="btn btn-secondary btn-sm" data-onclick="document.getElementById('ocrQuestionFileInput').click()" id="ocrQuestionBtn" type="button">识别题图</button>
+<button class="btn btn-secondary btn-sm" data-onclick="runQuestionOCRFromCurrentImage()" id="ocrCurrentImgBtn" style="display:none" type="button">识别当前图</button>
+<span id="ocrQuestionStatus" style="font-size:12px;color:#888"></span>
+</span>
+</label>
+<textarea data-oninput="autoDetectType(this.value)" id="editQuestion" placeholder="粘贴题目原文..." rows="4"></textarea>
+<div id="ocrQuestionPanel" style="display:none;margin-top:10px;padding:10px 12px;background:#fafafa;border:1px solid #eee;border-radius:10px;font-size:12px;line-height:1.7"></div>
+</div>
+<div style="font-size:11px;color:#aaa;margin-top:-8px;margin-bottom:6px">💡 在题目框中直接 Ctrl+V 粘贴图片可自动附加</div>
+<div class="form-group" id="imgFormGroup" style="display:none;margin-bottom:10px">
+<img id="imgPreview" src="" style="max-width:100%;max-height:200px;border-radius:6px;border:1px solid #e0e0e0;display:block"/>
+<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:4px">
+<button class="btn btn-secondary btn-sm" data-onclick="runQuestionOCRFromCurrentImage()" type="button">识别当前图</button>
+<button data-onclick="clearEditImg(true)" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:12px" type="button">✕ 删除图片</button>
+</div>
+</div>
+<div class="form-group"><label>选项（用 | 分隔，如 A. xxx|B. xxx|C. xxx|D. xxx）</label><textarea id="editOptions" placeholder="A. ...|B. ...|C. ...|D. ..." rows="3"></textarea></div>
+<div class="form-group"><label>正确答案 <span style="color:#e74c3c">*</span></label><input id="editAnswer" placeholder="如：A（必填）" type="text"/></div>
+<div class="form-group"><label>我的错误答案（可选）</label><input id="editMyAnswer" placeholder="如：B" type="text"/></div>
+</div>
+<div class="entry-section">
+<div class="entry-section-title">
+<div>
+<strong>再补分析和错因</strong>
+<div class="entry-section-sub">这里更适合在题目已经确认后处理，AI 也优先服务这一段。</div>
+</div>
+<span class="entry-inline-tip">可稍后补</span>
+</div>
+<div class="form-group" style="display:none">
+<label>AI 辅助分析</label>
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+<button class="btn btn-secondary btn-sm" data-onclick="analyzeEntryWithAI()" id="aiAnalyzeBtn" type="button">AI识别并分析</button>
+<button class="btn btn-secondary btn-sm" data-onclick="applyAISuggestions()" id="aiApplyAllBtn" style="display:none" type="button">全部采纳</button>
+<span id="aiAnalyzeStatus" style="font-size:12px;color:#888"></span>
+</div>
+<div id="aiAnalyzePanel" style="display:none;margin-top:8px;padding:10px 12px;background:#fafafa;border:1px solid #eee;border-radius:8px;font-size:12px;line-height:1.7"></div>
+</div>
+<div class="form-group">
+<label>错误类型 <span style="color:#e74c3c">*</span> <span style="font-size:11px;color:#aaa;font-weight:400">（如：主旨误判、建模错误）</span></label>
+<input id="editRootReason" placeholder="这题错在什么类型？" type="text"/>
+</div>
+<div class="form-group">
+<label>触发点 <span style="color:#e74c3c">*</span> <span style="font-size:11px;color:#aaa;font-weight:400">（如：尾句意义句、相遇条件）</span></label>
+<input data-oninput="updateReasonDesc()" id="editErrorReason" list="editReasonDatalist" placeholder="是什么信号把你带偏了？" type="text"/>
+<datalist id="editReasonDatalist"></datalist>
+<div id="editReasonDescBox" style="display:none;font-size:11px;color:#888;margin-top:3px;padding:3px 6px;background:#fafafa;border-radius:4px;border-left:3px solid #ddd"></div>
+</div>
+<div class="form-group"><label>正确模型 <span style="color:#e74c3c">*</span></label><textarea id="editAnalysis" placeholder="这类题正确做法的一句话模型" rows="3"></textarea></div>
+<div class="form-group"><label>下次动作 <span style="font-size:11px;color:#aaa;font-weight:400">（如：再做3题同类）</span></label><input id="editNextAction" placeholder="下次准备怎么练、怎么防" type="text"/></div>
+<div class="form-group">
+<label style="display:flex;align-items:center;gap:8px">
+<input id="editIsClassic" type="checkbox"/>
+<span>经典题 / 样题 <span style="font-size:11px;color:#aaa">（这类题默认直接进入已掌握，不进今日任务主池）</span></span>
+</label>
+</div>
+<div id="analysisImgFormGroup" style="display:none;margin-top:-6px;margin-bottom:10px">
+<img id="analysisImgPreview" src="" style="max-width:100%;max-height:160px;border-radius:6px;border:1px solid #e0e0e0;display:block"/>
+<button data-onclick="clearEditAnalysisImg(true)" style="margin-top:4px;background:none;border:none;color:#e74c3c;cursor:pointer;font-size:12px" type="button">✕ 删除解析图片</button>
+</div>
+</div>
+<details class="entry-advanced" id="entryAdvancedDetails">
+<summary>
+<span>补充信息</span>
+<span class="entry-inline-tip">状态、难度、出处这些可以最后再补</span>
+</summary>
+<div class="entry-advanced-body">
+<div class="entry-advanced-hint">如果你现在只是想先把题收进去，可以直接跳过这一段，后面再回来补。</div>
+<div class="form-group"><label>状态</label>
+<select id="editStatus"><option value="focus">重点复习</option><option value="review">待复习</option><option value="mastered">已掌握</option></select></div>
+<div class="form-group"><label>难度 <span style="font-size:11px;color:#aaa">（可选，1-3星）</span></label>
+<div class="star-edit">
+<button class="star-edit-btn" data-onclick="setModalDiff(1)" id="dstar1" type="button">★</button>
+<button class="star-edit-btn" data-onclick="setModalDiff(2)" id="dstar2" type="button">★</button>
+<button class="star-edit-btn" data-onclick="setModalDiff(3)" id="dstar3" type="button">★</button>
+<span id="dstarLabel" style="font-size:12px;color:#aaa;margin-left:6px"></span>
+</div>
+</div>
+<div class="form-group">
+<label>时间 <span style="font-size:11px;color:#aaa">（单位：秒）</span></label>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<input id="editActualDurationSec" placeholder="当前用时" style="flex:1;min-width:120px;padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none" type="number" min="0"/>
+<input id="editTargetDurationSec" placeholder="应该用时" style="flex:1;min-width:120px;padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none" type="number" min="0"/>
+</div>
+</div>
+<div class="form-group">
+<label>出处 <span style="font-size:11px;color:#aaa">（可选）</span></label>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<select id="editSrcYear" style="flex:1;min-width:90px;padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none">
+<option value="">年份</option>
+<option>2025</option><option>2024</option><option>2023</option><option>2022</option>
+<option>2021</option><option>2020</option><option>2019</option><option>2018</option>
+<option>2017</option><option>2016</option><option>2015</option><option>2014</option>
+<option>2013</option><option>2012</option><option>2011</option><option>2010</option>
+</select>
+<select id="editSrcProvince" style="flex:1;min-width:100px;padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none">
+<option value="">省份/级别</option>
+<option>国考</option>
+<option>北京</option><option>天津</option><option>上海</option><option>重庆</option>
+<option>河北</option><option>山西</option><option>辽宁</option><option>吉林</option><option>黑龙江</option>
+<option>江苏</option><option>浙江</option><option>安徽</option><option>福建</option><option>江西</option>
+<option>山东</option><option>河南</option><option>湖北</option><option>湖南</option><option>广东</option>
+<option>广西</option><option>海南</option><option>四川</option><option>贵州</option><option>云南</option>
+<option>西藏</option><option>陕西</option><option>甘肃</option><option>青海</option><option>宁夏</option>
+<option>新疆</option><option>内蒙古</option>
+</select>
+<input id="editSrcOrigin" placeholder="来源（自填）" style="flex:2;min-width:120px;padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none" type="text"/>
+</div>
+</div>
+</div>
+</details>
+<div class="modal-btns">
+<button class="btn btn-secondary" data-onclick="closeModal('addModal')" id="cancelSaveErrorBtn">取消</button>
+<button class="btn btn-primary" data-onclick="saveError()" id="saveErrorBtn">保存这道题</button>
+</div>
+</div>
+</div>
+<div class="modal-mask" id="knowledgeMoveModal">
+<div class="modal" style="width:640px;max-width:96vw">
+<button class="modal-close" data-onclick="closeKnowledgeMoveModal()">✕</button>
+<h2>改挂载知识点</h2>
+<div style="font-size:12px;color:#666;line-height:1.7;margin-bottom:12px">
+<div id="knowledgeMoveCurrent" style="margin-bottom:6px">当前知识点：未关联</div>
+<div>选择新的知识点节点后，题目会立即切换到对应笔记和错题视图。</div>
+</div>
+<input class="knowledge-move-search" data-oninput="renderKnowledgeMoveOptions()" id="knowledgeMoveSearch" placeholder="搜索知识点名称或路径..." type="text"/>
+<div class="knowledge-move-list" id="knowledgeMoveList"></div>
+<div class="modal-btns">
+<button class="btn btn-secondary" data-onclick="closeKnowledgeMoveModal()">取消</button>
+<button class="btn btn-primary" data-onclick="applyKnowledgeMove()">确认挂载</button>
+</div>
+</div>
+</div>
+<div class="modal-mask" id="knowledgeNodeModal">
+<div class="modal" style="width:640px;max-width:96vw">
+<button class="modal-close" data-onclick="closeKnowledgeNodeModal()">✕</button>
+<h2 id="knowledgeNodeModalTitle">知识点操作</h2>
+<div class="knowledge-node-dialog-subtitle" id="knowledgeNodeModalSubtitle"></div>
+<div class="form-group" id="knowledgeNodeTitleGroup">
+<label id="knowledgeNodeTitleLabel">节点名称</label>
+<input data-onkeydown="handleKnowledgeNodeTitleKeydown(event)" id="knowledgeNodeTitleInput" placeholder="输入知识点名称" type="text"/>
+</div>
+<div id="knowledgeNodeTargetGroup" style="display:none">
+<input class="knowledge-move-search" data-oninput="renderKnowledgeNodeTargetOptions()" id="knowledgeNodeTargetSearch" placeholder="搜索目标知识点名称或路径..." type="text"/>
+<div class="knowledge-move-list" id="knowledgeNodeTargetList"></div>
+</div>
+<div class="modal-btns">
+<button class="btn btn-secondary" data-onclick="closeKnowledgeNodeModal()">取消</button>
+<button class="btn btn-primary" data-onclick="submitKnowledgeNodeModal()">确认</button>
+</div>
+</div>
+</div>
+<div class="modal-mask" id="importModal">
+<div class="modal">
+<button class="modal-close" data-onclick="closeModal('importModal')">✕</button>
+<h2>导入 JSON</h2>
+<div style="margin-bottom:14px;padding:10px 12px;background:#f0f7ff;border:1px solid #d0e8ff;border-radius:8px">
+<div style="font-size:12px;font-weight:600;color:#1677ff;margin-bottom:6px">📱 完整备份文件（换设备用）</div>
+<input accept=".json" data-onchange="doFileImport(event)" id="importFileInput" style="font-size:12px;color:#555" type="file"/>
+<div style="font-size:11px;color:#888;margin-top:5px">选择完整备份 .json 后自动识别，支持「完整恢复」或「合并」</div>
+</div>
+<div style="font-size:11px;color:#aaa;text-align:center;margin-bottom:10px">── 或手动粘贴错题 JSON ──</div>
+<div class="import-modes">
+<div class="import-mode-btn active" data-onclick="selectImportMode('merge')" id="modeBtn_merge">
+<div class="mode-title">合并更新</div>
+<div class="mode-desc">按题目内容匹配<br/>有则更新，无则新增</div>
+</div>
+<div class="import-mode-btn" data-onclick="selectImportMode('replace')" id="modeBtn_replace">
+<div class="mode-title">完全替换</div>
+<div class="mode-desc">清空现有数据<br/>⚠ 不可恢复</div>
+</div>
+</div>
+<div class="form-group"><label>粘贴 JSON 内容</label>
+<textarea id="importText" placeholder='[{"type":"...","question":"..."}]' rows="10" style="font-family:monospace;font-size:12px"></textarea></div>
+<div class="modal-btns">
+<button class="btn btn-secondary" data-onclick="closeModal('importModal')">取消</button>
+<button class="btn btn-primary" data-onclick="doImport()">开始导入</button>
+</div>
+</div>
+</div>
+<div class="modal-mask" id="claudeModal">
+<div class="claude-modal">
+<button class="modal-close" data-onclick="closeModal('claudeModal')" style="float:right">✕</button>
+<h2 style="font-size:16px;font-weight:700;color:#2c3e50;margin-bottom:4px">🤖 导入 Claude 题库</h2>
+<p style="font-size:12px;color:#999;margin-bottom:16px">粘贴题目 → 复制模板 → 发到 Claude.ai → 粘贴结果导入到题库</p>
+<div class="step-label"><span class="step-num">1</span>粘贴原始题目（可多题）</div>
+<textarea id="rawQuestion" placeholder="直接粘贴题目原文，包括选项..." rows="5" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;font-family:inherit;resize:vertical;outline:none"></textarea>
+<div style="margin-top:8px"><button class="btn btn-primary btn-sm" data-onclick="genClaudeTemplate()">生成发送模板 →</button></div>
+<div id="templateArea" style="display:none;margin-top:16px">
+<div class="step-label"><span class="step-num">2</span>复制下方内容，发给 Claude.ai <span class="copy-hint" id="copyHint">✓ 已复制！</span></div>
+<textarea class="template-out" id="templateText" readonly="" rows="10"></textarea>
+<button class="btn btn-secondary btn-sm" data-onclick="copyTemplate()" style="margin-top:6px">📋 一键复制</button>
+</div>
+<hr class="divider"/>
+<div class="step-label"><span class="step-num">3</span>粘贴 Claude.ai 返回的 JSON</div>
+<textarea id="claudeResult" placeholder='[{"type":"判断推理","question":"...","answer":"A","analysis":"..."}]' rows="6" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:12px;font-family:monospace;resize:vertical;outline:none"></textarea>
+<div style="margin-top:8px">
+<button class="btn btn-primary btn-sm" data-onclick="importFromClaude()">导入到Claude题库</button>
+<span style="font-size:11px;color:#aaa;margin-left:8px">自动合并，不会重复，也不会算进错题</span>
+</div>
+</div>
+</div>
+<div class="modal-mask" id="claudeBankModal">
+<div class="modal" style="width:1120px;max-width:96vw;max-height:92vh;overflow-y:auto">
+<button class="modal-close" data-onclick="closeModal('claudeBankModal')">✕</button>
+<h2 style="margin-bottom:6px">📚 Claude 题库</h2>
+<div style="font-size:12px;color:#7a8599;line-height:1.8;margin-bottom:14px">
+      这里存放 Claude 生成或导入的题目。它们默认不算错题，不参与复习和错题统计；需要时可以一键转为错题。
+    </div>
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+<input data-oninput="renderClaudeBankModal()" id="claudeBankSearch" placeholder="搜索题干、题型、解析..." style="flex:1;min-width:240px;padding:9px 12px;border:1px solid #d9d9d9;border-radius:8px;font-size:13px;outline:none" type="text"/>
+<button class="btn btn-secondary btn-sm" data-onclick="document.getElementById('claudeBankSearch').value='';renderClaudeBankModal()">清空搜索</button>
+<button class="btn btn-secondary btn-sm" data-onclick="openModal('claudeModal')">继续导入</button>
+</div>
+<div id="claudeBankSummary" style="font-size:12px;color:#667085;margin-bottom:12px"></div>
+<div id="claudeBankList"></div>
+</div>
+</div>
+<div class="modal-mask" id="quizModal">
+<div class="quiz-modal">
+<div class="quiz-header">
+<div class="quiz-header-main">
+<span class="quiz-title" id="quizTitleText">📝 今日复习</span>
+<span class="quiz-progress" id="quizProgress"></span>
+</div>
+<button class="quiz-close-btn" data-onclick="requestCloseQuizModal()" type="button">关闭</button>
+</div>
+<div class="quiz-prog-bar"><div class="quiz-prog-fill" id="quizProgFill" style="width:0%"></div></div>
+<div id="quizContent"></div>
+</div>
+</div>
+<div class="modal-mask" id="chapterFilterModal">
+<div class="modal" style="width:500px;max-width:95vw">
+<button class="modal-close" data-onclick="closeModal('chapterFilterModal')">✕</button>
+<h2>选择练习范围</h2>
+<div style="margin-bottom:10px;display:flex;gap:8px">
+<button class="btn btn-sm btn-secondary" data-onclick="chapterFilterSelectAll(true)">全选</button>
+<button class="btn btn-sm btn-secondary" data-onclick="chapterFilterSelectAll(false)">全不选</button>
+</div>
+<div id="chapterFilterList" style="max-height:60vh;overflow-y:auto"></div>
+<div class="modal-btns">
+<button class="btn btn-secondary" data-onclick="closeModal('chapterFilterModal')">取消</button>
+<button class="btn btn-primary" data-onclick="startFullPracticeFiltered()">开始练习</button>
+</div>
+</div>
+</div>
+<div class="modal-mask" id="dashboardModal">
+<div class="modal" style="width:680px;max-width:96vw;max-height:92vh">
+<button class="modal-close" data-onclick="closeModal('dashboardModal')">✕</button>
+<h2 id="dashboardTitle">📊 学习统计</h2>
+<div id="dashboardContent"></div>
+</div>
+</div>
+<div class="modal-mask" id="historyModal">
+<div class="modal" style="width:580px;max-width:95vw;max-height:92vh">
+<button class="modal-close" data-onclick="closeModal('historyModal')">✕</button>
+<h2>📋 练习历史（最近30次）</h2>
+<div id="historyContent" style="max-height:70vh;overflow-y:auto"></div>
+</div>
+</div>
+<div class="modal-mask" id="aiToolsModal">
+<div class="modal" style="width:860px;max-width:96vw;max-height:92vh;overflow-y:auto">
+<button class="modal-close" data-onclick="closeModal('aiToolsModal')">✕</button>
+<h2 style="margin-bottom:4px">🧠 AI 工具台</h2>
+<p style="font-size:12px;color:#888;margin-bottom:14px">基于你的真实错题数据，不是通用建议</p>
+<!-- Tab 切换 -->
+<div style="display:flex;gap:4px;margin-bottom:14px;border-bottom:1px solid #eee;padding-bottom:0">
+<button class="ai-tab-btn active" data-onclick="switchAITab('diagnose')" id="aiTab_diagnose">📊 弱点诊断</button>
+<button class="ai-tab-btn" data-onclick="switchAITab('chat')" id="aiTab_chat">💬 问AI</button>
+<button class="ai-tab-btn" data-onclick="switchAITab('generate')" id="aiTab_generate">🎯 针对出题</button>
+<button class="ai-tab-btn" data-onclick="switchAITab('summary')" id="aiTab_summary">📋 摘要导出</button>
+</div>
+<!-- 弱点诊断 Tab -->
+<div class="ai-tab-content" id="aiTabContent_diagnose">
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+<div style="font-size:13px;color:#555">分析当前筛选范围内的错题，找出真实短板</div>
+<button class="btn btn-primary btn-sm" data-onclick="runAIDiagnosis()" id="diagnoseBtnMain">🔍 立即诊断</button>
+</div>
+<!-- 本地统计卡片（不需要AI，秒出） -->
+<div id="localStatsCards" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px"></div>
+<!-- AI深度分析 -->
+<div id="aiDiagnoseOutput" style="min-height:100px;padding:12px;border-radius:10px;background:#f8faff;border:1px solid #dbeafe;line-height:1.8;color:#1e3a5f;font-size:13px;white-space:pre-wrap">点击「立即诊断」获取基于你错题数据的深度分析。</div>
+</div>
+<!-- 问AI Tab -->
+<div class="ai-tab-content" id="aiTabContent_chat" style="display:none">
+<!-- 快捷问法 -->
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+<button class="btn btn-secondary btn-sm" data-onclick="quickAsk('这周我应该优先复习哪个题型？')">这周先攻哪块？</button>
+<button class="btn btn-secondary btn-sm" data-onclick="quickAsk('我的言语理解错题有什么共同规律？')">言语规律？</button>
+<button class="btn btn-secondary btn-sm" data-onclick="quickAsk('判断推理最高频的错误原因是什么，怎么针对性练习？')">判断推理怎么练？</button>
+<button class="btn btn-secondary btn-sm" data-onclick="quickAsk('根据我的错题，给我制定一个3天专项复习计划')">制定3天计划</button>
+</div>
+<textarea id="aiChatInput" placeholder="例如：我的逻辑判断错了很多，有什么规律？怎么在2周内提升？" rows="3" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;resize:vertical;font:inherit;margin-bottom:8px"></textarea>
+<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+<button class="btn btn-primary" data-onclick="submitAIChat()">发送</button>
+<button class="btn btn-secondary" data-onclick="clearAIChat()">清空对话</button>
+<span id="aiChatStatus" style="font-size:12px;color:#888"></span>
+</div>
+<div id="aiChatOutput" style="min-height:120px;padding:12px;border-radius:10px;background:#f8faff;border:1px solid #dbeafe;line-height:1.8;color:#1e3a5f;font-size:13px;white-space:pre-wrap">AI会结合你的错题数据来回答，不是通用建议。</div>
+</div>
+<!-- 针对出题 Tab -->
+<div class="ai-tab-content" id="aiTabContent_generate" style="display:none">
+<div style="font-size:13px;color:#555;margin-bottom:10px">
+        针对你的弱点生成原创练习题。先在左侧知识树选中一个节点，或在下方指定题型。
+      </div>
+<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+<select id="genTypeSelect" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;flex:1;min-width:140px">
+<option value="">-- 选题型 --</option>
+<option>言语理解与表达</option>
+<option>判断推理</option>
+<option>数量关系</option>
+<option>资料分析</option>
+<option>常识判断</option>
+</select>
+<select id="genSubtypeSelect" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;flex:1;min-width:140px">
+<option value="">-- 选子题型（可选）--</option>
+<option>逻辑填空</option><option>片段阅读</option>
+<option>逻辑判断</option><option>图形推理</option><option>定义判断</option><option>类比推理</option>
+<option>数学运算</option><option>综合分析</option>
+</select>
+<button class="btn btn-primary" data-onclick="generateFromWeakpoint()">🎲 出3题</button>
+</div>
+<div id="aiGenerateOutput" style="min-height:100px;padding:12px;border-radius:10px;background:#f8faff;border:1px solid #dbeafe;line-height:1.8;color:#1e3a5f;font-size:13px"></div>
+</div>
+<!-- 摘要导出 Tab（发给Claude用）-->
+<div class="ai-tab-content" id="aiTabContent_summary" style="display:none">
+<div style="font-size:13px;color:#555;margin-bottom:8px">
+        生成一段结构化摘要，复制后直接发给 Claude（本产品外的AI对话窗口），让它帮你出题、制定计划、或分析某个专项。
+      </div>
+<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+<button class="btn btn-secondary btn-sm" data-onclick="buildClaudeSummary()">📦 生成全量摘要</button>
+<button class="btn btn-secondary btn-sm" data-onclick="buildClaudeSummaryFiltered()">🔍 仅当前筛选</button>
+<button class="btn btn-secondary btn-sm" data-onclick="copyAISummary()" id="copySummaryBtn" style="display:none">📋 一键复制</button>
+</div>
+<textarea id="aiModuleSummaryOutput" placeholder="点击上方按钮生成..." readonly="" rows="14" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font:12px/1.6 Consolas,monospace;background:#fff;resize:vertical"></textarea>
+</div>
+</div>
+</div>
+<div class="modal-mask" id="typeRulesModal">
+<div class="modal" style="width:640px;max-width:96vw;max-height:92vh">
+<button class="modal-close" data-onclick="closeModal('typeRulesModal')">✕</button>
+<h2>🔧 题型自动识别规则</h2>
+<p style="font-size:12px;color:#999;margin-bottom:12px">录入题目时自动匹配题型（按顺序匹配，先命中的规则生效）</p>
+<div id="typeRulesList" style="max-height:55vh;overflow-y:auto"></div>
+<div class="modal-btns">
+<button class="btn btn-sm btn-secondary" data-onclick="addTypeRule()">＋ 添加规则</button>
+<button class="btn btn-sm btn-secondary" data-onclick="resetTypeRules()">恢复默认</button>
+<button class="btn btn-secondary" data-onclick="closeModal('typeRulesModal')">取消</button>
+<button class="btn btn-primary" data-onclick="saveTypeRules()">保存规则</button>
+</div>
+</div>
+</div>
+<div class="modal-mask" id="exportModal">
+<div class="modal" style="width:520px;max-width:95vw">
+<button class="modal-close" data-onclick="closeModal('exportModal')">✕</button>
+<h2>⬇ 导出</h2>
+<div style="margin-bottom:14px">
+<div style="font-size:12px;font-weight:600;color:#555;margin-bottom:8px">导出格式</div>
+<div style="display:flex;gap:8px">
+<label class="export-fmt-card active" data-onclick="selectExportFmt('json')" id="efmt_json">
+<input checked="" name="exportFmt" style="display:none" type="radio" value="json"/>
+<div style="font-size:22px;margin-bottom:4px">📦</div>
+<div style="font-size:13px;font-weight:700">数据导出</div>
+<div style="font-size:11px;color:#999;margin-top:2px">题目、笔记、模块包</div>
+</label>
+<label class="export-fmt-card" data-onclick="selectExportFmt('print')" id="efmt_print">
+<input name="exportFmt" style="display:none" type="radio" value="print"/>
+<div style="font-size:22px;margin-bottom:4px">🖨️</div>
+<div style="font-size:13px;font-weight:700">打印 / PDF</div>
+<div style="font-size:11px;color:#999;margin-top:2px">排版后打印或另存PDF</div>
+</label>
+<label class="export-fmt-card" data-onclick="selectExportFmt('full')" id="efmt_full">
+<input name="exportFmt" style="display:none" type="radio" value="full"/>
+<div style="font-size:22px;margin-bottom:4px">📱</div>
+<div style="font-size:13px;font-weight:700">完整备份</div>
+<div style="font-size:11px;color:#999;margin-top:2px">错题＋笔记＋设置</div>
+</label>
+</div>
+</div>
+<div id="exportJsonOpts">
+<div style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px">导出内容</div>
+<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px">
+<label style="font-size:13px;cursor:pointer"><input checked="" name="exportDataMode" type="radio" value="questions"/> 仅题目</label>
+<label style="font-size:13px;cursor:pointer"><input name="exportDataMode" type="radio" value="questions_notes"/> 题目 + 笔记</label>
+<label style="font-size:13px;cursor:pointer"><input name="exportDataMode" type="radio" value="module_backup"/> 模块备份</label>
+</div>
+<div style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px">导出范围</div>
+<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px">
+<label style="font-size:13px;cursor:pointer"><input checked="" name="exportDataScope" type="radio" value="all"/> 全部错题</label>
+<label style="font-size:13px;cursor:pointer"><input name="exportDataScope" type="radio" value="filtered"/> 当前筛选</label>
+<label style="font-size:13px;cursor:pointer"><input name="exportDataScope" type="radio" value="current"/> 当前模块/知识点</label>
+</div>
+<div style="font-size:11px;color:#999;line-height:1.7">
+        “题目 + 笔记”适合发给外部 Claude 或单独存专题；“模块备份”会导出当前范围内的题目、知识树和笔记，便于以后单独恢复。
+      </div>
+</div>
+<div id="exportPrintOpts" style="display:none">
+<div style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px">内容选项</div>
+<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px">
+<label style="font-size:13px;cursor:pointer"><input checked="" data-onchange="refreshPrintModuleList()" name="printContent" type="radio" value="q"/> 仅题目</label>
+<label style="font-size:13px;cursor:pointer"><input data-onchange="refreshPrintModuleList()" name="printContent" type="radio" value="qa"/> 题目 + 答案</label>
+<label style="font-size:13px;cursor:pointer"><input data-onchange="refreshPrintModuleList()" name="printContent" type="radio" value="qaa"/> 题目 + 答案 + 解析</label>
+<label style="font-size:13px;cursor:pointer"><input data-onchange="refreshPrintModuleList()" name="printContent" type="radio" value="notes"/> 学习笔记</label>
+</div>
+<div style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px">选择模块</div>
+<div style="margin-bottom:6px;display:flex;gap:8px">
+<button class="btn btn-sm btn-secondary" data-onclick="exportSelectAll(true)">全选</button>
+<button class="btn btn-sm btn-secondary" data-onclick="exportSelectAll(false)">全不选</button>
+</div>
+<div id="exportModuleList" style="max-height:180px;overflow-y:auto;border:1px solid #f0f0f0;border-radius:6px;padding:8px"></div>
+</div>
+<div class="modal-btns">
+<button class="btn btn-secondary" data-onclick="closeModal('exportModal')">取消</button>
+<button class="btn btn-primary" data-onclick="doExport()">导出</button>
+</div>
+</div>
+</div>
+<div class="modal-mask" id="dirModal">
+<div class="modal" style="width:700px;max-width:96vw;max-height:92vh">
+<button class="modal-close" data-onclick="closeModal('dirModal')">✕</button>
+<h2>📂 目录管理</h2>
+<p style="font-size:12px;color:#999;margin-bottom:12px">管理三级分类树，添加题目时子类型可从下拉选择，与题型规则联动</p>
+<div class="dir-panel">
+<!-- 一级：题型（固定） -->
+<div class="dir-col">
+<div class="dir-col-hd">题型（一级）</div>
+<div class="dir-list" id="dirCol1"></div>
+</div>
+<!-- 二级：子类型 -->
+<div class="dir-col">
+<div class="dir-col-hd">子类型（二级）</div>
+<div class="dir-list" id="dirCol2"></div>
+<div class="dir-add-row">
+<input data-onkeydown="if(event.key==='Enter')dirAddItem(2)" id="dirAddSub" placeholder="新子类型名称..." type="text"/>
+<button class="dir-add-btn" data-onclick="dirAddItem(2)">＋ 添加</button>
+</div>
+</div>
+<!-- 三级：细分类型 -->
+<div class="dir-col">
+<div class="dir-col-hd">细分类型（三级）</div>
+<div class="dir-list" id="dirCol3"></div>
+<div class="dir-add-row">
+<input data-onkeydown="if(event.key==='Enter')dirAddItem(3)" id="dirAddSub2" placeholder="新细分名称..." type="text"/>
+<button class="dir-add-btn" data-onclick="dirAddItem(3)">＋ 添加</button>
+</div>
+</div>
+</div>
+<div style="margin-top:12px;display:flex;gap:8px;justify-content:space-between;align-items:center">
+<button class="btn btn-sm btn-secondary" data-onclick="resetDirTree()">恢复默认</button>
+<button class="btn btn-primary" data-onclick="closeModal('dirModal')">完成</button>
+</div>
+</div>
+</div>
+<div class="modal-mask" id="localBackupModal">
+<div class="modal" style="width:760px;max-width:96vw;max-height:92vh;overflow-y:auto">
+<button class="modal-close" data-onclick="closeModal('localBackupModal')">✕</button>
+<h2>数据备份与恢复</h2>
+<div style="font-size:12px;color:#666;line-height:1.8;margin-bottom:12px">
+支持手动备份、每日自动备份和一键恢复。恢复前默认再做一次安全备份。
+</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+<button class="btn btn-primary" data-onclick="createManualLocalBackup()">立即备份</button>
+<button class="btn btn-secondary" data-onclick="refreshLocalBackups()">刷新列表</button>
+</div>
+<div id="localBackupSummary" style="font-size:12px;color:#667085;margin-bottom:12px">正在加载备份列表...</div>
+<div id="localBackupList"></div>
+</div>
+</div>
+<div class="v53-mobile-bottombar">
+  <button class="v53-quick-btn active" id="mobileQuickNotes" type="button">
+    <strong>笔记</strong>
+    <span>知识区</span>
+  </button>
+  <button class="v53-quick-btn" id="mobileQuickErrors" type="button">
+    <strong>错题</strong>
+    <span>列表区</span>
+  </button>
+  <button class="v53-quick-btn" id="mobileQuickAdd" type="button">
+    <strong>录题</strong>
+    <span>新建</span>
+  </button>
+  <button class="v53-quick-btn" id="mobileQuickReview" type="button">
+    <strong>复习</strong>
+    <span class="v53-badge" id="mobileReviewBadge">0</span>
+  </button>
+</div>

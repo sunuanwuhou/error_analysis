@@ -357,9 +357,32 @@
     "</div>";
   }
 
+  function renderInlineNotePreview(currentNode, noteContent) {
+    var markdown = String(noteContent || "");
+    if (!markdown.trim()) {
+      return "<div class=\"knowledge-workspace-empty\">" + TEXT.emptyNote + "</div>";
+    }
+    var anchorPrefix = getKnowledgeNoteAnchorPrefix(currentNode && currentNode.id);
+    var headings = extractMdHeadings(markdown);
+    var tocHtml = renderFloatingHeadingPanel(headings, anchorPrefix);
+    var previewHtml = renderNotePreviewLayout(renderMd(markdown, { anchorPrefix: anchorPrefix }), tocHtml);
+    return "<div class=\"knowledge-inline-preview\" data-role=\"knowledge-inline-preview\">" + previewHtml + "</div>";
+  }
+
+  function hydrateInlineNotePreview() {
+    var preview = document.getElementById("noteSplitPreview");
+    if (!preview) return;
+    requestAnimationFrame(function () {
+      syncActiveNoteToc(preview);
+      renderMathInElement(preview);
+    });
+  }
+
   function renderNoteMode(currentNode, noteContent) {
     clearGlobalNoteTocDock();
-    var previewHtml = renderViewerFrame(currentNode.id, noteEditing ? "noteSplitPreview" : "noteReadPreview");
+    var previewHtml = noteEditing
+      ? renderViewerFrame(currentNode.id, "noteSplitPreview")
+      : renderInlineNotePreview(currentNode, noteContent);
 
     if (noteEditing) {
       return "" +
@@ -424,7 +447,11 @@
     syncNotePreviewViewportHeight();
 
     if (mode === "note") {
-      syncEmbeddedNoteViewers(currentNode, noteEditing ? getCurrentNoteMarkdown() : noteContent);
+      if (noteEditing) {
+        syncEmbeddedNoteViewers(currentNode, getCurrentNoteMarkdown());
+      } else {
+        hydrateInlineNotePreview();
+      }
     }
 
     if (mode === "note" && noteEditing) {
