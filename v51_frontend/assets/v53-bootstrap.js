@@ -6,6 +6,7 @@ async function loadText(url) {
 
 let legacyAssetVersion = '';
 let legacyManifestPromise = null;
+let deferredPartialsPromise = null;
 
 async function loadLegacyManifest() {
   if (!legacyManifestPromise) {
@@ -30,6 +31,39 @@ async function injectPartials() {
   while (mount.firstChild) {
     document.body.appendChild(mount.firstChild);
   }
+}
+
+async function ensureDeferredPartialsLoaded() {
+  if (deferredPartialsPromise) return deferredPartialsPromise;
+  deferredPartialsPromise = (async () => {
+    await loadLegacyManifest();
+    const html = await loadText(withVersion('/v51-static/deferred-partials.bundle.html'));
+    const mount = document.createElement('div');
+    mount.innerHTML = html;
+    while (mount.firstChild) {
+      document.body.appendChild(mount.firstChild);
+    }
+  })().catch((error) => {
+    deferredPartialsPromise = null;
+    console.warn('deferred partial load failed', error);
+  });
+  return deferredPartialsPromise;
+}
+
+function scheduleDeferredPartialsLoad() {
+  const run = () => { ensureDeferredPartialsLoaded(); };
+  if (typeof window.requestIdleCallback === 'function') {
+    window.requestIdleCallback(run, { timeout: 1500 });
+  } else {
+    setTimeout(run, 350);
+  }
+  const eager = () => {
+    ensureDeferredPartialsLoaded();
+    window.removeEventListener('pointerdown', eager, true);
+    window.removeEventListener('keydown', eager, true);
+  };
+  window.addEventListener('pointerdown', eager, true);
+  window.addEventListener('keydown', eager, true);
 }
 
 const deferredActionCalls = [];
@@ -103,6 +137,7 @@ async function loadLegacyModules() {
       'startFullPractice'
     ].forEach(installDeferredAction);
     await injectPartials();
+    scheduleDeferredPartialsLoad();
     await loadScript(withVersion('/assets/modules/mathjax-config.js'));
     await loadScript(withVersion('/assets/vendor/mathjax/tex-svg.js'), { defer: true });
     await loadLegacyModules();

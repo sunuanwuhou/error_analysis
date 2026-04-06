@@ -5,6 +5,29 @@ function buildQuizQueueFromItems(items) {
   return (items || []).map(item => ({ ...findErrorById(item.id), ...item })).filter(isErrorEntry);
 }
 
+let quizQuestionStartedAt = 0;
+
+function getCurrentQuizElapsedSec() {
+  if (!quizQuestionStartedAt) return 0;
+  return Math.max(1, Math.round((Date.now() - quizQuestionStartedAt) / 1000));
+}
+
+function getQuizDurationHint(errorLike) {
+  const e = errorLike || {};
+  const target = Math.max(Number(e.targetDurationSec || 0), 0);
+  const recent = Math.max(Number(e.lastDuration || e.actualDurationSec || 0), 0);
+  if (quizSessionMode === 'speed') {
+    const chips = [];
+    if (target > 0) chips.push(`<span style="font-size:12px;padding:4px 10px;border-radius:999px;background:#fff7e6;color:#d46b08;font-weight:700">目标 ${target} 秒</span>`);
+    if (recent > 0) chips.push(`<span style="font-size:12px;padding:4px 10px;border-radius:999px;background:#f5f5f5;color:#666">上次 ${recent} 秒</span>`);
+    return `<div style="margin:0 0 12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">${chips.join('') || '<span style="font-size:12px;color:#d46b08;font-weight:700">这题按限时复训处理</span>'}</div>`;
+  }
+  if (quizSessionMode === 'direct' && String(e.tip || '').trim()) {
+    return `<div style="margin:0 0 12px;padding:10px 12px;border-radius:12px;background:#f6ffed;border:1px solid #b7eb8f;color:#237804;font-size:13px;line-height:1.7"><strong style="font-weight:700">做题提醒：</strong>${escapeHtml(String(e.tip || '').trim())}</div>`;
+  }
+  return '';
+}
+
 async function startPracticeQueue(mode) {
   const normalizedMode = String(mode || 'daily');
   let serverPayload = null;
@@ -54,7 +77,7 @@ async function startQuiz() {
 }
 
 function startFullPractice() {
-  const all = getErrorEntries().filter(e => e.status !== 'mastered');
+  const all = getErrorEntries().filter(e => !(typeof isEffectivelyMastered === 'function' ? isEffectivelyMastered(e) : e.status === 'mastered'));
   if (!all.length) { showToast('暂无错题，当前都已掌握', 'warning'); return; }
   // 打开章节筛选弹窗
   const typeMap = {};
@@ -95,7 +118,7 @@ function startFullPracticeFiltered() {
   });
   if(!selected.size){showToast('请至少选择一个章节', 'warning');return;}
   quizQueue = getErrorEntries().filter(e=>{
-    if(normalizeErrorStatusValue(e.status)==='mastered') return false;
+    if(typeof isEffectivelyMastered === 'function' ? isEffectivelyMastered(e) : normalizeErrorStatusValue(e.status)==='mastered') return false;
     const key=e.type+'::::'+(e.subtype||'未分类');
     return selected.has(key);
   }).slice().sort((a,b)=>{
@@ -156,6 +179,7 @@ function renderQuizQuestion() {
   document.getElementById('quizProgress').textContent = `${quizIdx+1} / ${total}`;
   document.getElementById('quizProgFill').style.width = `${(quizIdx/total)*100}%`;
   const e = quizQueue[quizIdx];
+  quizQuestionStartedAt = Date.now();
   const idLit = idArg(e.id);
   const opts = e.options ? e.options.split(/\n|\|/).map(o=>o.trim()).filter(Boolean) : [];
   const optBtns = opts.map((o,i) => {
@@ -179,15 +203,21 @@ function renderQuizQuestion() {
       </div>`) : ''}`;
   const quizCanvasHost = `
     <div class="quiz-process-canvas-host error-card" data-error-id="${escapeHtml(String(e.id || ''))}">
-      <div class="card-question quiz-question-box">${escapeHtml(e.question)}</div>
-      ${imgTag}
-      ${processImageTag}
-      <div class="quiz-canvas-options-wrap">
-        <div class="quiz-opt-grid">${quizOptionArea}</div>
+      <div class="quiz-reading-panel">
+        <div class="card-question quiz-question-box">${escapeHtml(e.question)}</div>
+        ${imgTag}
+        ${processImageTag}
+      </div>
+      <div class="quiz-answer-panel">
+        <div class="quiz-answer-panel-title">请选择答案</div>
+        <div class="quiz-canvas-options-wrap">
+          <div class="quiz-opt-grid">${quizOptionArea}</div>
+        </div>
       </div>
     </div>`;
   document.getElementById('quizContent').innerHTML = `
     ${chapterTag}
+    ${getQuizDurationHint(e)}
     ${quizCanvasHost}
     <div class="quiz-bottom-row">
       <button class="quiz-skip-btn" type="button" id="quizCanvasToggleBtn" onclick='toggleQuizProcessCanvas(${idLit}, this)' style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd">画布</button>
@@ -211,7 +241,7 @@ function selectQuizAnswer(letter) {
     const corrBtn = document.getElementById('qopt_'+correct);
     if (corrBtn) corrBtn.classList.add('correct');
   }
-  quizAnswers.push({id:e.id, userAnswer:letter, correct:isRight, skipped:false});
+  quizAnswers.push({id:e.id, userAnswer:letter, correct:isRight, skipped:false, durationSec:getCurrentQuizElapsedSec()});
   const skipBtn = document.getElementById('quizSkipBtn');
   if(skipBtn) skipBtn.style.display='none';
   const nextBtn = document.getElementById('quizNextBtn');
@@ -361,8 +391,14 @@ async function saveQuizResults() {
     touchErrorUpdatedAt(e);
     touchedIds.push(String(e.id));
     attemptPayload.push({
-      sessionMode: quizSessionMode === 'full' ? 'full' : 'daily',
-      source: quizSessionMode === 'full' ? 'phase13_22_full' : 'phase13_22_daily',
+      sessionMode: quizSessionMode === 'full' ? 'full' : (quizSessionMode || 'daily'),
+      source: quizSessionMode === 'full'
+        ? 'phase13_22_full'
+        : (quizSessionMode === 'note'
+          ? 'phase13_22_note_first'
+          : (quizSessionMode === 'direct'
+            ? 'phase13_22_direct_do'
+            : (quizSessionMode === 'speed' ? 'phase13_22_speed_drill' : 'phase13_22_daily'))),
       questionId: String(e.id || ''),
       errorId: String(e.id || ''),
       type: String(e.type || ''),
@@ -372,7 +408,7 @@ async function saveQuizResults() {
       myAnswer: String(a.userAnswer || ''),
       correctAnswer: String(e.answer || ''),
       result: a.correct ? 'correct' : 'wrong',
-      durationSec: 0,
+      durationSec: Number(a.durationSec || 0),
       statusTag: String(e.status || ''),
       confidence: a.correct ? (e.quiz.streak >= 3 ? 4 : 3) : 1,
       solvingNote: String(e.note || ''),
@@ -433,5 +469,169 @@ async function saveQuizResults() {
   renderAll();
   showToast('记录已保存', 'success');
 }
+
+const __legacyStartPracticeQueue = startPracticeQueue;
+startPracticeQueue = async function(mode) {
+  const normalizedMode = String(mode || 'daily');
+  if (!['note', 'direct', 'speed'].includes(normalizedMode)) {
+    return __legacyStartPracticeQueue(normalizedMode);
+  }
+
+  let serverPayload = null;
+  try {
+    serverPayload = await fetchJsonWithAuth('/api/practice/daily?limit=12');
+  } catch (e) {
+    console.warn('workflow practice fallback:', e);
+  }
+
+  const localPack = typeof buildPracticeTaskPack === 'function' ? buildPracticeTaskPack(12) : null;
+  const serverNoteFirst = buildQuizQueueFromItems(serverPayload && serverPayload.noteFirstQueue);
+  const serverDirectDo = buildQuizQueueFromItems(serverPayload && serverPayload.directDoQueue);
+  const serverSpeedDrill = buildQuizQueueFromItems(serverPayload && serverPayload.speedDrillQueue);
+
+  let title = '今日练习';
+  if (normalizedMode === 'note') title = '先看笔记';
+  if (normalizedMode === 'direct') title = '直接开做';
+  if (normalizedMode === 'speed') title = '限时复训';
+
+  if (normalizedMode === 'note') {
+    quizQueue = serverNoteFirst.length ? serverNoteFirst : ((localPack && localPack.noteFirstQueue) || (typeof getTaskPackQueueByMode === 'function' ? getTaskPackQueueByMode('note', 12) : []));
+  } else if (normalizedMode === 'direct') {
+    quizQueue = serverDirectDo.length ? serverDirectDo : ((localPack && localPack.directDoQueue) || (typeof getTaskPackQueueByMode === 'function' ? getTaskPackQueueByMode('direct', 12) : []));
+  } else {
+    quizQueue = serverSpeedDrill.length ? serverSpeedDrill : ((localPack && localPack.speedDrillQueue) || (typeof getTaskPackQueueByMode === 'function' ? getTaskPackQueueByMode('speed', 12) : []));
+  }
+
+  if (!quizQueue.length) {
+    const msg = normalizedMode === 'note'
+      ? '当前没有需要先看笔记的题目'
+      : (normalizedMode === 'direct'
+        ? '当前没有适合直接开做的题目'
+        : '当前没有需要限时复训的题目');
+    showToast(msg, 'warning');
+    return;
+  }
+
+  quizSessionMode = normalizedMode;
+  quizIdx = 0;
+  quizAnswers = [];
+  quizSkipped = new Set();
+  document.getElementById('quizTitleText').textContent = title;
+  openModal('quizModal');
+  renderQuizQuestion();
+};
+
+window.startPracticeQueue = startPracticeQueue;
+
+renderQuizQuestion = function() {
+  const total = quizQueue.length;
+  document.getElementById('quizProgress').textContent = `${quizIdx + 1} / ${total}`;
+  document.getElementById('quizProgFill').style.width = `${(quizIdx / total) * 100}%`;
+  const e = quizQueue[quizIdx];
+  quizQuestionStartedAt = Date.now();
+  const idLit = idArg(e.id);
+  const questionText = String(e.question || '').trim();
+  const isImageHeavyQuestion = !!e.imgData && questionText.length < 20;
+  const opts = e.options ? e.options.split(/\n|\|/).map(o => o.trim()).filter(Boolean) : [];
+  const optBtns = opts.map((o, i) => {
+    const letter = String.fromCharCode(65 + i);
+    return `<button class="quiz-opt-btn" id="qopt_${letter}" onclick="selectQuizAnswer('${letter}')">${escapeHtml(o)}</button>`;
+  }).join('');
+  const chapterTag = `<div class="quiz-chip-row">
+    <span class="quiz-chip quiz-chip-type">${escapeHtml(e.type || '')}</span>
+    ${e.subtype ? `<span class="quiz-chip quiz-chip-sub">${escapeHtml(e.subtype)}</span>` : ''}
+  </div>`;
+  const imgTag = e.imgData ? `<div class="quiz-image-wrap ${isImageHeavyQuestion ? 'is-image-heavy' : ''}"><img src="${escapeHtml(e.imgData)}" class="cuoti-img ${isImageHeavyQuestion ? 'quiz-image-heavy' : ''}" onclick="this.classList.toggle('expanded')" title="点击放大/缩小"></div>` : '';
+  const processImageTag = renderProcessImagePreview(e, 'quiz');
+  const quizOptionArea = `${optBtns || (e.imgData ? '' : '<p style="color:#94a3b8;font-size:13px">（无选项，可直接判断）</p>')}
+    ${!opts.length ? (e.imgData ? `
+      <div class="quiz-opt-grid">
+        ${['A','B','C','D'].map(l => `<button class="quiz-opt-btn" id="qopt_${l}" onclick="selectQuizAnswer('${l}')" style="text-align:center;font-size:16px;font-weight:700">${l}</button>`).join('')}
+      </div>` : `
+      <div style="display:flex;gap:12px">
+        <button class="quiz-opt-btn" style="flex:1;text-align:center;border-color:#52c41a;color:#52c41a" onclick="selectQuizAnswer('✓')">答对</button>
+        <button class="quiz-opt-btn" style="flex:1;text-align:center;border-color:#e74c3c;color:#e74c3c" onclick="selectQuizAnswer('✗')">答错</button>
+      </div>`) : ''}`;
+
+  const quizCanvasHost = `
+    <div class="quiz-process-canvas-host error-card quiz-question-surface" data-error-id="${escapeHtml(String(e.id || ''))}">
+      <div class="quiz-sheet-panel ${isImageHeavyQuestion ? 'is-image-heavy' : ''}">
+        <div class="quiz-reading-panel">
+          ${questionText ? `<div class="card-question quiz-question-box">${escapeHtml(questionText)}</div>` : ''}
+          ${imgTag}
+          ${processImageTag}
+        </div>
+        <div class="quiz-answer-panel">
+          <div class="quiz-answer-panel-title">请选择答案</div>
+          <div class="quiz-canvas-options-wrap">
+            <div class="quiz-opt-grid">${quizOptionArea}</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('quizContent').innerHTML = `
+    <div class="quiz-stage-shell">
+      <div class="quiz-stage-head">
+        ${chapterTag}
+        ${getQuizDurationHint(e)}
+      </div>
+      <div class="quiz-stage-main">
+        ${quizCanvasHost}
+      </div>
+      <div class="quiz-bottom-row quiz-action-dock">
+        <div class="quiz-action-secondary">
+          <button class="quiz-skip-btn" type="button" id="quizCanvasToggleBtn" onclick='toggleQuizProcessCanvas(${idLit}, this)' style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd">画布</button>
+          <button class="quiz-skip-btn" id="quizSkipBtn" onclick="skipQuizQuestion()">跳过</button>
+        </div>
+        <button class="quiz-next-btn" id="quizNextBtn" onclick="nextQuizQuestion()" style="display:none;flex:1">
+          ${quizIdx + 1 < quizQueue.length ? '下一题' : '查看结果'}
+        </button>
+      </div>
+    </div>`;
+};
+
+skipQuizQuestion = function() {
+  const e = quizQueue[quizIdx];
+  quizAnswers.push({id:e.id, userAnswer:'SKIPPED', correct:false, skipped:true, durationSec:getCurrentQuizElapsedSec()});
+  quizSkipped.add(quizIdx);
+  quizIdx++;
+  if (quizIdx >= quizQueue.length) renderQuizReview();
+  else renderQuizQuestion();
+};
+
+const __workflowStartPracticeQueue = startPracticeQueue;
+startPracticeQueue = async function(mode) {
+  const normalizedMode = String(mode || 'daily');
+  if (!['note', 'direct', 'speed'].includes(normalizedMode)) {
+    return __workflowStartPracticeQueue(normalizedMode);
+  }
+
+  const localPack = typeof buildPracticeTaskPack === 'function' ? buildPracticeTaskPack(12) : null;
+  if (normalizedMode === 'note') {
+    quizQueue = (localPack && localPack.noteFirstQueue) || (typeof getTaskPackQueueByMode === 'function' ? getTaskPackQueueByMode('note', 12) : []);
+  } else if (normalizedMode === 'direct') {
+    quizQueue = (localPack && localPack.directDoQueue) || (typeof getTaskPackQueueByMode === 'function' ? getTaskPackQueueByMode('direct', 12) : []);
+  } else {
+    quizQueue = (localPack && localPack.speedDrillQueue) || (typeof getTaskPackQueueByMode === 'function' ? getTaskPackQueueByMode('speed', 12) : []);
+  }
+
+  if (!quizQueue.length) {
+    return __workflowStartPracticeQueue(normalizedMode);
+  }
+
+  let title = '今日练习';
+  if (normalizedMode === 'note') title = '先看笔记';
+  if (normalizedMode === 'direct') title = '直接开做';
+  if (normalizedMode === 'speed') title = '限时复训';
+
+  quizSessionMode = normalizedMode;
+  quizIdx = 0;
+  quizAnswers = [];
+  quizSkipped = new Set();
+  document.getElementById('quizTitleText').textContent = title;
+  openModal('quizModal');
+  renderQuizQuestion();
+};
 
 window.startPracticeQueue = startPracticeQueue;

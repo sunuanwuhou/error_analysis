@@ -12,6 +12,26 @@
 .pc-entry-btn:hover{border-color:#cbd5e1;background:#f8fafc}
 .pc-stage{position:relative;margin-top:8px;border-radius:14px;overflow:visible}
 .pc-stage-content{position:relative;z-index:1}
+.pc-stage.pc-stage-question-sheet{margin-top:0}
+.pc-stage.pc-stage-question-sheet .pc-stage-content{display:block}
+.pc-stage.pc-stage-question-sheet .pc-canvas-layer{border-radius:26px}
+.pc-stage.pc-stage-question-sheet .pc-toolbar{
+  position:absolute;
+  top:-44px;
+  right:0;
+  z-index:7;
+  justify-content:flex-end;
+  margin:0;
+  padding:6px 8px;
+  border-radius:999px;
+  background:rgba(255,255,255,.92);
+  border:1px solid #e5e7eb;
+  box-shadow:0 10px 24px rgba(15,23,42,.08)
+}
+.pc-stage.pc-stage-image-only{margin-top:0}
+.pc-stage.pc-stage-image-only .pc-stage-content{display:flex;justify-content:center}
+.pc-stage.pc-stage-image-only .pc-canvas-layer{border-radius:18px}
+.pc-stage.pc-stage-image-only .pc-toolbar{justify-content:flex-end;margin-bottom:10px}
 .pc-canvas-layer{position:absolute;left:0;top:0;width:100%;height:100%;z-index:3;pointer-events:none;border-radius:14px;display:none}
 .pc-stage.is-editing .pc-canvas-layer{display:block;pointer-events:auto;cursor:crosshair}
 .pc-stage.is-editing .pc-stage-content{user-select:none}

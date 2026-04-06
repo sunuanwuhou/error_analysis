@@ -36,6 +36,23 @@ async function refreshRuntimeBadge() {
   }
 }
 
+function scheduleWorkspaceWarmup() {
+  const run = () => {
+    if (appView !== 'home') return;
+    try {
+      renderAll();
+      renderNotesByType();
+    } catch (error) {
+      console.warn('workspace warmup failed', error);
+    }
+  };
+  if (typeof window.requestIdleCallback === 'function') {
+    window.requestIdleCallback(run, { timeout: 1800 });
+    return;
+  }
+  setTimeout(run, 900);
+}
+
 (async () => {
   const ALL_KEYS = [
     KEY_ERRORS, KEY_REVEALED, KEY_EXP_TYPES, KEY_EXP_MAIN, KEY_EXP_SUB2,
@@ -62,10 +79,9 @@ async function refreshRuntimeBadge() {
   document.getElementById('navScroll')?.addEventListener('click', () => { if (isMobileViewport()) closeMobileSidebar(); });
   renderSidebar();
   if (typeof ensureLocalBackupMenuButton === 'function') ensureLocalBackupMenuButton();
-  renderAll();
-  renderNotesByType();
   if (typeof syncAppViewChrome === 'function') syncAppViewChrome();
   if (typeof renderHomeDashboard === 'function') renderHomeDashboard();
+  scheduleWorkspaceWarmup();
   renderCodexContextLine();
   checkStorageUsage();
   setTimeout(() => {

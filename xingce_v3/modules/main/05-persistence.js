@@ -82,6 +82,8 @@ async function loadKnowledgeState() {
     knowledgeExpanded = new Set();
     knowledgeExpandedLoaded = false;
   }
+  try { noteReviewTracking = JSON.parse(await DB.get(KEY_NOTE_REVIEW_TRACKING) || '{}') || {}; }
+  catch(e) { noteReviewTracking = {}; }
 }
 function saveNotesByType() {
   DB.set(KEY_NOTES_BY_TYPE, JSON.stringify(notesByType));
@@ -307,6 +309,9 @@ saveKnowledgeExpanded = function() {
   queuePersist(KEY_KNOWLEDGE_EXPANDED, Array.from(knowledgeExpanded));
   markIncrementalWorkspaceChange();
 };
+function saveNoteReviewTracking() {
+  queuePersist(KEY_NOTE_REVIEW_TRACKING, noteReviewTracking || {});
+}
 let cloudUser = null;
 let cloudSaveTimer = null;
 let cloudBusy = false;
@@ -1881,6 +1886,7 @@ window.restoreLocalBackup = restoreLocalBackup;
 window.deleteLocalBackup = deleteLocalBackup;
 window.ensureDailyLocalBackup = ensureDailyLocalBackup;
 window.ensureLocalBackupMenuButton = ensureLocalBackupMenuButton;
+window.saveNoteReviewTracking = saveNoteReviewTracking;
 
 function formatCodexTime(raw){
   if(!raw) return '';

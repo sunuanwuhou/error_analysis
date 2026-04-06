@@ -42,13 +42,24 @@
   function buildStage(card){
     let stage = card.querySelector('.pc-stage');
     if (stage) return stage;
-    const anchors = [
-      card.querySelector('.card-question'),
-      ...card.querySelectorAll(':scope > .cuoti-img, :scope > .process-image-preview-block, :scope > .card-options')
-    ].filter(Boolean);
+    const questionSurface = card.querySelector('.card-question-surface');
+    const quizSheetPanel = card.querySelector('.quiz-sheet-panel');
+    const quizImageWrap = card.querySelector('.quiz-image-wrap');
+    const anchors = questionSurface
+      ? [questionSurface]
+      : quizSheetPanel
+      ? [quizSheetPanel]
+      : quizImageWrap
+        ? [quizImageWrap]
+        : [
+            card.querySelector('.card-question'),
+            ...card.querySelectorAll(':scope > .cuoti-img, :scope > .process-image-preview-block, :scope > .card-options')
+          ].filter(Boolean);
     if (!anchors.length) return null;
     stage = document.createElement('div');
     stage.className = 'pc-stage';
+    if (questionSurface || quizSheetPanel) stage.classList.add('pc-stage-question-sheet');
+    else if (quizImageWrap) stage.classList.add('pc-stage-image-only');
     const toolbar = document.createElement('div');
     toolbar.className = 'pc-toolbar';
     toolbar.innerHTML = `

@@ -13,6 +13,7 @@ const KEY_HISTORY   = 'xc_history';
 const KEY_TYPE_RULES = 'xc_type_rules';
 const KEY_CLOUD_META = 'xc_cloud_meta';
 const KEY_KNOWLEDGE_EXPANDED = 'xc_knowledge_expanded';
+const KEY_NOTE_REVIEW_TRACKING = 'xc_note_review_tracking';
 
 // 默认题型识别规则（按优先级排序）
 const DEFAULT_TYPE_RULES = [
@@ -59,6 +60,7 @@ let draggingKnowledgeNodeId = null;
 let draggingErrorId = null;
 let knowledgeExpanded = new Set();
 let knowledgeExpandedLoaded = false;
+let noteReviewTracking = {};
 let knowledgeNodeModalState = { mode: '', nodeId: null, parentId: null, targetId: null, fallbackTitle: '' };
 let knowledgeRelatedMode = 'direct';
 const UI_KEY_ERRORS_TOP_COLLAPSED = 'xc_ui_errors_top_collapsed';

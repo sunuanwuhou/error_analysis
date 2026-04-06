@@ -1,43 +1,5 @@
 <div class="main-area">
 <div class="toast-stack" id="toastStack"></div>
-<button class="btn btn-secondary" data-onclick="openCodexInboxModal()" id="codexInboxBtn" style="position:fixed;right:18px;bottom:18px;z-index:1200;box-shadow:0 10px 24px rgba(15,23,42,.18)">Codex 留言</button>
-<div class="modal-mask" id="codexInboxModal">
-<div class="modal" style="width:1120px;max-width:96vw;max-height:92vh;overflow-y:auto">
-<button class="modal-close" data-onclick="closeModal('codexInboxModal')">×</button>
-<h2 style="margin-bottom:6px">Codex 留言箱</h2>
-<div class="codex-chat-note" style="margin-bottom:14px">这是异步留言，不是实时聊天。你发出去后会先进入待处理队列，Codex 默认每小时扫描一次并把回复写回这里。</div>
-<div class="codex-inbox-layout">
-<div class="codex-thread-panel">
-<div class="codex-thread-toolbar">
-<strong style="font-size:14px">会话列表</strong>
-<div style="display:flex;gap:8px">
-<button class="btn btn-sm btn-secondary" data-onclick="refreshCodexInbox()">刷新</button>
-<button class="btn btn-sm btn-primary" data-onclick="createCodexThread()">新建</button>
-</div>
-</div>
-<div class="codex-thread-list" id="codexThreadList"></div>
-</div>
-<div class="codex-chat-panel">
-<div class="codex-chat-toolbar">
-<div>
-<div id="codexThreadTitle" style="font-size:15px;font-weight:700;color:#243041">Codex 收件箱</div>
-<div id="codexThreadHint" style="font-size:12px;color:#8a94a6;margin-top:4px">等待加载会话…</div>
-</div>
-<button class="btn btn-sm btn-secondary" data-onclick="refreshCodexInbox()">手动刷新</button>
-</div>
-<div class="codex-context-line" id="codexContextLine"></div>
-<div class="codex-message-list" id="codexMessageList"></div>
-<div class="codex-chat-composer">
-<textarea id="codexMessageInput" placeholder="直接留言给 Codex。可以让它分析当前筛选结果、当前知识点、最近录入的问题。"></textarea>
-<div class="codex-chat-actions">
-<label><input checked="" id="codexIncludeContext" type="checkbox"/> 附带当前页面上下文</label>
-<button class="btn btn-primary" data-onclick="submitCodexMessage()" id="codexSendBtn">发送到队列</button>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
 
 <div class="app-view app-view-home active" id="homeView">
 <div class="home-shell">
@@ -79,7 +41,7 @@
 <input data-oninput="onSearch();updateSearchClear()" data-onkeydown="if(event.key==='Enter')onSearch()" id="searchInput" placeholder="搜索题目、解析..." type="text"/>
 <button class="search-clear" data-onclick="clearSearchInput()" id="searchClear">×</button>
 </div>
-<button class="btn btn-secondary global-search-launch" data-onclick="openGlobalSearchModal()" title="Ctrl+K">全局搜索</button>
+<button class="btn btn-secondary" data-onclick="toggleBatchMode()" id="batchToggleBtn" type="button">批量操作</button>
 </div>
 </div>
 <div class="date-filter-bar">
@@ -88,19 +50,13 @@
 <span style="color:#ccc">至</span>
 <input data-onchange="applyDateFilter()" id="dateTo" type="date"/>
 <button class="btn btn-sm btn-secondary" data-onclick="clearDateFilter()">清除日期</button>
-<span style="margin-left:4px;color:#bbb">|</span>
-<button class="btn btn-sm btn-secondary" data-onclick="clearFilter()" style="color:#e74c3c;border-color:#ffd0cc">一键清除筛选</button>
+<button class="btn btn-sm btn-secondary" data-onclick="clearFilter()">重置筛选</button>
 </div>
 <div class="content-header" style="padding:10px 16px;border-bottom:1px solid #f0f0f0;border-top:1px solid #f0f0f0">
 <div class="breadcrumb" id="breadcrumb">全部题目</div>
 <div style="display:flex;align-items:center;gap:10px">
-<div class="expand-btns">
-<button class="btn btn-sm btn-secondary" data-onclick="expandAll()">展开全部</button>
-<button class="btn btn-sm btn-secondary" data-onclick="collapseAll()">收起全部</button>
-</div>
 <div class="stats-bar" id="statsBar"></div>
-<button class="btn btn-sm btn-secondary" data-onclick="toggleBatchMode()" id="batchToggleBtn" type="button">批量操作</button>
-<button class="btn btn-sm btn-secondary" data-onclick="toggleErrorsTopCollapsed()" id="errorsTopToggleBtn" type="button">收起头部</button>
+<button class="btn btn-sm btn-secondary" data-onclick="openGlobalSearchModal()" title="Ctrl+K">全局搜索</button>
 </div>
 </div>
 <div class="batch-bar hidden" id="batchBar">

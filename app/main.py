@@ -34,6 +34,9 @@ def create_app() -> FastAPI:
     async def disable_static_cache_for_local_debug(request: Request, call_next):
         response = await call_next(request)
         path = request.url.path or ""
+        if path.startswith("/assets/") or path.startswith("/v51-static/assets/") or path in {"/v51-static/partials.bundle.html", "/v51-static/deferred-partials.bundle.html"}:
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            return response
         if path in {"/", "/legacy", "/v51", "/v53", "/login"} or path.startswith("/v51/") or path.startswith("/v53/"):
             response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
             response.headers["Pragma"] = "no-cache"

@@ -8,6 +8,14 @@ from hashlib import sha256
 ROOT = Path(__file__).resolve().parents[1]
 XINGCE = ROOT / 'xingce_v3'
 V51_FRONTEND = ROOT / 'v51_frontend'
+CORE_PARTIALS = [
+    '00-mobile-topbar.html',
+    '01-sidebar.html',
+    '02-mobile-toggle.html',
+    '03-mobile-mask.html',
+    '04-main-area.html',
+    '24-mobile-bottombar.html',
+]
 
 CSS_SOURCES = [
     'styles/main/00-base-reset.css',
@@ -157,16 +165,20 @@ def main() -> None:
     js_bundle_path = XINGCE / 'modules' / 'legacy-app.bundle.js'
     manifest_path = XINGCE / 'legacy-app.bundle.manifest.json'
     partials_bundle_path = V51_FRONTEND / 'partials.bundle.html'
+    deferred_partials_bundle_path = V51_FRONTEND / 'deferred-partials.bundle.html'
     partials_manifest = load_v51_partials_manifest()
+    deferred_partials = [name for name in partials_manifest if name not in CORE_PARTIALS]
 
     css_bundle_path.write_text(bundle_contents(CSS_SOURCES, '/*'), encoding='utf-8')
     js_bundle_path.write_text(bundle_contents(JS_SOURCES, '/*'), encoding='utf-8')
-    partials_bundle_path.write_text(build_partials_bundle(partials_manifest), encoding='utf-8')
+    partials_bundle_path.write_text(build_partials_bundle(CORE_PARTIALS), encoding='utf-8')
+    deferred_partials_bundle_path.write_text(build_partials_bundle(deferred_partials), encoding='utf-8')
     manifest_path.write_text(json.dumps(build_manifest(css_bundle_path, js_bundle_path), ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 
     print(f'Wrote {css_bundle_path.relative_to(ROOT)}')
     print(f'Wrote {js_bundle_path.relative_to(ROOT)}')
     print(f'Wrote {partials_bundle_path.relative_to(ROOT)}')
+    print(f'Wrote {deferred_partials_bundle_path.relative_to(ROOT)}')
     print(f'Wrote {manifest_path.relative_to(ROOT)}')
 
 

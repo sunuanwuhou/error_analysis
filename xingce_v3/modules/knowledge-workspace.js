@@ -47,6 +47,25 @@
     window.knowledgeWorkspaceMode = mode === "note" ? "note" : "list";
   }
 
+  function getNoteViewMode() {
+    if (window.knowledgeNoteViewMode !== "directory" && window.knowledgeNoteViewMode !== "current") {
+      window.knowledgeNoteViewMode = "current";
+    }
+    return window.knowledgeNoteViewMode;
+  }
+
+  function setNoteViewMode(mode) {
+    window.knowledgeNoteViewMode = mode === "directory" ? "directory" : "current";
+  }
+
+  function getDirectoryPreviewNodeId() {
+    return String(window.knowledgeDirectoryPreviewNodeId || "").trim();
+  }
+
+  function setDirectoryPreviewNodeId(nodeId) {
+    window.knowledgeDirectoryPreviewNodeId = String(nodeId || "").trim();
+  }
+
   function getCurrentKnowledgeNode() {
     return getKnowledgeNodeById(selectedKnowledgeNodeId);
   }
@@ -216,6 +235,81 @@
     });
   }
 
+  function isTopLevelKnowledgeNode(node) {
+    if (!node || !node.id) return false;
+    return !findKnowledgeParent(node.id);
+  }
+
+  function collectDirectorySections(currentNode) {
+    if (!currentNode) return [];
+    var sections = [];
+    var childNodes = (currentNode.children || []).slice();
+    childNodes.forEach(function (node) {
+      if (!node) return;
+      var markdown = String(node.contentMd || "").trim();
+      var childCount = countErrorsForKnowledgeNode(node.id, true);
+      var hasChildren = !!(node.children && node.children.length);
+      if (!markdown && !hasChildren && !childCount) return;
+      sections.push({
+        nodeId: node.id,
+        title: node.title || "",
+        pathText: collapseKnowledgePathTitles(getKnowledgePathTitles(node.id)).join(" > "),
+        hasContent: !!markdown,
+        hasChildren: hasChildren,
+        childCount: childCount
+      });
+    });
+    return sections;
+  }
+
+  function buildDirectoryTree(node) {
+    if (!node) return null;
+    var markdown = String(node.contentMd || "").trim();
+    var children = (node.children || []).map(buildDirectoryTree).filter(Boolean);
+    var childCount = countErrorsForKnowledgeNode(node.id, true);
+    if (!markdown && !children.length && !childCount) return null;
+    return {
+      nodeId: node.id,
+      title: node.title || "",
+      pathText: collapseKnowledgePathTitles(getKnowledgePathTitles(node.id)).join(" > "),
+      hasContent: !!markdown,
+      childCount: childCount,
+      children: children
+    };
+  }
+
+  function flattenDirectoryTree(tree) {
+    var list = [];
+    (tree || []).forEach(function walk(node, depth) {
+      if (!node) return;
+      list.push({
+        nodeId: node.nodeId,
+        title: node.title,
+        pathText: node.pathText,
+        hasContent: node.hasContent,
+        childCount: node.childCount,
+        depth: depth || 0
+      });
+      (node.children || []).forEach(function (child) {
+        walk(child, (depth || 0) + 1);
+      });
+    });
+    return list;
+  }
+
+  function getDirectoryPreviewNode(currentNode, sections) {
+    var preferredId = getDirectoryPreviewNodeId();
+    if (preferredId) {
+      var preferred = sections.find(function (section) { return section.nodeId === preferredId; });
+      if (preferred) return getKnowledgeNodeById(preferred.nodeId);
+    }
+    var firstWithContent = sections.find(function (section) { return section.hasContent; });
+    var fallback = firstWithContent || sections[0];
+    if (!fallback) return null;
+    setDirectoryPreviewNodeId(fallback.nodeId);
+    return getKnowledgeNodeById(fallback.nodeId);
+  }
+
   function setCurrentKnowledgeNode(nodeId, opts) {
     var options = opts || {};
     if (!nodeId) return;
@@ -322,6 +416,18 @@
   }
 
   function renderWorkspaceHeader(currentNode, pathText, directCount, linkedCount, errorCount, mode) {
+    var backToRecommended = window.__recommendedNotesReturnEnabled
+      ? "<button class=\"btn btn-sm btn-secondary\" onclick=\"returnToRecommendedNotes()\">返回推荐列表</button>"
+      : "";
+    var moreActions = "<details class=\"knowledge-workspace-more\">" +
+      "<summary>更多</summary>" +
+      "<div class=\"knowledge-workspace-more-menu\">" +
+        "<button class=\"btn btn-sm btn-secondary\" onclick=\"openExternalKnowledgeNoteEditor('" + currentNode.id + "')\">" + TEXT.standaloneEdit + "</button>" +
+        "<button class=\"btn btn-sm btn-secondary\" onclick=\"renameKnowledgeNode('" + currentNode.id + "')\">" + TEXT.rename + "</button>" +
+        (findKnowledgeParent(currentNode.id) ? "<button class=\"btn btn-sm btn-secondary\" onclick=\"moveKnowledgeNode('" + currentNode.id + "')\">" + TEXT.move + "</button>" : "") +
+        "<button class=\"btn btn-sm btn-secondary\" onclick=\"selectedKnowledgeNodeId='" + currentNode.id + "';addKnowledgeLeafUnderSelected()\">" + TEXT.createChild + "</button>" +
+      "</div>" +
+    "</details>";
     return "<div class=\"knowledge-workspace-shell-header\">" +
       "<div class=\"knowledge-workspace-shell-meta\">" +
         "<div class=\"knowledge-workspace-shell-title\">" + escapeHtml(currentNode.title) + "</div>" +
@@ -332,12 +438,16 @@
           "<button class=\"btn btn-sm " + (mode === "list" ? "btn-primary" : "btn-secondary") + "\" onclick=\"setKnowledgeWorkspaceMode('list')\">" + TEXT.tabQuestions + "</button>" +
           "<button class=\"btn btn-sm " + (mode === "note" ? "btn-primary" : "btn-secondary") + "\" onclick=\"setKnowledgeWorkspaceMode('note')\">" + TEXT.tabNotes + "</button>" +
         "</div>" +
+        (mode === "note" && isTopLevelKnowledgeNode(currentNode)
+          ? "<div class=\"knowledge-workspace-mode-switch knowledge-note-view-switch\">" +
+              "<button class=\"btn btn-sm " + (getNoteViewMode() === "current" ? "btn-primary" : "btn-secondary") + "\" onclick=\"setKnowledgeNoteViewMode('current')\">当前笔记</button>" +
+              "<button class=\"btn btn-sm " + (getNoteViewMode() === "directory" ? "btn-primary" : "btn-secondary") + "\" onclick=\"setKnowledgeNoteViewMode('directory')\">章节目录</button>" +
+            "</div>"
+          : "") +
         "<span class=\"knowledge-workspace-count\">" + errorCount + TEXT.countSuffix + "</span>" +
+        backToRecommended +
         "<button class=\"btn btn-sm btn-secondary\" onclick=\"openAddModalForCurrentKnowledge()\">" + TEXT.createQuestion + "</button>" +
-        "<button class=\"btn btn-sm btn-secondary\" onclick=\"openExternalKnowledgeNoteEditor('" + currentNode.id + "')\">" + TEXT.standaloneEdit + "</button>" +
-        "<button class=\"btn btn-sm btn-secondary\" onclick=\"renameKnowledgeNode('" + currentNode.id + "')\">" + TEXT.rename + "</button>" +
-        (findKnowledgeParent(currentNode.id) ? "<button class=\"btn btn-sm btn-secondary\" onclick=\"moveKnowledgeNode('" + currentNode.id + "')\">" + TEXT.move + "</button>" : "") +
-        "<button class=\"btn btn-sm btn-secondary\" onclick=\"selectedKnowledgeNodeId='" + currentNode.id + "';addKnowledgeLeafUnderSelected()\">" + TEXT.createChild + "</button>" +
+        moreActions +
       "</div>" +
       "<div class=\"knowledge-workspace-shell-stats\">" +
         "<span class=\"knowledge-workspace-stat\">" + TEXT.directCount + directCount + "</span>" +
@@ -410,6 +520,46 @@
     "</div>";
   }
 
+  function renderDirectoryMode(currentNode) {
+    clearGlobalNoteTocDock();
+    var tree = (currentNode.children || []).map(buildDirectoryTree).filter(Boolean);
+    var sections = flattenDirectoryTree(tree);
+    if (!sections.length) {
+      return "<div class=\"knowledge-workspace-note-wrap\">" +
+        "<div class=\"knowledge-workspace-list-head\">章节目录</div>" +
+        "<div class=\"knowledge-workspace-empty\">当前一级节点下还没有可浏览的子章节。</div>" +
+      "</div>";
+    }
+
+    var previewNode = getDirectoryPreviewNode(currentNode, sections);
+    var previewContent = previewNode ? String(previewNode.contentMd || "") : "";
+    var previewHtml = previewNode
+      ? renderInlineNotePreview(previewNode, previewContent)
+      : "<div class=\"knowledge-workspace-empty\">请选择一个章节查看笔记。</div>";
+
+    var blocks = sections.map(function (section) {
+      var isActive = previewNode && section.nodeId === previewNode.id;
+      return "<button class=\"knowledge-directory-item" + (isActive ? " active" : "") + (section.hasContent ? "" : " is-structural") + "\" type=\"button\" style=\"padding-left:" + (14 + section.depth * 18) + "px\" onclick=\"openKnowledgeDirectoryNode('" + escapeHtml(section.nodeId) + "')\">" +
+        "<span class=\"knowledge-directory-item-title\">" + escapeHtml(section.title) + "</span>" +
+        "<span class=\"knowledge-directory-item-meta\">" + section.childCount + "题</span>" +
+      "</button>";
+    }).join("");
+
+    return "<div class=\"knowledge-workspace-note-wrap knowledge-workspace-note-wrap--directory\">" +
+      "<div class=\"knowledge-workspace-list-head\">章节目录</div>" +
+      "<div class=\"knowledge-directory-layout\">" +
+        "<div class=\"knowledge-directory-list\" id=\"noteSplitPreview\">" + blocks + "</div>" +
+        "<div class=\"knowledge-directory-preview-wrap\">" +
+          "<div class=\"knowledge-directory-preview-head\">" +
+            "<div class=\"knowledge-directory-preview-title\">" + escapeHtml(previewNode ? (previewNode.title || "当前章节") : "当前章节") + "</div>" +
+            "<div class=\"knowledge-directory-preview-path\">" + escapeHtml(previewNode ? collapseKnowledgePathTitles(getKnowledgePathTitles(previewNode.id)).join(" > ") : "") + "</div>" +
+          "</div>" +
+          "<div class=\"note-preview-scroll note-preview-frame-scroll knowledge-directory-preview\">" + previewHtml + "</div>" +
+        "</div>" +
+      "</div>" +
+    "</div>";
+  }
+
   function renderKnowledgeNotesViewV2() {
     ensureKnowledgeState();
     clearGlobalNoteTocDock();
@@ -435,8 +585,12 @@
       setWorkspaceMode("note");
     }
 
+    if (!isTopLevelKnowledgeNode(currentNode) && getNoteViewMode() !== "current") {
+      setNoteViewMode("current");
+    }
+    var noteViewMode = isTopLevelKnowledgeNode(currentNode) ? getNoteViewMode() : "current";
     var bodyHtml = mode === "note"
-      ? renderNoteMode(currentNode, noteContent)
+      ? (noteViewMode === "directory" ? renderDirectoryMode(currentNode) : renderNoteMode(currentNode, noteContent))
       : renderListMode(currentNode, relatedErrors);
 
     content.innerHTML = "<div class=\"knowledge-workspace-shell\">" +
@@ -446,7 +600,7 @@
 
     syncNotePreviewViewportHeight();
 
-    if (mode === "note") {
+    if (mode === "note" && noteViewMode === "current") {
       if (noteEditing) {
         syncEmbeddedNoteViewers(currentNode, getCurrentNoteMarkdown());
       } else {
@@ -454,7 +608,7 @@
       }
     }
 
-    if (mode === "note" && noteEditing) {
+    if (mode === "note" && noteViewMode === "current" && noteEditing) {
       bindKnowledgeEditorShortcuts(content);
     }
   }
@@ -475,6 +629,29 @@
       return;
     }
     noteEditing = false;
+    renderNotesByType();
+  }
+
+  function setKnowledgeNoteViewMode(mode) {
+    setNoteViewMode(mode);
+    noteEditing = false;
+    renderNotesByType();
+  }
+
+  function openKnowledgeDirectoryNode(nodeId) {
+    if (!nodeId) return;
+    noteEditing = false;
+    var node = getKnowledgeNodeById(nodeId);
+    if (!node) return;
+    var targetId = nodeId;
+    if (!String(node.contentMd || "").trim()) {
+      var descendants = getKnowledgeDescendantNodeIds(node)
+        .slice(1)
+        .map(function (id) { return getKnowledgeNodeById(id); })
+        .filter(function (item) { return item && String(item.contentMd || "").trim(); });
+      if (descendants.length) targetId = descendants[0].id;
+    }
+    setDirectoryPreviewNodeId(targetId);
     renderNotesByType();
   }
 
@@ -514,6 +691,8 @@
   window.liveNotePreview = liveNotePreview;
   window.saveNoteTypeContent = saveNoteTypeContent;
   window.setKnowledgeWorkspaceMode = setKnowledgeWorkspaceMode;
+  window.setKnowledgeNoteViewMode = setKnowledgeNoteViewMode;
+  window.openKnowledgeDirectoryNode = openKnowledgeDirectoryNode;
   window.openExternalKnowledgeNoteEditor = openExternalKnowledgeNoteEditor;
   window.refreshKnowledgeWorkspaceCards = refreshKnowledgeWorkspaceCards;
   window.renderNotesByType = function () {

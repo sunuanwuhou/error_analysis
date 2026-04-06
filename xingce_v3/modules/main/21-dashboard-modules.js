@@ -1,26 +1,268 @@
 // ============================================================
-// Dashboard（Tab分模块版）
+// Dashboard / home workbench
 // ============================================================
-let _dashTrendDays = 7; // 7 或 30
-let _practiceInsightsState = { loading:false, loaded:false, error:'', data:null };
-let _practiceWorkbenchState = { loading:false, loaded:false, error:'', data:null };
+let _dashTrendDays = 7;
+let _practiceInsightsState = { loading: false, loaded: false, error: '', data: null };
+let _practiceWorkbenchState = { loading: false, loaded: false, error: '', data: null };
+let _recommendedNotesReturnEnabled = false;
 
-async function openDashboard() {
-  const tabs = ['总览', ...new Set(getErrorEntries().map(e=>e.type))];
-  const tabBtns = tabs.map((t,i) =>
-    `<button class="dash-tab-btn ${i===0?'active':''}" id="dashtab_${i}" onclick="switchDashTab(${i})">${escapeHtml(t)}</button>`
-  ).join('');
-  const tabPanes = tabs.map((t,i) =>
-    `<div class="dash-tab-pane ${i===0?'active':''}" id="dashpane_${i}"></div>`
-  ).join('');
-  document.getElementById('dashboardContent').innerHTML =
-    `<div class="dash-tab-bar">${tabBtns}</div>${tabPanes}`;
-  // 渲染总览
-  renderDashOverview(0);
-  openModal('dashboardModal');
-  await ensurePracticeInsightsLoaded();
+function getNoteReviewRecord(nodeId) {
+  return (noteReviewTracking && noteReviewTracking[nodeId]) || {};
 }
 
+function markRecommendedNoteViewed(nodeId, meta) {
+  const nowIso = new Date().toISOString();
+  const todayKey = today();
+  noteReviewTracking = noteReviewTracking || {};
+  const current = getNoteReviewRecord(nodeId);
+  noteReviewTracking[nodeId] = {
+    ...current,
+    nodeId,
+    lastViewedAt: nowIso,
+    lastViewedDate: todayKey,
+    lastRecommendedAt: current.lastRecommendedAt || nowIso,
+    lastRecommendedDate: current.lastRecommendedDate || todayKey,
+    lastSource: (meta && meta.source) || current.lastSource || 'recommended_notes',
+    viewCount: Number(current.viewCount || 0) + 1,
+  };
+  if (typeof saveNoteReviewTracking === 'function') saveNoteReviewTracking();
+}
+
+function markRecommendedNoteReminder(nodeId) {
+  if (!nodeId) return;
+  noteReviewTracking = noteReviewTracking || {};
+  const current = getNoteReviewRecord(nodeId);
+  noteReviewTracking[nodeId] = {
+    ...current,
+    nodeId,
+    lastRecommendedAt: new Date().toISOString(),
+    lastRecommendedDate: today(),
+  };
+  if (typeof saveNoteReviewTracking === 'function') saveNoteReviewTracking();
+}
+
+function wasRecommendedNoteViewedToday(nodeId) {
+  return String(getNoteReviewRecord(nodeId).lastViewedDate || '') === today();
+}
+
+function renderActionList(items, emptyText) {
+  if (!Array.isArray(items) || !items.length) {
+    return `<div class="home-action-item"><strong>暂无</strong><span>${escapeHtml(emptyText)}</span></div>`;
+  }
+  return items.map(item => `
+    <div class="home-action-item">
+      <strong>${escapeHtml(item.title || item.name || '')}</strong>
+      <span>${escapeHtml(item.description || item.taskReason || '')}</span>
+    </div>
+  `).join('');
+}
+
+function renderTaskPreview(items, emptyTitle, emptyDesc) {
+  if (!Array.isArray(items) || !items.length) {
+    return `<div class="home-note-item"><strong>${escapeHtml(emptyTitle)}</strong><span>${escapeHtml(emptyDesc)}</span></div>`;
+  }
+  return items.slice(0, 3).map(item => `
+    <div class="home-note-item">
+      <strong>${escapeHtml((item.question || '').slice(0, 42) || '待处理题目')}</strong>
+      <span>${escapeHtml(item.taskReason || (item.priorityReasons || []).join(' / ') || '按当前优先级处理')}</span>
+    </div>
+  `).join('');
+}
+
+function renderInsightChips(items) {
+  if (!Array.isArray(items) || !items.length) {
+    return '<div style="color:#bbb;font-size:12px;padding:10px 0">暂无可用数据</div>';
+  }
+  return items.map(item => `
+    <span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:#f5f5f5;color:#555;font-size:12px;margin:0 8px 8px 0">
+      ${escapeHtml(item.name || '')}
+      <strong style="color:#111">${Number(item.count || 0)}</strong>
+    </span>
+  `).join('');
+}
+
+function ensureRecommendedNotesModal() {
+  let mask = document.getElementById('recommendedNotesModal');
+  if (mask) return mask;
+  mask = document.createElement('div');
+  mask.id = 'recommendedNotesModal';
+  mask.className = 'modal-mask';
+  mask.innerHTML = `
+    <div class="modal" style="width:760px;max-width:96vw;max-height:88vh;overflow-y:auto">
+      <button class="modal-close" type="button" data-onclick="closeModal('recommendedNotesModal')">×</button>
+      <h2 style="margin-bottom:6px">推荐笔记</h2>
+      <div style="font-size:12px;color:#888;margin-bottom:14px">按最近错题和知识点聚合，帮助你决定今天先看哪条笔记。</div>
+      <div id="recommendedNotesBody"></div>
+    </div>
+  `;
+  document.body.appendChild(mask);
+  return mask;
+}
+
+function buildRecommendedNoteGroups(items) {
+  const groups = new Map();
+  (items || []).forEach(item => {
+    const nodeId = String(item.noteNodeId || '').trim();
+    if (!nodeId || typeof getKnowledgeNodeById !== 'function') return;
+    const node = getKnowledgeNodeById(nodeId);
+    if (!node) return;
+    if (!groups.has(nodeId)) {
+      const pathTitles = typeof getKnowledgePathTitles === 'function' ? getKnowledgePathTitles(nodeId) : [node.title || ''];
+      groups.set(nodeId, {
+        nodeId,
+        title: node.title || '未命名笔记',
+        pathText: Array.isArray(pathTitles) ? pathTitles.join(' > ') : String(node.title || ''),
+        contentMd: String(node.contentMd || ''),
+        items: [],
+        seenToday: wasRecommendedNoteViewedToday(nodeId),
+      });
+    }
+    groups.get(nodeId).items.push(item);
+  });
+  return Array.from(groups.values()).sort((a, b) => {
+    if (a.seenToday !== b.seenToday) return a.seenToday ? 1 : -1;
+    return b.items.length - a.items.length;
+  });
+}
+
+function buildMissingNoteItems(items) {
+  return (items || []).filter(item => {
+    const nodeId = String(item.noteNodeId || '').trim();
+    if (!nodeId) return true;
+    if (typeof getKnowledgeNodeById !== 'function') return false;
+    const node = getKnowledgeNodeById(nodeId);
+    return !node || !String(node.contentMd || '').trim();
+  });
+}
+
+function filterPendingRecommendedGroups(groups) {
+  return (groups || []).filter(group => !group.seenToday);
+}
+
+function getRiskWarningText(item) {
+  const wrongCount = Number(item.recentWrongCount || item.recentWrong || 0);
+  const confidence = Number(item.lastConfidence || item.confidence || 0);
+  if (wrongCount >= 2) return '这类错题已经重复出现，要特别警惕。';
+  if (confidence && confidence <= 2) return '这类题当前把握度仍低，建议看完后尽快验证。';
+  return item.taskReason || '先看这条笔记，再进入相关题目。';
+}
+
+function openRecommendedNote(nodeId) {
+  closeModal('recommendedNotesModal');
+  _recommendedNotesReturnEnabled = true;
+  window.__recommendedNotesReturnEnabled = true;
+  markRecommendedNoteViewed(nodeId, { source: 'recommended_notes' });
+  if (typeof setCurrentKnowledgeNode === 'function') {
+    setCurrentKnowledgeNode(nodeId, { switchTab: true, mode: 'note' });
+    return;
+  }
+  if (typeof openWorkspaceView === 'function') {
+    openWorkspaceView('notes');
+  }
+}
+
+function returnToRecommendedNotes() {
+  _recommendedNotesReturnEnabled = false;
+  window.__recommendedNotesReturnEnabled = false;
+  if (typeof switchAppView === 'function') {
+    switchAppView('home');
+  }
+  setTimeout(() => {
+    openRecommendedNotesModal();
+  }, 30);
+}
+
+function openRecommendedNotesModal() {
+  const taskPack = typeof buildPracticeTaskPack === 'function' ? buildPracticeTaskPack(12) : null;
+  const remotePack = _practiceWorkbenchState.loaded ? (_practiceWorkbenchState.data || {}) : null;
+  const rawGroups = buildRecommendedNoteGroups(remotePack?.noteFirstQueue || taskPack?.noteFirstQueue || []);
+  const pendingGroups = filterPendingRecommendedGroups(rawGroups);
+  const missingNoteItems = buildMissingNoteItems(remotePack?.noteFirstQueue || taskPack?.noteFirstQueue || []);
+
+  rawGroups.forEach(group => markRecommendedNoteReminder(group.nodeId));
+  ensureRecommendedNotesModal();
+
+  const body = document.getElementById('recommendedNotesBody');
+  if (!body) return;
+  if (!pendingGroups.length && !missingNoteItems.length) {
+    body.innerHTML = `
+      <div class="home-note-item">
+        <strong>今天需要先看的笔记已经看过了</strong>
+        <span>今天先不用重复看；如果明天还没处理对应错题，系统会继续提醒。</span>
+      </div>`;
+  } else {
+    const missingHtml = missingNoteItems.length ? `
+      <div class="home-dashboard-card" style="margin-bottom:12px;border:1px solid #fecaca;background:#fff7f7">
+        <h3 style="margin-bottom:6px;color:#b42318">缺笔记提醒</h3>
+        <div style="font-size:12px;color:#7a271a;line-height:1.8">
+          有 ${missingNoteItems.length} 道需要“先看笔记”的题还没有可看的笔记内容。建议先补一条简短规则总结，不然明天还会继续提醒。
+        </div>
+      </div>` : '';
+
+    const groupsHtml = pendingGroups.map(group => {
+      const summary = String(group.contentMd || '').replace(/[#>*`\-\n\r]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120);
+      const riskText = getRiskWarningText(group.items[0] || {});
+      return `
+        <div class="home-dashboard-card" style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+            <div style="flex:1;min-width:0">
+              <h3 style="margin-bottom:6px">${escapeHtml(group.title)}</h3>
+              <div style="font-size:12px;color:#888;line-height:1.6">${escapeHtml(group.pathText)}</div>
+              <div style="font-size:12px;color:#b42318;line-height:1.7;margin-top:8px">${escapeHtml(riskText)}</div>
+              <div style="font-size:12px;color:#666;line-height:1.7;margin-top:8px">${escapeHtml(summary || '这条笔记还没有内容，建议先补一条简短规则总结。')}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;flex-shrink:0">
+              <span class="knowledge-tree-count">${group.items.length} 题</span>
+              <button class="btn btn-secondary btn-sm" type="button" onclick="openRecommendedNote('${escapeHtml(group.nodeId)}')">打开笔记</button>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+
+    body.innerHTML = missingHtml + groupsHtml;
+  }
+  openModal('recommendedNotesModal');
+}
+
+async function openDashboard() {
+  const mount = document.getElementById('dashboardContent');
+  if (!mount) return;
+  openModal('dashboardModal');
+  mount.innerHTML = '<div style="color:#888;font-size:13px;padding:18px 0">正在整理任务统计...</div>';
+  await ensurePracticeInsightsLoaded();
+  const taskPack = typeof buildPracticeTaskPack === 'function' ? buildPracticeTaskPack(18) : null;
+  const workbench = _practiceWorkbenchState.data || {};
+  const insights = _practiceInsightsState.data || {};
+  const noteFirstQueue = workbench.noteFirstQueue || taskPack?.noteFirstQueue || [];
+  const directDoQueue = workbench.directDoQueue || taskPack?.directDoQueue || [];
+  const speedDrillQueue = workbench.speedDrillQueue || taskPack?.speedDrillQueue || [];
+  const weakestReasons = workbench.weakestReasons || insights.weakestReasons || taskPack?.weakestReasons || [];
+  const weakestTypes = workbench.weakestTypes || insights.weakestTypes || taskPack?.weakestTypes || [];
+  const behavior = workbench.behavior || taskPack?.behavior || {};
+  mount.innerHTML = `
+    <div class="dash-section">
+      <div class="dash-section-title">今日主线</div>
+      <div class="dash-summary-row">
+        <div class="dash-summary-card"><div class="dash-summary-num">${filterPendingRecommendedGroups(buildRecommendedNoteGroups(noteFirstQueue)).length}</div><div class="dash-summary-label">待看笔记</div></div>
+        <div class="dash-summary-card"><div class="dash-summary-num">${directDoQueue.length}</div><div class="dash-summary-label">直接开做</div></div>
+        <div class="dash-summary-card"><div class="dash-summary-num">${speedDrillQueue.length}</div><div class="dash-summary-label">限时复训</div></div>
+        <div class="dash-summary-card"><div class="dash-summary-num">${behavior.accuracy || 0}%</div><div class="dash-summary-label">近 7 日正确率</div></div>
+      </div>
+    </div>
+    <div class="dash-section">
+      <div class="dash-section-title">当前动作建议</div>
+      ${renderActionList(workbench.workflowAdvice || workbench.advice || taskPack?.advice || [], '继续录题或进入工作台整理。')}
+    </div>
+    <div class="dash-section">
+      <div class="dash-section-title">高频弱点</div>
+      ${renderInsightChips(weakestReasons)}
+    </div>
+    <div class="dash-section">
+      <div class="dash-section-title">高频模块</div>
+      ${renderInsightChips(weakestTypes)}
+    </div>
+  `;
+}
 
 async function ensurePracticeInsightsLoaded(force) {
   if (_practiceInsightsState.loading) return;
@@ -36,11 +278,6 @@ async function ensurePracticeInsightsLoaded(force) {
     _practiceInsightsState.error = err?.message || '加载失败';
   } finally {
     _practiceInsightsState.loading = false;
-    const pane = document.getElementById('dashpane_0');
-    if (pane) {
-      pane.dataset.rendered = '';
-      renderDashOverview(0);
-    }
   }
 }
 
@@ -55,7 +292,7 @@ async function ensurePracticeWorkbenchLoaded(force) {
     _practiceWorkbenchState.loaded = !!(data && data.ok !== false);
   } catch (err) {
     console.warn('practice workbench load failed:', err);
-    _practiceWorkbenchState.error = err?.message || '鍔犺浇澶辫触';
+    _practiceWorkbenchState.error = err?.message || '工作台加载失败';
   } finally {
     _practiceWorkbenchState.loading = false;
     if (typeof renderHomeDashboard === 'function') renderHomeDashboard();
@@ -69,360 +306,79 @@ function invalidatePracticeWorkbench() {
   _practiceWorkbenchState.data = null;
 }
 
-function renderPracticeInsightList(items, emptyText, reasonKey) {
-  if (!Array.isArray(items) || !items.length) {
-    return `<div style="color:#bbb;font-size:12px;padding:10px 0">${escapeHtml(emptyText)}</div>`;
-  }
-  return items.map((item, idx) => {
-    const confidence = item.lastConfidence ? ` · 把握度${item.lastConfidence}` : '';
-    const duration = item.lastDuration ? ` · ${item.lastDuration}s` : '';
-    const queueReason = item[reasonKey] || '';
-    return `<div class="dash-weak-item" style="align-items:flex-start">
-      <span style="flex:1;font-size:12px;color:#333;line-height:1.5">${idx+1}. ${escapeHtml((item.question||'').slice(0,34))}${(item.question||'').length>34?'…':''}<br><span style="font-size:11px;color:#999">${escapeHtml(queueReason)}${escapeHtml(confidence)}${escapeHtml(duration)}</span></span>
-      <button class="btn btn-sm btn-secondary" style="margin-left:8px;white-space:nowrap" onclick='revealCard(${idArg(''+(item.id||''))})'>查看</button>
-    </div>`;
-  }).join('');
-}
-
-function renderPracticeAdvice(items) {
-  if (!Array.isArray(items) || !items.length) {
-    return '<div style="color:#bbb;font-size:12px;padding:10px 0">暂无行动建议</div>';
-  }
-  return items.map(item => `<div class="dash-weak-item" style="align-items:flex-start"><span style="flex:1"><div style="font-size:12px;color:#333;font-weight:600">${escapeHtml(item.title||'')}</div><div style="font-size:11px;color:#888;line-height:1.5">${escapeHtml(item.description||'')}</div></span></div>`).join('');
-}
-
-function renderInsightChips(items) {
-  if (!Array.isArray(items) || !items.length) {
-    return '<div style="color:#bbb;font-size:12px;padding:10px 0">暂无可用数据</div>';
-  }
-  return items.map(item => `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:#f5f5f5;color:#555;font-size:12px;margin:0 8px 8px 0">${escapeHtml(item.name||'')}<strong style="color:#111">${Number(item.count||0)}</strong></span>`).join('');
-}
-
-function switchDashTab(idx) {
-  document.querySelectorAll('.dash-tab-btn').forEach((b,i)=>b.classList.toggle('active',i===idx));
-  document.querySelectorAll('.dash-tab-pane').forEach((p,i)=>p.classList.toggle('active',i===idx));
-  const pane = document.getElementById('dashpane_'+idx);
-  if (pane && !pane.dataset.rendered) {
-    if (idx===0) renderDashOverview(idx);
-    else {
-      const type = document.getElementById('dashtab_'+idx).textContent;
-      renderDashModule(idx, type);
-    }
-    pane.dataset.rendered='1';
-  }
-}
-
-function buildTrendBars(days) {
-  const hist = loadHistory();
-  const dayMap = {};
-  for (let i=days-1;i>=0;i--) { const d=addDays(today(),-i); dayMap[d]=0; }
-  hist.forEach(h=>{
-    const d=h.date?h.date.split(' ')[0]:'';
-    if(dayMap[d]!==undefined) dayMap[d]+=h.total||0;
-  });
-  const maxDay=Math.max(...Object.values(dayMap),1);
-  // 超过 14 天时压缩显示
-  const entries = Object.entries(dayMap);
-  const step = days>14 ? Math.ceil(entries.length/14) : 1;
-  return entries.filter((_,i)=>i%step===0 || i===entries.length-1).map(([d,cnt])=>{
-    const pct=Math.round(cnt/maxDay*100);
-    const label = days>14 ? d.slice(5) : d.slice(5);
-    return `<div class="dash-trend-bar-wrap">
-      <div class="dash-trend-count" style="font-size:9px">${cnt||''}</div>
-      <div class="dash-trend-bar" style="height:${Math.max(pct,2)}%"></div>
-      <div class="dash-trend-date" style="font-size:9px">${label}</div>
-    </div>`;
-  }).join('');
-}
-
-function renderDashOverview(idx) {
-  const hist = loadHistory();
-  const errorEntries = getErrorEntries();
-  const total = errorEntries.length;
-  const masteredN = errorEntries.filter(e=>e.status==='mastered').length;
-  const focusN = errorEntries.filter(e=>e.status==='focus').length;
-  const reviewN = errorEntries.filter(e=>e.status==='review').length;
-  const totalReviews = errorEntries.reduce((s,e)=>s+(e.quiz&&e.quiz.reviewCount||0),0);
-  const mastPct = total ? Math.round(masteredN/total*100) : 0;
-
-  // 各模块对比
-  const typeMap={};
-  errorEntries.forEach(e=>{
-    if(!typeMap[e.type])typeMap[e.type]={total:0,mastered:0,focus:0};
-    typeMap[e.type].total++;
-    if(e.status==='mastered') typeMap[e.type].mastered++;
-    if(e.status==='focus') typeMap[e.type].focus++;
-  });
-  const typeBars = Object.entries(typeMap).sort((a,b)=>b[1].total-a[1].total).map(([type,info])=>{
-    const pct=info.total?Math.round(info.mastered/info.total*100):0;
-    const barColor=pct>=80?'#52c41a':pct>=50?'#4e8ef7':'#e74c3c';
-    return `<div class="dash-progress-row">
-      <span class="dash-progress-label" title="${escapeHtml(type)}">${escapeHtml(type)}</span>
-      <div class="dash-progress-bg"><div class="dash-progress-fill" style="width:${pct}%;background:${barColor}"></div></div>
-      <span class="dash-progress-val">${info.mastered}/${info.total} (${pct}%)</span>
-    </div>`;
-  }).join('');
-
-  // 全局错因 Top5
-  const reasonMap={};
-  errorEntries.forEach(e=>{const r=e.errorReason||'（未填写）';reasonMap[r]=(reasonMap[r]||0)+1;});
-  const maxR=Math.max(...Object.values(reasonMap),1);
-  const reasonBars=Object.entries(reasonMap).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([r,n],ci)=>{
-    const pct=Math.round(n/maxR*100);
-    const colors=['#fa8c16','#e74c3c','#4e8ef7','#52c41a','#722ed1'];
-    return `<div class="dash-progress-row">
-      <span class="dash-progress-label" title="${escapeHtml(r)}">${escapeHtml(r)}</span>
-      <div class="dash-progress-bg"><div class="dash-progress-fill" style="width:${pct}%;background:${colors[ci%5]}"></div></div>
-      <span class="dash-progress-val">${n} 题</span>
-    </div>`;
-  }).join('');
-
-  // 全局Top3薄弱题
-  const weakList=errorEntries.filter(e=>e.quiz&&e.quiz.reviewCount>0)
-    .map(e=>({q:e.question.slice(0,28),type:e.type,wrong:e.quiz.wrongCount||0,review:e.quiz.reviewCount,ratio:(e.quiz.wrongCount||0)/e.quiz.reviewCount}))
-    .sort((a,b)=>b.ratio-a.ratio).slice(0,3);
-  const weakHtml=weakList.length
-    ?weakList.map(w=>`<div class="dash-weak-item"><span style="flex:1;font-size:12px;color:#333">${escapeHtml(w.q)}…</span><span style="font-size:11px;color:#e74c3c;white-space:nowrap;margin-left:8px">${escapeHtml(w.type)}·${w.wrong}/${w.review}错</span></div>`).join('')
-    :'<div style="color:#ccc;font-size:12px;text-align:center;padding:12px">暂无复习记录</div>';
-
-  const trendBars = buildTrendBars(_dashTrendDays);
-  const localTaskPack = typeof buildPracticeTaskPack === 'function' ? buildPracticeTaskPack(12) : null;
-  const taskMissionHtml = localTaskPack ? `
-    <div class="dash-section">
-      <div class="dash-section-title">🎒 今日任务包</div>
-      <div class="dash-summary-row" style="margin-top:0">
-        <div class="dash-summary-card"><div class="dash-summary-num">${localTaskPack.mission.total}</div><div class="dash-summary-label">今日任务</div></div>
-        <div class="dash-summary-card"><div class="dash-summary-num" style="color:#d46b08">${localTaskPack.mission.reviewCount}</div><div class="dash-summary-label">待复盘</div></div>
-        <div class="dash-summary-card"><div class="dash-summary-num" style="color:#722ed1">${localTaskPack.mission.retrainCount}</div><div class="dash-summary-label">待复训</div></div>
-        <div class="dash-summary-card"><div class="dash-summary-num blue">${localTaskPack.behavior.accuracy}%</div><div class="dash-summary-label">近7日正确率</div></div>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-        <button class="btn btn-sm btn-primary" onclick="startPracticeQueue('daily')">开始今日任务（${localTaskPack.mission.suggestedDailyCount}）</button>
-        <button class="btn btn-sm btn-secondary" onclick="startPracticeQueue('review')">先补待复盘（${localTaskPack.mission.suggestedReviewCount}）</button>
-        <button class="btn btn-sm btn-secondary" onclick="startPracticeQueue('retrain')">先做待复训（${localTaskPack.mission.suggestedRetrainCount}）</button>
-      </div>
-    </div>` : '';
-
-  document.getElementById('dashpane_'+idx).innerHTML=`
-    <div class="dash-summary-row">
-      <div class="dash-summary-card"><div class="dash-summary-num">${total}</div><div class="dash-summary-label">总题数</div></div>
-      <div class="dash-summary-card"><div class="dash-summary-num green">${masteredN}</div><div class="dash-summary-label">已掌握 ${mastPct}%</div></div>
-      <div class="dash-summary-card"><div class="dash-summary-num">${focusN}</div><div class="dash-summary-label">重点复习</div></div>
-      <div class="dash-summary-card"><div class="dash-summary-num" style="color:#fa8c16">${reviewN}</div><div class="dash-summary-label">待复习</div></div>
-      <div class="dash-summary-card"><div class="dash-summary-num" style="color:#4e8ef7">${totalReviews}</div><div class="dash-summary-label">总复习次</div></div>
-    </div>
-    ${taskMissionHtml}
-    <div class="dash-section">
-      <div class="dash-section-title">📚 各模块掌握度对比</div>
-      ${typeBars||'<div style="color:#ccc;font-size:12px">暂无数据</div>'}
-    </div>
-    <div class="dash-section">
-      <div class="dash-section-title">📈 练习趋势
-        <span class="trend-toggle" style="margin-left:8px;display:inline-flex">
-          <button class="trend-toggle-btn ${_dashTrendDays===7?'active':''}" onclick="switchTrend(7,${idx})">7日</button>
-          <button class="trend-toggle-btn ${_dashTrendDays===30?'active':''}" onclick="switchTrend(30,${idx})">30日</button>
-        </span>
-      </div>
-      <div class="dash-trend-row" id="trendRow_${idx}">${trendBars}</div>
-    </div>
-    <div class="dash-section">
-      <div class="dash-section-title">⚠️ 全局错因 Top5</div>
-      ${reasonBars||'<div style="color:#ccc;font-size:12px">暂无数据</div>'}
-    </div>
-    <div class="dash-section">
-      <div class="dash-section-title">🎯 Top3 薄弱题</div>
-      ${weakHtml}
-    </div>
-    <div class="dash-section">
-      <div class="dash-section-title">🧭 今日行动建议</div>
-      ${_practiceInsightsState.loading ? '<div style="color:#999;font-size:12px;padding:10px 0">正在生成建议...</div>' : renderPracticeAdvice(_practiceInsightsState.data?.advice || [])}
-    </div>
-    <div class="dash-section">
-      <div class="dash-section-title">🗂 今日待复盘</div>
-      ${_practiceInsightsState.loading ? '<div style="color:#999;font-size:12px;padding:10px 0">加载中...</div>' : renderPracticeInsightList(_practiceInsightsState.data?.reviewQueue || [], '暂无待复盘队列', 'queueReason')}
-    </div>
-    <div class="dash-section">
-      <div class="dash-section-title">🔁 今日待复训</div>
-      ${_practiceInsightsState.loading ? '<div style="color:#999;font-size:12px;padding:10px 0">加载中...</div>' : renderPracticeInsightList(_practiceInsightsState.data?.retrainQueue || [], '暂无待复训队列', 'queueReason')}
-    </div>
-    <div class="dash-section">
-      <div class="dash-section-title">📌 当前高频错因</div>
-      ${_practiceInsightsState.loading ? '<div style="color:#999;font-size:12px;padding:10px 0">加载中...</div>' : renderInsightChips(_practiceInsightsState.data?.weakestReasons || [])}
-    </div>
-    <div class="dash-section">
-      <div class="dash-section-title">📚 当前高频薄弱模块</div>
-      ${_practiceInsightsState.loading ? '<div style="color:#999;font-size:12px;padding:10px 0">加载中...</div>' : renderInsightChips(_practiceInsightsState.data?.weakestTypes || [])}
-      ${_practiceInsightsState.error ? `<div style="color:#cf1322;font-size:12px;margin-top:8px">调度数据加载失败：${escapeHtml(_practiceInsightsState.error)}</div>` : ''}
-    </div>`;
-}
-
-function switchTrend(days, paneIdx) {
-  _dashTrendDays = days;
-  // 重新渲染总览的趋势部分
-  const pane = document.getElementById('dashpane_'+paneIdx);
-  if (!pane) return;
-  pane.dataset.rendered = '';
-  renderDashOverview(paneIdx);
-}
-
-function renderDashModule(idx, type) {
-  const list = getErrorEntries().filter(e=>e.type===type);
-  if (!list.length) {
-    document.getElementById('dashpane_'+idx).innerHTML='<div style="color:#ccc;text-align:center;padding:40px;font-size:13px">该模块暂无错题</div>';
-    return;
-  }
-  const total=list.length;
-  const mastered=list.filter(e=>e.status==='mastered').length;
-  const focus=list.filter(e=>e.status==='focus').length;
-  const review=list.filter(e=>e.status==='review').length;
-  const mastPct=total?Math.round(mastered/total*100):0;
-  const reviews=list.reduce((s,e)=>s+(e.quiz&&e.quiz.reviewCount||0),0);
-
-  // 子类型分布
-  const subMap={};
-  list.forEach(e=>{const s=e.subtype||'未分类';if(!subMap[s])subMap[s]={total:0,mastered:0};subMap[s].total++;if(e.status==='mastered')subMap[s].mastered++;});
-  const maxSub=Math.max(...Object.values(subMap).map(v=>v.total),1);
-  const subBars=Object.entries(subMap).sort((a,b)=>b[1].total-a[1].total).map(([s,info])=>{
-    const pct=info.total?Math.round(info.mastered/info.total*100):0;
-    const barColor=pct>=80?'#52c41a':pct>=50?'#4e8ef7':'#e74c3c';
-    return `<div class="dash-progress-row">
-      <span class="dash-progress-label">${escapeHtml(s)}</span>
-      <div class="dash-progress-bg"><div class="dash-progress-fill" style="width:${Math.round(info.total/maxSub*100)}%;background:${barColor}"></div></div>
-      <span class="dash-progress-val">${info.mastered}/${info.total} (${pct}%)</span>
-    </div>`;
-  }).join('');
-
-  // 模块错因
-  const rMap={};
-  list.forEach(e=>{const r=e.errorReason||'（未填写）';rMap[r]=(rMap[r]||0)+1;});
-  const maxR=Math.max(...Object.values(rMap),1);
-  const rBars=Object.entries(rMap).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([r,n],ci)=>{
-    const colors=['#fa8c16','#e74c3c','#4e8ef7','#52c41a','#722ed1'];
-    return `<div class="dash-progress-row">
-      <span class="dash-progress-label">${escapeHtml(r)}</span>
-      <div class="dash-progress-bg"><div class="dash-progress-fill" style="width:${Math.round(n/maxR*100)}%;background:${colors[ci%5]}"></div></div>
-      <span class="dash-progress-val">${n} 题</span>
-    </div>`;
-  }).join('');
-
-  // 模块薄弱题 Top3
-  const weakList=list.filter(e=>e.quiz&&e.quiz.reviewCount>0)
-    .map(e=>({q:e.question.slice(0,28),sub:e.subtype||'',wrong:e.quiz.wrongCount||0,review:e.quiz.reviewCount,ratio:(e.quiz.wrongCount||0)/e.quiz.reviewCount}))
-    .sort((a,b)=>b.ratio-a.ratio).slice(0,3);
-  const weakHtml=weakList.length
-    ?weakList.map(w=>`<div class="dash-weak-item"><span style="flex:1;font-size:12px;color:#333">${escapeHtml(w.q)}…</span><span style="font-size:11px;color:#aaa;white-space:nowrap;margin-left:8px">${escapeHtml(w.sub)}·${w.wrong}/${w.review}错</span></div>`).join('')
-    :'<div style="color:#ccc;font-size:12px;text-align:center;padding:12px">暂无复习记录</div>';
-
-  document.getElementById('dashpane_'+idx).innerHTML=`
-    <div class="dash-module-stat-row">
-      <div class="dash-module-stat"><div class="dash-module-num">${total}</div><div class="dash-module-label">题数</div></div>
-      <div class="dash-module-stat"><div class="dash-module-num green">${mastered}</div><div class="dash-module-label">已掌握 ${mastPct}%</div></div>
-      <div class="dash-module-stat"><div class="dash-module-num">${focus}</div><div class="dash-module-label">重点</div></div>
-      <div class="dash-module-stat"><div class="dash-module-num" style="color:#fa8c16">${review}</div><div class="dash-module-label">待复习</div></div>
-      <div class="dash-module-stat"><div class="dash-module-num blue">${reviews}</div><div class="dash-module-label">复习次</div></div>
-    </div>
-    <div class="dash-section">
-      <div class="dash-section-title">📊 子类型分布与掌握度</div>
-      ${subBars||'<div style="color:#ccc;font-size:12px">暂无数据</div>'}
-    </div>
-    <div class="dash-section">
-      <div class="dash-section-title">⚠️ 错因分布</div>
-      ${rBars||'<div style="color:#ccc;font-size:12px">暂无错因数据</div>'}
-    </div>
-    <div class="dash-section">
-      <div class="dash-section-title">🎯 Top3 薄弱题</div>
-      ${weakHtml}
-    </div>
-    <div class="dash-section">
-      <div class="dash-section-title">🧭 今日行动建议</div>
-      ${_practiceInsightsState.loading ? '<div style="color:#999;font-size:12px;padding:10px 0">正在生成建议...</div>' : renderPracticeAdvice(_practiceInsightsState.data?.advice || [])}
-    </div>
-    <div class="dash-section">
-      <div class="dash-section-title">🗂 今日待复盘</div>
-      ${_practiceInsightsState.loading ? '<div style="color:#999;font-size:12px;padding:10px 0">加载中...</div>' : renderPracticeInsightList(_practiceInsightsState.data?.reviewQueue || [], '暂无待复盘队列', 'queueReason')}
-    </div>
-    <div class="dash-section">
-      <div class="dash-section-title">🔁 今日待复训</div>
-      ${_practiceInsightsState.loading ? '<div style="color:#999;font-size:12px;padding:10px 0">加载中...</div>' : renderPracticeInsightList(_practiceInsightsState.data?.retrainQueue || [], '暂无待复训队列', 'queueReason')}
-    </div>
-    <div class="dash-section">
-      <div class="dash-section-title">📌 当前高频错因</div>
-      ${_practiceInsightsState.loading ? '<div style="color:#999;font-size:12px;padding:10px 0">加载中...</div>' : renderInsightChips(_practiceInsightsState.data?.weakestReasons || [])}
-    </div>
-    <div class="dash-section">
-      <div class="dash-section-title">📚 当前高频薄弱模块</div>
-      ${_practiceInsightsState.loading ? '<div style="color:#999;font-size:12px;padding:10px 0">加载中...</div>' : renderInsightChips(_practiceInsightsState.data?.weakestTypes || [])}
-      ${_practiceInsightsState.error ? `<div style="color:#cf1322;font-size:12px;margin-top:8px">调度数据加载失败：${escapeHtml(_practiceInsightsState.error)}</div>` : ''}
-    </div>`;
-}
-
 function renderHomeDashboard() {
   const mount = document.getElementById('homeDashboardContent');
   if (!mount) return;
   if (!_practiceWorkbenchState.loaded && !_practiceWorkbenchState.loading) {
     ensurePracticeWorkbenchLoaded();
   }
+
   const taskPack = typeof buildPracticeTaskPack === 'function' ? buildPracticeTaskPack(12) : null;
   if (!taskPack) {
     mount.innerHTML = '<div class="home-dashboard-card">首页数据暂不可用</div>';
     return;
   }
+
   const remotePack = _practiceWorkbenchState.loaded ? (_practiceWorkbenchState.data || {}) : null;
-  const reviewQueue = remotePack?.reviewQueue || taskPack.reviewQueue || [];
-  const retrainQueue = remotePack?.retrainQueue || taskPack.retrainQueue || [];
+  const noteFirstQueue = remotePack?.noteFirstQueue || taskPack.noteFirstQueue || [];
+  const directDoQueue = remotePack?.directDoQueue || taskPack.directDoQueue || [];
+  const speedDrillQueue = remotePack?.speedDrillQueue || taskPack.speedDrillQueue || [];
   const dailyQueue = remotePack?.dailyQueue || taskPack.dailyQueue || [];
-  const weakestReasons = remotePack?.weaknessGroups || remotePack?.weakestReasons || taskPack.weakestReasons || [];
+  const weakestReasons = remotePack?.weakestReasons || taskPack.weakestReasons || [];
   const behavior = remotePack?.behavior || taskPack.behavior || {};
-  const overview = remotePack?.overview || {};
+  const workflowAdvice = (remotePack?.workflowAdvice || remotePack?.advice || taskPack.advice || []).slice(0, 4);
+  const pendingRecommendedGroups = filterPendingRecommendedGroups(buildRecommendedNoteGroups(noteFirstQueue));
+  const missingNoteItems = buildMissingNoteItems(noteFirstQueue);
+
   const loadingHint = _practiceWorkbenchState.loading
-    ? '<div class="home-action-item"><strong>任务工作台已接入</strong><span>正在后台刷新今日任务和弱点汇总。</span></div>'
+    ? '<div class="home-action-item"><strong>任务工作台已接入</strong><span>正在后台刷新三类任务和弱点摘要。</span></div>'
     : '';
-  const actionItems = (remotePack?.advice || taskPack.advice || []).slice(0, 4).map(item => `
-    <div class="home-action-item">
-      <strong>${escapeHtml(item.title || '')}</strong>
-      <span>${escapeHtml(item.description || '')}</span>
-    </div>
-  `).join('');
-  const noteItems = reviewQueue.slice(0, 4).map(item => `
-    <div class="home-note-item">
-      <strong>${escapeHtml((item.question || '').slice(0, 40) || '待复盘题目')}</strong>
-      <span>${escapeHtml((item.priorityReasons || []).join(' / ') || '先补复盘')}</span>
-    </div>
-  `).join('');
-  const reasonItems = weakestReasons.slice(0, 4).map(item => `
-    <div class="home-action-item">
-      <strong>${escapeHtml(item.name || item.topType || '')}</strong>
-      <span>最近出现 ${Number(item.count || 0)} 次</span>
-    </div>
-  `).join('');
+
   mount.innerHTML = `
     <div class="home-dashboard-grid">
       <div class="home-dashboard-card">
-        <h3>今日任务</h3>
+        <h3>今天做什么</h3>
         <div class="home-metric-row">
-          <div class="home-metric"><strong>${dailyQueue.length}</strong><span>今日建议</span></div>
-          <div class="home-metric"><strong>${reviewQueue.length}</strong><span>待复盘</span></div>
-          <div class="home-metric"><strong>${retrainQueue.length}</strong><span>待复训</span></div>
+          <div class="home-metric"><strong>${pendingRecommendedGroups.length}</strong><span>待看笔记</span></div>
+          <div class="home-metric"><strong>${directDoQueue.length}</strong><span>直接开做</span></div>
+          <div class="home-metric"><strong>${speedDrillQueue.length}</strong><span>限时复训</span></div>
           <div class="home-metric"><strong>${behavior ? (behavior.accuracy || 0) : 0}%</strong><span>近 7 日正确率</span></div>
         </div>
         <div class="home-shell-actions" style="margin-top:14px">
-          <button class="btn btn-primary" data-onclick="startPracticeQueue('daily')">开始今日任务</button>
-          <button class="btn btn-secondary" data-onclick="startPracticeQueue('review')">先补待复盘</button>
-          <button class="btn btn-secondary" data-onclick="startPracticeQueue('retrain')">先做待复训</button>
+          <button class="btn btn-primary" data-onclick="openRecommendedNotesModal()">先看笔记</button>
+          <button class="btn btn-secondary" data-onclick="startPracticeQueue('direct')">直接开做</button>
+          <button class="btn btn-secondary" data-onclick="startPracticeQueue('speed')">限时复训</button>
           <button class="btn btn-secondary" data-onclick="openDashboard()">看完整统计</button>
         </div>
         <div class="home-action-list" style="margin-top:16px">
-          ${actionItems || loadingHint || '<div class="home-action-item"><strong>暂无任务建议</strong><span>可以直接进入错题工作台继续整理。</span></div>'}
+          ${workflowAdvice.length ? renderActionList(workflowAdvice, '') : (loadingHint || '<div class="home-action-item"><strong>暂无任务建议</strong><span>可以先进入工作台整理题目，系统会再逐步调度。</span></div>')}
         </div>
       </div>
       <div class="home-dashboard-card">
-        <h3>当前最该先补的题</h3>
+        <h3>待看笔记</h3>
         <div class="home-note-list">
-          ${noteItems || '<div class="home-note-item"><strong>暂无待复盘题</strong><span>当前可以直接进入工作台录题或开始训练。</span></div>'}
+          ${renderTaskPreview(pendingRecommendedGroups.flatMap(group => group.items), '今天需要先看的笔记已经看过了', '如果今天没做对应题，明天系统还会继续推荐。')}
         </div>
-        <h3 style="margin-top:18px">高频弱点</h3>
+        <h3 style="margin-top:18px">直接开做</h3>
+        <div class="home-note-list">
+          ${renderTaskPreview(directDoQueue, '当前没有适合直接开的题', '可以先去整理错题或切到限时复训。')}
+        </div>
+        <h3 style="margin-top:18px">限时复训</h3>
+        <div class="home-note-list">
+          ${renderTaskPreview(speedDrillQueue, '当前没有需要压时间的题', '这批题目前没有明显的耗时风险。')}
+        </div>
+      </div>
+      <div class="home-dashboard-card">
+        <h3>当前高频弱点</h3>
         <div class="home-action-list">
-          ${reasonItems || '<div class="home-action-item"><strong>暂无明显弱点</strong><span>继续保持当前节奏即可。</span></div>'}
+          ${renderActionList(weakestReasons.map(item => ({ title: item.name, description: `最近出现 ${Number(item.count || 0)} 次` })), '继续保持当前节奏即可。')}
+        </div>
+        <h3 style="margin-top:18px">额外提醒</h3>
+        <div class="home-action-list">
+          ${missingNoteItems.length
+            ? `<div class="home-action-item"><strong>有 ${missingNoteItems.length} 道题缺笔记</strong><span>这类题即使需要先看笔记，也暂时没有内容可看，建议尽快补规则总结。</span></div>`
+            : '<div class="home-action-item"><strong>当前没有缺笔记提醒</strong><span>需要先看笔记的题目前都有对应内容。</span></div>'}
+          <div class="home-action-item"><strong>总任务池 ${dailyQueue.length} 道</strong><span>首页负责调度今天先看什么、做什么、压哪一批时间。</span></div>
         </div>
       </div>
     </div>`;
@@ -430,3 +386,6 @@ function renderHomeDashboard() {
 
 window.renderHomeDashboard = renderHomeDashboard;
 window.invalidatePracticeWorkbench = invalidatePracticeWorkbench;
+window.openRecommendedNotesModal = openRecommendedNotesModal;
+window.openRecommendedNote = openRecommendedNote;
+window.returnToRecommendedNotes = returnToRecommendedNotes;

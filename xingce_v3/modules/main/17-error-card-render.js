@@ -356,16 +356,18 @@ function renderCard(e){
       ${practiceSummaryMeta?`<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#ecfeff;color:#155e75;border:1px solid #a5f3fc" title="最近练习">🧾 ${escapeHtml(practiceSummaryMeta)}</span>`:''}
       <span class="card-drag-handle" title="拖到左侧知识点可改挂载" draggable="true" ondragstart='startErrorDrag(${idLit}, event)' ondragend="endErrorDrag()" onclick="event.preventDefault();event.stopPropagation()">⋮⋮ 拖挂载</span>
     </div>
-    <div class="card-question">${hl(e.question,searchKw)}</div>
-    ${imgTag}
-    ${processImageTag}
-    ${opts?`<div class="card-options">${opts}</div>`:''}
-    ${isRev ? detailHtml+noteArea : ''}
+    <div class="card-question-surface">
+      <div class="card-question">${hl(e.question,searchKw)}</div>
+      ${imgTag}
+      ${processImageTag}
+      ${opts?`<div class="card-options">${opts}</div>`:''}
+    </div>
+    ${isRev ? `<div class="card-lower-panel">${detailHtml}${noteArea}</div>` : ''}
     <button class="card-reveal-btn" onclick='revealCard(${idLit})' style="${isRev?'color:#bbb;border-color:#eee;font-size:11px;margin-top:6px':''}">
       ${isRev ? '▲ 收起' : '👁 查看答案与解析'}
     </button>
     ${iqHtml}
-    <div class="card-actions">
+    <div class="card-actions card-actions-soft">
       <button class="btn btn-sm btn-secondary" onclick='moveErrorToKnowledgeNode(${idLit}, ${noteNodeLit})'>改挂载</button>
       <select class="status-select" onchange='updateStatus(${idLit},this.value)'>
         <option value="focus" ${normalizeErrorStatusValue(e.status)==='focus'?'selected':''}>重点复习</option>
@@ -389,6 +391,31 @@ function renderCard(e){
 }
 
 window.renderCard = renderCard;
+
+renderPracticeSummaryMeta = function(summary){
+  if(!summary) return '';
+  const resultMap = { correct:'做对', wrong:'做错', skipped:'跳过', partial:'部分正确' };
+  const bits = [];
+  if(summary.lastResult) bits.push(`最近练习：${resultMap[summary.lastResult] || summary.lastResult}`);
+  if(summary.lastConfidence) bits.push(`把握度 ${summary.lastConfidence}`);
+  if(summary.lastDuration) bits.push(`最近 ${summary.lastDuration}s`);
+  if(summary.avgDuration) bits.push(`平均 ${summary.avgDuration}s`);
+  if(summary.lastTime) bits.push(`时间 ${formatPracticeSummaryTime(summary.lastTime)}`);
+  return bits.join(' / ');
+};
+
+renderPracticeSummaryBlock = function(summary){
+  const metaLine = renderPracticeSummaryMeta(summary);
+  if(!metaLine) return '';
+  const extras = [];
+  if(summary.lastMistakeType) extras.push(`<span class="detail-pill" style="background:#fff7e6;color:#ad6800;border:1px solid #ffd591;font-size:11px">最近错误类型：${escapeHtml(summary.lastMistakeType)}</span>`);
+  if(summary.lastTriggerPoint) extras.push(`<span class="detail-pill" style="background:#f6ffed;color:#237804;border:1px solid #b7eb8f;font-size:11px">最近触发点：${escapeHtml(summary.lastTriggerPoint)}</span>`);
+  if(summary.lastNextAction) extras.push(`<span class="detail-pill meta-pill">最近动作：${escapeHtml(summary.lastNextAction)}</span>`);
+  return `<div class="detail-analysis" style="margin-top:8px;background:#f8fafc;border:1px solid #e2e8f0">
+    <strong>最近练习摘要：</strong>${escapeHtml(metaLine)}
+    ${extras.length ? `<div class="detail-meta-row" style="margin-top:8px">${extras.join('')}</div>` : ''}
+  </div>`;
+};
 
 function revealCard(id){
   const targetId = normalizeErrorId(id);
