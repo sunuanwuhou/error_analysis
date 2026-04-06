@@ -179,6 +179,59 @@ These remain valid, but are not the current mainline:
     - `完整恢复`
 - Local snapshot backup / restore polish
 - Presentation consistency for advanced fields across all surfaces
+- Immersive practice mode
+  - mobile: one question per screen, horizontal swipe between questions
+  - web / large screens: one full question surface per viewport, vertical flow / snap
+  - workspace remains for filtering and organization
+  - practice mode remains distraction-light and question-first
+
+## Scalability Roadmap
+
+The product now needs an explicit path from the current ~26MB payload toward 100MB+ without making mobile or iPad startup unusable.
+
+### Phase A: Lightweight startup
+
+- Homepage must render from `startup summary` only.
+- Sidebar task counts should use cached summary when full workspace data is not yet loaded.
+- Entering workspace should be the first moment that triggers full error hydration.
+- Mobile-like devices should prefer deferred full data load by default.
+
+### Phase B: On-demand workspace
+
+- Error workspace should stop assuming all errors are already in memory.
+- Entering error list / notes workspace should load full data first, then render.
+- Search, filters, and queue building should avoid running on startup.
+- Images and rich previews should stay lazy until visible.
+
+### Phase C: Data structure split
+
+- Split monolithic error payload into queryable buckets:
+  - error meta
+  - question content
+  - review/note fields
+  - practice attempts
+  - knowledge notes
+- Keep startup summary and tree counters separately cached.
+- Avoid full `JSON.parse` of the whole error pool during cold start.
+
+### Phase D: Rendering scale
+
+- Add pagination and virtualized rendering to the error workspace.
+- Only render visible cards plus a small overscan window.
+- Expanded detail panels should hydrate only when opened.
+
+### Phase E: Sync scale
+
+- Move from full-payload sync thinking to incremental patch sync.
+- Sync changed questions, changed notes, and images separately.
+- Homepage should read server summary first, not full backup payload.
+
+### Current execution notes
+
+- Automatic cloud save should no longer default to full `/api/backup` once data volume becomes large.
+- Large workspaces should treat `/api/sync` as the default automatic path.
+- Manual `Cloud Save` remains available for explicit full snapshot backup.
+- Local snapshot backups stay as the primary safety net before risky import / restore operations.
 
 ## Notes
 

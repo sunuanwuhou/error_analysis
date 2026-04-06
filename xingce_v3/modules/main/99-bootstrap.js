@@ -37,6 +37,7 @@ async function refreshRuntimeBadge() {
 }
 
 function scheduleWorkspaceWarmup() {
+  if (typeof hasFullWorkspaceDataLoaded === 'function' && !hasFullWorkspaceDataLoaded()) return;
   const run = () => {
     if (appView !== 'home') return;
     try {
@@ -61,17 +62,22 @@ function scheduleWorkspaceWarmup() {
     KEY_KNOWLEDGE_TREE, KEY_KNOWLEDGE_NOTES
   ];
   await DB.migrateFromLocalStorage(ALL_KEYS);
-  await loadData();
+  const deferErrorsOnStartup = typeof shouldDeferFullDataLoadOnStartup === 'function'
+    ? shouldDeferFullDataLoadOnStartup()
+    : false;
+  await loadData({ deferErrors: deferErrorsOnStartup });
   await refreshCloudSession();
   ensureKnowledgeState({ persist: true });
-  const allTypes=[...new Set(errors.map(e=>e.type))];
-  allTypes.forEach(t=>expMain.add(t));
-  errors.forEach(e=>{
-    expMainSub.add('sub:'+(e.type||'')+'::'+((e.subtype)||'未分类'));
-    if(e.subSubtype) expMainSub2.add('s2:'+(e.type||'')+'::'+((e.subtype)||'未分类')+'::'+e.subSubtype);
-  });
-  saveExpMain();
-  syncNotesWithErrors();
+  if (typeof hasFullWorkspaceDataLoaded !== 'function' || hasFullWorkspaceDataLoaded()) {
+    const allTypes = [...new Set(errors.map(e => e.type))];
+    allTypes.forEach(t => expMain.add(t));
+    errors.forEach(e => {
+      expMainSub.add('sub:' + (e.type || '') + '::' + ((e.subtype) || '未分类'));
+      if (e.subSubtype) expMainSub2.add('s2:' + (e.type || '') + '::' + ((e.subtype) || '未分类') + '::' + e.subSubtype);
+    });
+    saveExpMain();
+    syncNotesWithErrors();
+  }
   await refreshRuntimeBadge();
   initUiChromePrefs();
   syncMobileSidebarState();
@@ -81,6 +87,9 @@ function scheduleWorkspaceWarmup() {
   if (typeof ensureLocalBackupMenuButton === 'function') ensureLocalBackupMenuButton();
   if (typeof syncAppViewChrome === 'function') syncAppViewChrome();
   if (typeof renderHomeDashboard === 'function') renderHomeDashboard();
+  if (deferErrorsOnStartup && typeof scheduleDeferredFullWorkspaceLoad === 'function') {
+    scheduleDeferredFullWorkspaceLoad();
+  }
   scheduleWorkspaceWarmup();
   renderCodexContextLine();
   checkStorageUsage();

@@ -74,7 +74,14 @@
     var ta = document.getElementById("noteTypeTextarea");
     if (ta) return ta.value;
     var node = getCurrentKnowledgeNode();
-    return node ? (node.contentMd || "") : "";
+    return normalizeKnowledgeNoteMarkdown(node ? node.contentMd : "");
+  }
+
+  function normalizeKnowledgeNoteMarkdown(value) {
+    if (value === null || value === undefined) return "";
+    var text = String(value);
+    if (text.trim().toLowerCase() === "undefined") return "";
+    return text;
   }
 
   function buildViewerPayload(currentNode, markdown) {
@@ -246,10 +253,10 @@
     var childNodes = (currentNode.children || []).slice();
     childNodes.forEach(function (node) {
       if (!node) return;
-      var markdown = String(node.contentMd || "").trim();
+      var markdown = normalizeKnowledgeNoteMarkdown(node.contentMd).trim();
       var childCount = countErrorsForKnowledgeNode(node.id, true);
       var hasChildren = !!(node.children && node.children.length);
-      if (!markdown && !hasChildren && !childCount) return;
+      if (!markdown && !hasChildren) return;
       sections.push({
         nodeId: node.id,
         title: node.title || "",
@@ -264,10 +271,10 @@
 
   function buildDirectoryTree(node) {
     if (!node) return null;
-    var markdown = String(node.contentMd || "").trim();
+    var markdown = normalizeKnowledgeNoteMarkdown(node.contentMd).trim();
     var children = (node.children || []).map(buildDirectoryTree).filter(Boolean);
     var childCount = countErrorsForKnowledgeNode(node.id, true);
-    if (!markdown && !children.length && !childCount) return null;
+    if (!markdown && !children.length) return null;
     return {
       nodeId: node.id,
       title: node.title || "",
@@ -532,7 +539,7 @@
     }
 
     var previewNode = getDirectoryPreviewNode(currentNode, sections);
-    var previewContent = previewNode ? String(previewNode.contentMd || "") : "";
+    var previewContent = previewNode ? normalizeKnowledgeNoteMarkdown(previewNode.contentMd) : "";
     var previewHtml = previewNode
       ? renderInlineNotePreview(previewNode, previewContent)
       : "<div class=\"knowledge-workspace-empty\">请选择一个章节查看笔记。</div>";
@@ -548,13 +555,13 @@
     return "<div class=\"knowledge-workspace-note-wrap knowledge-workspace-note-wrap--directory\">" +
       "<div class=\"knowledge-workspace-list-head\">章节目录</div>" +
       "<div class=\"knowledge-directory-layout\">" +
-        "<div class=\"knowledge-directory-list\" id=\"noteSplitPreview\">" + blocks + "</div>" +
+        "<div class=\"knowledge-directory-list\" id=\"knowledgeDirectoryList\">" + blocks + "</div>" +
         "<div class=\"knowledge-directory-preview-wrap\">" +
           "<div class=\"knowledge-directory-preview-head\">" +
             "<div class=\"knowledge-directory-preview-title\">" + escapeHtml(previewNode ? (previewNode.title || "当前章节") : "当前章节") + "</div>" +
             "<div class=\"knowledge-directory-preview-path\">" + escapeHtml(previewNode ? collapseKnowledgePathTitles(getKnowledgePathTitles(previewNode.id)).join(" > ") : "") + "</div>" +
           "</div>" +
-          "<div class=\"note-preview-scroll note-preview-frame-scroll knowledge-directory-preview\">" + previewHtml + "</div>" +
+          "<div class=\"note-preview-scroll note-preview-frame-scroll knowledge-directory-preview\" id=\"knowledgeDirectoryPreview\">" + previewHtml + "</div>" +
         "</div>" +
       "</div>" +
     "</div>";
@@ -578,7 +585,7 @@
     var linkedCount = countErrorsForKnowledgeNode(currentNode.id, true);
     var directCount = countErrorsForKnowledgeNode(currentNode.id, false);
     var relatedErrors = collectNodeErrors(currentNode);
-    var noteContent = currentNode.contentMd || "";
+    var noteContent = normalizeKnowledgeNoteMarkdown(currentNode.contentMd);
     var mode = getWorkspaceMode();
     if (mode === "list" && !relatedErrors.length && noteContent.trim()) {
       mode = "note";
@@ -644,11 +651,11 @@
     var node = getKnowledgeNodeById(nodeId);
     if (!node) return;
     var targetId = nodeId;
-    if (!String(node.contentMd || "").trim()) {
+    if (!normalizeKnowledgeNoteMarkdown(node.contentMd).trim()) {
       var descendants = getKnowledgeDescendantNodeIds(node)
         .slice(1)
         .map(function (id) { return getKnowledgeNodeById(id); })
-        .filter(function (item) { return item && String(item.contentMd || "").trim(); });
+        .filter(function (item) { return item && normalizeKnowledgeNoteMarkdown(item.contentMd).trim(); });
       if (descendants.length) targetId = descendants[0].id;
     }
     setDirectoryPreviewNodeId(targetId);

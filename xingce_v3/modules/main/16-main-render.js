@@ -1,6 +1,63 @@
 // ============================================================
 // 渲染主列表
 // ============================================================
+const INITIAL_ERROR_RENDER_LIMIT = 60;
+const ERROR_RENDER_STEP = 60;
+let errorRenderLimit = INITIAL_ERROR_RENDER_LIMIT;
+let errorRenderKey = '';
+let errorListAutoPagerObserver = null;
+
+function getErrorRenderStateKey(list){
+  return JSON.stringify({
+    size: Array.isArray(list) ? list.length : 0,
+    searchKw: String(searchKw || ''),
+    statusFilter: String(statusFilter || ''),
+    taskFilter: String(taskFilter || ''),
+    reasonFilter: String(reasonFilter || ''),
+    typeFilter: typeFilter || null
+  });
+}
+
+function resetErrorRenderWindow(){
+  errorRenderLimit = INITIAL_ERROR_RENDER_LIMIT;
+}
+
+function shouldUseProgressiveErrorRender(list){
+  if (!Array.isArray(list)) return false;
+  if (list.length > 120) return true;
+  if (typeof isLikelyMobileLikeDevice === 'function' && isLikelyMobileLikeDevice() && list.length > 40) return true;
+  return false;
+}
+
+function loadMoreErrors(){
+  errorRenderLimit += ERROR_RENDER_STEP;
+  renderAll();
+}
+
+function disconnectErrorListAutoPager(){
+  if (errorListAutoPagerObserver) {
+    errorListAutoPagerObserver.disconnect();
+    errorListAutoPagerObserver = null;
+  }
+}
+
+function attachErrorListAutoPager(){
+  disconnectErrorListAutoPager();
+  const sentinel = document.getElementById('errorListAutoPager');
+  if (!sentinel || typeof IntersectionObserver === 'undefined') return;
+  errorListAutoPagerObserver = new IntersectionObserver((entries) => {
+    const hit = entries.some(entry => entry.isIntersecting);
+    if (!hit) return;
+    disconnectErrorListAutoPager();
+    loadMoreErrors();
+  }, {
+    root: null,
+    rootMargin: '240px 0px',
+    threshold: 0.01
+  });
+  errorListAutoPagerObserver.observe(sentinel);
+}
+
 function renderTaskFilterBar(){
   const host = document.getElementById('taskFilterBar');
   if(!host) return;
@@ -43,8 +100,14 @@ function renderStats(list){
 
 function renderAll(){
   const list=getFiltered();
+  const currentRenderKey = getErrorRenderStateKey(list);
+  if(currentRenderKey !== errorRenderKey){
+    errorRenderKey = currentRenderKey;
+    resetErrorRenderWindow();
+  }
   renderStats(list);
   if(!list.length){
+    disconnectErrorListAutoPager();
     document.getElementById('errorList').innerHTML=`<div class="empty"><div class="emoji">${searchKw?'🔍':'📭'}</div><p>${searchKw?'未找到匹配题目':'暂无错题，点击"＋ 添加"'}</p></div>`;
     if (typeof window.refreshKnowledgeWorkspaceCards === 'function') {
       window.refreshKnowledgeWorkspaceCards();
@@ -54,8 +117,10 @@ function renderAll(){
     }
     return;
   }
+  const progressive = shouldUseProgressiveErrorRender(list);
+  const visibleList = progressive ? list.slice(0, errorRenderLimit) : list;
   const typeMap={};
-  list.forEach(e=>{
+  visibleList.forEach(e=>{
     if(!typeMap[e.type]) typeMap[e.type]={};
     const s=e.subtype||'未分类';
     if(!typeMap[e.type][s]) typeMap[e.type][s]=[];
@@ -125,10 +190,27 @@ function renderAll(){
     console.error('[FATAL] errorList container missing');
     return;
   }
+  if(progressive && list.length > visibleList.length){
+    html += `<div class="home-dashboard-card" style="margin:16px 0 8px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div style="font-size:13px;color:#64748b">已渲染 ${visibleList.length} / ${list.length} 题，继续加载更多可以避免手机和 iPad 一次性卡住。</div>
+        <button class="btn btn-secondary" type="button" onclick="loadMoreErrors()">继续加载 ${Math.min(ERROR_RENDER_STEP, list.length - visibleList.length)} 题</button>
+      </div>
+      <div id="errorListAutoPager" style="height:1px"></div>
+    </div>`;
+  }
   el.innerHTML = html;
   el.classList.toggle('batch-mode-on', batchMode);
+  if(progressive && list.length > visibleList.length){
+    attachErrorListAutoPager();
+  } else {
+    disconnectErrorListAutoPager();
+  }
   if (typeof queueVisiblePracticeSummaryLoad === 'function') {
-    queueVisiblePracticeSummaryLoad(list);
+    queueVisiblePracticeSummaryLoad(visibleList);
+  }
+  if (typeof hydrateRenderedErrorCardDetails === 'function') {
+    hydrateRenderedErrorCardDetails(visibleList);
   }
   if (typeof window.refreshKnowledgeWorkspaceCards === 'function') {
     window.refreshKnowledgeWorkspaceCards();
@@ -163,3 +245,5 @@ function expandAll(){
 function collapseAll(){
   expMain.clear();expMainSub.clear();expMainSub2.clear();saveExpMain();renderAll();
 }
+
+window.loadMoreErrors = loadMoreErrors;

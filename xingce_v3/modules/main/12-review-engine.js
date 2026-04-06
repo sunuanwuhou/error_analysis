@@ -329,22 +329,32 @@ function getTaskPackQueueByMode(mode, limit) {
 }
 
 function getDueList() {
+  if (typeof hasFullWorkspaceDataLoaded === 'function' && !hasFullWorkspaceDataLoaded()) {
+    return [];
+  }
   return buildPracticeTaskPack(24).dailyQueue;
 }
 
 function updateSidebar() {
-  const taskPack = buildPracticeTaskPack(24);
-  const dueN = taskPack.dailyQueue.length;
+  const hasFullData = typeof hasFullWorkspaceDataLoaded === 'function' ? hasFullWorkspaceDataLoaded() : true;
+  const summary = typeof getStartupSummaryCache === 'function' ? (getStartupSummaryCache() || {}) : {};
+  const taskPack = hasFullData ? buildPracticeTaskPack(24) : null;
+  const dueN = hasFullData ? taskPack.dailyQueue.length : Number(summary.todayDue || 0);
+  const noteFirstCount = hasFullData ? Number(taskPack.noteFirstQueue.length || 0) : Number(summary.noteFirstCount || 0);
+  const directDoCount = hasFullData ? Number(taskPack.directDoQueue.length || 0) : Number(summary.directDoCount || 0);
+  const speedDrillCount = hasFullData ? Number(taskPack.speedDrillQueue.length || 0) : Number(summary.speedDrillCount || 0);
   const quizBadge = document.getElementById('quizBadge');
   if (quizBadge) quizBadge.textContent = dueN;
   const btn = document.getElementById('quizBtn');
   if (btn) {
     btn.classList.toggle('disabled', dueN === 0);
     btn.title = dueN
-      ? `今日任务 ${dueN} 题 · 先看笔记 ${taskPack.noteFirstQueue.length} · 直接开做 ${taskPack.directDoQueue.length} · 限时复训 ${taskPack.speedDrillQueue.length}`
+      ? `今日任务 ${dueN} 题 · 先看笔记 ${noteFirstCount} · 直接开做 ${directDoCount} · 限时复训 ${speedDrillCount}`
       : '今日暂无任务';
   }
-  const fullN = getErrorEntries().filter(e => !isEffectivelyMastered(e)).length;
+  const fullN = hasFullData
+    ? getErrorEntries().filter(e => !isEffectivelyMastered(e)).length
+    : Number(summary.fullPracticeCount || 0);
   const fullPracticeBadge = document.getElementById('fullPracticeBadge');
   if (fullPracticeBadge) fullPracticeBadge.textContent = fullN;
   const fullPracticeBtn = document.getElementById('fullPracticeBtn');

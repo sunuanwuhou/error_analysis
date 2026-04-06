@@ -468,7 +468,7 @@ function renderProcessImagePreview(errorItem, source) {
     </summary>
     <div class="process-image-preview-body">
       <button class="btn btn-sm btn-secondary process-image-action-btn" onclick='openProcessImageEditor(${idLit}, ${sourceText})'>&#32534;&#36753;&#36807;&#31243;&#22270;</button>
-      <img src="${escapeHtml(imageUrl)}" class="process-image-preview-thumb" onclick="this.classList.toggle('expanded')" title="click to zoom">
+      <img src="${escapeHtml(imageUrl)}" class="process-image-preview-thumb" loading="lazy" decoding="async" onclick="this.classList.toggle('expanded')" title="click to zoom">
     </div>
   </details>`;
 }

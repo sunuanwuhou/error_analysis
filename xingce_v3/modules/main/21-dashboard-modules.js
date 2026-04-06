@@ -313,20 +313,71 @@ function renderHomeDashboard() {
     ensurePracticeWorkbenchLoaded();
   }
 
-  const taskPack = typeof buildPracticeTaskPack === 'function' ? buildPracticeTaskPack(12) : null;
-  if (!taskPack) {
+  const hasFullData = typeof hasFullWorkspaceDataLoaded === 'function' ? hasFullWorkspaceDataLoaded() : true;
+  const startupSummary = typeof getStartupSummaryCache === 'function' ? (getStartupSummaryCache() || {}) : {};
+  const taskPack = (hasFullData && typeof buildPracticeTaskPack === 'function') ? buildPracticeTaskPack(12) : null;
+  if (!taskPack && !_practiceWorkbenchState.loaded) {
+    const startupAdvice = Array.isArray(startupSummary.workflowAdvice) ? startupSummary.workflowAdvice.slice(0, 4) : [];
+    const todayDue = Number(startupSummary.todayDue || 0);
+    const noteFirstCount = Number(startupSummary.noteFirstCount || 0);
+    const directDoCount = Number(startupSummary.directDoCount || 0);
+    const speedDrillCount = Number(startupSummary.speedDrillCount || 0);
+    const accuracy = Number(startupSummary.accuracy || 0);
+    const fullPracticeCount = Number(startupSummary.fullPracticeCount || 0);
+    const weakestReasons = Array.isArray(startupSummary.weakestReasons) ? startupSummary.weakestReasons : [];
+    mount.innerHTML = `
+      <div class="home-dashboard-grid">
+        <div class="home-dashboard-card">
+          <h3>今天做什么</h3>
+          <div class="home-metric-row">
+            <div class="home-metric"><strong>${noteFirstCount}</strong><span>待看笔记</span></div>
+            <div class="home-metric"><strong>${directDoCount}</strong><span>直接开做</span></div>
+            <div class="home-metric"><strong>${speedDrillCount}</strong><span>限时复训</span></div>
+            <div class="home-metric"><strong>${accuracy}%</strong><span>近 7 日正确率</span></div>
+          </div>
+          <div class="home-shell-actions" style="margin-top:14px">
+            <button class="btn btn-primary" data-onclick="openRecommendedNotesModal()">先看笔记</button>
+            <button class="btn btn-secondary" data-onclick="startPracticeQueue('direct')">直接开做</button>
+            <button class="btn btn-secondary" data-onclick="startPracticeQueue('speed')">限时复训</button>
+            <button class="btn btn-secondary" data-onclick="openDashboard()">看完整统计</button>
+          </div>
+          <div class="home-action-list" style="margin-top:16px">
+            ${startupAdvice.length
+              ? renderActionList(startupAdvice, '')
+              : '<div class="home-action-item"><strong>正在轻启动</strong><span>首页先展示摘要，完整错题和笔记会在后台分批整理，进入工作台时再补齐。</span></div>'}
+          </div>
+        </div>
+        <div class="home-dashboard-card">
+          <h3>当前摘要</h3>
+          <div class="home-note-list">
+            <div class="home-note-item"><strong>今日任务池 ${todayDue} 道</strong><span>首页先按轻量摘要启动，避免手机和 iPad 一刷新就加载全量题库。</span></div>
+            <div class="home-note-item"><strong>完整练习池 ${fullPracticeCount} 道</strong><span>进入工作台后才会补齐完整数据和细项队列。</span></div>
+            <div class="home-note-item"><strong>工作台数据后台整理中</strong><span>${_practiceWorkbenchState.loading ? '正在刷新服务器任务摘要。' : '等待你进入工作台时再加载完整错题。'}</span></div>
+          </div>
+        </div>
+        <div class="home-dashboard-card">
+          <h3>当前高频弱点</h3>
+          <div class="home-action-list">
+            ${renderActionList(weakestReasons.map(item => ({ title: item.name, description: `最近出现 ${Number(item.count || 0)} 次` })), '完整弱点明细会在工作台或统计页继续展开。')}
+          </div>
+        </div>
+      </div>`;
+    return;
+  }
+
+  if (!taskPack && !_practiceWorkbenchState.loaded) {
     mount.innerHTML = '<div class="home-dashboard-card">首页数据暂不可用</div>';
     return;
   }
 
   const remotePack = _practiceWorkbenchState.loaded ? (_practiceWorkbenchState.data || {}) : null;
-  const noteFirstQueue = remotePack?.noteFirstQueue || taskPack.noteFirstQueue || [];
-  const directDoQueue = remotePack?.directDoQueue || taskPack.directDoQueue || [];
-  const speedDrillQueue = remotePack?.speedDrillQueue || taskPack.speedDrillQueue || [];
-  const dailyQueue = remotePack?.dailyQueue || taskPack.dailyQueue || [];
-  const weakestReasons = remotePack?.weakestReasons || taskPack.weakestReasons || [];
-  const behavior = remotePack?.behavior || taskPack.behavior || {};
-  const workflowAdvice = (remotePack?.workflowAdvice || remotePack?.advice || taskPack.advice || []).slice(0, 4);
+  const noteFirstQueue = remotePack?.noteFirstQueue || taskPack?.noteFirstQueue || [];
+  const directDoQueue = remotePack?.directDoQueue || taskPack?.directDoQueue || [];
+  const speedDrillQueue = remotePack?.speedDrillQueue || taskPack?.speedDrillQueue || [];
+  const dailyQueue = remotePack?.dailyQueue || taskPack?.dailyQueue || [];
+  const weakestReasons = remotePack?.weakestReasons || taskPack?.weakestReasons || [];
+  const behavior = remotePack?.behavior || taskPack?.behavior || {};
+  const workflowAdvice = (remotePack?.workflowAdvice || remotePack?.advice || taskPack?.advice || []).slice(0, 4);
   const pendingRecommendedGroups = filterPendingRecommendedGroups(buildRecommendedNoteGroups(noteFirstQueue));
   const missingNoteItems = buildMissingNoteItems(noteFirstQueue);
 

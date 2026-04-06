@@ -190,7 +190,7 @@ function renderQuizQuestion() {
     <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:#f0f5ff;color:#4e8ef7;font-weight:600">${escapeHtml(e.type||'')}</span>
     ${e.subtype?`<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:#f5f5f5;color:#888">${escapeHtml(e.subtype)}</span>`:''}
   </div>`;
-  const imgTag = e.imgData ? `<img src="${escapeHtml(e.imgData)}" class="cuoti-img" onclick="this.classList.toggle('expanded')" title="点击放大/缩小" style="margin-bottom:10px">` : '';
+  const imgTag = e.imgData ? `<img src="${escapeHtml(e.imgData)}" class="cuoti-img" loading="lazy" decoding="async" onclick="this.classList.toggle('expanded')" title="点击放大/缩小" style="margin-bottom:10px">` : '';
   const processImageTag = renderProcessImagePreview(e, 'quiz');
   const quizOptionArea = `${optBtns || (e.imgData ? '' : '<p style="color:#aaa;font-size:13px">（无选项，直接点下方判断）</p>')}
     ${!opts.length ? (e.imgData ? `
@@ -523,6 +523,59 @@ startPracticeQueue = async function(mode) {
 
 window.startPracticeQueue = startPracticeQueue;
 
+const __cleanBaseStartPracticeQueue = startPracticeQueue;
+startPracticeQueue = async function startPracticeQueueClean(mode) {
+  const normalizedMode = String(mode || 'daily');
+  if (!['note', 'direct', 'speed'].includes(normalizedMode)) {
+    return __cleanBaseStartPracticeQueue(normalizedMode);
+  }
+
+  let serverPayload = null;
+  try {
+    serverPayload = await fetchJsonWithAuth('/api/practice/daily?limit=12');
+  } catch (e) {
+    console.warn('workflow practice fallback:', e);
+  }
+
+  const localPack = typeof buildPracticeTaskPack === 'function' ? buildPracticeTaskPack(12) : null;
+  const serverNoteFirst = buildQuizQueueFromItems(serverPayload && serverPayload.noteFirstQueue);
+  const serverDirectDo = buildQuizQueueFromItems(serverPayload && serverPayload.directDoQueue);
+  const serverSpeedDrill = buildQuizQueueFromItems(serverPayload && serverPayload.speedDrillQueue);
+
+  if (normalizedMode === 'note') {
+    quizQueue = serverNoteFirst.length ? serverNoteFirst : ((localPack && localPack.noteFirstQueue) || (typeof getTaskPackQueueByMode === 'function' ? getTaskPackQueueByMode('note', 12) : []));
+  } else if (normalizedMode === 'direct') {
+    quizQueue = serverDirectDo.length ? serverDirectDo : ((localPack && localPack.directDoQueue) || (typeof getTaskPackQueueByMode === 'function' ? getTaskPackQueueByMode('direct', 12) : []));
+  } else {
+    quizQueue = serverSpeedDrill.length ? serverSpeedDrill : ((localPack && localPack.speedDrillQueue) || (typeof getTaskPackQueueByMode === 'function' ? getTaskPackQueueByMode('speed', 12) : []));
+  }
+
+  if (!quizQueue.length) {
+    const msg = normalizedMode === 'note'
+      ? 'No note-first items right now'
+      : (normalizedMode === 'direct'
+        ? 'No direct-practice items right now'
+        : 'No speed-drill items right now');
+    showToast(msg, 'warning');
+    return;
+  }
+
+  let title = 'Practice';
+  if (normalizedMode === 'note') title = 'Read Note First';
+  if (normalizedMode === 'direct') title = 'Direct Practice';
+  if (normalizedMode === 'speed') title = 'Speed Drill';
+
+  quizSessionMode = normalizedMode;
+  quizIdx = 0;
+  quizAnswers = [];
+  quizSkipped = new Set();
+  document.getElementById('quizTitleText').textContent = title;
+  openModal('quizModal');
+  renderQuizQuestion();
+};
+
+window.startPracticeQueue = startPracticeQueue;
+
 renderQuizQuestion = function() {
   const total = quizQueue.length;
   document.getElementById('quizProgress').textContent = `${quizIdx + 1} / ${total}`;
@@ -541,7 +594,7 @@ renderQuizQuestion = function() {
     <span class="quiz-chip quiz-chip-type">${escapeHtml(e.type || '')}</span>
     ${e.subtype ? `<span class="quiz-chip quiz-chip-sub">${escapeHtml(e.subtype)}</span>` : ''}
   </div>`;
-  const imgTag = e.imgData ? `<div class="quiz-image-wrap ${isImageHeavyQuestion ? 'is-image-heavy' : ''}"><img src="${escapeHtml(e.imgData)}" class="cuoti-img ${isImageHeavyQuestion ? 'quiz-image-heavy' : ''}" onclick="this.classList.toggle('expanded')" title="点击放大/缩小"></div>` : '';
+  const imgTag = e.imgData ? `<div class="quiz-image-wrap ${isImageHeavyQuestion ? 'is-image-heavy' : ''}"><img src="${escapeHtml(e.imgData)}" class="cuoti-img ${isImageHeavyQuestion ? 'quiz-image-heavy' : ''}" loading="lazy" decoding="async" onclick="this.classList.toggle('expanded')" title="点击放大/缩小"></div>` : '';
   const processImageTag = renderProcessImagePreview(e, 'quiz');
   const quizOptionArea = `${optBtns || (e.imgData ? '' : '<p style="color:#94a3b8;font-size:13px">（无选项，可直接判断）</p>')}
     ${!opts.length ? (e.imgData ? `

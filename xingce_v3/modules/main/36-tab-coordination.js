@@ -1,13 +1,13 @@
-// ============================================================
-// Tab切换与联动功能（初始化在底部 async IIFE 中执行）
+﻿// ============================================================
+// Tab鍒囨崲涓庤仈鍔ㄥ姛鑳斤紙鍒濆鍖栧湪搴曢儴 async IIFE 涓墽琛岋級
 // ============================================================
 
-// 获取类型统计
+// 鑾峰彇绫诲瀷缁熻
 function getTypeCounts() {
   const typeCounts = {};
   errors.forEach(e => {
-    const t = e.type || '其他';
-    const s = e.subtype || '未分类';
+    const t = e.type || '鍏朵粬';
+    const s = e.subtype || 'Uncategorized';
     const s2 = e.subSubtype;
     const key = `${t}|${s}|${s2 || ''}`;
     typeCounts[key] = (typeCounts[key] || 0) + 1;
@@ -15,18 +15,18 @@ function getTypeCounts() {
   return typeCounts;
 }
 
-// 获取分组数据
+// 鑾峰彇鍒嗙粍鏁版嵁
 function groupByType(displayData) {
   const grouped = {};
   displayData.forEach(e => {
-    const key = `${e.type || '其他'}|${e.subtype || '未分类'}|${e.subSubtype || ''}`;
+    const key = `${e.type || 'Other'}|${e.subtype || 'Uncategorized'}|${e.subSubtype || ''}`;
     if (!grouped[key]) grouped[key] = [];
     grouped[key].push(e);
   });
   return grouped;
 }
 
-// Tab切换函数
+// Tab鍒囨崲鍑芥暟
 function syncAppViewChrome() {
   document.body.classList.toggle('app-view-home', appView === 'home');
   document.body.classList.toggle('app-view-workspace', appView === 'workspace');
@@ -69,6 +69,20 @@ function switchTab(tabName) {
   if (appView !== 'workspace') {
     appView = 'workspace';
   }
+  if (typeof hasFullWorkspaceDataLoaded === 'function'
+      && typeof ensureFullWorkspaceDataLoaded === 'function'
+      && !hasFullWorkspaceDataLoaded()) {
+    const target = activeTab === 'notes'
+      ? document.getElementById('tabContentNotes')
+      : document.getElementById('tabContentErrors');
+    if (target) {
+      target.innerHTML = '<div style="padding:24px;color:#64748b;font-size:13px;line-height:1.8">Loading the full workspace data. This usually takes only a moment.</div>';
+      target.classList.add('active');
+    }
+    syncAppViewChrome();
+    ensureFullWorkspaceDataLoaded().then(() => switchTab(activeTab));
+    return;
+  }
   syncAppViewChrome();
   document.body.classList.toggle('tab-errors-active', activeTab === 'errors');
   document.body.classList.toggle('tab-notes-active', activeTab === 'notes');
@@ -88,7 +102,7 @@ function switchTab(tabName) {
   }
 }
 
-// 检查章节是否可以删除
+// Check whether a note chapter can be deleted.
 function canDeleteNoteChapter(type, subtype, subSubtype) {
   const count = getErrorEntries().filter(e =>
     e.type === type &&
@@ -99,11 +113,11 @@ function canDeleteNoteChapter(type, subtype, subSubtype) {
   return {
     canDelete: count === 0,
     count: count,
-    message: count > 0 ? `该章节还有 ${count} 道错题，无法删除` : '可以删除'
+    message: count > 0 ? `${count} question(s) are still linked to this chapter.` : 'This chapter can be deleted'
   };
 }
 
-// 安全删除章节
+// Safely delete an empty note chapter.
 function safeDeleteNoteChapter(type, subtype, subSubtype) {
   const chapterName = getChapterDisplayName(type, subtype, subSubtype);
   const check = canDeleteNoteChapter(type, subtype, subSubtype);
@@ -113,7 +127,7 @@ function safeDeleteNoteChapter(type, subtype, subSubtype) {
     return false;
   }
 
-  if (confirm(`确认删除章节 "${chapterName}" 吗？`)) {
+  if (confirm(`Delete note chapter "${chapterName}"?`)) {
     deleteEmptyNoteChapter(type, subtype, subSubtype);
     syncNotesWithErrors();
     renderNotesByType();
@@ -123,7 +137,7 @@ function safeDeleteNoteChapter(type, subtype, subSubtype) {
   return false;
 }
 
-// 获取章节显示名称
+// Get chapter display name.
 function getChapterDisplayName(type, subtype, subSubtype) {
   const parts = [];
   if (type) parts.push(type);
@@ -132,26 +146,26 @@ function getChapterDisplayName(type, subtype, subSubtype) {
   return parts.join(' > ');
 }
 
-// 删除空章节
+// Delete an empty chapter.
 function deleteEmptyNoteChapter(type, subtype, subSubtype) {
-  const key = `${type}::${subtype || '未分类'}::${subSubtype || '未分类'}`;
-  deleteNoteNode(key, 0); // 删除一级节点
+  const key = `${type}::${subtype || 'Uncategorized'}::${subSubtype || 'Uncategorized'}`;
+  deleteNoteNode(key, 0);
 }
 
-// 清空笔记
+// Clear the current note content.
 function clearNotes() {
   if (!selectedKnowledgeNodeId) return;
   const node = getKnowledgeNodeById(selectedKnowledgeNodeId);
   if (!node) return;
-  if (!confirm(`确认清空知识点「${node.title}」的 Markdown 笔记吗？此操作不可恢复！`)) return;
+  if (!confirm(`Clear the Markdown note for "${node.title}"? This cannot be undone.`)) return;
   node.contentMd = '';
   node.updatedAt = new Date().toISOString();
   saveKnowledgeState();
   renderNotesByType();
-  showToast('当前知识点笔记已清空', 'success');
+  showToast('The current knowledge note has been cleared', 'success');
 }
 
-// 过滤笔记Tab中的错题列表
+// Filter the question list inside the notes tab.
 function filterNoteErrorList() {
   const searchInput = document.getElementById('noteSearchInput');
   const searchTerm = searchInput ? searchInput.value.trim().toLowerCase() : '';
@@ -172,20 +186,20 @@ function filterNoteErrorList() {
       <div class="card-question">${escapeHtml(e.question)}</div>
       <div class="card-options">${escapeHtml(e.options)}</div>
       <div class="card-actions">
-        <span class="badge">类型: ${escapeHtml(e.type || '')}</span>
-        <span class="badge">子类型: ${escapeHtml(e.subtype || '')}</span>
-        <span class="badge">细分: ${escapeHtml(e.subSubtype || '')}</span>
+        <span class="badge">绫诲瀷: ${escapeHtml(e.type || '')}</span>
+        <span class="badge">瀛愮被鍨? ${escapeHtml(e.subtype || '')}</span>
+        <span class="badge">缁嗗垎: ${escapeHtml(e.subSubtype || '')}</span>
       </div>
     </div>
   `).join('');
 }
 
-// 高亮右侧面板中的对应章节（不切换Tab）
+// 楂樹寒鍙充晶闈㈡澘涓殑瀵瑰簲绔犺妭锛堜笉鍒囨崲Tab锛?
 function highlightNoteChapter(type, subtype, subSubtype) {
-  // 清除旧高亮
+  // 娓呴櫎鏃ч珮浜?
   document.querySelectorAll('.note-panel-item-header').forEach(el => el.classList.remove('note-chapter-highlight'));
   if (!type) return;
-  // 用 index 匹配 ID（避免中文字符全变成_的碰撞问题）
+  // 鐢?index 鍖归厤 ID锛堥伩鍏嶄腑鏂囧瓧绗﹀叏鍙樻垚_鐨勭鎾為棶棰橈級
   const types = [...new Set(getErrorEntries().map(e => e.type).filter(Boolean))];
   const idx = types.indexOf(type);
   const safeId = idx >= 0 ? 'npitem_' + idx : null;
@@ -200,11 +214,7 @@ function highlightNoteChapter(type, subtype, subSubtype) {
   }
 }
 
-// 手动同步题型：新增题型、追加缺失子类型标题、提示孤儿笔记
-function syncNoteTypesManual() {
-  showToast('旧题型笔记同步已下线，当前只保留知识工作区。', 'info');
-}
-
+// 鎵嬪姩鍚屾棰樺瀷锛氭柊澧為鍨嬨€佽拷鍔犵己澶卞瓙绫诲瀷鏍囬銆佹彁绀哄鍎跨瑪璁?
 function renderKnowledgeTreeHtml(nodes, depth) {
   const list = nodes || [];
   return list.map(node => {
@@ -215,18 +225,18 @@ function renderKnowledgeTreeHtml(nodes, depth) {
       const active = node.id === selectedKnowledgeNodeId;
       return `<div class="note-heading-item${active ? ' active' : ''}" style="padding-left:${pad}px;display:flex;align-items:center;justify-content:space-between" onclick="selectKnowledgeLeaf('${node.id}')">
         <span>${escapeHtml(node.title)}</span>
-        <span style="font-size:10px;color:${active ? '#e74c3c' : '#aaa'}">${count}题</span>
+        <span style="font-size:10px;color:${active ? '#e74c3c' : '#aaa'}">${count}棰?/span>
       </div>`;
     }
     const expanded = isKnowledgeExpanded(node);
     const active = node.id === selectedKnowledgeNodeId;
     return `<div>
       <div class="note-panel-item-header${active ? ' active' : ''}" style="padding-left:${pad}px">
-        <button type="button" class="knowledge-tree-toggle${hasChildren ? '' : ' placeholder'}" onclick="toggleKnowledgeExpanded('${node.id}', event)" aria-label="${hasChildren ? '切换展开' : '无下级'}">${hasChildren ? (expanded ? '▾' : '▸') : '•'}</button>
+        <button type="button" class="knowledge-tree-toggle${hasChildren ? '' : ' placeholder'}" onclick="toggleKnowledgeExpanded('${node.id}', event)" aria-label="${hasChildren ? 'Toggle' : 'No children'}">${hasChildren ? (expanded ? '▼' : '▶') : '•'}</button>
         <button type="button" class="note-panel-title" style="background:none;border:none;padding:0;cursor:pointer;text-align:left" onclick="selectKnowledgeBranch('${node.id}', event)">${escapeHtml(node.title)}</button>
-        <span style="font-size:11px;color:#aaa;margin-left:auto">${count}题</span>
+        <span style="font-size:11px;color:#aaa;margin-left:auto">${count}棰?/span>
       </div>
-      ${expanded ? ((node.children && node.children.length) ? renderKnowledgeTreeHtml(node.children, depth + 1) : `<div style="padding:4px 0 8px ${pad + 16}px;color:#bbb;font-size:11px">暂无叶子节点</div>`) : ''}
+      ${expanded ? ((node.children && node.children.length) ? renderKnowledgeTreeHtml(node.children, depth + 1) : `<div style="padding:4px 0 8px ${pad + 16}px;color:#bbb;font-size:11px">鏆傛棤鍙跺瓙鑺傜偣</div>`) : ''}
     </div>`;
   }).join('');
 }
@@ -236,7 +246,7 @@ function renderKnowledgeNotesView() {
   if (!content) return;
   const currentNode = getCurrentKnowledgeNode() || collectKnowledgeLeaves()[0];
   if (!currentNode) {
-    content.innerHTML = '<div class="note-placeholder" style="padding:40px;text-align:center;color:#999">暂无知识点笔记，先录入错题后自动生成</div>';
+    content.innerHTML = '<div class="note-placeholder" style="padding:40px;text-align:center;color:#999">鏆傛棤鐭ヨ瘑鐐圭瑪璁帮紝鍏堝綍鍏ラ敊棰樺悗鑷姩鐢熸垚</div>';
     return;
   }
   selectedKnowledgeNodeId = currentNode.id;
@@ -254,24 +264,24 @@ function renderKnowledgeNotesView() {
       <div class="knowledge-workspace-path">${escapeHtml(pathText)}</div>
     </div>
     <div class="knowledge-workspace-actions">
-      <button class="btn btn-secondary btn-sm" onclick="openGlobalSearchModal()">全局搜索</button>
-      <button class="btn btn-secondary btn-sm" onclick="renameKnowledgeNode('${currentNode.id}')">重命名</button>
-      ${findKnowledgeParent(currentNode.id) ? `<button class="btn btn-secondary btn-sm" onclick="moveKnowledgeNode('${currentNode.id}')">移动</button>` : ''}
-      <button class="btn btn-secondary btn-sm" onclick="addKnowledgeLeafUnderSelected()">+ 新建知识点</button>
-      <button class="btn btn-secondary btn-sm" onclick="openAddModalForCurrentKnowledge()">+ 录入错题</button>
-      <button class="btn btn-secondary btn-sm" onclick="openImportModalForCurrentKnowledge()">JSON导入</button>
-      <button class="btn btn-secondary btn-sm" onclick="deleteKnowledgeNode('${currentNode.id}')">删除节点</button>
-      ${currentNode.isLeaf ? `<button class="btn btn-primary btn-sm" onclick="noteEditing=${noteEditing ? 'false' : 'true'};renderNotesByType()">${noteEditing ? '完成编辑' : '编辑笔记'}</button>` : ''}
+      <button class="btn btn-secondary btn-sm" onclick="openGlobalSearchModal()">鍏ㄥ眬鎼滅储</button>
+      <button class="btn btn-secondary btn-sm" onclick="renameKnowledgeNode('${currentNode.id}')">閲嶅懡鍚?/button>
+      ${findKnowledgeParent(currentNode.id) ? `<button class="btn btn-secondary btn-sm" onclick="moveKnowledgeNode('${currentNode.id}')">绉诲姩</button>` : ''}
+      <button class="btn btn-secondary btn-sm" onclick="addKnowledgeLeafUnderSelected()">+ 鏂板缓鐭ヨ瘑鐐?/button>
+      <button class="btn btn-secondary btn-sm" onclick="openAddModalForCurrentKnowledge()">+ 褰曞叆閿欓</button>
+      <button class="btn btn-secondary btn-sm" onclick="openImportModalForCurrentKnowledge()">JSON瀵煎叆</button>
+      <button class="btn btn-secondary btn-sm" onclick="deleteKnowledgeNode('${currentNode.id}')">鍒犻櫎鑺傜偣</button>
+      ${currentNode.isLeaf ? `<button class="btn btn-primary btn-sm" onclick="noteEditing=${noteEditing ? 'false' : 'true'};renderNotesByType()">${noteEditing ? '瀹屾垚缂栬緫' : '缂栬緫绗旇'}</button>` : ''}
     </div>
   </div>`;
   if (!currentNode.isLeaf) {
     content.innerHTML = `${workspaceBar}
       <div class="note-split-area">
         <div class="note-split-preview" style="width:100%">
-          <div class="note-split-label">📂 ${escapeHtml(currentNode.title)}</div>
+          <div class="note-split-label">馃搨 ${escapeHtml(currentNode.title)}</div>
           <div class="note-preview-scroll notes-content" id="noteSplitPreview" style="padding:18px 20px">
-            <p style="margin:0 0 12px;color:#666;line-height:1.8">当前节点是目录节点，不直接编辑 Markdown。关联错题会固定显示在右侧。</p>
-            ${childItems ? `<div style="display:flex;gap:8px;flex-wrap:wrap">${childItems}</div>` : '<div style="color:#bbb;font-size:12px">暂无下级知识点</div>'}
+            <p style="margin:0 0 12px;color:#666;line-height:1.8">褰撳墠鑺傜偣鏄洰褰曡妭鐐癸紝涓嶇洿鎺ョ紪杈?Markdown銆傚叧鑱旈敊棰樹細鍥哄畾鏄剧ず鍦ㄥ彸渚с€?/p>
+            ${childItems ? `<div style="display:flex;gap:8px;flex-wrap:wrap">${childItems}</div>` : '<div style="color:#bbb;font-size:12px">鏆傛棤涓嬬骇鐭ヨ瘑鐐?/div>'}
           </div>
         </div>
       </div>`;
@@ -286,17 +296,31 @@ function renderKnowledgeNotesView() {
   updateGlobalNoteTocDock(noteHeadings, noteAnchorPrefix);
   const previewHtml = note.content
     ? renderMd(note.content, { anchorPrefix: noteAnchorPrefix })
-    : '<div style="color:#ccc;font-size:13px;font-style:italic;padding:20px;text-align:center">暂无笔记，点击右上角「✏ 编辑」开始记录</div>';
+    : '<div style="color:#ccc;font-size:13px;font-style:italic;padding:20px;text-align:center">鏆傛棤绗旇锛岀偣鍑诲彸涓婅銆屸湉 缂栬緫銆嶅紑濮嬭褰?/div>';
   let bodyHtml;
   if (noteEditing) {
     bodyHtml = `
       <div class="note-split-area">
         <div class="note-split-editor">
-          <div class="note-split-label">✏ 编辑
-            <button onclick="saveNoteTypeContent();noteEditing=false;renderNotesByType()" style="float:right;background:#52c41a;color:#fff;border:none;border-radius:4px;padding:2px 10px;cursor:pointer;font-size:12px">👁 完成</button>
+          <div class="note-split-label">鉁?缂栬緫
+            <button onclick="saveNoteTypeContent();noteEditing=false;renderNotesByType()" style="float:right;background:#52c41a;color:#fff;border:none;border-radius:4px;padding:2px 10px;cursor:pointer;font-size:12px">馃憗 瀹屾垚</button>
           </div>
-          <textarea id="noteTypeTextarea" class="note-md-textarea" placeholder="# 规则总结&#10;## 易错点&#10;- ...&#10;&#10;## 行动建议&#10;- ..." oninput="liveNotePreview()">${escapeHtml(note.content || '')}</textarea>
+          <textarea id="noteTypeTextarea" class="note-md-textarea" placeholder="# 瑙勫垯鎬荤粨&#10;## 鏄撻敊鐐?#10;- ...&#10;&#10;## 琛屽姩寤鸿&#10;- ..." oninput="liveNotePreview()">${escapeHtml(note.content || '')}</textarea>
           <div class="note-btn-bar">
+            <div class="table-picker-wrap">
+              <button class="btn btn-secondary btn-sm" type="button" id="tablePickerBtn" onclick="toggleTablePicker()">+ 鐞涖劍鐗?/button>
+              <div class="table-picker-panel" id="tablePickerPanel">
+                <div class="table-picker-title">閹绘帒鍙?Markdown 鐞涖劍鐗?/div>
+                <div class="table-picker-grid">
+                  <label>鐞涘本鏆?input id="tblRows" type="number" min="1" max="20" value="3"></label>
+                  <label>閸掓鏆?input id="tblCols" type="number" min="1" max="10" value="3"></label>
+                </div>
+                <div class="table-picker-actions">
+                  <button class="btn btn-secondary btn-sm" type="button" onclick="document.getElementById('tablePickerPanel').style.display='none'">閸欐牗绉?/button>
+                  <button class="btn btn-primary btn-sm" type="button" onclick="insertQuickMdTable(document.getElementById('tblRows').value, document.getElementById('tblCols').value)">閹绘帒鍙?/button>
+                </div>
+              </div>
+            </div>
             <div class="table-picker-wrap">
               <button class="btn btn-secondary btn-sm" type="button" id="tablePickerBtn" onclick="toggleTablePicker()">+ 琛ㄦ牸</button>
               <div class="table-picker-panel" id="tablePickerPanel">
@@ -311,28 +335,14 @@ function renderKnowledgeNotesView() {
                 </div>
               </div>
             </div>
-            <div class="table-picker-wrap">
-              <button class="btn btn-secondary btn-sm" type="button" id="tablePickerBtn" onclick="toggleTablePicker()">+ 表格</button>
-              <div class="table-picker-panel" id="tablePickerPanel">
-                <div class="table-picker-title">插入 Markdown 表格</div>
-                <div class="table-picker-grid">
-                  <label>行数<input id="tblRows" type="number" min="1" max="20" value="3"></label>
-                  <label>列数<input id="tblCols" type="number" min="1" max="10" value="3"></label>
-                </div>
-                <div class="table-picker-actions">
-                  <button class="btn btn-secondary btn-sm" type="button" onclick="document.getElementById('tablePickerPanel').style.display='none'">取消</button>
-                  <button class="btn btn-primary btn-sm" type="button" onclick="insertQuickMdTable(document.getElementById('tblRows').value, document.getElementById('tblCols').value)">插入</button>
-                </div>
-              </div>
-            </div>
-            <button class="btn btn-primary btn-sm" onclick="saveNoteTypeContent()">💾 保存</button>
-            <button class="btn btn-secondary btn-sm" onclick="addKnowledgeLeafUnderSelected()">+ 新建同层节点</button>
-            <button class="btn btn-secondary btn-sm" onclick="renameKnowledgeNode('${selectedKnowledgeNodeId}')">重命名</button>
-            ${findKnowledgeParent(selectedKnowledgeNodeId) ? `<button class="btn btn-secondary btn-sm" onclick="moveKnowledgeNode('${selectedKnowledgeNodeId}')">移动</button>` : ''}
+            <button class="btn btn-primary btn-sm" onclick="saveNoteTypeContent()">馃捑 淇濆瓨</button>
+            <button class="btn btn-secondary btn-sm" onclick="addKnowledgeLeafUnderSelected()">+ 鏂板缓鍚屽眰鑺傜偣</button>
+            <button class="btn btn-secondary btn-sm" onclick="renameKnowledgeNode('${selectedKnowledgeNodeId}')">閲嶅懡鍚?/button>
+            ${findKnowledgeParent(selectedKnowledgeNodeId) ? `<button class="btn btn-secondary btn-sm" onclick="moveKnowledgeNode('${selectedKnowledgeNodeId}')">绉诲姩</button>` : ''}
           </div>
         </div>
         <div class="note-split-preview">
-          <div class="note-split-label">👁 预览</div>
+          <div class="note-split-label">馃憗 棰勮</div>
           <div class="note-preview-scroll notes-content" id="noteSplitPreview">${renderNotePreviewLayout(previewHtml, tocHtml)}</div>
         </div>
       </div>`;
@@ -340,8 +350,8 @@ function renderKnowledgeNotesView() {
     bodyHtml = `
       <div class="note-split-area">
         <div class="note-split-preview" style="width:100%">
-          <div class="note-split-label">📌 ${escapeHtml(currentNode.title)}
-            <button onclick="noteEditing=true;renderNotesByType()" style="float:right;background:#e74c3c;color:#fff;border:none;border-radius:4px;padding:2px 10px;cursor:pointer;font-size:12px">✏ 编辑</button>
+          <div class="note-split-label">馃搶 ${escapeHtml(currentNode.title)}
+            <button onclick="noteEditing=true;renderNotesByType()" style="float:right;background:#e74c3c;color:#fff;border:none;border-radius:4px;padding:2px 10px;cursor:pointer;font-size:12px">鉁?缂栬緫</button>
           </div>
           <div class="note-preview-scroll notes-content" id="noteSplitPreview">${renderNotePreviewLayout(previewHtml, tocHtml)}</div>
         </div>
@@ -369,7 +379,7 @@ function getKnowledgeNoteRenderBundle(node) {
     tocHtml: renderFloatingHeadingPanel(headings, anchorPrefix),
     previewHtml: noteContent
       ? renderMd(noteContent, { anchorPrefix })
-      : '<div style="color:#c0c4cc;font-size:13px;font-style:italic;padding:18px 0">当前节点还没有笔记，直接在这里记录规则、易错点和行动建议。</div>'
+      : '<div style="color:#c0c4cc;font-size:13px;font-style:italic;padding:18px 0">褰撳墠鑺傜偣杩樻病鏈夌瑪璁帮紝鐩存帴鍦ㄨ繖閲岃褰曡鍒欍€佹槗閿欑偣鍜岃鍔ㄥ缓璁€?/div>'
   };
   knowledgeNoteRenderCache.set(nodeId, bundle);
   return bundle;
@@ -381,7 +391,7 @@ function renderKnowledgeNotesViewV2() {
   content.classList.add('knowledge-notes-active');
   const currentNode = getCurrentKnowledgeNode() || getKnowledgeRootNodes()[0];
   if (!currentNode) {
-    content.innerHTML = '<div class="note-placeholder" style="padding:40px;text-align:center;color:#999">暂无知识点笔记，先录入错题后自动生成</div>';
+    content.innerHTML = '<div class="note-placeholder" style="padding:40px;text-align:center;color:#999">鏆傛棤鐭ヨ瘑鐐圭瑪璁帮紝鍏堝綍鍏ラ敊棰樺悗鑷姩鐢熸垚</div>';
     return;
   }
   selectedKnowledgeNodeId = currentNode.id;
@@ -392,7 +402,7 @@ function renderKnowledgeNotesViewV2() {
     const childCount = countErrorsForKnowledgeNode(child.id, true);
     return `<button class="knowledge-node-pill" onclick="selectKnowledgeNodeFromSidebar('${child.id}')">
       <span>${escapeHtml(child.title)}</span>
-      <span class="knowledge-node-pill-count">${childCount}题</span>
+      <span class="knowledge-node-pill-count">${childCount}棰?/span>
     </button>`;
   }).join('');
   const noteBundle = getKnowledgeNoteRenderBundle(currentNode);
@@ -403,56 +413,56 @@ function renderKnowledgeNotesViewV2() {
   const previewHtml = noteBundle.previewHtml;
   const workspaceBar = `<div class="knowledge-workspace-bar">
     <div class="knowledge-workspace-meta">
-      <div class="knowledge-workspace-kicker">知识点笔记</div>
+      <div class="knowledge-workspace-kicker">鐭ヨ瘑鐐圭瑪璁?/div>
       <div class="knowledge-workspace-title">${escapeHtml(currentNode.title)}</div>
-      <div class="knowledge-workspace-path">${escapeHtml(pathText)} · 直属错题 ${directCount} 题 · 含下级 ${linkedCount} 题</div>
+      <div class="knowledge-workspace-path">${escapeHtml(pathText)} 路 鐩村睘閿欓 ${directCount} 棰?路 鍚笅绾?${linkedCount} 棰?/div>
     </div>
     <div class="knowledge-workspace-actions">
-      <button class="btn btn-secondary btn-sm" onclick="openGlobalSearchModal()">全局搜索</button>
-      <button class="btn btn-secondary btn-sm" onclick="renameKnowledgeNode('${currentNode.id}')">重命名</button>
-      ${findKnowledgeParent(currentNode.id) ? `<button class="btn btn-secondary btn-sm" onclick="moveKnowledgeNode('${currentNode.id}')">移动</button>` : ''}
-      <button class="btn btn-secondary btn-sm" onclick="selectedKnowledgeNodeId='${currentNode.id}';addKnowledgeLeafUnderSelected()">+ 新建下级</button>
-      <button class="btn btn-secondary btn-sm" onclick="openAddModalForCurrentKnowledge()">+ 录入错题</button>
-      <button class="btn btn-secondary btn-sm" onclick="openImportModalForCurrentKnowledge()">JSON导入</button>
-      <button class="btn btn-secondary btn-sm" onclick="deleteKnowledgeNode('${currentNode.id}')">删除节点</button>
-      <button class="btn btn-primary btn-sm" onclick="noteEditing=${noteEditing ? 'false' : 'true'};renderNotesByType()">${noteEditing ? '完成编辑' : '编辑笔记'}</button>
+      <button class="btn btn-secondary btn-sm" onclick="openGlobalSearchModal()">鍏ㄥ眬鎼滅储</button>
+      <button class="btn btn-secondary btn-sm" onclick="renameKnowledgeNode('${currentNode.id}')">閲嶅懡鍚?/button>
+      ${findKnowledgeParent(currentNode.id) ? `<button class="btn btn-secondary btn-sm" onclick="moveKnowledgeNode('${currentNode.id}')">绉诲姩</button>` : ''}
+      <button class="btn btn-secondary btn-sm" onclick="selectedKnowledgeNodeId='${currentNode.id}';addKnowledgeLeafUnderSelected()">+ 鏂板缓涓嬬骇</button>
+      <button class="btn btn-secondary btn-sm" onclick="openAddModalForCurrentKnowledge()">+ 褰曞叆閿欓</button>
+      <button class="btn btn-secondary btn-sm" onclick="openImportModalForCurrentKnowledge()">JSON瀵煎叆</button>
+      <button class="btn btn-secondary btn-sm" onclick="deleteKnowledgeNode('${currentNode.id}')">鍒犻櫎鑺傜偣</button>
+      <button class="btn btn-primary btn-sm" onclick="noteEditing=${noteEditing ? 'false' : 'true'};renderNotesByType()">${noteEditing ? '瀹屾垚缂栬緫' : '缂栬緫绗旇'}</button>
     </div>
   </div>`;
-  const summaryHtml = `${childItems ? `<div class="knowledge-children-bar">${childItems}</div>` : ''}<div class="knowledge-node-hint">当前节点本身就可以写笔记，也可以继续新增下级知识点。错题既可以直接挂当前节点，也可以拖到左侧其他节点重新挂载。</div>`;
+  const summaryHtml = `${childItems ? `<div class="knowledge-children-bar">${childItems}</div>` : ''}<div class="knowledge-node-hint">褰撳墠鑺傜偣鏈韩灏卞彲浠ュ啓绗旇锛屼篃鍙互缁х画鏂板涓嬬骇鐭ヨ瘑鐐广€傞敊棰樻棦鍙互鐩存帴鎸傚綋鍓嶈妭鐐癸紝涔熷彲浠ユ嫋鍒板乏渚у叾浠栬妭鐐归噸鏂版寕杞姐€?/div>`;
   let bodyHtml;
   if (noteEditing) {
     bodyHtml = `
       <div class="note-split-area">
         <div class="note-split-editor">
-          <div class="note-split-label">✎ 编辑
-            <button onclick="saveNoteTypeContent();noteEditing=false;renderNotesByType()" style="float:right;background:#52c41a;color:#fff;border:none;border-radius:4px;padding:2px 10px;cursor:pointer;font-size:12px">完成</button>
+          <div class="note-split-label">鉁?缂栬緫
+            <button onclick="saveNoteTypeContent();noteEditing=false;renderNotesByType()" style="float:right;background:#52c41a;color:#fff;border:none;border-radius:4px;padding:2px 10px;cursor:pointer;font-size:12px">瀹屾垚</button>
           </div>
           ${summaryHtml}
           <div class="table-picker-wrap" style="margin:0 0 8px">
-            <button class="btn btn-secondary btn-sm" type="button" id="tablePickerBtn" onclick="toggleTablePicker()">+ 琛ㄦ牸</button>
+            <button class="btn btn-secondary btn-sm" type="button" id="tablePickerBtn" onclick="toggleTablePicker()">+ 鐞涖劍鐗?/button>
             <div class="table-picker-panel" id="tablePickerPanel">
-              <div class="table-picker-title">鎻掑叆 Markdown 琛ㄦ牸</div>
+              <div class="table-picker-title">閹绘帒鍙?Markdown 鐞涖劍鐗?/div>
               <div class="table-picker-grid">
-                <label>琛屾暟<input id="tblRows" type="number" min="1" max="20" value="3"></label>
-                <label>鍒楁暟<input id="tblCols" type="number" min="1" max="10" value="3"></label>
+                <label>鐞涘本鏆?input id="tblRows" type="number" min="1" max="20" value="3"></label>
+                <label>閸掓鏆?input id="tblCols" type="number" min="1" max="10" value="3"></label>
               </div>
               <div class="table-picker-actions">
-                <button class="btn btn-secondary btn-sm" type="button" onclick="document.getElementById('tablePickerPanel').style.display='none'">鍙栨秷</button>
-                <button class="btn btn-primary btn-sm" type="button" onclick="insertQuickMdTable(document.getElementById('tblRows').value, document.getElementById('tblCols').value)">鎻掑叆</button>
+                <button class="btn btn-secondary btn-sm" type="button" onclick="document.getElementById('tablePickerPanel').style.display='none'">閸欐牗绉?/button>
+                <button class="btn btn-primary btn-sm" type="button" onclick="insertQuickMdTable(document.getElementById('tblRows').value, document.getElementById('tblCols').value)">閹绘帒鍙?/button>
               </div>
             </div>
           </div>
-          <textarea id="noteTypeTextarea" class="note-md-textarea" placeholder="# 规则总结&#10;## 易错点&#10;- ...&#10;&#10;## 行动建议&#10;- ..." oninput="liveNotePreview()">${escapeHtml(noteContent)}</textarea>
+          <textarea id="noteTypeTextarea" class="note-md-textarea" placeholder="# 瑙勫垯鎬荤粨&#10;## 鏄撻敊鐐?#10;- ...&#10;&#10;## 琛屽姩寤鸿&#10;- ..." oninput="liveNotePreview()">${escapeHtml(noteContent)}</textarea>
           <div class="note-btn-bar">
-            <button class="btn btn-primary btn-sm" onclick="saveNoteTypeContent()">保存</button>
-            <button class="btn btn-secondary btn-sm" onclick="selectedKnowledgeNodeId='${currentNode.id}';addKnowledgeLeafUnderSelected()">+ 新建下级</button>
-            <button class="btn btn-secondary btn-sm" onclick="openAddModalForCurrentKnowledge()">+ 录入错题</button>
-            <button class="btn btn-secondary btn-sm" onclick="openImportModalForCurrentKnowledge()">JSON导入</button>
-            <span class="save-hint">Ctrl+S 快捷保存</span>
+            <button class="btn btn-primary btn-sm" onclick="saveNoteTypeContent()">淇濆瓨</button>
+            <button class="btn btn-secondary btn-sm" onclick="selectedKnowledgeNodeId='${currentNode.id}';addKnowledgeLeafUnderSelected()">+ 鏂板缓涓嬬骇</button>
+            <button class="btn btn-secondary btn-sm" onclick="openAddModalForCurrentKnowledge()">+ 褰曞叆閿欓</button>
+            <button class="btn btn-secondary btn-sm" onclick="openImportModalForCurrentKnowledge()">JSON瀵煎叆</button>
+            <span class="save-hint">Ctrl+S 蹇嵎淇濆瓨</span>
           </div>
         </div>
         <div class="note-split-preview">
-          <div class="note-split-label">预览</div>
+          <div class="note-split-label">棰勮</div>
           <div class="note-preview-scroll notes-content" id="noteSplitPreview">${renderNotePreviewLayout(previewHtml, tocHtml)}</div>
         </div>
       </div>`;
@@ -460,7 +470,7 @@ function renderKnowledgeNotesViewV2() {
     bodyHtml = `
       <div class="note-split-area">
         <div class="note-split-preview" style="width:100%">
-          <div class="note-split-label">当前笔记</div>
+          <div class="note-split-label">褰撳墠绗旇</div>
             <div class="note-preview-scroll notes-content" id="noteSplitPreview">${summaryHtml}${renderNotePreviewLayout(previewHtml, tocHtml)}</div>
           </div>
         </div>`;
@@ -486,19 +496,15 @@ function renderNotesByType() {
   renderKnowledgeNotesViewV2();
 }
 
-function renderLegacyNotesView() {
-  renderKnowledgeNotesViewV2();
-}
-
-// 实时更新预览面板（仅保留知识工作区）
-// 显示/隐藏表格插入面板
+// 瀹炴椂鏇存柊棰勮闈㈡澘锛堜粎淇濈暀鐭ヨ瘑宸ヤ綔鍖猴級
+// 鏄剧ず/闅愯棌琛ㄦ牸鎻掑叆闈㈡澘
 function toggleTablePicker() {
   const panel = document.getElementById('tablePickerPanel');
   if (!panel) return;
   const visible = panel.style.display !== 'none';
   panel.style.display = visible ? 'none' : '';
   if (!visible) {
-    // 点击面板外部时关闭
+    // 鐐瑰嚮闈㈡澘澶栭儴鏃跺叧闂?
     setTimeout(() => {
       const close = e => {
         if (!panel.contains(e.target) && e.target.id !== 'tablePickerBtn') {
@@ -511,15 +517,15 @@ function toggleTablePicker() {
   }
 }
 
-// 在光标处插入 Markdown 表格
+// 鍦ㄥ厜鏍囧鎻掑叆 Markdown 琛ㄦ牸
 function insertMdTable() {
   const rows = Math.min(20, Math.max(1, parseInt(document.getElementById('tblRows').value) || 3));
   const cols = Math.min(10, Math.max(1, parseInt(document.getElementById('tblCols').value) || 3));
   const ta = document.getElementById('noteTypeTextarea');
   if (!ta) return;
 
-  // 生成表格模板
-  const header = '| ' + Array.from({length: cols}, (_, i) => `列${i+1}`).join(' | ') + ' |';
+  // 鐢熸垚琛ㄦ牸妯℃澘
+  const header = '| ' + Array.from({length: cols}, (_, i) => `鍒?{i+1}`).join(' | ') + ' |';
   const separator = '| ' + Array(cols).fill('---').join(' | ') + ' |';
   const row = '| ' + Array(cols).fill('    ').join(' | ') + ' |';
   const table = '\n' + [header, separator, ...Array(rows).fill(row)].join('\n') + '\n';
@@ -560,7 +566,7 @@ function liveNotePreview() {
     const tocHtml = renderFloatingHeadingPanel(liveHeadings, anchorPrefix);
     preview.innerHTML = ta.value
       ? renderNotePreviewLayout(renderMd(ta.value, { anchorPrefix }), tocHtml)
-      : '<span style="color:#ccc;font-size:12px;font-style:italic">输入 Markdown 后在此预览…</span>';
+      : '<span style="color:#ccc;font-size:12px;font-style:italic">杈撳叆 Markdown 鍚庡湪姝ら瑙堚€?/span>';
   }
   if (preview) {
     requestAnimationFrame(() => {
@@ -571,14 +577,7 @@ function liveNotePreview() {
   const gta = document.getElementById('globalNoteTA');
   const gpv = document.getElementById('noteEditPreview');
   if (gta && gpv) requestAnimationFrame(() => renderMathInElement(gpv));
-  if (gta && gpv) gpv.innerHTML = renderMd(gta.value) || '<span style="color:#ccc;font-size:12px;font-style:italic">右侧实时预览</span>';
-}
-
-function selectNoteType(type) {
-  if (type) {
-    showToast('旧题型笔记已彻底下线，请直接使用知识工作区。', 'warning');
-  }
-  renderKnowledgeNotesViewV2();
+  if (gta && gpv) gpv.innerHTML = renderMd(gta.value) || '<span style="color:#ccc;font-size:12px;font-style:italic">鍙充晶瀹炴椂棰勮</span>';
 }
 
 function saveNoteTypeContent() {
@@ -633,21 +632,21 @@ function renderKnowledgeWorkspaceHeader(node, pathText, directCount, linkedCount
       <div class="note-page-breadcrumb">${escapeHtml(pathText || '')}</div>
       <div class="knowledge-workspace-title">${escapeHtml(node.title || '')}</div>
       <div class="knowledge-page-meta">
-        <span class="knowledge-page-pill">直属 ${directCount || 0}</span>
-        <span class="knowledge-page-pill">含下级 ${linkedCount || 0}</span>
+        <span class="knowledge-page-pill">鐩村睘 ${directCount || 0}</span>
+        <span class="knowledge-page-pill">鍚笅绾?${linkedCount || 0}</span>
       </div>
     </div>
     <div class="knowledge-page-actions">
-      <button class="btn btn-primary btn-sm" onclick="noteEditing=${noteEditing ? 'false' : 'true'};renderNotesByType()">${noteEditing ? '完成' : '编辑'}</button>
+      <button class="btn btn-primary btn-sm" onclick="noteEditing=${noteEditing ? 'false' : 'true'};renderNotesByType()">${noteEditing ? '瀹屾垚' : '缂栬緫'}</button>
       <details class="note-more-menu">
-        <summary class="btn btn-secondary btn-sm">更多</summary>
+        <summary class="btn btn-secondary btn-sm">鏇村</summary>
         <div class="note-more-menu-panel">
-          <button class="btn btn-secondary btn-sm" onclick="renameKnowledgeNode('${node.id}')">重命名</button>
-          ${findKnowledgeParent(node.id) ? `<button class="btn btn-secondary btn-sm" onclick="moveKnowledgeNode('${node.id}')">移动</button>` : ''}
-          <button class="btn btn-secondary btn-sm" onclick="selectedKnowledgeNodeId='${node.id}';addKnowledgeLeafUnderSelected()">新建下级</button>
-          <button class="btn btn-secondary btn-sm" onclick="openAddModalForCurrentKnowledge()">录入题目</button>
-          <button class="btn btn-secondary btn-sm" onclick="openImportModalForCurrentKnowledge()">导入 JSON</button>
-          <button class="btn btn-secondary btn-sm" onclick="deleteKnowledgeNode('${node.id}')">删除节点</button>
+          <button class="btn btn-secondary btn-sm" onclick="renameKnowledgeNode('${node.id}')">閲嶅懡鍚?/button>
+          ${findKnowledgeParent(node.id) ? `<button class="btn btn-secondary btn-sm" onclick="moveKnowledgeNode('${node.id}')">绉诲姩</button>` : ''}
+          <button class="btn btn-secondary btn-sm" onclick="selectedKnowledgeNodeId='${node.id}';addKnowledgeLeafUnderSelected()">鏂板缓涓嬬骇</button>
+          <button class="btn btn-secondary btn-sm" onclick="openAddModalForCurrentKnowledge()">褰曞叆棰樼洰</button>
+          <button class="btn btn-secondary btn-sm" onclick="openImportModalForCurrentKnowledge()">瀵煎叆 JSON</button>
+          <button class="btn btn-secondary btn-sm" onclick="deleteKnowledgeNode('${node.id}')">鍒犻櫎鑺傜偣</button>
         </div>
       </details>
     </div>`;
@@ -671,7 +670,7 @@ function decorateKnowledgeNotesView(contentEl, currentNode, pathText, directCoun
   }
   contentEl.querySelectorAll('.note-split-label').forEach(label => {
     const text = (label.textContent || '').trim();
-    if (!noteEditing || text.indexOf('预览') >= 0 || text.indexOf('当前笔记') >= 0) {
+    if (!noteEditing || text.indexOf('棰勮') >= 0 || text.indexOf('褰撳墠绗旇') >= 0) {
       label.remove();
     }
   });
@@ -699,54 +698,54 @@ function renderNoteToc(content, anchorPrefix) {
   const raw = (content || '').trim();
   if (!anchorPrefix) return '';
   if (!raw) {
-    return `<div class="note-toc note-toc-floating"><div class="note-toc-title">本页笔记目录</div><div class="note-toc-list"><div class="note-toc-item">当前笔记为空</div></div></div>`;
+    return `<div class="note-toc note-toc-floating"><div class="note-toc-title">鏈〉绗旇鐩綍</div><div class="note-toc-list"><div class="note-toc-item">褰撳墠绗旇涓虹┖</div></div></div>`;
   }
   const headings = extractMdHeadings(content).filter(item => item.level >= 1 && item.level <= 4);
   if (!headings.length) {
-    return `<div class="note-toc note-toc-floating"><div class="note-toc-title">本页笔记目录</div><div class="note-toc-list"><div class="note-toc-item">还没有 Markdown 标题，使用 # 或 ## 添加</div></div></div>`;
+    return `<div class="note-toc note-toc-floating"><div class="note-toc-title">鏈〉绗旇鐩綍</div><div class="note-toc-list"><div class="note-toc-item">杩樻病鏈?Markdown 鏍囬锛屼娇鐢?# 鎴?## 娣诲姞</div></div></div>`;
   }
   const items = headings.map(item => {
     const anchorId = getNoteHeadingAnchorId(anchorPrefix, item.headingIndex);
     return `<div class="note-toc-item lv${Math.min(item.level, 4)}" onclick="jumpToRenderedAnchor('${anchorId}')">${escapeHtml(item.text)}</div>`;
   }).join('');
-  return `<div class="note-toc note-toc-floating"><div class="note-toc-title">本页笔记目录</div><div class="note-toc-list">${items}</div></div>`;
+  return `<div class="note-toc note-toc-floating"><div class="note-toc-title">鏈〉绗旇鐩綍</div><div class="note-toc-list">${items}</div></div>`;
 }
 function renderNoteTocFromHeadings(headings, anchorPrefix) {
   if (!anchorPrefix) return '';
   const list = Array.isArray(headings) ? headings : [];
   if (!list.length) {
-    return `<div class="note-toc note-toc-floating"><div class="note-toc-title">本页笔记目录</div><div class="note-toc-list"><div class="note-toc-item">还没有 Markdown 标题，使用 # 或 ## 添加</div></div></div>`;
+    return `<div class="note-toc note-toc-floating"><div class="note-toc-title">鏈〉绗旇鐩綍</div><div class="note-toc-list"><div class="note-toc-item">杩樻病鏈?Markdown 鏍囬锛屼娇鐢?# 鎴?## 娣诲姞</div></div></div>`;
   }
   const items = list.map(item => {
     const anchorId = getNoteHeadingAnchorId(anchorPrefix, item.headingIndex);
     return `<div class="note-toc-item lv${Math.min(item.level, 4)}" onclick="jumpToRenderedAnchor('${anchorId}')">${escapeHtml(item.text)}</div>`;
   }).join('');
-  return `<div class="note-toc note-toc-floating"><div class="note-toc-title">本页笔记目录（${list.length}）</div><div class="note-toc-list">${items}</div></div>`;
+  return `<div class="note-toc note-toc-floating"><div class="note-toc-title">鏈〉绗旇鐩綍锛?{list.length}锛?/div><div class="note-toc-list">${items}</div></div>`;
 }
 function renderInlineHeadingPanel(headings, anchorPrefix) {
   const list = Array.isArray(headings) ? headings : [];
   if (!anchorPrefix) return '';
   if (!list.length) {
-    return `<div style="margin:0 0 14px;padding:10px 12px;border:1px solid #f0e2cf;border-radius:10px;background:#fffaf3;color:#7c5a2f;font-size:12px;line-height:1.7"><strong>本页笔记目录</strong><br>还没有 Markdown 标题</div>`;
+    return `<div style="margin:0 0 14px;padding:10px 12px;border:1px solid #f0e2cf;border-radius:10px;background:#fffaf3;color:#7c5a2f;font-size:12px;line-height:1.7"><strong>鏈〉绗旇鐩綍</strong><br>杩樻病鏈?Markdown 鏍囬</div>`;
   }
   const items = list.map(item => {
     const anchorId = getNoteHeadingAnchorId(anchorPrefix, item.headingIndex);
     const pad = 8 + Math.max(0, item.level - 1) * 14;
     return `<div onclick="jumpToRenderedAnchor('${anchorId}')" style="padding:4px 8px 4px ${pad}px;border-radius:6px;cursor:pointer;color:#7c5a2f">${escapeHtml(item.text)}</div>`;
   }).join('');
-  return `<div style="margin:0 0 14px;padding:10px 12px;border:1px solid #f0e2cf;border-radius:10px;background:#fffaf3;color:#7c5a2f;font-size:12px;line-height:1.7"><strong>本页笔记目录（${list.length}）</strong>${items}</div>`;
+  return `<div style="margin:0 0 14px;padding:10px 12px;border:1px solid #f0e2cf;border-radius:10px;background:#fffaf3;color:#7c5a2f;font-size:12px;line-height:1.7"><strong>鏈〉绗旇鐩綍锛?{list.length}锛?/strong>${items}</div>`;
 }
   function renderFloatingHeadingPanel(headings, anchorPrefix) {
     const list = Array.isArray(headings) ? headings : [];
     if (!anchorPrefix) return '';
     if (!list.length) {
-      return `<div class="note-toc note-toc-floating"><div class="note-toc-title"><span>本页笔记目录</span><span>0</span></div><div class="note-toc-list"><div class="note-toc-item">还没有 Markdown 标题，使用 #概括 或 ## 方法</div></div></div>`;
+      return `<div class="note-toc note-toc-floating"><div class="note-toc-title"><span>鏈〉绗旇鐩綍</span><span>0</span></div><div class="note-toc-list"><div class="note-toc-item">杩樻病鏈?Markdown 鏍囬锛屼娇鐢?#姒傛嫭 鎴?## 鏂规硶</div></div></div>`;
     }
     const items = list.map(item => {
       const anchorId = getNoteHeadingAnchorId(anchorPrefix, item.headingIndex);
       return `<div class="note-toc-item lv${Math.min(item.level, 4)}" data-anchor-id="${anchorId}" onclick="jumpToRenderedAnchor('${anchorId}')">${escapeHtml(item.text)}</div>`;
     }).join('');
-    return `<div class="note-toc note-toc-floating"><div class="note-toc-title"><span>本页笔记目录</span><span>${list.length}</span></div><div class="note-toc-list">${items}</div></div>`;
+    return `<div class="note-toc note-toc-floating"><div class="note-toc-title"><span>鏈〉绗旇鐩綍</span><span>${list.length}</span></div><div class="note-toc-list">${items}</div></div>`;
 }
 
 function resolveCurrentErrorScope() {
@@ -824,7 +823,7 @@ function clearAllErrorsData() {
     showToast('There are no questions to delete', 'warning');
     return;
   }
-  if (!confirm(`Delete all ${errorEntries.length} error question(s)? Claude 题库会保留。`)) return;
+  if (!confirm(`Delete all ${errorEntries.length} error question(s)? Claude items will be kept.`)) return;
   const ids = new Set(errorEntries.map(item => normalizeErrorId(item.id)));
   errors = errors.filter(item => !ids.has(normalizeErrorId(item.id)));
   revealed = new Set([...revealed].filter(id => !ids.has(normalizeErrorId(id))));
@@ -851,10 +850,10 @@ function renderRelatedErrorMeta(label, value) {
 }
 function updateKnowledgeWorkspaceChrome(currentNode) {
   const titleEl = document.querySelector('.notes-header h2');
-  if (titleEl) titleEl.textContent = currentNode ? currentNode.title : '学习笔记';
+  if (titleEl) titleEl.textContent = currentNode ? currentNode.title : 'Study Notes';
   const actionWrap = document.querySelector('.notes-header > div:last-child');
-  if (actionWrap && actionWrap.innerHTML.indexOf('全局搜索') === -1) {
-    actionWrap.innerHTML = `<button class="btn btn-secondary" onclick="openGlobalSearchModal()">全局搜索</button>` + actionWrap.innerHTML;
+  if (actionWrap && actionWrap.innerHTML.indexOf('Global Search') === -1) {
+    actionWrap.innerHTML = `<button class="btn btn-secondary" onclick="openGlobalSearchModal()">Global Search</button>` + actionWrap.innerHTML;
   }
 }
 
@@ -864,14 +863,14 @@ function setKnowledgeRelatedMode(mode) {
 }
 
 function renderNotesPanelTree(notesData, level) {
-  // 保留此函数避免其他引用报错，但实际渲染已由 renderNotesPanelRight 接管
+  // Keep this stub so older callers do not fail.
   return '';
 }
 
-// 渲染笔记树（带章节状态和删除按钮）
+// Render note tree with chapter status and actions.
 function renderNotesTreeWithStatus(notesData, level = 0) {
   if (!notesData || Object.keys(notesData).length === 0) {
-    return `<div class="note-placeholder">暂无笔记，点击右上角"✏ 编辑"添加总结（支持 Markdown · 表格 · 代码块 · Ctrl+V 图片）</div>`;
+    return `<div class="note-placeholder">No notes yet. Use the edit button to add a summary.</div>`;
   }
 
   let html = '';
@@ -880,33 +879,33 @@ function renderNotesTreeWithStatus(notesData, level = 0) {
     const isExpanded = expTypes.has(key) || level > 0;
     const indent = '  '.repeat(level);
 
-    // 计算该章节下的错题数量
+    // Count linked questions under this chapter.
     const chapterCount = countQuestionsInChapter(key, level);
     const hasQuestions = chapterCount > 0;
 
     const statusClass = hasQuestions ? 'status-has-questions' : 'status-empty';
-    const statusText = hasQuestions ? `有 ${chapterCount} 道错题` : '空章节';
+    const statusText = hasQuestions ? `${chapterCount} linked question(s)` : 'Empty chapter';
 
-    // 渲染章节标题
+    // Render chapter row.
     html += `${indent}<div class="note-tree-item">
       <div class="note-tree-header" onclick="toggleNoteNode('${escapeHtml(key)}', ${level})">
-        <div class="note-tree-arrow ${isExpanded ? 'open' : ''}">${hasChildren ? '▶' : '•'}</div>
+        <div class="note-tree-arrow ${isExpanded ? 'open' : ''}">${hasChildren ? '▼' : '•'}</div>
         <div class="note-tree-title">${escapeHtml(node.title || key)}</div>
         <div class="note-tree-count ${statusClass}">${statusText}</div>
       </div>
       <div class="note-tree-content" style="display:${isExpanded ? 'block' : 'none'}">
         <div class="chapter-meta">
           <span class="status ${statusClass}">${statusText}</span>
-          <span style="color:#888">最后更新: ${node.updatedAt || '未记录'}</span>
+          <span style="color:#888">Updated ${node.updatedAt || 'Not recorded'}</span>
           <div class="chapter-actions">
             <button class="btn-delete" ${hasQuestions ? 'disabled' : ''}
                     onclick="event.stopPropagation(); safeDeleteNoteChapter('${escapeHtml(key.split('::')[0])}', '${escapeHtml(key.split('::')[1] || '')}', '${escapeHtml(key.split('::')[2] || '')}')"
-                    title="${hasQuestions ? '有错题的章节不能删除' : '删除空章节'}">🗑 删除</button>
-            <button class="note-action-btn" onclick="event.stopPropagation(); editNoteNode('${escapeHtml(key)}', ${level})" title="编辑">✏</button>
-            <button class="note-action-btn" onclick="filterByNoteTitle('${escapeHtml(key.split('::')[0])}', '${escapeHtml(key.split('::')[1] || '')}', '${escapeHtml(key.split('::')[2] || '')}')" title="筛选错题">🔍</button>
+                    title="${hasQuestions ? 'Has linked questions' : 'Delete empty chapter'}">Delete</button>
+            <button class="note-action-btn" onclick="event.stopPropagation(); editNoteNode('${escapeHtml(key)}', ${level})" title="Edit">Edit</button>
+            <button class="note-action-btn" onclick="filterByNoteTitle('${escapeHtml(key.split('::')[0])}', '${escapeHtml(key.split('::')[1] || '')}', '${escapeHtml(key.split('::')[2] || '')}')" title="Filter questions">Filter</button>
           </div>
         </div>
-        ${node.content ? renderMd(node.content) : '<div style="color:#aaa;font-size:12px">暂无内容</div>'}
+        ${node.content ? renderMd(node.content) : '<div style="color:#aaa;font-size:12px">No content</div>'}
         ${hasChildren ? renderNotesTreeWithStatus(node.children, level + 1) : ''}
       </div>
     </div>`;
@@ -914,7 +913,7 @@ function renderNotesTreeWithStatus(notesData, level = 0) {
   return html;
 }
 
-// 计算章节下的错题数量
+// Count questions under the chapter.
 function countQuestionsInChapter(key, level) {
   const parts = key.split('::');
   const type = parts[0];
@@ -923,8 +922,8 @@ function countQuestionsInChapter(key, level) {
 
   return getErrorEntries().filter(e => {
     const matchType = e.type === type;
-    const matchSubtype = subtype === '未分类' ? !e.subtype : e.subtype === subtype;
-    const matchSubSubtype = subSubtype === '未分类' ? !e.subSubtype : e.subSubtype === subSubtype;
+    const matchSubtype = subtype === 'Uncategorized' ? !e.subtype : e.subtype === subtype;
+    const matchSubSubtype = subSubtype === 'Uncategorized' ? !e.subSubtype : e.subSubtype === subSubtype;
 
     if (level === 0) return matchType && matchSubtype && matchSubSubtype;
     if (level === 1) return matchType && matchSubtype;
@@ -933,7 +932,7 @@ function countQuestionsInChapter(key, level) {
   }).length;
 }
 
-// 获取当前题型已有的子类型/三级分类（供自动补全）
+// 鑾峰彇褰撳墠棰樺瀷宸叉湁鐨勫瓙绫诲瀷/涓夌骇鍒嗙被锛堜緵鑷姩琛ュ叏锛?
 function getExistingSubtypes() {
   const type = document.getElementById('editType')?.value || '';
   const subtypes = [...new Set(getErrorEntries().filter(e => e.type === type).map(e => e.subtype).filter(Boolean))];
@@ -957,18 +956,18 @@ function resetAIAnalyzeState() {
   if (applyAllBtn) applyAllBtn.style.display = 'none';
   if (analyzeBtn) {
     analyzeBtn.disabled = false;
-    analyzeBtn.textContent = 'AI识别并分析';
+    analyzeBtn.textContent = 'AI Analyze';
   }
 }
 
 function getAIFieldLabel(key) {
   return ({
-    type: '1级',
-    subtype: '2级',
-    subSubtype: '3级',
-    rootReason: '错误类型',
-    errorReason: '触发点',
-    analysis: '正确模型'
+    type: 'Level 1',
+    subtype: 'Level 2',
+    subSubtype: 'Level 3',
+    rootReason: 'Root reason',
+    errorReason: 'Trigger point',
+    analysis: 'Correct model'
   })[key] || key;
 }
 
@@ -1023,7 +1022,7 @@ function applyAISuggestions() {
     applyAISuggestionField(key, aiAnalyzeResult[key] || '');
   });
   const statusEl = document.getElementById('aiAnalyzeStatus');
-  if (statusEl) statusEl.textContent = 'AI 建议已回填';
+  if (statusEl) statusEl.textContent = 'AI suggestions applied';
 }
 
 function copyAIAnalyzeJson() {
@@ -1031,9 +1030,9 @@ function copyAIAnalyzeJson() {
   const text = JSON.stringify(aiAnalyzeResult, null, 2);
   const statusEl = document.getElementById('aiAnalyzeStatus');
   navigator.clipboard.writeText(text).then(() => {
-    if (statusEl) statusEl.textContent = 'JSON 已复制';
+    if (statusEl) statusEl.textContent = 'JSON copied';
   }).catch(() => {
-    if (statusEl) statusEl.textContent = 'JSON 复制失败';
+    if (statusEl) statusEl.textContent = 'JSON copy failed';
   });
 }
 
@@ -1045,8 +1044,8 @@ function renderAIAnalyzePanel() {
   panelEl.innerHTML = `
     <div style="margin-bottom:10px;padding:8px 10px;background:#fff;border:1px solid #ececec;border-radius:6px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
-        <div style="font-weight:600;color:#555">JSON 结果</div>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="copyAIAnalyzeJson()">复制 JSON</button>
+        <div style="font-weight:600;color:#555">AI JSON Result</div>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="copyAIAnalyzeJson()">Copy JSON</button>
       </div>
       <pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.6;color:#222;background:none;border:none;padding:0">${rawJson}</pre>
     </div>
@@ -1059,12 +1058,12 @@ async function analyzeEntryWithAI() {
   if (aiAnalyzeBusy) return;
   const payload = collectAIAnalyzePayload();
   if (!payload.question) {
-    showToast('请先填写题目', 'warning');
+    showToast('Please enter the question first', 'warning');
     document.getElementById('editQuestion').focus();
     return;
   }
   if (!payload.answer) {
-    showToast('请先填写正确答案', 'warning');
+    showToast('Please enter the correct answer first', 'warning');
     document.getElementById('editAnswer').focus();
     return;
   }
@@ -1073,9 +1072,9 @@ async function analyzeEntryWithAI() {
   const statusEl = document.getElementById('aiAnalyzeStatus');
   if (analyzeBtn) {
     analyzeBtn.disabled = true;
-    analyzeBtn.textContent = '分析中...';
+    analyzeBtn.textContent = 'Analyzing...';
   }
-  if (statusEl) statusEl.textContent = '正在调用 Minimax';
+  if (statusEl) statusEl.textContent = 'Calling Minimax...';
   try {
     const res = await fetch('/api/ai/analyze-entry', {
       method: 'POST',
@@ -1084,12 +1083,12 @@ async function analyzeEntryWithAI() {
       body: JSON.stringify(payload)
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.detail || data.error || 'AI 分析失败');
+    if (!res.ok) throw new Error(data.detail || data.error || 'AI analysis failed');
     aiAnalyzeResult = data.result || null;
     renderAIAnalyzePanel();
     if (statusEl) {
       const model = aiAnalyzeResult && aiAnalyzeResult.model ? ` (${aiAnalyzeResult.model})` : '';
-      statusEl.textContent = 'AI 分析完成' + model;
+      statusEl.textContent = 'AI analysis completed' + model;
     }
   } catch (e) {
     aiAnalyzeResult = null;
@@ -1100,18 +1099,18 @@ async function analyzeEntryWithAI() {
       panelEl.innerHTML = '';
     }
     if (applyAllBtn) applyAllBtn.style.display = 'none';
-    if (statusEl) statusEl.textContent = e.message || 'AI 分析失败';
-    showToast(e.message || 'AI 分析失败', 'error');
+    if (statusEl) statusEl.textContent = e.message || 'AI analysis failed';
+    showToast(e.message || 'AI analysis failed', 'error');
   } finally {
     aiAnalyzeBusy = false;
     if (analyzeBtn) {
       analyzeBtn.disabled = false;
-      analyzeBtn.textContent = 'AI识别并分析';
+      analyzeBtn.textContent = 'AI Analyze';
     }
   }
 }
 
-// 修改添加错题函数，增加联动
+// Save or update an error item.
 async function saveError(){
   if (saveErrorBusy) return;
   const level1 = document.getElementById('editType').value;
@@ -1139,12 +1138,12 @@ async function saveError(){
   const srcProvince = document.getElementById('editSrcProvince').value;
   const srcOrigin   = document.getElementById('editSrcOrigin').value.trim();
 
-  if(!question && !editImgBase64){ showToast('题目不能为空', 'warning'); return; }
-  if(!subtype){ showToast('2级不能为空', 'warning'); document.getElementById('editSubtype').focus(); return; }
-  if(!answer){ showToast('正确答案不能为空', 'warning'); document.getElementById('editAnswer').focus(); return; }
-  if(!mistakeType){ showToast('错误类型不能为空', 'warning'); document.getElementById('editRootReason').focus(); return; }
-  if(!triggerPoint){ showToast('触发点不能为空', 'warning'); document.getElementById('editErrorReason').focus(); return; }
-  if(!correctModel){ showToast('正确模型不能为空', 'warning'); document.getElementById('editAnalysis').focus(); return; }
+  if(!question && !editImgBase64){ showToast('Question cannot be empty', 'warning'); return; }
+  if(!subtype){ showToast('Level 2 cannot be empty', 'warning'); document.getElementById('editSubtype').focus(); return; }
+  if(!answer){ showToast('Correct answer cannot be empty', 'warning'); document.getElementById('editAnswer').focus(); return; }
+  if(!mistakeType){ showToast('Root reason cannot be empty', 'warning'); document.getElementById('editRootReason').focus(); return; }
+  if(!triggerPoint){ showToast('Trigger point cannot be empty', 'warning'); document.getElementById('editErrorReason').focus(); return; }
+  if(!correctModel){ showToast('Correct model cannot be empty', 'warning'); document.getElementById('editAnalysis').focus(); return; }
   setSaveErrorBusyState(true);
   try {
     const noteNodeId  = resolveKnowledgeNodeIdForSave(pathTitles);
@@ -1152,9 +1151,9 @@ async function saveError(){
       ? collapseKnowledgePathTitles(getKnowledgePathTitles(noteNodeId))
       : pathTitles.slice();
     const knowledgePathText = knowledgePathTitles.join(' > ');
-    const id = editingId ? normalizeErrorId(editingId) : null; // JS 变量，openAddModal/openEditModal 时设置
+    const id = editingId ? normalizeErrorId(editingId) : null;
 
-    // 图片：有新图用新图；主动删除置 null；否则保留原图
+    // Use new image if present, keep the existing image otherwise.
     const existing = id ? findErrorById(id) : null;
     const prevImgData = existing?.imgData || null;
     const prevAnalysisImgData = existing?.analysisImgData || null;
@@ -1199,17 +1198,17 @@ async function saveError(){
       Object.assign(old, data);
       normalizeErrorForWorkflow(old);
       touchErrorUpdatedAt(old);
-      // 题型改名 → 同步笔记 key
+      // 棰樺瀷鏀瑰悕 鈫?鍚屾绗旇 key
       if (oldType && oldType !== type && notesByType[oldType] !== undefined) {
         if (!notesByType[type]) notesByType[type] = notesByType[oldType];
-        // 旧 key 仅在没有其他错题使用时才删除
+        // 鏃?key 浠呭湪娌℃湁鍏朵粬閿欓浣跨敤鏃舵墠鍒犻櫎
         const stillUsed = errors.some(e => e.type === oldType);
         if (!stillUsed) delete notesByType[oldType];
         saveNotesByType();
       }
       recordErrorUpsert(old);
       savedErrorId = normalizeErrorId(old.id);
-      showToast('修改成功', 'success');
+      showToast('Updated successfully', 'success');
     }else{
       const newErr = {
         id:newId(),
@@ -1225,7 +1224,7 @@ async function saveError(){
       errors.push(newErr);
       recordErrorUpsert(newErr);
       savedErrorId = normalizeErrorId(newErr.id);
-      showToast('添加成功', 'success');
+      showToast('Added successfully', 'success');
     }
     refreshWorkspaceAfterErrorMutation({ save:true, syncNotes:true, saveKnowledge:true, renderNotes:true });
     try {
@@ -1247,16 +1246,16 @@ async function saveError(){
     setSaveErrorBusyState(false);
     closeModal('addModal');
   } catch (e) {
-    showToast(e && e.message ? e.message : '保存失败，请重试', 'error');
+    showToast(e && e.message ? e.message : 'Save failed, please try again', 'error');
   } finally {
     if (saveErrorBusy) setSaveErrorBusyState(false);
   }
 }
 
-// 修改删除错题函数，增加联动
+// Delete an error item and keep linked state in sync.
 function deleteError(id){
   const targetId = normalizeErrorId(id);
-  if(!confirm(`确认删除 #${targetId}？`))return;
+  if(!confirm(`Delete question #${targetId}?`))return;
 
   const error = findErrorById(targetId);
   if (!error) return;
@@ -1269,10 +1268,10 @@ function deleteError(id){
   recordErrorDelete(targetId);
   refreshWorkspaceAfterErrorMutation({ save:true, reveal:true });
 
-  // 题型整体为空时，询问是否删除对应笔记（notesByType 是扁平结构，key 为题型名）
+  // If a type no longer has questions, allow removing its note bucket too.
   const typeCount = getErrorEntries().filter(e => e.type === error.type).length;
   if (typeCount === 0 && notesByType[error.type]) {
-    if (confirm(`"${error.type}" 题型已无错题，是否同时删除该题型的笔记？`)) {
+    if (confirm(`"${error.type}" has no remaining questions. Delete its note bucket too?`)) {
       delete notesByType[error.type];
       saveNotesByType();
     }
@@ -1282,32 +1281,32 @@ function deleteError(id){
   showToast(`Question #${targetId} deleted`, 'success');
 }
 
-// 修改添加错题时的联动
+// Add a new error and keep related note structures ready.
 function addError(data) {
-  // 1. 添加错题
+  // 1. Add the error.
   errors.push({id: newId(), addDate: today(), ...data});
 
-  // 2. 自动同步笔记结构
+  // 2. Sync note structure.
   syncNotesWithErrors();
 
-  // 3. 如果是新章节，自动创建笔记条目
+  // 3. Create note chapter if needed.
   ensureNoteChapterExists(data.type, data.subtype, data.subSubtype);
 
-  // 4. 重新渲染
+  // 4. Re-render.
   refreshWorkspaceAfterErrorMutation({ save:true, syncNotes:true, renderNotes:true });
 }
 
-// 确保笔记章节存在
+// Ensure a note chapter exists.
 function ensureNoteChapterExists(type, subtype, subSubtype) {
-  const key = `${type}::${subtype || '未分类'}::${subSubtype || '未分类'}`;
+  const key = `${type}::${subtype || 'Uncategorized'}::${subSubtype || 'Uncategorized'}`;
 
-  // 检查是否已存在
+  // Check whether it already exists.
   let node = getNoteNodeByKey(notesByType, key, 0);
   if (node) {
-    return; // 已存在，无需创建
+    return;
   }
 
-  // 创建新的章节节点
+  // Create a new note chapter.
   const newNode = {
     title: `${type} ${subtype || ''} ${subSubtype || ''}`.trim(),
     content: `## ${type} ${subtype || ''} ${subSubtype || ''}`.trim(),
@@ -1315,12 +1314,12 @@ function ensureNoteChapterExists(type, subtype, subSubtype) {
     updatedAt: today()
   };
 
-  // 添加到笔记结构中
+  // Insert into note structure.
   setNoteNodeByKey(notesByType, key, 0, newNode);
   saveNotesByType();
 }
 
-// 设置笔记节点
+// Set a note node by key path.
 function setNoteNodeByKey(notesData, key, level, node) {
   const parts = key.split('::');
   if (level >= parts.length) return;
@@ -1331,10 +1330,10 @@ function setNoteNodeByKey(notesData, key, level, node) {
   }
 
   if (level === parts.length - 1) {
-    // 到达目标层级，设置节点
+    // Reached the target level.
     notesData[currentKey] = node;
   } else {
-    // 继续深入下一层
+    // Continue into the next level.
     setNoteNodeByKey(notesData[currentKey].children, key, level + 1, node);
   }
 }
@@ -1348,3 +1347,4 @@ setTimeout(() => {
   syncAppViewChrome();
   if (appView === 'home' && typeof renderHomeDashboard === 'function') renderHomeDashboard();
 }, 0);
+

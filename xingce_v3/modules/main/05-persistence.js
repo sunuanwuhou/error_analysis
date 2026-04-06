@@ -1,9 +1,94 @@
 // ============================================================
 // 持久化（IndexedDB）
 // ============================================================
-async function loadData() {
-  try { errors = (JSON.parse(await DB.get(KEY_ERRORS)) || getInitialData()).map(item => normalizeEntryRecord(item, 'error')); }
-  catch(e) { errors = getInitialData(); }
+function isLikelyMobileLikeDevice() {
+  try {
+    if (window.matchMedia && window.matchMedia('(max-width: 1024px)').matches) return true;
+    if (typeof navigator !== 'undefined') {
+      if (Number(navigator.maxTouchPoints || 0) >= 2 && window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return true;
+      const ua = String(navigator.userAgent || '').toLowerCase();
+      if (/iphone|ipad|android|mobile|tablet/.test(ua)) return true;
+    }
+  } catch (e) {}
+  return false;
+}
+function shouldDeferFullDataLoadOnStartup() {
+  const summary = startupSummaryCache || {};
+  const bytes = Number(summary.errorsBytes || 0);
+  return isLikelyMobileLikeDevice() && bytes >= 2 * 1024 * 1024;
+}
+async function loadStartupSummaryCacheFromDb() {
+  try {
+    startupSummaryCache = JSON.parse(await DB.get(KEY_STARTUP_SUMMARY) || 'null');
+  } catch (e) {
+    startupSummaryCache = null;
+  }
+  return startupSummaryCache;
+}
+function buildStartupSummary(errorsBytes) {
+  const summary = {
+    builtAt: new Date().toISOString(),
+    errorsBytes: Number(errorsBytes || 0),
+    totalErrors: 0,
+    fullPracticeCount: 0,
+    todayDone: Number(todayDone || 0),
+    todayDue: 0,
+    noteFirstCount: 0,
+    directDoCount: 0,
+    speedDrillCount: 0,
+    accuracy: 0,
+    weakestReasons: [],
+    workflowAdvice: []
+  };
+  if (typeof buildPracticeTaskPack === 'function') {
+    const taskPack = buildPracticeTaskPack(24);
+    summary.totalErrors = getErrorEntries().length;
+    summary.fullPracticeCount = getErrorEntries().filter(e => !isEffectivelyMastered(e)).length;
+    summary.todayDue = Number((taskPack.dailyQueue || []).length || 0);
+    summary.noteFirstCount = Number((taskPack.noteFirstQueue || []).length || 0);
+    summary.directDoCount = Number((taskPack.directDoQueue || []).length || 0);
+    summary.speedDrillCount = Number((taskPack.speedDrillQueue || []).length || 0);
+    summary.weakestReasons = (taskPack.weakestReasons || []).slice(0, 5);
+    summary.workflowAdvice = (taskPack.advice || []).slice(0, 4);
+  }
+  if (typeof getPracticeBehaviorSnapshot === 'function') {
+    const behavior = getPracticeBehaviorSnapshot(7) || {};
+    summary.accuracy = Number(behavior.accuracy || 0);
+  }
+  startupSummaryCache = summary;
+  return summary;
+}
+function persistStartupSummary(errorsText) {
+  try {
+    const summary = buildStartupSummary(String(errorsText || '').length);
+    queuePersist(KEY_STARTUP_SUMMARY, summary, 80);
+  } catch (e) {
+    console.warn('[persistStartupSummary] failed', e);
+  }
+}
+async function loadFullErrorsFromDb() {
+  try {
+    errors = (JSON.parse(await DB.get(KEY_ERRORS)) || getInitialData()).map(item => normalizeEntryRecord(item, 'error'));
+  } catch (e) {
+    errors = getInitialData();
+  }
+  fullDataLoaded = true;
+  fullDataLoading = false;
+  try {
+    buildStartupSummary(JSON.stringify(errors).length);
+  } catch (e) {}
+}
+async function loadData(options) {
+  const opts = options || {};
+  await loadStartupSummaryCacheFromDb();
+  const deferErrors = !!opts.deferErrors;
+  if (deferErrors) {
+    errors = [];
+    fullDataLoaded = false;
+    fullDataLoading = false;
+  } else {
+    await loadFullErrorsFromDb();
+  }
   try { revealed = new Set(JSON.parse(await DB.get(KEY_REVEALED)||'[]')); }
   catch(e) { revealed = new Set(); }
   try { expTypes = new Set(JSON.parse(await DB.get(KEY_EXP_TYPES)||'[]')); }
@@ -29,8 +114,37 @@ async function loadData() {
   await loadNotesByType();
   await loadKnowledgeState();
   await migrateIntegerIds();
-  setErrorSyncSnapshot();
+  if (fullDataLoaded) setErrorSyncSnapshot();
   setWorkspaceSyncSnapshot();
+}
+let fullWorkspaceDataPromise = null;
+async function ensureFullWorkspaceDataLoaded() {
+  if (fullDataLoaded) return true;
+  if (fullWorkspaceDataPromise) return fullWorkspaceDataPromise;
+  fullDataLoading = true;
+  fullWorkspaceDataPromise = (async () => {
+    await loadFullErrorsFromDb();
+    await migrateIntegerIds();
+    setErrorSyncSnapshot();
+    if (typeof syncNotesWithErrors === 'function') syncNotesWithErrors();
+    if (typeof renderSidebar === 'function') renderSidebar();
+    if (typeof renderAll === 'function') renderAll();
+    if (typeof renderNotesByType === 'function') renderNotesByType();
+    if (typeof renderHomeDashboard === 'function') renderHomeDashboard();
+    return true;
+  })().finally(() => {
+    fullWorkspaceDataPromise = null;
+  });
+  return fullWorkspaceDataPromise;
+}
+function scheduleDeferredFullWorkspaceLoad() {
+  if (fullDataLoaded || fullDataLoading) return;
+  const run = () => { ensureFullWorkspaceDataLoaded(); };
+  if (typeof window.requestIdleCallback === 'function') {
+    window.requestIdleCallback(run, { timeout: 2500 });
+  } else {
+    setTimeout(run, 1200);
+  }
 }
 function saveData()    {
   knowledgeErrorCountCacheVersion += 1;
@@ -269,7 +383,9 @@ function markIncrementalWorkspaceChange() {
 }
 saveData = function() {
   syncErrorOpsFromSnapshot();
-  queuePersist(KEY_ERRORS, errors);
+  const encodedErrors = JSON.stringify(errors);
+  queuePersist(KEY_ERRORS, encodedErrors);
+  persistStartupSummary(encodedErrors);
   markIncrementalWorkspaceChange();
 };
 saveReveal = function() {
@@ -327,6 +443,7 @@ let cloudDetailsExpanded = false;
 let cloudMeta = getDefaultCloudMeta();
 const LARGE_CLOUD_BACKUP_BYTES = 1.5 * 1024 * 1024;
 const MOBILE_DEFERRED_RESTORE_BYTES = 600 * 1024;
+const INCREMENTAL_ONLY_AUTO_SAVE_BYTES = 1.5 * 1024 * 1024;
 const AUTO_SYNC_DELAY_MS = 5 * 60 * 1000;
 const STARTUP_CLOUD_META_TTL_MS = 5 * 60 * 1000;
 const STARTUP_INCREMENTAL_SYNC_TTL_MS = 5 * 60 * 1000;
@@ -416,6 +533,9 @@ async function buildPortableBackupPayload(payload) {
   return backup;
 }
 window.buildPortableBackupPayload = buildPortableBackupPayload;
+window.shouldDeferFullDataLoadOnStartup = shouldDeferFullDataLoadOnStartup;
+window.ensureFullWorkspaceDataLoaded = ensureFullWorkspaceDataLoaded;
+window.scheduleDeferredFullWorkspaceLoad = scheduleDeferredFullWorkspaceLoad;
 function getDefaultCloudMeta() {
   return {
     restoreDecisions: {},
@@ -474,6 +594,12 @@ function isScheduledAtDue(isoText) {
 function shouldRunCloudSaveDue() {
   return Boolean(cloudMeta && cloudMeta.nextCloudSaveAt) && isScheduledAtDue(cloudMeta.nextCloudSaveAt);
 }
+function shouldUseIncrementalOnlyAutoSave() {
+  const summary = startupSummaryCache || {};
+  const bytes = Number(summary.errorsBytes || 0);
+  if (bytes >= INCREMENTAL_ONLY_AUTO_SAVE_BYTES) return true;
+  return isLikelyMobileLikeDevice() && bytes >= MOBILE_DEFERRED_RESTORE_BYTES;
+}
 function shouldRunIncrementalSyncDue() {
   return Boolean(cloudMeta && cloudMeta.nextIncrementalSyncAt) && isScheduledAtDue(cloudMeta.nextIncrementalSyncAt);
 }
@@ -504,11 +630,17 @@ async function runBackgroundCloudBootstrap(strategy) {
       const checkMeta = mode === 'startup' ? shouldCheckCloudMetaOnStartup() : shouldCheckCloudMetaInForeground();
       const checkIncremental = mode === 'startup' ? shouldRunIncrementalSyncOnStartup() : shouldRunIncrementalSyncInForeground();
       const checkCloudSave = shouldRunCloudSaveDue();
+      const incrementalOnlyAutoSave = shouldUseIncrementalOnlyAutoSave();
       if (checkMeta) {
         await maybeRestoreCloudBackup();
       }
       if (checkCloudSave) {
-        await saveCloudBackup({ silent: true });
+        if (incrementalOnlyAutoSave) {
+          setNextCloudSaveAt('');
+          await syncWithServer();
+        } else {
+          await saveCloudBackup({ silent: true });
+        }
       } else if (checkIncremental) {
         await syncWithServer();
       }
@@ -1179,6 +1311,15 @@ function scheduleCloudSave() {
   if (!cloudUser) {
     setCloudSyncState('dirty', '本地改动已记录，登录后再继续处理', '');
     pendingCloudSave = true;
+    return;
+  }
+  if (shouldUseIncrementalOnlyAutoSave()) {
+    clearTimeout(cloudSaveTimer);
+    cloudSaveTimer = null;
+    pendingCloudSave = false;
+    setNextCloudSaveAt('');
+    setCloudSyncState('dirty', '检测到大数据量，自动流程已切换为增量同步；整包 Cloud Save 改为手动使用', '');
+    scheduleDeferredSlowSync();
     return;
   }
   clearTimeout(cloudSaveTimer);

@@ -1,8 +1,8 @@
 {
-  "built_at": "2026-04-06T15:51:39Z",
+  "built_at": "2026-04-06T23:45:21Z",
   "css_bundle": {
     "path": "xingce_v3\\styles\\legacy-app.bundle.css",
-    "sha256": "3922692f33466e096a54a4682b1e1f7f84a6358725102db6c8cb2c1ebb0b9ec3",
+    "sha256": "9bc42bb71bac7c8c525a5b47a488418e99110666d25fd7b565d2ddc353748035",
     "sources": [
       "styles/main/00-base-reset.css",
       "styles/main/01-sidebar.css",
@@ -48,7 +48,7 @@
   },
   "js_bundle": {
     "path": "xingce_v3\\modules\\legacy-app.bundle.js",
-    "sha256": "a121975a9f6270235603af02b3ceface17619663b0ffbc8323082c31beccaf16",
+    "sha256": "351360d45202914995461d93b53bf92459bf144846b99bf92abd533f766d1dd6",
     "sources": [
       "modules/main/00-event-dispatcher.js",
       "modules/main/01-state.js",
@@ -85,10 +85,7 @@
       "modules/main/32-difficulty-rating.js",
       "modules/main/33-bulk-actions.js",
       "modules/main/34-modal-controls.js",
-      "modules/main/35-debug-tools.js",
       "modules/main/36-tab-coordination.js",
-      "modules/main/37-legacy-hooks-finished.js",
-      "modules/main/38-renderall-supplements.js",
       "modules/main/99-bootstrap.js",
       "modules/knowledge-state.js",
       "modules/knowledge-workbench.js",

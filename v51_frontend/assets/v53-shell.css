@@ -156,6 +156,25 @@ body:not(.v51-shell-loading) .v53-boot { display:none; }
   padding:20px 22px 28px;
   gap:16px;
 }
+
+#workspaceView .error-card .card-detail-skeleton{
+  min-height:88px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border:1px dashed #dbe4f0;
+  border-radius:14px;
+  background:linear-gradient(90deg,#f8fbff 0%,#eef4fb 50%,#f8fbff 100%);
+  background-size:200% 100%;
+  color:#64748b;
+  font-size:13px;
+  animation:cardDetailPulse 1.5s linear infinite;
+}
+
+@keyframes cardDetailPulse{
+  0%{ background-position:200% 0; }
+  100%{ background-position:-200% 0; }
+}
 #workspaceView .error-card{
   padding:22px 24px;
   border-radius:22px;
@@ -409,13 +428,16 @@ body:not(.v51-shell-loading) .v53-boot { display:none; }
   margin-left:4px;
 }
 .knowledge-directory-list{
-  display:grid;
-  gap:8px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
   padding:10px;
   border:1px solid #e8edf5;
   border-radius:18px;
   background:#fffdfb;
   box-shadow:0 8px 20px rgba(15,23,42,.04);
+  max-height:min(72vh, 820px);
+  overflow:auto;
 }
 .knowledge-directory-layout{
   display:grid;
@@ -430,14 +452,15 @@ body:not(.v51-shell-loading) .v53-boot { display:none; }
   align-items:center;
   justify-content:space-between;
   gap:12px;
-  border:0;
-  border-radius:12px;
-  background:transparent;
+  border:1px solid transparent;
+  border-radius:10px;
+  background:#fff;
   padding:10px 12px;
   cursor:pointer;
   transition:.18s ease;
 }
 .knowledge-directory-item.active{
+  border-color:#c7d2fe;
   background:linear-gradient(180deg,#eef2ff 0%,#ffffff 100%);
   box-shadow:0 8px 18px rgba(79,70,229,.10);
 }
@@ -448,6 +471,7 @@ body:not(.v51-shell-loading) .v53-boot { display:none; }
   color:#334155;
 }
 .knowledge-directory-item:hover{
+  border-color:#e2e8f0;
   background:#f8fafc;
 }
 .knowledge-directory-item-title{
@@ -725,6 +749,321 @@ body:not(.v51-shell-loading) .v53-boot { display:none; }
     min-height:48px;
     font-size:15px;
     border-radius:14px;
+  }
+}
+
+@media (max-width: 1024px){
+  .sidebar{
+    width:min(360px, calc(100vw - 28px));
+    max-width:min(360px, calc(100vw - 28px));
+    border-radius:0 22px 22px 0;
+  }
+  .home-shell{
+    padding:14px;
+  }
+  .home-shell-header{
+    padding:16px;
+    border-radius:18px;
+  }
+  .home-shell h2{
+    font-size:24px;
+  }
+  .workspace-switch-bar{
+    padding:14px 14px 10px;
+  }
+  .workspace-switch-title strong{
+    font-size:16px;
+  }
+  .knowledge-workspace-shell-header{
+    gap:12px;
+  }
+  .knowledge-workspace-shell-actions{
+    width:100%;
+    justify-content:flex-start;
+    flex-wrap:wrap;
+  }
+  .knowledge-directory-layout{
+    grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+    gap:14px;
+  }
+}
+
+@media (max-width: 768px){
+  .sidebar{
+    width:100vw;
+    max-width:100vw;
+    border-radius:0;
+  }
+  .main-area{
+    padding-top:72px !important;
+    padding-bottom:88px !important;
+  }
+  .workspace-switch-bar{
+    padding:12px 12px 10px;
+    gap:10px;
+  }
+  .workspace-switch-title strong{
+    font-size:15px;
+  }
+  .workspace-switch-title span{
+    font-size:11px;
+  }
+  .home-shell{
+    padding:12px;
+  }
+  .home-shell-header{
+    padding:14px;
+    border-radius:16px;
+    margin-bottom:14px;
+  }
+  .home-shell-kicker{
+    font-size:11px;
+  }
+  .home-shell h2{
+    font-size:21px;
+    line-height:1.25;
+  }
+  .home-shell-sub{
+    font-size:13px;
+    line-height:1.65;
+  }
+  .home-dashboard-card{
+    padding:14px;
+    border-radius:16px;
+  }
+  .home-metric{
+    padding:10px 12px;
+    border-radius:12px;
+  }
+  .home-metric strong{
+    font-size:20px;
+  }
+  #workspaceView .errors-header,
+  #workspaceView .content-header{
+    padding-left:12px;
+    padding-right:12px;
+  }
+  #workspaceView .date-filter-bar{
+    padding:8px 12px 0;
+  }
+  #workspaceView .error-card{
+    padding:14px 14px;
+    border-radius:16px;
+  }
+  #workspaceView .error-card .card-question-surface{
+    border-radius:14px;
+  }
+  #workspaceView .error-card .card-question,
+  #workspaceView .card-question{
+    font-size:15px;
+    line-height:1.68;
+    padding:14px 14px 8px;
+  }
+  #workspaceView .error-card .cuoti-img,
+  #workspaceView .error-card .process-image-preview-block{
+    margin:0 14px 10px;
+    border-radius:12px;
+    overflow:hidden;
+  }
+  #workspaceView .error-card .card-options{
+    padding:10px 14px 14px;
+  }
+  #workspaceView .error-card .card-actions-soft{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+  }
+  #workspaceView .error-card .card-actions-soft .del-btn{
+    margin-left:0;
+    grid-column:1 / -1;
+  }
+  .knowledge-workspace-shell{
+    padding:0;
+  }
+  .knowledge-workspace-shell-header{
+    padding:12px;
+    border-radius:0;
+  }
+  .knowledge-workspace-shell-title{
+    font-size:18px;
+  }
+  .knowledge-workspace-shell-path{
+    font-size:11px;
+    line-height:1.5;
+  }
+  .knowledge-workspace-mode-switch,
+  .knowledge-note-view-switch{
+    width:100%;
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+    margin-left:0;
+  }
+  .knowledge-workspace-mode-switch .btn,
+  .knowledge-note-view-switch .btn{
+    width:100%;
+  }
+  .knowledge-workspace-shell-actions{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+  }
+  .knowledge-workspace-shell-actions > .btn,
+  .knowledge-workspace-shell-actions > .knowledge-workspace-count,
+  .knowledge-workspace-shell-actions > .knowledge-workspace-more{
+    width:100%;
+  }
+  .knowledge-workspace-count{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:38px;
+    padding:0 10px;
+    border:1px solid #e2e8f0;
+    border-radius:12px;
+    background:#fff;
+  }
+  .knowledge-workspace-more summary{
+    width:100%;
+  }
+  .knowledge-directory-layout{
+    grid-template-columns:1fr;
+    gap:12px;
+  }
+  .knowledge-directory-list{
+    max-height:none;
+    padding:8px;
+    border-radius:14px;
+  }
+  .knowledge-directory-item{
+    padding:10px 10px;
+    border-radius:10px;
+  }
+  .knowledge-directory-item-title{
+    font-size:13px;
+    line-height:1.45;
+  }
+  .knowledge-directory-preview-wrap{
+    border-radius:14px;
+  }
+  .knowledge-directory-preview-head{
+    padding:12px 12px 10px;
+  }
+  .knowledge-directory-preview-title{
+    font-size:15px;
+  }
+  .knowledge-directory-preview{
+    min-height:0;
+    padding:10px 10px 12px;
+  }
+  #quizModal .quiz-modal{
+    width:100vw !important;
+    max-width:100vw !important;
+    min-height:100dvh;
+    max-height:100dvh;
+    margin:0;
+    padding:12px 12px calc(16px + env(safe-area-inset-bottom, 0px));
+    border-radius:0;
+  }
+  #quizModal .quiz-header{
+    gap:10px;
+    margin-bottom:12px;
+  }
+  #quizModal .quiz-title{
+    font-size:16px;
+  }
+  #quizModal .quiz-progress{
+    font-size:12px;
+  }
+  #quizModal .quiz-prog-bar{
+    margin-bottom:14px;
+  }
+  #quizModal .quiz-question-box{
+    padding:14px 14px;
+    font-size:16px;
+    line-height:1.72;
+    border-radius:14px;
+    margin-bottom:14px;
+  }
+  .quiz-sheet-panel{
+    border-radius:18px;
+  }
+  .quiz-reading-panel{
+    padding:14px 14px 10px;
+  }
+  .quiz-answer-panel{
+    padding:10px 12px 14px;
+  }
+  #quizModal .quiz-opt-grid{
+    gap:10px;
+    margin-bottom:14px;
+  }
+  #quizModal .quiz-opt-btn{
+    min-height:56px;
+    padding:12px 14px;
+    border-radius:14px;
+    font-size:16px;
+    line-height:1.55;
+  }
+  #quizModal .quiz-bottom-row{
+    position:sticky;
+    bottom:calc(-12px - env(safe-area-inset-bottom, 0px));
+    padding:12px 0 0;
+  }
+  #quizModal .quiz-skip-btn,
+  #quizModal .quiz-next-btn,
+  #quizModal #quizCanvasToggleBtn{
+    min-height:46px;
+    padding:0 14px;
+    font-size:14px;
+    border-radius:12px;
+  }
+  #quizModal .quiz-process-canvas-host .pc-toolbar{
+    position:static;
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:flex-start;
+    gap:8px;
+    padding:8px 0 10px;
+  }
+  #quizModal .quiz-process-canvas-host .pc-stage{
+    min-height:180px;
+    border-radius:12px;
+  }
+}
+
+@media (max-width: 560px){
+  .v53-mobile-bottombar{
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:6px;
+    padding:8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+  }
+  .v53-quick-btn{
+    min-height:52px;
+    border-radius:12px;
+    font-size:10px;
+  }
+  .v53-quick-btn strong{
+    font-size:11px;
+  }
+  .home-metric-row{
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+  .home-dashboard-card,
+  .home-shell-header,
+  #workspaceView .error-card,
+  .knowledge-directory-preview-wrap,
+  .knowledge-directory-list,
+  .quiz-sheet-panel{
+    border-radius:14px;
+  }
+  #quizModal .quiz-question-box{
+    font-size:15px;
+    line-height:1.66;
+  }
+  #quizModal .quiz-opt-btn{
+    font-size:15px;
   }
 }
 

@@ -14,6 +14,7 @@ const KEY_TYPE_RULES = 'xc_type_rules';
 const KEY_CLOUD_META = 'xc_cloud_meta';
 const KEY_KNOWLEDGE_EXPANDED = 'xc_knowledge_expanded';
 const KEY_NOTE_REVIEW_TRACKING = 'xc_note_review_tracking';
+const KEY_STARTUP_SUMMARY = 'xc_startup_summary';
 
 // 默认题型识别规则（按优先级排序）
 const DEFAULT_TYPE_RULES = [
@@ -31,6 +32,9 @@ const DEFAULT_TYPE_RULES = [
 ];
 
 let errors    = [];
+let fullDataLoaded = false;
+let fullDataLoading = false;
+let startupSummaryCache = null;
 let revealed  = new Set();
 let expTypes  = new Set();
 let moduleReasonOpen = new Set(); // 错因树展开状态，仅内存，不持久化
@@ -216,6 +220,8 @@ window.getErrorStatusLabel = getErrorStatusLabel;
 window.normalizeErrorForWorkflow = normalizeErrorForWorkflow;
 window.touchErrorUpdatedAt = touchErrorUpdatedAt;
 window.refreshWorkspaceAfterErrorMutation = refreshWorkspaceAfterErrorMutation;
+window.hasFullWorkspaceDataLoaded = hasFullWorkspaceDataLoaded;
+window.getStartupSummaryCache = getStartupSummaryCache;
 
 let statusFilter = 'all';
 let taskFilter = 'all';
@@ -397,6 +403,12 @@ function getErrorEntries() {
 }
 function getClaudeBankEntries() {
   return errors.filter(isClaudeBankEntry);
+}
+function hasFullWorkspaceDataLoaded() {
+  return !!fullDataLoaded;
+}
+function getStartupSummaryCache() {
+  return startupSummaryCache || null;
 }
 
 // 日期筛选

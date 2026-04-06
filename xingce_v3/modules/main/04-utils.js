@@ -46,3 +46,6 @@ function findErrorById(id) {
   const targetId = normalizeErrorId(id);
   return errors.find(x => normalizeErrorId(x.id) === targetId) || null;
 }
+function isMobileViewport() {
+  return window.matchMedia('(max-width: 768px)').matches;
+}
