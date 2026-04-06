@@ -377,12 +377,22 @@ function getKnowledgePathConfig(type, subtype, subSubtype) {
     sub2Title: normalizeKnowledgeTitle(subSubtype, '未细分')
   };
 }
+function ensureKnowledgePathByTitles(pathTitles) {
+  const titles = (pathTitles || []).map(item => String(item || '').trim()).filter(Boolean);
+  if (!titles.length) return null;
+  let siblings = getKnowledgeRootNodes();
+  let node = null;
+  titles.forEach((title, index) => {
+    node = ensureKnowledgeChild(siblings, title, index + 1, false);
+    siblings = node.children;
+  });
+  return node;
+}
 function ensureKnowledgeBranchPath(type, subtype, subSubtype) {
   const path = getKnowledgePathConfig(type, subtype, subSubtype);
-  const roots = getKnowledgeRootNodes();
-  const root = ensureKnowledgeChild(roots, path.rootTitle, 1, false);
-  const sub = ensureKnowledgeChild(root.children, path.subTitle, 2, false);
-  const sub2 = ensureKnowledgeChild(sub.children, path.sub2Title, 3, false);
+  const root = ensureKnowledgePathByTitles([path.rootTitle]);
+  const sub = ensureKnowledgePathByTitles([path.rootTitle, path.subTitle]);
+  const sub2 = ensureKnowledgePathByTitles([path.rootTitle, path.subTitle, path.sub2Title]);
   return { root, sub, sub2 };
 }
 function ensureKnowledgeNoteRecord(leafNode) {
@@ -492,6 +502,25 @@ function getKnowledgeAssignableNodesForPath(type, subtype, subSubtype) {
   walkKnowledgeNodes(sub2.children || [], node => list.push(node));
   return list;
 }
+function getKnowledgeNodeByPathTitles(pathTitles) {
+  const titles = (pathTitles || []).map(item => String(item || '').trim()).filter(Boolean);
+  if (!titles.length) return null;
+  let siblings = getKnowledgeRootNodes();
+  let node = null;
+  for (const title of titles) {
+    node = (siblings || []).find(item => String(item.title || '').trim() === title);
+    if (!node) return null;
+    siblings = node.children || [];
+  }
+  return node;
+}
+function getKnowledgeAssignableNodesForTitles(pathTitles) {
+  const baseNode = getKnowledgeNodeByPathTitles(pathTitles);
+  if (!baseNode) return [];
+  const list = [baseNode];
+  walkKnowledgeNodes(baseNode.children || [], node => list.push(node));
+  return list;
+}
 function getKnowledgePathTitles(nodeId) {
   function walk(nodes, parentTrail) {
     for (const node of nodes) {
@@ -507,6 +536,59 @@ function getKnowledgePathTitles(nodeId) {
 function collapseKnowledgePathTitles(titles) {
   return (titles || []).filter((title, idx, arr) => idx === 0 || title !== arr[idx - 1]);
 }
+function getEntryPathTitlesFromForm() {
+  const level1 = document.getElementById('editType')?.value || '';
+  const level2 = document.getElementById('editSubtype')?.value.trim() || '';
+  const level3 = document.getElementById('editSubSubtype')?.value.trim() || '';
+  const level4 = document.getElementById('editLevel4')?.value.trim() || '';
+  return [level1, level2, level3, level4].filter(Boolean);
+}
+function getEntryClassificationTripleFromForm() {
+  const titles = getEntryPathTitlesFromForm();
+  return {
+    type: titles[0] || '',
+    subtype: titles[1] || '',
+    subSubtype: titles[titles.length - 1] || ''
+  };
+}
+function getKnowledgeNodePathTriple(nodeId) {
+  const titles = collapseKnowledgePathTitles(getKnowledgePathTitles(nodeId));
+  return {
+    type: titles[0] || '',
+    subtype: titles[1] || '',
+    subSubtype: titles[titles.length - 1] || ''
+  };
+}
+function doesKnowledgeNodeMatchPathTitles(nodeId, pathTitles) {
+  const actual = collapseKnowledgePathTitles(getKnowledgePathTitles(nodeId));
+  const target = collapseKnowledgePathTitles((pathTitles || []).map(item => String(item || '').trim()).filter(Boolean));
+  if (actual.length !== target.length) return false;
+  return actual.every((title, index) => title === target[index]);
+}
+function doesKnowledgeNodeMatchEntryPath(nodeId, type, subtype, subSubtype) {
+  const node = getKnowledgeNodeById(nodeId);
+  if (!node) return false;
+  const target = getKnowledgePathConfig(type, subtype, subSubtype);
+  const actual = getKnowledgeNodePathTriple(nodeId);
+  return actual.type === target.rootTitle
+    && actual.subtype === target.subTitle
+    && actual.subSubtype === target.sub2Title;
+}
+function getErrorKnowledgePathTitles(errorItem) {
+  const nodeId = String(errorItem && errorItem.noteNodeId || '').trim();
+  if (nodeId) {
+    const titles = collapseKnowledgePathTitles(getKnowledgePathTitles(nodeId));
+    if (titles.length) return titles;
+  }
+  return collapseKnowledgePathTitles([
+    String(errorItem && errorItem.type || '').trim(),
+    String(errorItem && errorItem.subtype || '').trim(),
+    String(errorItem && errorItem.subSubtype || '').trim()
+  ].filter(Boolean));
+}
+function getErrorKnowledgePathText(errorItem) {
+  return getErrorKnowledgePathTitles(errorItem).join(' > ');
+}
 function getKnowledgeDisplayNode(node) {
   return node || null;
 }
@@ -519,7 +601,7 @@ function getCurrentKnowledgeNode() {
 function ensureKnowledgeBindingForError(errorItem) {
   if (!errorItem) return false;
   const bound = getKnowledgeNodeById(errorItem.noteNodeId);
-  if (bound) {
+  if (bound && doesKnowledgeNodeMatchEntryPath(bound.id, errorItem.type, errorItem.subtype, errorItem.subSubtype)) {
     return ensureKnowledgeNoteRecord(bound);
   }
   const branch = ensureKnowledgeBranchPath(errorItem.type, errorItem.subtype, errorItem.subSubtype);
@@ -556,16 +638,12 @@ function ensureKnowledgeState(opts) {
   }
 }
 function findKnowledgeBranchForModal(createIfMissing) {
-  const type = document.getElementById('editType')?.value || '';
-  const subtype = document.getElementById('editSubtype')?.value.trim() || '';
-  const subSubtype = document.getElementById('editSubSubtype')?.value.trim() || '';
+  const pathTitles = getEntryPathTitlesFromForm();
+  if (!pathTitles.length) return null;
   if (createIfMissing) {
-    return ensureKnowledgeBranchPath(type, subtype, subSubtype).sub2;
+    return ensureKnowledgePathByTitles(pathTitles);
   }
-  const path = getKnowledgePathConfig(type, subtype, subSubtype);
-  const root = getKnowledgeRootNodes().find(node => node.title === path.rootTitle);
-  const sub = root && (root.children || []).find(node => node.title === path.subTitle);
-  return sub && (sub.children || []).find(node => node.title === path.sub2Title);
+  return getKnowledgeNodeByPathTitles(pathTitles);
 }
 function ensureKnowledgeExpandedDefaults() {
   if (knowledgeExpandedLoaded) return;
@@ -595,27 +673,18 @@ function toggleKnowledgeExpanded(nodeId, event) {
 function syncKnowledgePickerHint(selectedLeafId) {
   const hint = document.getElementById('editKnowledgeHint');
   if (!hint) return;
-  const base = getKnowledgePathConfig(
-    document.getElementById('editType')?.value || '',
-    document.getElementById('editSubtype')?.value.trim() || '',
-    document.getElementById('editSubSubtype')?.value.trim() || ''
-  );
+  const baseTitles = getEntryPathTitlesFromForm();
   const node = selectedLeafId ? getKnowledgeNodeById(selectedLeafId) : null;
-  const modalNode = !node && modalKnowledgeNodeId ? getKnowledgeNodeById(modalKnowledgeNodeId) : null;
-  const activeNode = node || modalNode;
-  const pathTitles = activeNode ? collapseKnowledgePathTitles(getKnowledgePathTitles(activeNode.id)).join(' > ') : `${base.rootTitle} > ${base.subTitle} > ${base.sub2Title}`;
-  hint.textContent = activeNode ? `${pathTitles}（保存到当前节点）` : `${pathTitles}（保存时默认挂到当前节点）`;
+  const activeNode = node;
+  const pathTitles = activeNode ? collapseKnowledgePathTitles(getKnowledgePathTitles(activeNode.id)).join(' > ') : (baseTitles.join(' > ') || '未分类 > 未分类 > 未细分');
+  hint.textContent = activeNode ? `${pathTitles}（已手动选择具体节点）` : `${pathTitles}（保存时按题目分类自动挂载）`;
 }
 function refreshKnowledgePicker(preferredId) {
   ensureKnowledgeState();
   const select = document.getElementById('editKnowledgeLeaf');
   if (!select) return;
-  const nodes = getKnowledgeAssignableNodesForPath(
-    document.getElementById('editType')?.value || '',
-    document.getElementById('editSubtype')?.value.trim() || '',
-    document.getElementById('editSubSubtype')?.value.trim() || ''
-  );
-  const options = ['<option value="">默认挂到当前三级节点</option>']
+  const nodes = getKnowledgeAssignableNodesForTitles(getEntryPathTitlesFromForm());
+  const options = ['<option value="">默认按1-4级自动挂载</option>']
     .concat(nodes.map(node => `<option value="${node.id}">${escapeHtml(collapseKnowledgePathTitles(getKnowledgePathTitles(node.id)).join(' > '))}</option>`));
   select.innerHTML = options.join('');
   if (preferredId && nodes.some(node => node.id === preferredId)) {
@@ -629,10 +698,14 @@ function refreshKnowledgePicker(preferredId) {
 }
 function createKnowledgeLeafFromModal() {
   const branch = findKnowledgeBranchForModal(true);
+  if (!branch) {
+    showToast('请先填写至少 1级 和 2级', 'warning');
+    return;
+  }
   const fallback = getKnowledgeLeafDefaultTitle(
-    document.getElementById('editType')?.value || '',
-    document.getElementById('editSubtype')?.value.trim() || '',
-    document.getElementById('editSubSubtype')?.value.trim() || ''
+    getEntryClassificationTripleFromForm().type,
+    getEntryClassificationTripleFromForm().subtype,
+    getEntryClassificationTripleFromForm().subSubtype
   );
   openKnowledgeNodeModal('create-child', {
     parentId: branch.id,
@@ -640,26 +713,20 @@ function createKnowledgeLeafFromModal() {
     afterSubmit: node => refreshKnowledgePicker(node.id)
   });
 }
-function resolveKnowledgeNodeIdForSave(type, subtype, subSubtype) {
+function resolveKnowledgeNodeIdForSave(pathTitles) {
   const select = document.getElementById('editKnowledgeLeaf');
   const selectedId = select ? select.value : '';
   const selectedNode = selectedId ? getKnowledgeNodeById(selectedId) : null;
-  if (selectedNode) {
+  if (selectedNode && doesKnowledgeNodeMatchPathTitles(selectedNode.id, pathTitles)) {
     ensureKnowledgeNoteRecord(selectedNode);
     selectedKnowledgeNodeId = selectedNode.id;
     return selectedNode.id;
   }
-  const modalNode = modalKnowledgeNodeId ? getKnowledgeNodeById(modalKnowledgeNodeId) : null;
-  if (modalNode) {
-    ensureKnowledgeNoteRecord(modalNode);
-    selectedKnowledgeNodeId = modalNode.id;
-    return modalNode.id;
-  }
-  const branch = ensureKnowledgeBranchPath(type, subtype, subSubtype);
-  ensureKnowledgeNoteRecord(branch.sub2);
-  selectedKnowledgeNodeId = branch.sub2.id;
-  if (select) refreshKnowledgePicker(branch.sub2.id);
-  return branch.sub2.id;
+  const targetNode = ensureKnowledgePathByTitles(pathTitles);
+  ensureKnowledgeNoteRecord(targetNode);
+  selectedKnowledgeNodeId = targetNode.id;
+  if (select) refreshKnowledgePicker(targetNode.id);
+  return targetNode.id;
 }
 function setCurrentKnowledgeNode(nodeId, opts) {
   const options = opts || {};

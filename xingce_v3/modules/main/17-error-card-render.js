@@ -236,6 +236,9 @@ function renderCard(e){
   const practiceSummary = getPracticeSummaryForError(e);
   const practiceSummaryMeta = renderPracticeSummaryMeta(practiceSummary);
   const statusLabel = getErrorStatusLabel(e.status);
+  const knowledgePathText = typeof getErrorKnowledgePathText === 'function'
+    ? getErrorKnowledgePathText(e)
+    : [e.type, e.subtype, e.subSubtype].filter(Boolean).join(' > ');
 
   // 复习信息
   let quizInfoStr='';
@@ -347,6 +350,7 @@ function renderCard(e){
       <span class="card-num">#${e.id}</span>
       <span class="status-tag ${normalizeErrorStatusValue(e.status)}">${escapeHtml(statusLabel)}</span>
       ${e.subSubtype?`<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#f0f5ff;color:#4e8ef7">${escapeHtml(e.subSubtype)}</span>`:''}
+      ${knowledgePathText?`<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#f8fafc;color:#475569;border:1px solid #e2e8f0;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(knowledgePathText)}">${escapeHtml(knowledgePathText)}</span>`:''}
       ${starHtml}
       ${(e.srcYear||e.srcProvince||e.srcOrigin)?`<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#f6ffed;color:#52c41a;border:1px solid #b7eb8f" title="出处">📌 ${[e.srcYear,e.srcProvince,e.srcOrigin].filter(Boolean).join(' · ')}</span>`:''}
       ${e.isClassic ? `<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#fff7e6;color:#ad6800;border:1px solid #ffd591" title="经典题/样题">样题</span>` : ''}

@@ -963,9 +963,9 @@ function resetAIAnalyzeState() {
 
 function getAIFieldLabel(key) {
   return ({
-    type: '题型',
-    subtype: '子类型',
-    subSubtype: '细分类型',
+    type: '1级',
+    subtype: '2级',
+    subSubtype: '3级',
     rootReason: '错误类型',
     errorReason: '触发点',
     analysis: '正确模型'
@@ -1114,9 +1114,14 @@ async function analyzeEntryWithAI() {
 // 修改添加错题函数，增加联动
 async function saveError(){
   if (saveErrorBusy) return;
-  const type = document.getElementById('editType').value;
-  const subtype = document.getElementById('editSubtype').value.trim();
-  const subSubtype = document.getElementById('editSubSubtype').value.trim();
+  const level1 = document.getElementById('editType').value;
+  const level2 = document.getElementById('editSubtype').value.trim();
+  const level3 = document.getElementById('editSubSubtype').value.trim();
+  const level4 = (document.getElementById('editLevel4')?.value || '').trim();
+  const pathTitles = [level1, level2, level3, level4].filter(Boolean);
+  const type = pathTitles[0] || '';
+  const subtype = pathTitles[1] || '';
+  const subSubtype = pathTitles[pathTitles.length - 1] || '';
   const question = document.getElementById('editQuestion').value.trim();
   const options = document.getElementById('editOptions').value.trim();
   const answer = document.getElementById('editAnswer').value.trim();
@@ -1135,14 +1140,18 @@ async function saveError(){
   const srcOrigin   = document.getElementById('editSrcOrigin').value.trim();
 
   if(!question && !editImgBase64){ showToast('题目不能为空', 'warning'); return; }
-  if(!subtype){ showToast('子类型不能为空', 'warning'); document.getElementById('editSubtype').focus(); return; }
+  if(!subtype){ showToast('2级不能为空', 'warning'); document.getElementById('editSubtype').focus(); return; }
   if(!answer){ showToast('正确答案不能为空', 'warning'); document.getElementById('editAnswer').focus(); return; }
   if(!mistakeType){ showToast('错误类型不能为空', 'warning'); document.getElementById('editRootReason').focus(); return; }
   if(!triggerPoint){ showToast('触发点不能为空', 'warning'); document.getElementById('editErrorReason').focus(); return; }
   if(!correctModel){ showToast('正确模型不能为空', 'warning'); document.getElementById('editAnalysis').focus(); return; }
   setSaveErrorBusyState(true);
   try {
-    const noteNodeId  = resolveKnowledgeNodeIdForSave(type, subtype, subSubtype);
+    const noteNodeId  = resolveKnowledgeNodeIdForSave(pathTitles);
+    const knowledgePathTitles = noteNodeId && typeof getKnowledgePathTitles === 'function'
+      ? collapseKnowledgePathTitles(getKnowledgePathTitles(noteNodeId))
+      : pathTitles.slice();
+    const knowledgePathText = knowledgePathTitles.join(' > ');
     const id = editingId ? normalizeErrorId(editingId) : null; // JS 变量，openAddModal/openEditModal 时设置
 
     // 图片：有新图用新图；主动删除置 null；否则保留原图
@@ -1176,7 +1185,11 @@ async function saveError(){
     const data = {
       type, subtype, subSubtype, question, options, answer, myAnswer, rootReason, errorReason, analysis, status, difficulty,
       imgData, analysisImgData, srcYear, srcProvince, srcOrigin, noteNodeId,
-      mistakeType, triggerPoint, correctModel, nextAction
+      mistakeType, triggerPoint, correctModel, nextAction,
+      knowledgePathTitles,
+      knowledgePath: knowledgePathText,
+      knowledgeNodePath: knowledgePathText,
+      notePath: knowledgePathText
     };
     if(existing){
       const old = existing;

@@ -102,7 +102,30 @@ ${raw}
 - confidence：0-5 的整数，表示把握度
 - tip：短句提醒，给下次做题用
 - 只返回 JSON，不要任何额外说明`;
-  document.getElementById('templateText').value=tmpl;
+  const extraPathGuide = [
+    '【4级路径补充】',
+    '如果题目知识点是4级结构，请继续返回以下字段：',
+    '"knowledgePathTitles": ["1级","2级","3级","4级"]',
+    '"knowledgePath": "1级 > 2级 > 3级 > 4级"',
+    '"knowledgeNodePath": "1级 > 2级 > 3级 > 4级"',
+    '"notePath": "1级 > 2级 > 3级 > 4级"',
+    '',
+    '兼容规则：',
+    '- type = 1级',
+    '- subtype = 2级',
+    '- subSubtype = 最终叶子（3级或4级）',
+    '- 如果是4级题目，必须同时返回 knowledgePathTitles 等完整路径字段',
+    '',
+    '4级示例：',
+    '{',
+    '  "type": "判断推理",',
+    '  "subtype": "图形推理",',
+    '  "subSubtype": "九宫格样式规律",',
+    '  "knowledgePathTitles": ["判断推理","图形推理","组成相似","九宫格样式规律"],',
+    '  "knowledgePath": "判断推理 > 图形推理 > 组成相似 > 九宫格样式规律"',
+    '}'
+  ].join('\n');
+  document.getElementById('templateText').value = `${tmpl}\n\n${extraPathGuide}`;
   document.getElementById('templateArea').style.display='block';
 }
 function copyTemplate(){
@@ -150,11 +173,23 @@ function getFilteredClaudeBankEntries() {
     return terms.every(term => haystack.includes(term));
   });
 }
+function getClaudeBankKnowledgePathText(item) {
+  if (item && item.noteNodeId && typeof getKnowledgePathTitles === 'function' && typeof collapseKnowledgePathTitles === 'function') {
+    const titles = collapseKnowledgePathTitles(getKnowledgePathTitles(item.noteNodeId));
+    if (titles && titles.length) return titles.join(' > ');
+  }
+  if (item?.knowledgePath) return String(item.knowledgePath);
+  if (Array.isArray(item?.knowledgePathTitles) && item.knowledgePathTitles.length) return item.knowledgePathTitles.join(' > ');
+  if (item?.knowledgeNodePath) return String(item.knowledgeNodePath);
+  if (item?.notePath) return String(item.notePath);
+  return [item?.type, item?.subtype, item?.subSubtype].filter(Boolean).join(' > ');
+}
 function renderClaudeBankCard(item) {
   const normalizedId = normalizeErrorId(item.id);
   const idLit = idArg(item.id);
   const noteNodeLit = noteNodeArg(item.noteNodeId || '');
   const isRev = revealed.has(normalizedId);
+  const knowledgePathText = getClaudeBankKnowledgePathText(item);
   const opts = item.options ? item.options.split(/\n|\|/).map(o => `<p>${escapeHtml(o.trim())}</p>`).join('') : '';
   const imgTag = item.imgData ? `<img src="${escapeHtml(item.imgData)}" class="cuoti-img" onclick="this.classList.toggle('expanded')" title="点击放大/缩小">` : '';
   const processImageTag = renderProcessImagePreview(item, 'card');
@@ -210,6 +245,7 @@ function renderClaudeBankCard(item) {
       ${item.type ? `<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#f6ffed;color:#389e0d;border:1px solid #b7eb8f">${escapeHtml(item.type)}</span>` : ''}
       ${item.subtype ? `<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#fff7e6;color:#d46b08;border:1px solid #ffd591">${escapeHtml(item.subtype)}</span>` : ''}
       ${item.subSubtype ? `<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#f9f0ff;color:#722ed1;border:1px solid #d3adf7">${escapeHtml(item.subSubtype)}</span>` : ''}
+      ${knowledgePathText ? `<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#f8fafc;color:#475569;border:1px solid #e2e8f0;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(knowledgePathText)}">${escapeHtml(knowledgePathText)}</span>` : ''}
       ${item.addDate ? `<span style="font-size:11px;color:#999">${escapeHtml(item.addDate)}</span>` : ''}
     </div>
     <div class="card-question">${escapeHtml(item.question || '')}</div>

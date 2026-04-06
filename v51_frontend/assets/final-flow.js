@@ -21,6 +21,13 @@
   function stopTimer(){ if(timer){ clearInterval(timer); timer = null; } }
   function formatDuration(sec){ sec = Math.max(0, Number(sec)||0); const m = Math.floor(sec/60); const s = sec % 60; return `${m}:${String(s).padStart(2,'0')}`; }
   function normalizeId(v){ return v == null ? '' : String(v); }
+  function getDisplayKnowledgePath(item){
+    if(item && item.noteNodeId && typeof window.getKnowledgePathTitles === 'function' && typeof window.collapseKnowledgePathTitles === 'function'){
+      const titles = collapseKnowledgePathTitles(getKnowledgePathTitles(item.noteNodeId));
+      if(titles && titles.length) return titles.join(' > ');
+    }
+    return [item?.type, item?.subtype, item?.subSubtype].filter(Boolean).join(' > ');
+  }
   function getCurrentDraft(){
     const item = q();
     if(!item) return null;
@@ -290,7 +297,7 @@
     list.innerHTML = arr.map(it => `
       <div class="attempt-card">
         <div class="attempt-card-head">
-          <div><strong>${window.escapeHtml ? escapeHtml(it.type || '未分类') : (it.type || '未分类')}</strong>${it.subtype ? ` · <span>${window.escapeHtml ? escapeHtml(it.subtype) : it.subtype}</span>` : ''}</div>
+          <div><strong>${window.escapeHtml ? escapeHtml(getDisplayKnowledgePath(it) || (it.type || '未分类')) : (getDisplayKnowledgePath(it) || it.type || '未分类')}</strong></div>
           <div style="font-size:12px;color:#64748b">${window.escapeHtml ? escapeHtml(it.createdAt || '') : (it.createdAt || '')}</div>
         </div>
         <div class="attempt-card-question">${window.escapeHtml ? escapeHtml(it.questionText || '') : (it.questionText || '')}</div>

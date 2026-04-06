@@ -416,7 +416,7 @@ function activateGlobalSearchResult(result) {
 function getProcessImagePayload(errorId) {
   const errorItem = findErrorById(errorId);
   if (!errorItem) return null;
-  const parts = [errorItem.type, errorItem.subtype, errorItem.subSubtype].filter(Boolean);
+  const parts = getErrorKnowledgePathTitles(errorItem);
   return {
     id: errorItem.id,
     title: parts.join(' / ') || `#${errorItem.id}`,

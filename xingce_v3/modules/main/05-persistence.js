@@ -396,6 +396,15 @@ async function buildPortableErrorExport(errorLike) {
   const item = cloneJson(errorLike || {});
   item.imgData = await materializePortableImageValue(item.imgData || '');
   item.analysisImgData = await materializePortableImageValue(item.analysisImgData || '');
+  if (item && item.noteNodeId && typeof getKnowledgePathTitles === 'function' && typeof collapseKnowledgePathTitles === 'function') {
+    const titles = collapseKnowledgePathTitles(getKnowledgePathTitles(item.noteNodeId));
+    if (titles && titles.length) {
+      item.knowledgePathTitles = titles.slice();
+      item.knowledgePath = titles.join(' > ');
+      item.knowledgeNodePath = titles.join(' > ');
+      item.notePath = titles.join(' > ');
+    }
+  }
   return item;
 }
 async function buildPortableBackupPayload(payload) {

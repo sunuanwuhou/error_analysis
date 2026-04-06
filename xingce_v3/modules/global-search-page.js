@@ -198,7 +198,7 @@ function buildExcerpt(text, terms) {
 }
 
 function buildQuestionMeta(item) {
-  const parts = [item.type, item.subtype, item.subSubtype].filter(Boolean);
+  const parts = String(item.knowledgePath || '').trim() ? [item.knowledgePath] : [item.type, item.subtype, item.subSubtype].filter(Boolean);
   return parts.join(' / ') || `题目 #${item.id}`;
 }
 

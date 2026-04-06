@@ -49,8 +49,32 @@ function getKnowledgeContextDepth(context) {
   return 0;
 }
 
+function extractImportedKnowledgePathTitles(item) {
+  const rawPath = item?.knowledgePath || item?.notePath || item?.knowledgeNodePath || item?.knowledgePathTitles || null;
+  if (Array.isArray(rawPath)) {
+    return rawPath.map(part => String(part || '').trim()).filter(Boolean);
+  }
+  if (typeof rawPath === 'string') {
+    return rawPath.split(/>|\/|→/).map(part => String(part || '').trim()).filter(Boolean);
+  }
+  return [];
+}
+
 function getImportedErrorTargetNodeId(item, context) {
-  if (item?.noteNodeId) return item.noteNodeId;
+  const importedPathTitles = extractImportedKnowledgePathTitles(item);
+  if (importedPathTitles.length >= 3) {
+    const importedNode = ensureKnowledgePathByTitles(importedPathTitles);
+    if (importedNode) {
+      ensureKnowledgeNoteRecord(importedNode);
+      return importedNode.id;
+    }
+  }
+  if (item?.noteNodeId && getKnowledgeNodeById(item.noteNodeId)) {
+    if (!item?.type && !item?.subtype && !item?.subSubtype) return item.noteNodeId;
+    if (doesKnowledgeNodeMatchEntryPath(item.noteNodeId, item.type || '', item.subtype || '', item.subSubtype || '')) {
+      return item.noteNodeId;
+    }
+  }
   const explicitType = String(item?.type || '').trim();
   const explicitSubtype = String(item?.subtype || '').trim();
   const explicitSubSubtype = String(item?.subSubtype || '').trim();
@@ -63,25 +87,17 @@ function getImportedErrorTargetNodeId(item, context) {
     ensureKnowledgeNoteRecord(branch.sub2);
     return branch.sub2.id;
   }
-  if (!importKnowledgeNodeId || !context?.node) return '';
-  const selectedDepth = getKnowledgeContextDepth(context);
-  const effectiveContext = {
-    type: item.type || context.type || '',
-    subtype: item.subtype || context.subtype || '',
-    subSubtype: item.subSubtype || context.subSubtype || ''
-  };
-  const itemDepth = getKnowledgeContextDepth(effectiveContext);
-  return selectedDepth >= itemDepth ? importKnowledgeNodeId : '';
+  return '';
 }
 
 function getKnowledgeContextForEntry(nodeId) {
   const node = nodeId ? getKnowledgeNodeById(nodeId) : null;
-  const titles = node ? getKnowledgePathTitles(node.id) : [];
+  const titles = node ? collapseKnowledgePathTitles(getKnowledgePathTitles(node.id)) : [];
   return {
     node,
     type: titles[0] || '',
     subtype: titles[1] || '',
-    subSubtype: node && node.isLeaf ? (titles[2] || node.title || '') : (titles[2] || '')
+    subSubtype: node && node.isLeaf ? (titles[titles.length - 1] || node.title || '') : (titles[titles.length - 1] || '')
   };
 }
 
@@ -89,7 +105,7 @@ function updateEntryFlowBanner(context) {
   const banner = document.getElementById('entryFlowBanner');
   if (!banner) return;
   const node = context && context.node ? context.node : null;
-  const path = node ? getKnowledgePathTitles(node.id).filter(Boolean).join(' / ') : '';
+  const path = node ? collapseKnowledgePathTitles(getKnowledgePathTitles(node.id)).join(' / ') : '';
   const modeLabel = editingId ? '编辑模式' : '新增模式';
   const quickActions = node ? `
     <div class="entry-quick-row">
@@ -137,13 +153,13 @@ function setEntryAdvancedOpen(open) {
 function openAddModalForCurrentKnowledge() {
   const context = getKnowledgeContextForEntry(selectedKnowledgeNodeId);
   openAddModal();
-  modalKnowledgeNodeId = context.node ? context.node.id : null;
+  modalKnowledgeNodeId = null;
   if (context.type) document.getElementById('editType').value = context.type;
   updateSubtypeOptions();
   if (context.subtype) document.getElementById('editSubtype').value = context.subtype;
   if (context.subSubtype) document.getElementById('editSubSubtype').value = context.subSubtype;
-  refreshKnowledgePicker(context.node && context.node.isLeaf ? context.node.id : '');
-  updateEntryFlowBanner(context);
+  refreshKnowledgePicker();
+  updateEntryFlowBanner(getKnowledgeContextForEntry(null));
 }
 
 function openQuickAddModal() {
@@ -156,11 +172,7 @@ function openQuickAddModal() {
 }
 
 function openImportModalForCurrentKnowledge() {
-  if (!selectedKnowledgeNodeId) {
-    showToast('请先选择当前知识点', 'warning');
-    return;
-  }
-  importKnowledgeNodeId = selectedKnowledgeNodeId;
+  importKnowledgeNodeId = null;
   document.getElementById('importText').value = '';
   selectImportMode('merge');
   openModal('importModal');
@@ -297,6 +309,11 @@ function doImport(){
   else if(parsed.errors&&Array.isArray(parsed.errors)){ data=parsed.errors; }
   else{ showToast('应为数组或含 errors 字段的对象', 'error');return; }
   data = normalizeImportedErrorsForCurrentKnowledge(data, 'error');
+  const unresolvedCount = data.filter(item => !String(item.noteNodeId || '').trim()).length;
+  if(unresolvedCount){
+    showToast(`有 ${unresolvedCount} 条导入题目缺少可用挂载路径，请补全 type / subtype / subSubtype 后再导入`, 'warning');
+    return;
+  }
   if(importMode==='replace'){
     if(!confirm(`清空现有 ${errors.length} 条，替换为 ${data.length} 条？`))return;
     errors=data.map(e=>({

@@ -200,6 +200,9 @@
     return [Math.max(0, Math.min(1, x)), Math.max(0, Math.min(1, y))];
   }
   function persistEvent(item, type, extra){
+    const pathText = item?.noteNodeId && typeof window.getKnowledgePathTitles === 'function' && typeof window.collapseKnowledgePathTitles === 'function'
+      ? collapseKnowledgePathTitles(getKnowledgePathTitles(item.noteNodeId)).join(' > ')
+      : [item?.type, item?.subtype, item?.subSubtype].filter(Boolean).join(' > ');
     const list = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
     list.unshift({
       id: `${Date.now()}_${Math.random().toString(16).slice(2)}`,
@@ -207,7 +210,7 @@
       type,
       errorId: normalizeId(item?.id),
       typeLabel: item?.type || '',
-      subLabel: [item?.subtype, item?.subSubtype].filter(Boolean).join(' / '),
+      subLabel: pathText,
       question: String(item?.question || '').slice(0, 80),
       ...extra,
     });
