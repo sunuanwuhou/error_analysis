@@ -1,16 +1,13 @@
 // ============================================================
-// 目录管理
+// Directory management
 // ============================================================
 const KEY_DIR_TREE = 'xc_dir_tree';
-const FIXED_TYPES = ['言语理解与表达','数量关系','判断推理','资料分析','常识判断','其他'];
-const FIXED_KNOWLEDGE_ROOTS = ['言语理解与表达','数量关系','判断推理','资料分析','常识判断'];
+const FIXED_TYPES = ["???????", "????", "????", "????", "????", "??"];
+const FIXED_KNOWLEDGE_ROOTS = ["???????", "????", "????", "????", "????"];
 const DEFAULT_DIR_TREE = {
-  '言语理解与表达':{'逻辑填空':['成语辨析','实词辨析','虚词辨析','语境分析'],'片段阅读':['主旨概括','意图判断','细节判断','词句理解'],'语句排序':['语句排序','语句填空']},
-  '数量关系':{'数字推理':['等差数列','等比数列','多级数列','混合数列'],'数学运算':['工程问题','行程问题','概率问题','排列组合','利润问题']},
-  '判断推理':{'逻辑判断':['充分条件','必要条件','假设支持','削弱质疑','加强论证'],'图形推理':['规律判断','空间折叠','平面类比'],'定义判断':['单定义','多定义'],'类比推理':['语义关系','逻辑关系','属性关系']},
-  '资料分析':{'资料分析':['增长率','比重计算','倍数关系','平均数','综合计算']},
-  '常识判断':{'政治常识':[],'法律常识':[],'经济常识':[],'科技常识':[],'人文常识':[],'地理常识':[]},
-  '其他':{}
+  "???????":{"????":["????", "????"]},
+  "????":{"????":[]},
+  "??":{},
 };
 
 let _dirSelType = '';
@@ -35,29 +32,29 @@ function openDirModal() {
   openModal('dirModal');
 }
 function renderDirCols() {
-  // 一级
+  // Level 1
   const col1 = document.getElementById('dirCol1');
   col1.innerHTML = FIXED_TYPES.map(t =>
     `<div class="dir-item ${t===_dirSelType?'active':''}" onclick="dirSelType('${escapeHtml(t)}')">${escapeHtml(t)}</div>`
   ).join('');
-  // 二级
+  // Level 2
   const subs = (_dirTree[_dirSelType] && Object.keys(_dirTree[_dirSelType])) || [];
   const col2 = document.getElementById('dirCol2');
   col2.innerHTML = subs.map(s =>
-    `<div class="dir-item ${s===_dirSelSub?'active':''}" onclick="dirSelSub('${escapeHtml(s)}')">
-      <span>${escapeHtml(s)}</span>
-      <button class="dir-item-del" onclick="event.stopPropagation();dirDelSub('${escapeHtml(s)}')">✕</button>
-    </div>`
-  ).join('') || '<div style="color:#ccc;font-size:12px;padding:12px;text-align:center">暂无子类型</div>';
-  // 三级
+    `<div class="dir-item ${s===_dirSelSub?'active':''}" onclick="dirSelSub('${escapeHtml(s)}')">`
+      + `<span>${escapeHtml(s)}</span>`
+      + `<button class="dir-item-del" onclick="event.stopPropagation();dirDelSub('${escapeHtml(s)}')">?</button>`
+      + `</div>`
+  ).join('') || '<div style="color:#ccc;font-size:12px;padding:12px;text-align:center">' + "??????" + '</div>';
+  // Level 3
   const sub2s = (_dirSelSub && _dirTree[_dirSelType] && _dirTree[_dirSelType][_dirSelSub]) || [];
   const col3 = document.getElementById('dirCol3');
   col3.innerHTML = sub2s.map(s2 =>
-    `<div class="dir-item">
-      <span>${escapeHtml(s2)}</span>
-      <button class="dir-item-del" onclick="dirDelSub2('${escapeHtml(s2)}')">✕</button>
-    </div>`
-  ).join('') || '<div style="color:#ccc;font-size:12px;padding:12px;text-align:center">${_dirSelSub?"暂无细分":"请先选择子类型"}</div>';
+    `<div class="dir-item">`
+      + `<span>${escapeHtml(s2)}</span>`
+      + `<button class="dir-item-del" onclick="dirDelSub2('${escapeHtml(s2)}')">?</button>`
+      + `</div>`
+  ).join('') || `<div style="color:#ccc;font-size:12px;padding:12px;text-align:center">${_dirSelSub ? "??????" : "????????"}</div>`;
 }
 function dirSelType(t) { _dirSelType=t; _dirSelSub=''; renderDirCols(); }
 function dirSelSub(s) { _dirSelSub=s; renderDirCols(); }
@@ -70,18 +67,17 @@ function dirAddItem(level) {
     document.getElementById('dirAddSub').value='';
     _dirSelSub=v; saveDirTree(); renderDirCols();
   } else {
-    if (!_dirSelSub) { showToast('请先选择子类型', 'warning'); return; }
+    if (!_dirSelSub) { showToast("????????", 'warning'); return; }
     const v = document.getElementById('dirAddSub2').value.trim();
     if (!v) return;
     if (!_dirTree[_dirSelType][_dirSelSub]) _dirTree[_dirSelType][_dirSelSub]=[];
-    if (!_dirTree[_dirSelType][_dirSelSub].includes(v))
-      _dirTree[_dirSelType][_dirSelSub].push(v);
+    if (!_dirTree[_dirSelType][_dirSelSub].includes(v)) _dirTree[_dirSelType][_dirSelSub].push(v);
     document.getElementById('dirAddSub2').value='';
     saveDirTree(); renderDirCols();
   }
 }
 function dirDelSub(s) {
-  if (!confirm(`删除子类型「${s}」及其所有细分？`)) return;
+  if (!confirm("???????" + s + "???????????")) return;
   delete _dirTree[_dirSelType][s];
   if (_dirSelSub===s) _dirSelSub='';
   saveDirTree(); renderDirCols();
@@ -93,7 +89,7 @@ function dirDelSub2(s2) {
   saveDirTree(); renderDirCols();
 }
 function resetDirTree() {
-  if (!confirm('恢复默认目录？当前自定义内容将清空')) return;
+  if (!confirm("???????????????????")) return;
   _dirTree = JSON.parse(JSON.stringify(DEFAULT_DIR_TREE));
   saveDirTree(); renderDirCols();
 }
@@ -205,6 +201,20 @@ function syncKnowledgeNotesFromTree() {
   });
   knowledgeNotes = next;
 }
+function getLegacyKnowledgeNoteSnapshot(nodeId) {
+  if (!knowledgeNotes || typeof knowledgeNotes !== 'object' || !nodeId) return null;
+  const legacy = knowledgeNotes[nodeId];
+  if (!legacy || typeof legacy !== 'object') return null;
+  return {
+    title: String(legacy.title || ''),
+    content: String(legacy.content || ''),
+    updatedAt: String(legacy.updatedAt || '')
+  };
+}
+function removeKnowledgeNoteEntry(nodeId) {
+  if (!nodeId || !knowledgeNotes || typeof knowledgeNotes !== 'object') return;
+  delete knowledgeNotes[nodeId];
+}
 function migrateKnowledgeNodeReference(oldId, newId) {
   if (!oldId || !newId || oldId === newId) return;
   errors.forEach(item => {
@@ -219,9 +229,9 @@ function migrateKnowledgeNodeReference(oldId, newId) {
     knowledgeExpanded.delete(oldId);
     knowledgeExpanded.add(newId);
   }
-  const legacy = knowledgeNotes && knowledgeNotes[oldId];
+  const legacy = getLegacyKnowledgeNoteSnapshot(oldId);
   if (legacy) {
-    const current = knowledgeNotes[newId] || { title: '', content: '', updatedAt: '' };
+    const current = getLegacyKnowledgeNoteSnapshot(newId) || { title: '', content: '', updatedAt: '' };
     if (!String(current.content || '').trim() && String(legacy.content || '').trim()) {
       knowledgeNotes[newId] = {
         title: current.title || legacy.title || '',
@@ -229,7 +239,7 @@ function migrateKnowledgeNodeReference(oldId, newId) {
         updatedAt: legacy.updatedAt || current.updatedAt || ''
       };
     }
-    delete knowledgeNotes[oldId];
+    removeKnowledgeNoteEntry(oldId);
   }
 }
 function getKnowledgeDirectErrorCountMap() {
@@ -303,7 +313,7 @@ function pruneKnowledgeGhostNodes(nodes, directCountMap) {
     if (!hasContent && directCount === 0) {
       if (node.children.length === 0) {
         knowledgeExpanded.delete(nodeId);
-        delete knowledgeNotes[nodeId];
+        removeKnowledgeNoteEntry(nodeId);
         changed = true;
         return;
       }
@@ -359,7 +369,7 @@ function normalizeKnowledgeNodes(nodes, level) {
     node.title = normalizeKnowledgeTitle(node.title, `知识点${node.id.slice(-4)}`);
     node.level = level;
     if (!Array.isArray(node.children)) node.children = [];
-    const legacy = knowledgeNotes && knowledgeNotes[node.id];
+    const legacy = getLegacyKnowledgeNoteSnapshot(node.id);
     if (typeof node.contentMd !== 'string') {
       node.contentMd = legacy && typeof legacy.content === 'string' ? legacy.content : '';
     }
@@ -1032,7 +1042,7 @@ function unwrapPromotedKnowledgeChildren(children, removedTitle) {
   while (next.length === 1 && shouldAutoUnwrapKnowledgeNode(next[0], removedTitle)) {
     const wrapper = next[0];
     knowledgeExpanded.delete(wrapper.id);
-    delete knowledgeNotes[wrapper.id];
+    removeKnowledgeNoteEntry(wrapper.id);
     next = (wrapper.children || []).slice();
   }
   return next;
@@ -1069,7 +1079,7 @@ function deleteKnowledgeNode(nodeId) {
   if (parent) {
     parent.isLeaf = siblings.length === 0;
   }
-  delete knowledgeNotes[node.id];
+  removeKnowledgeNoteEntry(node.id);
   knowledgeExpanded.delete(node.id);
   saveKnowledgeExpanded();
   if (knowledgeNodeFilter === node.id) knowledgeNodeFilter = null;

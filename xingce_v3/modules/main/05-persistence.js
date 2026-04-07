@@ -146,10 +146,25 @@ function scheduleDeferredFullWorkspaceLoad() {
     setTimeout(run, 1200);
   }
 }
+function reportLocalStorageFailure(error) {
+  showToast('Local storage failed: ' + (error && error.message ? error.message : 'Unknown error'), 'error');
+}
+function showCloudInfo(message, opts) {
+  if (opts && opts.silent) return;
+  showToast(message, 'success');
+}
+function showCloudWarning(message, opts) {
+  if (opts && opts.silent) return;
+  showToast(message, 'warning');
+}
+function showCloudError(error, fallbackMessage, opts) {
+  if (opts && opts.silent) return;
+  showToast((error && error.message) || fallbackMessage, 'error');
+}
 function saveData()    {
   knowledgeErrorCountCacheVersion += 1;
   DB.set(KEY_ERRORS, JSON.stringify(errors))
-    .catch(e => showToast('本地存储失败: ' + e.message, 'error'));
+    .catch(reportLocalStorageFailure);
   scheduleCloudSave();
 }
 function saveReveal()  { DB.set(KEY_REVEALED, JSON.stringify([...revealed])); scheduleCloudSave(); }
@@ -224,7 +239,7 @@ function queuePersist(key, value, delay) {
   const encoded = typeof value === 'string' ? value : JSON.stringify(value);
   clearTimeout(persistTimers.get(key));
   const timer = setTimeout(() => {
-    DB.set(key, encoded).catch(e => showToast('本地存储失败: ' + e.message, 'error'));
+    DB.set(key, encoded).catch(reportLocalStorageFailure);
     persistTimers.delete(key);
   }, wait);
   persistTimers.set(key, timer);
@@ -928,7 +943,7 @@ async function applyCloudBackup(data, updatedAt, opts) {
     lastBackupUpdatedAt: updatedAt || data.exportTime || ''
   });
   setCloudSyncState('synced', 'Cloud backup loaded into this entry', updatedAt || data.exportTime || '');
-  if (!opts || !opts.silent) showToast('Cloud backup loaded', 'success');
+  showCloudInfo('Cloud backup loaded', opts);
 }
 async function queueDeferredCloudRestore(meta, opts) {
   opts = opts || {};
@@ -946,7 +961,7 @@ async function queueDeferredCloudRestore(meta, opts) {
       staged: true,
       skipCompletionAlert: true
     });
-    showToast('云端数据已在后台同步完成', 'success');
+    showCloudInfo('Cloud data synced in the background', opts);
   })().catch(error => {
     console.warn('deferred cloud restore failed:', error);
     setCloudSyncState('error', error.message || '后台同步失败，请稍后重试', updatedAt);
@@ -970,13 +985,13 @@ async function maybeRestoreCloudBackup() {
       if (shouldUseDeferredCloudRestore(meta)) {
         setCloudSyncState('saving', `云端数据较大（${formatBackupBytes(getCloudBackupBytes(meta))}），已切换为后台缓慢同步`, updatedAt);
         queueDeferredCloudRestore(meta, { forceOverwriteLocal: true });
-        showToast('检测到云端数据较大，已改为后台缓慢同步', 'success');
+        showCloudInfo('Large cloud data detected, switched to background sync');
         return;
       }
       const data = await fetchCloudBackupData();
       if (!data.exists || !data.backup) return;
       await applyCloudBackup({ ...data.backup, summary: data.summary || {} }, updatedAt || data.backup.exportTime || '', { silent: true, forceOverwriteLocal: true, staged: true, skipCompletionAlert: true });
-      showToast('当前入口已自动恢复云端备份', 'success');
+      showCloudInfo('Cloud backup restored to this entry');
       return;
     }
     if (existingDecision && existingDecision.updatedAt === updatedAt) return;
@@ -998,19 +1013,19 @@ async function maybeRestoreCloudBackup() {
     if (!ok) {
       rememberCloudDecision(updatedAt, 'kept_local');
       setCloudSyncState('dirty', 'Keeping local entry data; cloud backup not loaded', updatedAt);
-      showToast('已保留当前入口本地数据，可随时点击 Cloud Load 恢复云端', 'warning');
+      showCloudWarning('Local data was kept. Use Cloud Load any time to restore the cloud copy.');
       return;
     }
     if (shouldUseDeferredCloudRestore(meta)) {
       setCloudSyncState('saving', `云端数据较大（${formatBackupBytes(getCloudBackupBytes(meta))}），已切换为后台缓慢同步`, updatedAt);
       queueDeferredCloudRestore(meta, { forceOverwriteLocal: true });
-      showToast('已开始后台恢复云端备份', 'success');
+      showCloudInfo('Started restoring the cloud backup in the background');
       return;
     }
     const data = await fetchCloudBackupData();
     if (!data.exists || !data.backup) return;
     await applyCloudBackup({ ...data.backup, summary: data.summary || {} }, updatedAt || data.backup.exportTime || '', { silent: true, forceOverwriteLocal: true, staged: true, skipCompletionAlert: true });
-    showToast('已恢复云端备份到当前入口', 'success');
+    showCloudInfo('Cloud backup restored to the current entry');
   } catch (e) {
     console.warn('cloud restore skipped:', e);
   } finally {
@@ -1188,7 +1203,7 @@ async function loadCloudBackup(opts) {
   try {
     const meta = await fetchCloudBackupMeta();
     if (!meta.exists) {
-      if (!opts.silent) showToast('Cloud backup is empty', 'warning');
+      showCloudWarning('Cloud backup is empty', opts);
       return;
     }
     const updatedAt = meta.updatedAt || '';
@@ -1200,19 +1215,19 @@ async function loadCloudBackup(opts) {
     if (shouldUseDeferredCloudRestore(meta)) {
       setCloudSyncState('saving', `云端数据较大（${formatBackupBytes(getCloudBackupBytes(meta))}），已切换为后台缓慢同步`, updatedAt);
       queueDeferredCloudRestore(meta, { ...opts, forceOverwriteLocal: true });
-      if (!opts.silent) showToast('已切换为后台缓慢同步', 'success');
+      showCloudInfo('Switched to background sync mode', opts);
       return;
     }
     const data = await fetchCloudBackupData();
     if (!data.exists || !data.backup) {
-      if (!opts.silent) showToast('Cloud backup is empty', 'warning');
+      showCloudWarning('Cloud backup is empty', opts);
       return;
     }
     await applyCloudBackup({ ...data.backup, summary: data.summary || {} }, updatedAt || data.backup.exportTime || '', { ...opts, forceOverwriteLocal: true, staged: true, skipCompletionAlert: true });
     cloudConflictBlocked = false;
   } catch (e) {
     setCloudSyncState('error', e.message || '云端检查失败，请稍后重试', '');
-    if (!opts.silent) showToast(e.message || '云端加载失败，请稍后重试', 'error');
+    showCloudError(e, 'Cloud load failed, please try again later', opts);
   } finally {
     cloudBusy = false;
   }
@@ -1281,7 +1296,7 @@ async function saveCloudBackup(opts) {
           cloudBusy = false;
           await saveCloudBackup({ silent: false, forceOverwrite: true });
         } else {
-          showToast('已保留当前本地数据，未覆盖云端', 'warning');
+          showCloudWarning('Local data was kept and the cloud was not overwritten');
         }
       }
       return;
@@ -1292,13 +1307,13 @@ async function saveCloudBackup(opts) {
     cloudConflictBlocked = false;
     await syncWithServer();
     setCloudSyncState('synced', '本地改动已写入云端', data.updatedAt || '');
-    if (!opts.silent) showToast('Cloud backup saved', 'success');
+    showCloudInfo('Cloud backup saved', opts);
   } catch (e) {
     if (e.name === 'AbortError') {
       setCloudSyncState('error', '云端保存超时，请重试', '');
     } else {
       setCloudSyncState('error', e.message || '云端保存失败，请重试', '');
-      if (!opts.silent) showToast(e.message || '云端保存失败，请重试', 'error');
+      showCloudError(e, 'Cloud save failed, please try again', opts);
     }
   } finally {
     clearTimeout(busyTimer);
