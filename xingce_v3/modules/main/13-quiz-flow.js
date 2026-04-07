@@ -523,6 +523,665 @@ startPracticeQueue = async function(mode) {
 
 window.startPracticeQueue = startPracticeQueue;
 
+renderQuizQuestion = function renderQuizQuestionFenbiFinalLive() {
+  const total = quizQueue.length;
+  document.getElementById('quizProgress').textContent = `${quizIdx + 1} / ${total}`;
+  document.getElementById('quizProgFill').style.width = `${(quizIdx / total) * 100}%`;
+  const e = quizQueue[quizIdx];
+  quizQuestionStartedAt = Date.now();
+  const idLit = idArg(e.id);
+  const questionText = String(e.question || '').trim();
+  const isImageHeavyQuestion = !!e.imgData && questionText.length < 20;
+  const opts = e.options ? e.options.split(/\n|\|/).map((o) => o.trim()).filter(Boolean) : [];
+  const optBtns = opts.map((o, i) => {
+    const letter = String.fromCharCode(65 + i);
+    return `<button class="quiz-opt-btn" id="qopt_${letter}" onclick="selectQuizAnswer('${letter}')">${escapeHtml(o)}</button>`;
+  }).join('');
+  const chapterTag = `<div class="quiz-chip-row">
+    <span class="quiz-chip quiz-chip-type">${escapeHtml(e.type || '')}</span>
+    ${e.subtype ? `<span class="quiz-chip quiz-chip-sub">${escapeHtml(e.subtype)}</span>` : ''}
+  </div>`;
+  const imgTag = e.imgData ? `<div class="quiz-image-wrap ${isImageHeavyQuestion ? 'is-image-heavy' : ''}"><img src="${escapeHtml(e.imgData)}" class="cuoti-img ${isImageHeavyQuestion ? 'quiz-image-heavy' : ''}" loading="lazy" decoding="async" onclick="this.classList.toggle('expanded')" title="toggle zoom"></div>` : '';
+  const processImageTag = renderProcessImagePreview(e, 'quiz');
+  const quickJudgeArea = e.imgData ? `
+      <div class="quiz-opt-grid">
+        ${['A', 'B', 'C', 'D'].map((l) => `<button class="quiz-opt-btn" id="qopt_${l}" onclick="selectQuizAnswer('${l}')" style="text-align:center;font-size:16px;font-weight:700">${l}</button>`).join('')}
+      </div>` : `
+      <div class="quiz-judge-row">
+        <button class="quiz-opt-btn quiz-judge-btn quiz-judge-btn--ok" onclick="selectQuizAnswer('√')">正确</button>
+        <button class="quiz-opt-btn quiz-judge-btn quiz-judge-btn--bad" onclick="selectQuizAnswer('×')">错误</button>
+      </div>`;
+  const quizOptionArea = `${optBtns || (!e.imgData ? '<p class="quiz-empty-option">No options. Judge directly.</p>' : '')}
+    ${!opts.length ? quickJudgeArea : ''}`;
+  document.getElementById('quizContent').innerHTML = `
+    <div class="quiz-stage-shell">
+      <div class="quiz-stage-head">
+        ${chapterTag}
+        ${getQuizDurationHint(e) || ''}
+      </div>
+      <div class="quiz-stage-main">
+        <div class="quiz-process-canvas-host error-card quiz-question-surface" data-error-id="${escapeHtml(String(e.id || ''))}">
+          <div class="quiz-sheet-panel ${isImageHeavyQuestion ? 'is-image-heavy' : ''}">
+            <div class="quiz-reading-panel">
+              ${questionText ? `<div class="card-question quiz-question-box">${escapeHtml(questionText)}</div>` : ''}
+              ${imgTag}
+              ${processImageTag}
+            </div>
+            <div class="quiz-answer-panel">
+              <div class="quiz-answer-panel-title">Choose your answer</div>
+              <div class="quiz-canvas-options-wrap">
+                <div class="quiz-opt-grid">${quizOptionArea}</div>
+              </div>
+            </div>
+          </div>
+          <div id="quizAnswerFeedback"></div>
+          <div id="quizAnalysisMount"></div>
+        </div>
+      </div>
+      <div class="quiz-bottom-row quiz-action-dock">
+        <div class="quiz-action-secondary">
+          <button class="quiz-skip-btn" type="button" id="quizCanvasToggleBtn" onclick='toggleQuizProcessCanvas(${idLit}, this)'>画布</button>
+          <button class="quiz-skip-btn" id="quizSkipBtn" onclick="skipQuizQuestion()">跳过</button>
+        </div>
+        <button class="quiz-next-btn" id="quizNextBtn" onclick="nextQuizQuestion()" style="display:none;flex:1">
+          ${quizIdx + 1 < quizQueue.length ? '下一题' : '查看结果'}
+        </button>
+      </div>
+      <div class="quiz-scratch-drawer" id="quizScratchDrawer">
+        <div class="quiz-scratch-head">
+          <div>
+            <div class="quiz-scratch-title">Scratch pad</div>
+            <div class="quiz-scratch-sub">Bounded workspace, hidden by default.</div>
+          </div>
+          <div class="quiz-scratch-actions">
+            <button type="button" class="quiz-scratch-btn" onclick='undoQuizProcessCanvas(${idLit})'>Undo</button>
+            <button type="button" class="quiz-scratch-btn" onclick='clearQuizProcessCanvas(${idLit})'>Clear</button>
+            <button type="button" class="quiz-scratch-btn" onclick='closeQuizProcessCanvas()'>Close</button>
+          </div>
+        </div>
+        <canvas id="quizScratchCanvas" class="quiz-scratch-canvas"></canvas>
+      </div>
+    </div>`;
+  bindQuizScratchCanvas(e.id);
+  closeQuizProcessCanvas();
+};
+
+selectQuizAnswer = function selectQuizAnswerFenbiFinalLive(letter) {
+  document.querySelectorAll('.quiz-opt-btn').forEach((b) => { b.disabled = true; });
+  const e = quizQueue[quizIdx];
+  const correct = e.answer ? e.answer.trim().toUpperCase() : '';
+  const isRight = letter === correct || letter === '√' || (letter !== '×' && letter === correct);
+  const selectedBtn = document.getElementById(`qopt_${letter}`);
+  if (selectedBtn) selectedBtn.classList.add(isRight ? 'correct' : 'wrong');
+  if (!isRight && correct) {
+    const correctBtn = document.getElementById(`qopt_${correct}`);
+    if (correctBtn) correctBtn.classList.add('correct');
+  }
+  const answerRecord = {
+    id: e.id,
+    userAnswer: letter,
+    correct: isRight,
+    skipped: false,
+    durationSec: getCurrentQuizElapsedSec()
+  };
+  quizAnswers.push(answerRecord);
+  updateQuizAnswerState(e, answerRecord);
+  document.getElementById('quizSkipBtn')?.style.setProperty('display', 'none');
+  const nextBtn = document.getElementById('quizNextBtn');
+  if (nextBtn) {
+    nextBtn.style.display = 'block';
+    nextBtn.textContent = quizIdx + 1 < quizQueue.length ? '下一题' : '查看结果';
+  }
+};
+
+renderQuizReview = function renderQuizReviewFenbiFinalLive() {
+  const realAnswers = quizAnswers.filter((a) => !a.skipped);
+  const total = realAnswers.length;
+  const correctN = realAnswers.filter((a) => a.correct).length;
+  const wrongN = total - correctN;
+  const skippedN = quizAnswers.filter((a) => a.skipped).length;
+  document.getElementById('quizProgress').textContent = 'Review';
+  document.getElementById('quizProgFill').style.width = '100%';
+  document.getElementById('quizTitleText').textContent = 'Practice Review';
+  closeQuizProcessCanvas();
+  const items = quizAnswers.map((a) => {
+    const e = errors.find((x) => x.id === a.id);
+    if (!e) return '';
+    const metaLine = [
+      `<span class="quiz-result-chip">${escapeHtml(e.type || '')}</span>`,
+      e.subtype ? `<span class="quiz-result-chip">${escapeHtml(e.subtype)}</span>` : ''
+    ].filter(Boolean).join('');
+    if (a.skipped) {
+      return `<div class="quiz-review-item">
+        <div class="review-meta"><span class="review-verdict" style="color:#d97706">Skipped</span>${metaLine}</div>
+        <div style="font-size:13px;color:#334155;line-height:1.7">${escapeHtml(e.question || '')}</div>
+      </div>`;
+    }
+    return `<div class="quiz-review-item ${a.correct ? 'right' : 'wrong'}">
+      <div class="review-meta"><span class="review-verdict ${a.correct ? 'right' : 'wrong'}">${a.correct ? 'Correct' : 'Wrong'}</span>${metaLine}</div>
+      <div style="font-size:13px;color:#334155;line-height:1.7;margin-bottom:10px">${escapeHtml(e.question || '')}</div>
+      ${getQuizAnswerFeedbackHtml(e, a)}
+      ${e.analysis ? `<div class="review-analysis">${renderAnalysis(e.analysis)}</div>` : ''}
+    </div>`;
+  }).join('');
+  document.getElementById('quizContent').innerHTML = `
+    <div class="quiz-review-shell">
+      <div class="quiz-review-title">Session complete</div>
+      <div class="quiz-summary-bar">
+        <div class="sum-stat"><div class="sum-num green">${correctN}</div><div class="sum-label">Correct</div></div>
+        <div class="sum-stat"><div class="sum-num">${wrongN}</div><div class="sum-label">Wrong</div></div>
+        <div class="sum-stat"><div class="sum-num" style="color:#64748b">${total}</div><div class="sum-label">Answered</div></div>
+        ${skippedN ? `<div class="sum-stat"><div class="sum-num" style="color:#d97706">${skippedN}</div><div class="sum-label">Skipped</div></div>` : ''}
+      </div>
+      <div class="quiz-review-list">${items}</div>
+      <div style="margin-top:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="saveQuizResults()">Save and Close</button>
+        <button class="btn btn-secondary" onclick="markAllWrongAsFocus()">Mark wrong as focus</button>
+        <button class="btn btn-secondary" onclick="requestCloseQuizModal('notes')">Open notes</button>
+      </div>
+    </div>`;
+};
+
+renderQuizQuestion = function renderQuizQuestionFenbiFinal() {
+  const total = quizQueue.length;
+  document.getElementById('quizProgress').textContent = `${quizIdx + 1} / ${total}`;
+  document.getElementById('quizProgFill').style.width = `${(quizIdx / total) * 100}%`;
+  const e = quizQueue[quizIdx];
+  quizQuestionStartedAt = Date.now();
+  const idLit = idArg(e.id);
+  const questionText = String(e.question || '').trim();
+  const isImageHeavyQuestion = !!e.imgData && questionText.length < 20;
+  const opts = e.options ? e.options.split(/\n|\|/).map((o) => o.trim()).filter(Boolean) : [];
+  const optBtns = opts.map((o, i) => {
+    const letter = String.fromCharCode(65 + i);
+    return `<button class="quiz-opt-btn" id="qopt_${letter}" onclick="selectQuizAnswer('${letter}')">${escapeHtml(o)}</button>`;
+  }).join('');
+  const chapterTag = `<div class="quiz-chip-row">
+    <span class="quiz-chip quiz-chip-type">${escapeHtml(e.type || '')}</span>
+    ${e.subtype ? `<span class="quiz-chip quiz-chip-sub">${escapeHtml(e.subtype)}</span>` : ''}
+  </div>`;
+  const imgTag = e.imgData ? `<div class="quiz-image-wrap ${isImageHeavyQuestion ? 'is-image-heavy' : ''}"><img src="${escapeHtml(e.imgData)}" class="cuoti-img ${isImageHeavyQuestion ? 'quiz-image-heavy' : ''}" loading="lazy" decoding="async" onclick="this.classList.toggle('expanded')" title="toggle zoom"></div>` : '';
+  const processImageTag = renderProcessImagePreview(e, 'quiz');
+  const quickJudgeArea = e.imgData ? `
+      <div class="quiz-opt-grid">
+        ${['A', 'B', 'C', 'D'].map((l) => `<button class="quiz-opt-btn" id="qopt_${l}" onclick="selectQuizAnswer('${l}')" style="text-align:center;font-size:16px;font-weight:700">${l}</button>`).join('')}
+      </div>` : `
+      <div class="quiz-judge-row">
+        <button class="quiz-opt-btn quiz-judge-btn quiz-judge-btn--ok" onclick="selectQuizAnswer('√')">正确</button>
+        <button class="quiz-opt-btn quiz-judge-btn quiz-judge-btn--bad" onclick="selectQuizAnswer('×')">错误</button>
+      </div>`;
+  const quizOptionArea = `${optBtns || (!e.imgData ? '<p class="quiz-empty-option">No options. Judge directly.</p>' : '')}
+    ${!opts.length ? quickJudgeArea : ''}`;
+  document.getElementById('quizContent').innerHTML = `
+    <div class="quiz-stage-shell">
+      <div class="quiz-stage-head">
+        ${chapterTag}
+        ${getQuizDurationHint(e) || ''}
+      </div>
+      <div class="quiz-stage-main">
+        <div class="quiz-process-canvas-host error-card quiz-question-surface" data-error-id="${escapeHtml(String(e.id || ''))}">
+          <div class="quiz-sheet-panel ${isImageHeavyQuestion ? 'is-image-heavy' : ''}">
+            <div class="quiz-reading-panel">
+              ${questionText ? `<div class="card-question quiz-question-box">${escapeHtml(questionText)}</div>` : ''}
+              ${imgTag}
+              ${processImageTag}
+            </div>
+            <div class="quiz-answer-panel">
+              <div class="quiz-answer-panel-title">Choose your answer</div>
+              <div class="quiz-canvas-options-wrap">
+                <div class="quiz-opt-grid">${quizOptionArea}</div>
+              </div>
+            </div>
+          </div>
+          <div id="quizAnswerFeedback"></div>
+          <div id="quizAnalysisMount"></div>
+        </div>
+      </div>
+      <div class="quiz-bottom-row quiz-action-dock">
+        <div class="quiz-action-secondary">
+          <button class="quiz-skip-btn" type="button" id="quizCanvasToggleBtn" onclick='toggleQuizProcessCanvas(${idLit}, this)'>画布</button>
+          <button class="quiz-skip-btn" id="quizSkipBtn" onclick="skipQuizQuestion()">跳过</button>
+        </div>
+        <button class="quiz-next-btn" id="quizNextBtn" onclick="nextQuizQuestion()" style="display:none;flex:1">
+          ${quizIdx + 1 < quizQueue.length ? '下一题' : '查看结果'}
+        </button>
+      </div>
+      <div class="quiz-scratch-drawer" id="quizScratchDrawer">
+        <div class="quiz-scratch-head">
+          <div>
+            <div class="quiz-scratch-title">Scratch pad</div>
+            <div class="quiz-scratch-sub">Bounded workspace, hidden by default.</div>
+          </div>
+          <div class="quiz-scratch-actions">
+            <button type="button" class="quiz-scratch-btn" onclick='undoQuizProcessCanvas(${idLit})'>Undo</button>
+            <button type="button" class="quiz-scratch-btn" onclick='clearQuizProcessCanvas(${idLit})'>Clear</button>
+            <button type="button" class="quiz-scratch-btn" onclick='closeQuizProcessCanvas()'>Close</button>
+          </div>
+        </div>
+        <canvas id="quizScratchCanvas" class="quiz-scratch-canvas"></canvas>
+      </div>
+    </div>`;
+  bindQuizScratchCanvas(e.id);
+  closeQuizProcessCanvas();
+};
+
+selectQuizAnswer = function selectQuizAnswerFenbiFinal(letter) {
+  document.querySelectorAll('.quiz-opt-btn').forEach((b) => { b.disabled = true; });
+  const e = quizQueue[quizIdx];
+  const correct = e.answer ? e.answer.trim().toUpperCase() : '';
+  const isRight = letter === correct || letter === '√' || (letter !== '×' && letter === correct);
+  const selectedBtn = document.getElementById(`qopt_${letter}`);
+  if (selectedBtn) selectedBtn.classList.add(isRight ? 'correct' : 'wrong');
+  if (!isRight && correct) {
+    const correctBtn = document.getElementById(`qopt_${correct}`);
+    if (correctBtn) correctBtn.classList.add('correct');
+  }
+  const answerRecord = {
+    id: e.id,
+    userAnswer: letter,
+    correct: isRight,
+    skipped: false,
+    durationSec: getCurrentQuizElapsedSec()
+  };
+  quizAnswers.push(answerRecord);
+  updateQuizAnswerState(e, answerRecord);
+  document.getElementById('quizSkipBtn')?.style.setProperty('display', 'none');
+  const nextBtn = document.getElementById('quizNextBtn');
+  if (nextBtn) {
+    nextBtn.style.display = 'block';
+    nextBtn.textContent = quizIdx + 1 < quizQueue.length ? '下一题' : '查看结果';
+  }
+};
+
+renderQuizReview = function renderQuizReviewFenbiFinal() {
+  const realAnswers = quizAnswers.filter((a) => !a.skipped);
+  const total = realAnswers.length;
+  const correctN = realAnswers.filter((a) => a.correct).length;
+  const wrongN = total - correctN;
+  const skippedN = quizAnswers.filter((a) => a.skipped).length;
+  document.getElementById('quizProgress').textContent = 'Review';
+  document.getElementById('quizProgFill').style.width = '100%';
+  document.getElementById('quizTitleText').textContent = 'Practice Review';
+  closeQuizProcessCanvas();
+  const items = quizAnswers.map((a) => {
+    const e = errors.find((x) => x.id === a.id);
+    if (!e) return '';
+    const metaLine = [
+      `<span class="quiz-result-chip">${escapeHtml(e.type || '')}</span>`,
+      e.subtype ? `<span class="quiz-result-chip">${escapeHtml(e.subtype)}</span>` : ''
+    ].filter(Boolean).join('');
+    if (a.skipped) {
+      return `<div class="quiz-review-item">
+        <div class="review-meta"><span class="review-verdict" style="color:#d97706">Skipped</span>${metaLine}</div>
+        <div style="font-size:13px;color:#334155;line-height:1.7">${escapeHtml(e.question || '')}</div>
+      </div>`;
+    }
+    return `<div class="quiz-review-item ${a.correct ? 'right' : 'wrong'}">
+      <div class="review-meta"><span class="review-verdict ${a.correct ? 'right' : 'wrong'}">${a.correct ? 'Correct' : 'Wrong'}</span>${metaLine}</div>
+      <div style="font-size:13px;color:#334155;line-height:1.7;margin-bottom:10px">${escapeHtml(e.question || '')}</div>
+      ${getQuizAnswerFeedbackHtml(e, a)}
+      ${e.analysis ? `<div class="review-analysis">${renderAnalysis(e.analysis)}</div>` : ''}
+    </div>`;
+  }).join('');
+  document.getElementById('quizContent').innerHTML = `
+    <div class="quiz-review-shell">
+      <div class="quiz-review-title">Session complete</div>
+      <div class="quiz-summary-bar">
+        <div class="sum-stat"><div class="sum-num green">${correctN}</div><div class="sum-label">Correct</div></div>
+        <div class="sum-stat"><div class="sum-num">${wrongN}</div><div class="sum-label">Wrong</div></div>
+        <div class="sum-stat"><div class="sum-num" style="color:#64748b">${total}</div><div class="sum-label">Answered</div></div>
+        ${skippedN ? `<div class="sum-stat"><div class="sum-num" style="color:#d97706">${skippedN}</div><div class="sum-label">Skipped</div></div>` : ''}
+      </div>
+      <div class="quiz-review-list">${items}</div>
+      <div style="margin-top:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="saveQuizResults()">Save and Close</button>
+        <button class="btn btn-secondary" onclick="markAllWrongAsFocus()">Mark wrong as focus</button>
+        <button class="btn btn-secondary" onclick="requestCloseQuizModal('notes')">Open notes</button>
+      </div>
+    </div>`;
+};
+
+const quizScratchState = {};
+
+function getQuizScratchState(questionId) {
+  const key = String(questionId || '');
+  if (!quizScratchState[key]) quizScratchState[key] = { lines: [], drawing: false };
+  return quizScratchState[key];
+}
+
+function drawQuizScratchCanvas(canvas, questionId) {
+  if (!canvas) return;
+  const state = getQuizScratchState(questionId);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const ratio = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  const width = Math.max(1, Math.round(rect.width * ratio));
+  const height = Math.max(1, Math.round(rect.height * ratio));
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+  }
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.scale(ratio, ratio);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#2563eb';
+  ctx.lineWidth = 2;
+  state.lines.forEach((line) => {
+    if (!Array.isArray(line) || !line.length) return;
+    ctx.beginPath();
+    ctx.moveTo(line[0].x, line[0].y);
+    for (let i = 1; i < line.length; i += 1) ctx.lineTo(line[i].x, line[i].y);
+    ctx.stroke();
+  });
+}
+
+function bindQuizScratchCanvas(questionId) {
+  const canvas = document.getElementById('quizScratchCanvas');
+  if (!canvas) return;
+  const state = getQuizScratchState(questionId);
+  if (canvas.dataset.boundQuestionId === String(questionId || '')) {
+    drawQuizScratchCanvas(canvas, questionId);
+    return;
+  }
+  canvas.dataset.boundQuestionId = String(questionId || '');
+  const readPoint = (event) => {
+    const rect = canvas.getBoundingClientRect();
+    const point = event.touches && event.touches[0] ? event.touches[0] : event;
+    return { x: point.clientX - rect.left, y: point.clientY - rect.top };
+  };
+  const start = (event) => {
+    event.preventDefault();
+    state.drawing = true;
+    state.lines.push([readPoint(event)]);
+    drawQuizScratchCanvas(canvas, questionId);
+  };
+  const move = (event) => {
+    if (!state.drawing || !state.lines.length) return;
+    event.preventDefault();
+    state.lines[state.lines.length - 1].push(readPoint(event));
+    drawQuizScratchCanvas(canvas, questionId);
+  };
+  const stop = () => { state.drawing = false; };
+  canvas.onmousedown = start;
+  canvas.onmousemove = move;
+  canvas.onmouseup = stop;
+  canvas.onmouseleave = stop;
+  canvas.ontouchstart = start;
+  canvas.ontouchmove = move;
+  canvas.ontouchend = stop;
+  canvas.ontouchcancel = stop;
+  drawQuizScratchCanvas(canvas, questionId);
+}
+
+function toggleQuizProcessCanvas(questionId, btn) {
+  const drawer = document.getElementById('quizScratchDrawer');
+  const shell = document.querySelector('.quiz-stage-shell');
+  if (!drawer || !shell) {
+    if (typeof window.openCanvas === 'function') window.openCanvas();
+    return;
+  }
+  const willOpen = !drawer.classList.contains('open');
+  drawer.classList.toggle('open', willOpen);
+  shell.classList.toggle('quiz-canvas-open', willOpen);
+  btn?.classList.toggle('active', willOpen);
+  if (willOpen) bindQuizScratchCanvas(questionId);
+}
+
+function closeQuizProcessCanvas() {
+  document.getElementById('quizScratchDrawer')?.classList.remove('open');
+  document.querySelector('.quiz-stage-shell')?.classList.remove('quiz-canvas-open');
+  document.getElementById('quizCanvasToggleBtn')?.classList.remove('active');
+}
+
+function clearQuizProcessCanvas(questionId) {
+  const state = getQuizScratchState(questionId);
+  state.lines = [];
+  drawQuizScratchCanvas(document.getElementById('quizScratchCanvas'), questionId);
+}
+
+function undoQuizProcessCanvas(questionId) {
+  const state = getQuizScratchState(questionId);
+  if (state.lines.length) state.lines.pop();
+  drawQuizScratchCanvas(document.getElementById('quizScratchCanvas'), questionId);
+}
+
+function getQuizTimingSummary(errorLike, durationSec) {
+  const target = Math.max(Number(errorLike?.targetDurationSec || 0), 0);
+  const actual = Math.max(Number(durationSec || 0), 0);
+  if (!actual) return '';
+  let tone = 'ok';
+  let label = `Used ${actual}s`;
+  if (target > 0) {
+    if (actual <= target) label = `On time ${actual}s / ${target}s`;
+    else if (actual <= Math.round(target * 1.3)) {
+      tone = 'warn';
+      label = `A bit slow ${actual}s / ${target}s`;
+    } else {
+      tone = 'danger';
+      label = `Too slow ${actual}s / ${target}s`;
+    }
+  }
+  return `<span class="quiz-result-chip quiz-result-chip--${tone}">${escapeHtml(label)}</span>`;
+}
+
+function getQuizAnswerFeedbackHtml(errorLike, answerRecord) {
+  if (!errorLike || !answerRecord) return '';
+  const statusTone = answerRecord.correct ? 'correct' : 'wrong';
+  const statusText = answerRecord.correct ? 'Correct' : 'Wrong';
+  const parts = [
+    `<span class="quiz-result-chip quiz-result-chip--${statusTone}">${statusText}</span>`,
+    `<span class="quiz-result-chip">Mine ${escapeHtml(answerRecord.userAnswer || '-')}</span>`,
+    `<span class="quiz-result-chip">Answer ${escapeHtml(errorLike.answer || '-')}</span>`
+  ];
+  const timing = getQuizTimingSummary(errorLike, answerRecord.durationSec);
+  if (timing) parts.push(timing);
+  if (!answerRecord.correct && quizSessionMode === 'direct') {
+    parts.push('<span class="quiz-result-chip quiz-result-chip--warn">Next: note-first</span>');
+  }
+  return `<div class="quiz-answer-feedback">${parts.join('')}</div>`;
+}
+
+function getQuizAnalysisPanelHtml(errorLike, answerRecord) {
+  if (!errorLike || !answerRecord) return '';
+  const analysisHtml = errorLike.analysis ? renderAnalysis(errorLike.analysis) : '';
+  const reminderText = String(errorLike.tip || errorLike.nextAction || '').trim();
+  const reminderHtml = reminderText
+    ? `<div class="quiz-analysis-block"><div class="quiz-analysis-label">Next reminder</div><div>${renderAnalysis(reminderText)}</div></div>`
+    : '';
+  const emptyHtml = !analysisHtml && !reminderHtml
+    ? '<div class="quiz-analysis-empty">No analysis yet.</div>'
+    : '';
+  return `
+    <div class="quiz-analysis-panel" id="quizAnalysisPanel">
+      <button class="quiz-analysis-toggle" type="button" onclick="toggleQuizAnalysisPanel()">
+        <span>Analysis</span>
+        <span class="quiz-analysis-toggle-meta">${answerRecord.correct ? 'Keep closed for fast flow' : 'Open if you need review'}</span>
+      </button>
+      <div class="quiz-analysis-content" id="quizAnalysisContent">
+        ${analysisHtml ? `<div class="quiz-analysis-block"><div class="quiz-analysis-label">Why</div><div>${analysisHtml}</div></div>` : ''}
+        ${reminderHtml}
+        ${emptyHtml}
+      </div>
+    </div>`;
+}
+
+function toggleQuizAnalysisPanel(forceOpen) {
+  const panel = document.getElementById('quizAnalysisPanel');
+  if (!panel) return;
+  const willOpen = typeof forceOpen === 'boolean' ? forceOpen : !panel.classList.contains('open');
+  panel.classList.toggle('open', willOpen);
+}
+
+function updateQuizAnswerState(errorLike, answerRecord) {
+  const feedbackHost = document.getElementById('quizAnswerFeedback');
+  const analysisHost = document.getElementById('quizAnalysisMount');
+  if (feedbackHost) feedbackHost.innerHTML = getQuizAnswerFeedbackHtml(errorLike, answerRecord);
+  if (analysisHost) analysisHost.innerHTML = getQuizAnalysisPanelHtml(errorLike, answerRecord);
+}
+
+renderQuizQuestion = function renderQuizQuestionFenbiMode() {
+  const total = quizQueue.length;
+  document.getElementById('quizProgress').textContent = `${quizIdx + 1} / ${total}`;
+  document.getElementById('quizProgFill').style.width = `${(quizIdx / total) * 100}%`;
+  const e = quizQueue[quizIdx];
+  quizQuestionStartedAt = Date.now();
+  const idLit = idArg(e.id);
+  const questionText = String(e.question || '').trim();
+  const isImageHeavyQuestion = !!e.imgData && questionText.length < 20;
+  const opts = e.options ? e.options.split(/\n|\|/).map((o) => o.trim()).filter(Boolean) : [];
+  const optBtns = opts.map((o, i) => {
+    const letter = String.fromCharCode(65 + i);
+    return `<button class="quiz-opt-btn" id="qopt_${letter}" onclick="selectQuizAnswer('${letter}')">${escapeHtml(o)}</button>`;
+  }).join('');
+  const chapterTag = `<div class="quiz-chip-row">
+    <span class="quiz-chip quiz-chip-type">${escapeHtml(e.type || '')}</span>
+    ${e.subtype ? `<span class="quiz-chip quiz-chip-sub">${escapeHtml(e.subtype)}</span>` : ''}
+  </div>`;
+  const imgTag = e.imgData ? `<div class="quiz-image-wrap ${isImageHeavyQuestion ? 'is-image-heavy' : ''}"><img src="${escapeHtml(e.imgData)}" class="cuoti-img ${isImageHeavyQuestion ? 'quiz-image-heavy' : ''}" loading="lazy" decoding="async" onclick="this.classList.toggle('expanded')" title="toggle zoom"></div>` : '';
+  const processImageTag = renderProcessImagePreview(e, 'quiz');
+  const quickJudgeArea = e.imgData ? `
+      <div class="quiz-opt-grid">
+        ${['A', 'B', 'C', 'D'].map((l) => `<button class="quiz-opt-btn" id="qopt_${l}" onclick="selectQuizAnswer('${l}')" style="text-align:center;font-size:16px;font-weight:700">${l}</button>`).join('')}
+      </div>` : `
+      <div class="quiz-judge-row">
+        <button class="quiz-opt-btn quiz-judge-btn quiz-judge-btn--ok" onclick="selectQuizAnswer('√')">正确</button>
+        <button class="quiz-opt-btn quiz-judge-btn quiz-judge-btn--bad" onclick="selectQuizAnswer('×')">错误</button>
+      </div>`;
+  const quizOptionArea = `${optBtns || (!e.imgData ? '<p class="quiz-empty-option">No options. Judge directly.</p>' : '')}
+    ${!opts.length ? quickJudgeArea : ''}`;
+  const durationHint = getQuizDurationHint(e);
+  document.getElementById('quizContent').innerHTML = `
+    <div class="quiz-stage-shell">
+      <div class="quiz-stage-head">
+        ${chapterTag}
+        ${durationHint || ''}
+      </div>
+      <div class="quiz-stage-main">
+        <div class="quiz-process-canvas-host error-card quiz-question-surface" data-error-id="${escapeHtml(String(e.id || ''))}">
+          <div class="quiz-sheet-panel ${isImageHeavyQuestion ? 'is-image-heavy' : ''}">
+            <div class="quiz-reading-panel">
+              ${questionText ? `<div class="card-question quiz-question-box">${escapeHtml(questionText)}</div>` : ''}
+              ${imgTag}
+              ${processImageTag}
+            </div>
+            <div class="quiz-answer-panel">
+              <div class="quiz-answer-panel-title">Choose your answer</div>
+              <div class="quiz-canvas-options-wrap">
+                <div class="quiz-opt-grid">${quizOptionArea}</div>
+              </div>
+            </div>
+          </div>
+          <div id="quizAnswerFeedback"></div>
+          <div id="quizAnalysisMount"></div>
+        </div>
+      </div>
+      <div class="quiz-bottom-row quiz-action-dock">
+        <div class="quiz-action-secondary">
+          <button class="quiz-skip-btn" type="button" id="quizCanvasToggleBtn" onclick='toggleQuizProcessCanvas(${idLit}, this)'>画布</button>
+          <button class="quiz-skip-btn" id="quizSkipBtn" onclick="skipQuizQuestion()">跳过</button>
+        </div>
+        <button class="quiz-next-btn" id="quizNextBtn" onclick="nextQuizQuestion()" style="display:none;flex:1">
+          ${quizIdx + 1 < quizQueue.length ? '下一题' : '查看结果'}
+        </button>
+      </div>
+      <div class="quiz-scratch-drawer" id="quizScratchDrawer">
+        <div class="quiz-scratch-head">
+          <div>
+            <div class="quiz-scratch-title">Scratch pad</div>
+            <div class="quiz-scratch-sub">Bounded workspace, hidden by default.</div>
+          </div>
+          <div class="quiz-scratch-actions">
+            <button type="button" class="quiz-scratch-btn" onclick='undoQuizProcessCanvas(${idLit})'>Undo</button>
+            <button type="button" class="quiz-scratch-btn" onclick='clearQuizProcessCanvas(${idLit})'>Clear</button>
+            <button type="button" class="quiz-scratch-btn" onclick='closeQuizProcessCanvas()'>Close</button>
+          </div>
+        </div>
+        <canvas id="quizScratchCanvas" class="quiz-scratch-canvas"></canvas>
+      </div>
+    </div>`;
+  bindQuizScratchCanvas(e.id);
+  closeQuizProcessCanvas();
+};
+
+selectQuizAnswer = function selectQuizAnswerFenbiMode(letter) {
+  document.querySelectorAll('.quiz-opt-btn').forEach((b) => { b.disabled = true; });
+  const e = quizQueue[quizIdx];
+  const correct = e.answer ? e.answer.trim().toUpperCase() : '';
+  const isRight = letter === correct || letter === '√' || (letter !== '×' && letter === correct);
+  const selectedBtn = document.getElementById(`qopt_${letter}`);
+  if (selectedBtn) selectedBtn.classList.add(isRight ? 'correct' : 'wrong');
+  if (!isRight && correct) {
+    const correctBtn = document.getElementById(`qopt_${correct}`);
+    if (correctBtn) correctBtn.classList.add('correct');
+  }
+  const answerRecord = {
+    id: e.id,
+    userAnswer: letter,
+    correct: isRight,
+    skipped: false,
+    durationSec: getCurrentQuizElapsedSec()
+  };
+  quizAnswers.push(answerRecord);
+  updateQuizAnswerState(e, answerRecord);
+  document.getElementById('quizSkipBtn')?.style.setProperty('display', 'none');
+  const nextBtn = document.getElementById('quizNextBtn');
+  if (nextBtn) {
+    nextBtn.style.display = 'block';
+    nextBtn.textContent = quizIdx + 1 < quizQueue.length ? '下一题' : '查看结果';
+  }
+};
+
+renderQuizReview = function renderQuizReviewFenbiMode() {
+  const realAnswers = quizAnswers.filter((a) => !a.skipped);
+  const total = realAnswers.length;
+  const correctN = realAnswers.filter((a) => a.correct).length;
+  const wrongN = total - correctN;
+  const skippedN = quizAnswers.filter((a) => a.skipped).length;
+  document.getElementById('quizProgress').textContent = 'Review';
+  document.getElementById('quizProgFill').style.width = '100%';
+  document.getElementById('quizTitleText').textContent = 'Practice Review';
+  closeQuizProcessCanvas();
+  const items = quizAnswers.map((a) => {
+    const e = errors.find((x) => x.id === a.id);
+    if (!e) return '';
+    const metaLine = [
+      `<span class="quiz-result-chip">${escapeHtml(e.type || '')}</span>`,
+      e.subtype ? `<span class="quiz-result-chip">${escapeHtml(e.subtype)}</span>` : ''
+    ].filter(Boolean).join('');
+    if (a.skipped) {
+      return `<div class="quiz-review-item">
+        <div class="review-meta"><span class="review-verdict" style="color:#d97706">Skipped</span>${metaLine}</div>
+        <div style="font-size:13px;color:#334155;line-height:1.7">${escapeHtml(e.question || '')}</div>
+      </div>`;
+    }
+    return `<div class="quiz-review-item ${a.correct ? 'right' : 'wrong'}">
+      <div class="review-meta"><span class="review-verdict ${a.correct ? 'right' : 'wrong'}">${a.correct ? 'Correct' : 'Wrong'}</span>${metaLine}</div>
+      <div style="font-size:13px;color:#334155;line-height:1.7;margin-bottom:10px">${escapeHtml(e.question || '')}</div>
+      ${getQuizAnswerFeedbackHtml(e, a)}
+      ${e.analysis ? `<div class="review-analysis">${renderAnalysis(e.analysis)}</div>` : ''}
+    </div>`;
+  }).join('');
+  document.getElementById('quizContent').innerHTML = `
+    <div class="quiz-review-shell">
+      <div class="quiz-review-title">Session complete</div>
+      <div class="quiz-summary-bar">
+        <div class="sum-stat"><div class="sum-num green">${correctN}</div><div class="sum-label">Correct</div></div>
+        <div class="sum-stat"><div class="sum-num">${wrongN}</div><div class="sum-label">Wrong</div></div>
+        <div class="sum-stat"><div class="sum-num" style="color:#64748b">${total}</div><div class="sum-label">Answered</div></div>
+        ${skippedN ? `<div class="sum-stat"><div class="sum-num" style="color:#d97706">${skippedN}</div><div class="sum-label">Skipped</div></div>` : ''}
+      </div>
+      <div class="quiz-review-list">${items}</div>
+      <div style="margin-top:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="saveQuizResults()">Save and Close</button>
+        <button class="btn btn-secondary" onclick="markAllWrongAsFocus()">Mark wrong as focus</button>
+        <button class="btn btn-secondary" onclick="requestCloseQuizModal('notes')">Open notes</button>
+      </div>
+    </div>`;
+};
+
 const __cleanBaseStartPracticeQueue = startPracticeQueue;
 startPracticeQueue = async function startPracticeQueueClean(mode) {
   const normalizedMode = String(mode || 'daily');
@@ -688,3 +1347,6 @@ startPracticeQueue = async function(mode) {
 };
 
 window.startPracticeQueue = startPracticeQueue;
+renderQuizQuestion = renderQuizQuestionFenbiMode;
+selectQuizAnswer = selectQuizAnswerFenbiMode;
+renderQuizReview = renderQuizReviewFenbiMode;
