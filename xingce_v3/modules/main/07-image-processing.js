@@ -566,6 +566,9 @@ function closeGlobalSearchModal(force) {
     if (frame) frame.src = 'about:blank';
   }
 }
+
+window.openGlobalSearchModal = openGlobalSearchModal;
+window.closeGlobalSearchModal = closeGlobalSearchModal;
 function setEditAnalysisImgPreview(b64) {
   editAnalysisImgBase64 = b64;
   document.getElementById('analysisImgPreview').src = b64;

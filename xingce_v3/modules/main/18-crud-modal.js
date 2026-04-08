@@ -137,3 +137,6 @@ openEditModal = function(id) {
   renderQuestionOCRPanel();
   _openEditModalBase(id);
 };
+
+window.openAddModal = openAddModal;
+window.openEditModal = openEditModal;

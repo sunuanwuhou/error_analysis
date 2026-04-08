@@ -44,18 +44,20 @@ The current repo should be evaluated against this rule whenever layout or workfl
 The following are confirmed from the current repository state and should be treated as real baseline, not guesses:
 
 1. authenticated workbench and backend auth routes exist
+2. the Docker-served login page is `app/login.html`
+3. the authenticated default runtime entry is `v51_frontend/index.html`
+4. `v51_frontend/assets/v53-bootstrap.js` bootstraps the active shell and loads bundled assets from `xingce_v3/`
 2. hybrid backup and sync APIs exist
 3. OCR image endpoint exists
-4. quick-create flow in the modern frontend already supports knowledge binding, OCR fill-back, question image upload, source fields, and review state
 5. the repo includes export/transfer UI and practice logging endpoints
-6. the legacy entry still contains process-image related UI and preview chain
+6. the active runtime still contains process-image related UI and preview chain
 
 ## Current documented gaps
 
 These gaps should remain visible until code is aligned:
 
-1. the modern typed workspace model does not yet present process image or canvas as a first-class unified field in `frontend/src/types/workspace.ts`
-2. structured error analysis target fields are richer than the currently normalized modern entry schema
+1. process image or canvas is still not a first-class unified normalized field in the active data model
+2. structured error analysis target fields are richer than the currently normalized entry schema
 3. current docs in the repo were previously scattered and did not function as a single source of truth
 4. product direction and current user priority were not clearly fixed inside the codebase docs
 

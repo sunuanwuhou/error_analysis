@@ -24,3 +24,4 @@ function openHistory() {
   content.innerHTML = items;
   openModal('historyModal');
 }
+window.openHistory = openHistory;

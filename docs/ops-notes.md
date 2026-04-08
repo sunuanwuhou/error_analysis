@@ -89,6 +89,7 @@ Required rule:
 Practical reminder:
 
 - if the active page is still served by `xingce_v3/xingce_v3.html`, changing `frontend/` alone does not count as delivery
+- the repo no longer keeps the old experimental `frontend/` Vite workspace as an active delivery target
 - if the user is looking at the Docker-served app, rebuild the container before asking them to verify
 
 ## Cloudflare Rule

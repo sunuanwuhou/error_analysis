@@ -333,3 +333,5 @@ async function generateNodePractice(){
     showToast(e.message || '相似题生成失败', 'error');
   }
 }
+
+window.openAIToolsModal = openAIToolsModal;

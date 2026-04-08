@@ -337,3 +337,6 @@ function doImport(){
   importKnowledgeNodeId = null;
   syncNotesWithErrors(); // 同步笔记与错题
 }
+
+window.openImportModal = openImportModal;
+window.openQuickImportModal = openQuickImportModal;

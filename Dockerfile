@@ -20,6 +20,7 @@ COPY app /app/app
 COPY scripts /app/scripts
 COPY xingce_v3 /app/xingce_v3
 COPY v51_frontend /app/v51_frontend
+COPY ui/dist /app/ui/dist
 
 RUN python /app/scripts/build_legacy_assets.py
 

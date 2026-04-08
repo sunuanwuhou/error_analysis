@@ -7,6 +7,7 @@ function openClaudeHelper(){
   document.getElementById('templateArea').style.display='none';
   openModal('claudeModal');
 }
+window.openClaudeHelper = openClaudeHelper;
 function genClaudeTemplate(){
   const raw=document.getElementById('rawQuestion').value.trim();
   if(!raw){showToast('请先粘贴题目', 'warning');return;}
@@ -311,3 +312,4 @@ window.refreshClaudeBankModal = function () {
     renderClaudeBankModal();
   }
 };
+window.openClaudeBankModal = openClaudeBankModal;

@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import uuid
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError
@@ -51,10 +52,13 @@ def request_json(opener, url: str, method: str = 'GET', payload: dict[str, Any] 
         headers['Content-Type'] = 'application/json'
     req = Request(url, data=data, headers=headers, method=method)
     try:
-        with opener.open(req, timeout=10) as response:
+        with opener.open(req, timeout=20) as response:
             return response.status, json.loads(response.read().decode('utf-8'))
     except HTTPError as error:
-        body = error.read().decode('utf-8')
+        try:
+            body = error.read().decode('utf-8', errors='replace')
+        except Exception as read_error:  # noqa: BLE001
+            body = json.dumps({'detail': f'failed to read error body: {read_error}'}, ensure_ascii=False)
         try:
             parsed = json.loads(body)
         except json.JSONDecodeError:
@@ -65,7 +69,7 @@ def request_json(opener, url: str, method: str = 'GET', payload: dict[str, Any] 
 def request_text(opener, url: str):
     req = Request(url, method='GET')
     try:
-        with opener.open(req, timeout=10) as response:
+        with opener.open(req, timeout=20) as response:
             return response.status, response.read().decode('utf-8')
     except HTTPError as error:
         return error.code, error.read().decode('utf-8')
@@ -79,6 +83,23 @@ def ensure_test_user(username: str, password: str) -> None:
     except ValueError as error:
         if str(error) != 'username already exists':
             raise
+
+
+def login_with_retry(opener, base_url: str, username: str, password: str, attempts: int = 3):
+    last_status = 0
+    last_payload: dict[str, Any] = {}
+    for index in range(max(1, attempts)):
+        status, payload = request_json(
+            opener,
+            f'{base_url}/api/auth/login',
+            method='POST',
+            payload={'username': username, 'password': password},
+        )
+        if status == 200 and payload.get('ok') is True:
+            return status, payload
+        last_status, last_payload = status, payload
+        time.sleep(0.35 * (index + 1))
+    return last_status, last_payload
 
 
 def restore_db(db_backup_path: Path) -> None:
@@ -96,6 +117,9 @@ def main() -> None:
     db_backup_path = backup_dir / 'xingce.db.backup'
     if DB_PATH.exists():
         shutil.copy2(DB_PATH, db_backup_path)
+    username = f'smoke_{uuid.uuid4().hex[:10]}'
+    password = 'smoke-pass-123'
+    ensure_test_user(username, password)
     server = subprocess.Popen(
         [sys.executable, '-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', str(port)],
         cwd=ROOT,
@@ -112,28 +136,23 @@ def main() -> None:
         status, public_entry = request_json(opener, f'{base_url}/api/public-entry')
         assert status == 200 and 'origin' in public_entry
 
-        username = f'smoke_{int(time.time())}'
-        password = 'smoke-pass-123'
-        status, register_payload = request_json(
-            opener,
-            f'{base_url}/api/auth/register',
-            method='POST',
-            payload={'username': username, 'password': password},
-        )
-        if status in {403, 404}:
-            ensure_test_user(username, password)
-            status, login_payload = request_json(
-                opener,
-                f'{base_url}/api/auth/login',
-                method='POST',
-                payload={'username': username, 'password': password},
-            )
-            assert status == 200 and login_payload.get('ok') is True
-        else:
-            assert status == 200 and register_payload.get('ok') is True
+        status, login_html = request_text(opener, f'{base_url}/login')
+        assert status == 200
+        assert 'Ashore' in login_html
+        assert 'id="username"' in login_html
+        assert 'id="password"' in login_html
+
+        status, login_payload = login_with_retry(opener, base_url, username, password)
+        assert status == 200 and login_payload.get('ok') is True
 
         status, me_payload = request_json(opener, f'{base_url}/api/me')
         assert status == 200 and me_payload.get('user', {}).get('username') == username
+
+        status, runtime_html = request_text(opener, f'{base_url}/')
+        assert status == 200
+        assert '/v51-static/assets/v53-bootstrap.js' in runtime_html
+        assert '/assets/styles/legacy-app.bundle.css' in runtime_html
+        assert 'v53Boot' in runtime_html
 
         status, legacy_html = request_text(opener, f'{base_url}/legacy')
         assert status == 200

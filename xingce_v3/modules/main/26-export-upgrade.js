@@ -311,3 +311,4 @@ function doPrintNotes() {
     <body>${body}<script>window.onload=function(){window.print()}<\/script></body></html>`);
   win.document.close();
 }
+window.openExportModal = openExportModal;

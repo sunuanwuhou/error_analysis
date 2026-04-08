@@ -25,6 +25,7 @@ from app.config import (
     SESSION_COOKIE,
     SESSION_TTL_DAYS,
     SHENLUN_HTML_PATH,
+    UI_INDEX_PATH,
 )
 from app.core import *
 from app.database import get_conn
@@ -113,6 +114,38 @@ def new_frontend_spa(path: str, xingce_session: Optional[str] = Cookie(default=N
     if not user:
         return RedirectResponse(url="/login", status_code=302)
     return RedirectResponse(url="/", status_code=302)
+
+@router.get("/next")
+def next_frontend_root(xingce_session: Optional[str] = Cookie(default=None)) -> Response:
+    user = get_user_by_token(xingce_session)
+    if not user:
+        return RedirectResponse(url="/next/login", status_code=302)
+    if not UI_INDEX_PATH.exists():
+        raise HTTPException(status_code=503, detail="next frontend not built")
+    return FileResponse(
+        UI_INDEX_PATH,
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
+
+@router.get("/next/{path:path}")
+def next_frontend_spa(path: str, xingce_session: Optional[str] = Cookie(default=None)) -> Response:
+    public_paths = {"login"}
+    if path not in public_paths and not get_user_by_token(xingce_session):
+        return RedirectResponse(url="/next/login", status_code=302)
+    if not UI_INDEX_PATH.exists():
+        raise HTTPException(status_code=503, detail="next frontend not built")
+    return FileResponse(
+        UI_INDEX_PATH,
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
 
 @router.get("/login")
 def login_page(request: Request, xingce_session: Optional[str] = Cookie(default=None)) -> Response:

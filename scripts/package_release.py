@@ -28,6 +28,7 @@ EXCLUDE_RELATIVE_PATHS = {
 RUNTIME_INCLUDE_PREFIXES = (
     Path('app'),
     Path('xingce_v3'),
+    Path('ui'),
     Path('docs'),
 )
 RUNTIME_INCLUDE_FILES = {
@@ -38,7 +39,9 @@ RUNTIME_INCLUDE_FILES = {
     Path('requirements.txt'),
     Path('scripts/archive_utils.py'),
     Path('scripts/build_legacy_assets.py'),
+    Path('scripts/check_next_preview_guardrails.py'),
     Path('scripts/check_archive_names.py'),
+    Path('scripts/check_active_runtime_contract.py'),
     Path('scripts/check_legacy_entry.py'),
     Path('scripts/check_router_layout.py'),
     Path('scripts/normalize_escaped_filenames.py'),
@@ -103,12 +106,19 @@ def file_sha256(path: Path) -> str:
 
 def build_release_manifest(archive_path: Path, files: list[Path], mode: str) -> dict[str, object]:
     key_files = [
+        Path('app/login.html'),
+        Path('v51_frontend/index.html'),
+        Path('v51_frontend/assets/v53-bootstrap.js'),
         Path('xingce_v3/xingce_v3.html'),
         Path('xingce_v3/styles/legacy-app.bundle.css'),
         Path('xingce_v3/modules/legacy-app.bundle.js'),
         Path('app/main.py'),
         Path('app/core.py'),
+        Path('ui/package.json'),
+        Path('ui/dist/index.html'),
         Path('scripts/build_legacy_assets.py'),
+        Path('scripts/check_next_preview_guardrails.py'),
+        Path('scripts/check_active_runtime_contract.py'),
         Path('scripts/check_legacy_entry.py'),
         Path('scripts/check_router_layout.py'),
         Path('scripts/smoke_test_legacy_app.py'),
@@ -133,7 +143,9 @@ def build_release_manifest(archive_path: Path, files: list[Path], mode: str) -> 
             if (ROOT / path).exists()
         },
         'checks': [
-            'scripts/build_legacy_assets.py',
+        'scripts/build_legacy_assets.py',
+        'scripts/check_next_preview_guardrails.py',
+        'scripts/check_active_runtime_contract.py',
             'scripts/check_legacy_entry.py',
             'scripts/check_router_layout.py',
             'scripts/smoke_test_legacy_app.py',
@@ -153,7 +165,11 @@ def main() -> None:
     parser.add_argument('--mode', choices=('full', 'runtime'), default='full', help='Build a full source release or a slimmer runtime release.')
     args = parser.parse_args()
 
+    run_step(['npm', '--prefix', 'ui', 'install'], 'Install Vue preview dependencies')
+    run_step(['npm', '--prefix', 'ui', 'run', 'build'], 'Build Vue preview baseline')
+    run_step([sys.executable, 'scripts/check_next_preview_guardrails.py'], 'Check next preview guardrails')
     run_step([sys.executable, 'scripts/build_legacy_assets.py'], 'Rebuild legacy bundles')
+    run_step([sys.executable, 'scripts/check_active_runtime_contract.py'], 'Check active runtime contract')
     run_step([sys.executable, 'scripts/check_legacy_entry.py'], 'Check legacy entry wiring')
     run_step([sys.executable, 'scripts/check_router_layout.py'], 'Check router layout')
     compile_python_sources()

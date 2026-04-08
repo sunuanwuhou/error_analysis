@@ -82,3 +82,4 @@ function resetTypeRules() {
   _saveTypeRules(DEFAULT_TYPE_RULES);
   renderTypeRulesList();
 }
+window.openTypeRulesModal = openTypeRulesModal;

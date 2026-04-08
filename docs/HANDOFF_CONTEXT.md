@@ -60,25 +60,27 @@ Based on the current repository scan:
 ### Confirmed present
 
 1. backend auth, sync, practice, OCR, image, and codex APIs exist
-2. the modern frontend has a quick-create panel with OCR fill-back, question image upload, source fields, knowledge-point binding, and review-state saving
-3. the workspace store normalizes standard error-entry fields such as question, answer, my answer, analysis, rootReason, errorReason, source info, and images
+2. the Docker runtime serves `app/login.html` before authentication and `v51_frontend/index.html` after authentication
+3. `v51_frontend/assets/v53-bootstrap.js` is the active shell bootstrap and pulls bundled assets from `xingce_v3/`
 4. export and transfer UI exists
-5. the legacy bundle still contains process-image editor and process-image preview related logic
+5. the active runtime still contains process-image editor and process-image preview related logic
 
 ### Confirmed mismatch or unfinished alignment
 
-1. the modern typed data model does not yet expose process image or canvas as a first-class normalized field
+1. process image or canvas is not yet a first-class normalized field in the active data model
 2. the structured error analysis target is only partially represented in the modern schema
 3. repo docs previously reflected many historical directions but did not pin the current user priority strongly enough
+4. historical frontend experiments created ambiguity about the true delivery target until the runtime chain was rechecked against Docker
 
 ## Product direction for ongoing work
 
 The safest direction is:
 
 1. keep the repo runnable and packageable
-2. keep legacy useful paths available where needed
+2. keep the current runtime path singular and explicit
 3. move toward a unified modern schema without silently losing process image, structured error analysis, or review-chain data
 4. prefer system completeness over new shiny branches
+5. use `customer-mgmt` only as an engineering-baseline reference, not as permission to change the workbench shape
 
 ## Current documentation contract
 

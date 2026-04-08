@@ -10,10 +10,24 @@ Before changing code or shipping a new build, read these docs in order:
 4. `docs/DEVLOG.md`
 5. `docs/RELEASE_CHECKLIST.md`
 6. `docs/SELF_TEST_REPORT.md`
+7. `docs/ACTIVE_RUNTIME_INVENTORY.md`
+8. `docs/MGMT_MIGRATION_BASELINE.md`
+9. `docs/RUNTIME_MIGRATION_PARITY_PLAN.md`
 
 These files are now the repository source of truth for project goals, current phase, delivery rules, handoff context, and what was actually tested.
 
 `xingce_v3_lab` is the current authenticated study workbench for error analysis, knowledge-note editing, cloud sync, and AI-assisted review.
+
+## Active Runtime Baseline
+
+The live Docker-served chain is:
+
+1. `/login` -> `app/login.html`
+2. authenticated `/` -> `v51_frontend/index.html`
+3. `v51_frontend/assets/v53-bootstrap.js` loads the current shell
+4. `xingce_v3/` provides the bundled legacy modules, styles, and feature pages
+
+The old experimental Vite Vue workspace under `frontend/` is no longer part of the active runtime baseline and should not be treated as the delivery target.
 
 ## Current Product State
 

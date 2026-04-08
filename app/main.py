@@ -6,7 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.config import BASE_DIR, V51_STATIC_DIR
+from app.config import BASE_DIR, UI_DIST_DIR, V51_STATIC_DIR
 from app.core import on_startup
 from app.routers import ai, auth, backup, codex, images, knowledge, practice, sync, web
 
@@ -30,14 +30,25 @@ def create_app() -> FastAPI:
     app.mount("/assets", StaticFiles(directory=str(BASE_DIR / "xingce_v3")), name="assets")
     if V51_STATIC_DIR.exists():
         app.mount("/v51-static", StaticFiles(directory=str(V51_STATIC_DIR)), name="v51-static")
+    if UI_DIST_DIR.exists():
+        app.mount("/next-static", StaticFiles(directory=str(UI_DIST_DIR), html=False), name="next-static")
     @app.middleware("http")
     async def disable_static_cache_for_local_debug(request: Request, call_next):
         response = await call_next(request)
         path = request.url.path or ""
-        if path.startswith("/assets/") or path.startswith("/v51-static/assets/") or path in {"/v51-static/partials.bundle.html", "/v51-static/deferred-partials.bundle.html"}:
+        if (
+            path.startswith("/assets/")
+            or path.startswith("/v51-static/assets/")
+            or path in {"/v51-static/partials.bundle.html", "/v51-static/deferred-partials.bundle.html"}
+        ):
             response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
             return response
-        if path in {"/", "/legacy", "/v51", "/v53", "/login"} or path.startswith("/v51/") or path.startswith("/v53/"):
+        if path.startswith("/next-static/"):
+            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+            return response
+        if path in {"/", "/legacy", "/v51", "/v53", "/login", "/next"} or path.startswith("/v51/") or path.startswith("/v53/") or path.startswith("/next/"):
             response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
             response.headers["Pragma"] = "no-cache"
             response.headers["Expires"] = "0"

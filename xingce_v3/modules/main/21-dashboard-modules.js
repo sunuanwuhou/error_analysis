@@ -5,6 +5,201 @@ let _dashTrendDays = 7;
 let _practiceInsightsState = { loading: false, loaded: false, error: '', data: null };
 let _practiceWorkbenchState = { loading: false, loaded: false, error: '', data: null };
 let _recommendedNotesReturnEnabled = false;
+let _homeLaunchActionConsumed = false;
+
+function consumeHomeLaunchAction() {
+  if (_homeLaunchActionConsumed) return;
+  const params = new URLSearchParams(window.location.search || '');
+  const action = String(params.get('home_action') || '').trim().toLowerCase();
+  const recommendedNoteId = String(params.get('node_id') || '').trim();
+  const editErrorId = String(params.get('error_id') || '').trim();
+  const backupId = String(params.get('backup_id') || '').trim();
+  if (!action) return;
+  _homeLaunchActionConsumed = true;
+  params.delete('home_action');
+  params.delete('node_id');
+  params.delete('error_id');
+  params.delete('backup_id');
+  const nextQuery = params.toString();
+  const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash || ''}`;
+  window.history.replaceState({}, '', nextUrl);
+  if (typeof switchAppView === 'function') switchAppView('home');
+  setTimeout(() => {
+    if (action === 'note') {
+      openRecommendedNotesModal();
+      return;
+    }
+    if (action === 'recommended_notes') {
+      if (typeof openRecommendedNotesModal === 'function') openRecommendedNotesModal();
+      return;
+    }
+    if (action === 'recommended_notes_return') {
+      if (typeof returnToRecommendedNotes === 'function') returnToRecommendedNotes();
+      return;
+    }
+    if (action === 'recommended_note') {
+      if (recommendedNoteId && typeof openRecommendedNote === 'function') openRecommendedNote(recommendedNoteId);
+      return;
+    }
+    if (action === 'direct' || action === 'speed' || action === 'daily') {
+      startPracticeQueue(action === 'daily' ? 'daily' : action);
+      return;
+    }
+    if (action === 'dashboard') {
+      openDashboard();
+      return;
+    }
+    if (action === 'cloud_load') {
+      if (typeof loadCloudBackup === 'function') loadCloudBackup({ silent: false });
+      return;
+    }
+    if (action === 'cloud_save') {
+      if (typeof saveCloudBackup === 'function') saveCloudBackup({ silent: false });
+      return;
+    }
+    if (action === 'workspace_notes') {
+      if (typeof openWorkspaceView === 'function') openWorkspaceView('notes');
+      return;
+    }
+    if (action === 'workspace_errors') {
+      if (typeof openWorkspaceView === 'function') openWorkspaceView('errors');
+      return;
+    }
+    if (action === 'taskview_errors') {
+      if (typeof openWorkspaceTaskView === 'function') openWorkspaceTaskView('errors');
+      return;
+    }
+    if (action === 'taskview_notes') {
+      if (typeof openWorkspaceTaskView === 'function') openWorkspaceTaskView('notes');
+      return;
+    }
+    if (action === 'codex') {
+      if (typeof openCodexInboxModal === 'function') openCodexInboxModal();
+      return;
+    }
+    if (action === 'history') {
+      if (typeof openHistory === 'function') openHistory();
+      return;
+    }
+    if (action === 'ai_tools') {
+      if (typeof openAIToolsModal === 'function') openAIToolsModal();
+      return;
+    }
+    if (action === 'local_backup') {
+      if (typeof openLocalBackupModal === 'function') openLocalBackupModal();
+      return;
+    }
+    if (action === 'local_backup_create') {
+      if (typeof createManualLocalBackup === 'function') createManualLocalBackup();
+      return;
+    }
+    if (action === 'local_backup_refresh') {
+      if (typeof refreshLocalBackups === 'function') refreshLocalBackups();
+      return;
+    }
+    if (action === 'local_backup_restore') {
+      if (backupId && typeof restoreLocalBackup === 'function') restoreLocalBackup(backupId);
+      return;
+    }
+    if (action === 'local_backup_delete') {
+      if (backupId && typeof deleteLocalBackup === 'function') deleteLocalBackup(backupId);
+      return;
+    }
+    if (action === 'export') {
+      if (typeof openExportModal === 'function') openExportModal();
+      return;
+    }
+    if (action === 'remark_list') {
+      if (typeof openRemarkListModal === 'function') openRemarkListModal();
+      return;
+    }
+    if (action === 'remark_daily_log') {
+      if (typeof openRemarkListModal === 'function') openRemarkListModal();
+      setTimeout(() => {
+        if (typeof insertGlobalRemarkDailyLog === 'function') insertGlobalRemarkDailyLog();
+      }, 40);
+      return;
+    }
+    if (action === 'daily_journal') {
+      if (typeof openDailyJournalModal === 'function') openDailyJournalModal();
+      return;
+    }
+    if (action === 'daily_journal_today') {
+      if (typeof jumpDailyJournalToToday === 'function') jumpDailyJournalToToday();
+      return;
+    }
+    if (action === 'daily_journal_template') {
+      if (typeof insertDailyJournalTemplate === 'function') insertDailyJournalTemplate();
+      return;
+    }
+    if (action === 'global_search') {
+      if (typeof openGlobalSearchModal === 'function') openGlobalSearchModal();
+      return;
+    }
+    if (action === 'add_modal') {
+      if (typeof openAddModal === 'function') openAddModal();
+      return;
+    }
+    if (action === 'edit_error') {
+      if (editErrorId && typeof openEditModal === 'function') openEditModal(editErrorId);
+      return;
+    }
+    if (action === 'import') {
+      if (typeof openImportModal === 'function') openImportModal();
+      return;
+    }
+    if (action === 'quick_import') {
+      if (typeof openQuickImportModal === 'function') openQuickImportModal();
+      return;
+    }
+    if (action === 'dir_modal') {
+      if (typeof openDirModal === 'function') openDirModal();
+      return;
+    }
+    if (action === 'knowledge_move') {
+      if (typeof openBatchKnowledgeMove === 'function') openBatchKnowledgeMove();
+      return;
+    }
+    if (action === 'knowledge_node') {
+      if (typeof openKnowledgeNodeModal === 'function') openKnowledgeNodeModal('create-root');
+      return;
+    }
+    if (action === 'type_rules') {
+      if (typeof openTypeRulesModal === 'function') openTypeRulesModal();
+      return;
+    }
+    if (action === 'claude_helper') {
+      if (typeof openClaudeHelper === 'function') openClaudeHelper();
+      return;
+    }
+    if (action === 'claude_bank') {
+      if (typeof openClaudeBankModal === 'function') openClaudeBankModal();
+      return;
+    }
+    if (action === 'claude_bank_refresh') {
+      if (typeof openClaudeBankModal === 'function') openClaudeBankModal();
+      setTimeout(() => {
+        if (typeof refreshClaudeBankModal === 'function') refreshClaudeBankModal();
+      }, 40);
+      return;
+    }
+    if (action === 'canvas') {
+      if (typeof openCanvas === 'function') openCanvas();
+      return;
+    }
+    if (action === 'full') {
+      if (typeof startFullPractice === 'function') startFullPractice();
+      return;
+    }
+    if (action === 'quickadd') {
+      if (typeof openWorkspaceQuickAdd === 'function') {
+        openWorkspaceQuickAdd();
+        return;
+      }
+      if (typeof openQuickAddModal === 'function') openQuickAddModal();
+    }
+  }, 80);
+}
 
 function getNoteReviewRecord(nodeId) {
   return (noteReviewTracking && noteReviewTracking[nodeId]) || {};
@@ -440,3 +635,4 @@ window.invalidatePracticeWorkbench = invalidatePracticeWorkbench;
 window.openRecommendedNotesModal = openRecommendedNotesModal;
 window.openRecommendedNote = openRecommendedNote;
 window.returnToRecommendedNotes = returnToRecommendedNotes;
+window.consumeHomeLaunchAction = consumeHomeLaunchAction;

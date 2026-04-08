@@ -31,6 +31,7 @@ function openDirModal() {
   renderDirCols();
   openModal('dirModal');
 }
+window.openDirModal = openDirModal;
 function renderDirCols() {
   // Level 1
   const col1 = document.getElementById('dirCol1');
@@ -878,6 +879,7 @@ function openKnowledgeNodeModal(mode, opts) {
     if (mode !== 'move') titleInput.select();
   }, 10);
 }
+window.openKnowledgeNodeModal = openKnowledgeNodeModal;
 function closeKnowledgeNodeModal() {
   knowledgeNodeModalState = { mode: '', nodeId: null, parentId: null, targetId: null, fallbackTitle: '' };
   closeModal('knowledgeNodeModal');
@@ -1201,6 +1203,7 @@ function openBatchKnowledgeMove() {
   renderKnowledgeMoveOptions();
   openModal('knowledgeMoveModal');
 }
+window.openBatchKnowledgeMove = openBatchKnowledgeMove;
 function closeKnowledgeMoveModal() {
   pendingKnowledgeMoveErrorIds = [];
   pendingKnowledgeMoveErrorId = null;
