@@ -1,6 +1,6 @@
 async function loadText(url) {
   const res = await fetch(url, { credentials: 'same-origin' });
-  if (!res.ok) throw new Error(`Failed to load ${url}: ${res.status}`);
+  if (!res.ok) throw new Error(`加载 ${url} 失败：${res.status}`);
   return res.text();
 }
 
@@ -12,7 +12,7 @@ async function loadLegacyManifest() {
   if (!legacyManifestPromise) {
     legacyManifestPromise = (async () => {
       const manifestRes = await fetch('/assets/legacy-app.bundle.manifest.json', { cache: 'no-store', credentials: 'same-origin' });
-      if (!manifestRes.ok) throw new Error(`Failed to load legacy manifest: ${manifestRes.status}`);
+      if (!manifestRes.ok) throw new Error(`加载前端清单失败：${manifestRes.status}`);
       const manifest = await manifestRes.json();
       legacyAssetVersion = String(manifest?.built_at || manifest?.js_bundle?.sha256 || Date.now());
       return manifest;
@@ -31,6 +31,35 @@ async function injectPartials() {
   while (mount.firstChild) {
     document.body.appendChild(mount.firstChild);
   }
+}
+
+function injectUtilityMenuEntries() {
+  const panel = document.getElementById('moreMenuPanel');
+  if (!panel) return;
+  const exportBtn = Array.from(panel.querySelectorAll('button')).find((button) =>
+    String(button.getAttribute('data-onclick') || '').includes('openExportModal()')
+  );
+  const entries = [
+    { marker: 'data-daily-journal-entry', label: '每日日记', action: 'closeMoreMenu();openDailyJournalModal()' },
+    { marker: 'data-remark-list-entry', label: '备注', action: 'closeMoreMenu();openRemarkListModal()' }
+  ];
+  let anchor = exportBtn;
+  entries.forEach((entry) => {
+    if (panel.querySelector(`[${entry.marker}="1"]`)) return;
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-secondary';
+    btn.type = 'button';
+    btn.textContent = entry.label;
+    btn.setAttribute(entry.marker, '1');
+    btn.setAttribute('data-onclick', entry.action);
+    if (anchor && anchor.parentNode) {
+      anchor.parentNode.insertBefore(btn, anchor.nextSibling);
+      anchor = btn;
+    } else {
+      panel.appendChild(btn);
+      anchor = btn;
+    }
+  });
 }
 
 async function ensureDeferredPartialsLoaded() {
@@ -91,7 +120,7 @@ function loadScript(src, { defer = false } = {}) {
     script.src = src;
     if (defer) script.defer = true;
     script.onload = () => resolve();
-    script.onerror = () => reject(new Error(`Failed to load ${src}`));
+    script.onerror = () => reject(new Error(`加载脚本失败：${src}`));
     document.body.appendChild(script);
   });
 }
@@ -137,6 +166,7 @@ async function loadLegacyModules() {
       'startFullPractice'
     ].forEach(installDeferredAction);
     await injectPartials();
+    injectUtilityMenuEntries();
     scheduleDeferredPartialsLoad();
     await loadScript(withVersion('/assets/modules/mathjax-config.js'));
     await loadScript(withVersion('/assets/vendor/mathjax/tex-svg.js'), { defer: true });

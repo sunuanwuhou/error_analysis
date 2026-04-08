@@ -1106,6 +1106,8 @@ renderQuizQuestion = function renderQuizQuestionFenbiMode() {
   closeQuizProcessCanvas();
 };
 
+var renderQuizQuestionFenbiMode = renderQuizQuestion;
+
 selectQuizAnswer = function selectQuizAnswerFenbiMode(letter) {
   document.querySelectorAll('.quiz-opt-btn').forEach((b) => { b.disabled = true; });
   const e = quizQueue[quizIdx];
@@ -1133,6 +1135,8 @@ selectQuizAnswer = function selectQuizAnswerFenbiMode(letter) {
     nextBtn.textContent = quizIdx + 1 < quizQueue.length ? '下一题' : '查看结果';
   }
 };
+
+var selectQuizAnswerFenbiMode = selectQuizAnswer;
 
 renderQuizReview = function renderQuizReviewFenbiMode() {
   const realAnswers = quizAnswers.filter((a) => !a.skipped);
@@ -1181,6 +1185,8 @@ renderQuizReview = function renderQuizReviewFenbiMode() {
       </div>
     </div>`;
 };
+
+var renderQuizReviewFenbiMode = renderQuizReview;
 
 const __cleanBaseStartPracticeQueue = startPracticeQueue;
 startPracticeQueue = async function startPracticeQueueClean(mode) {
@@ -1350,3 +1356,214 @@ window.startPracticeQueue = startPracticeQueue;
 renderQuizQuestion = renderQuizQuestionFenbiMode;
 selectQuizAnswer = selectQuizAnswerFenbiMode;
 renderQuizReview = renderQuizReviewFenbiMode;
+
+function getPracticeEntryLeadItem(mode) {
+  const queue = Array.isArray(quizQueue) ? quizQueue : [];
+  if (queue.length) return queue[0];
+  const fallbackQueue = typeof getTaskPackQueueByMode === 'function' ? getTaskPackQueueByMode(mode, 12) : [];
+  return Array.isArray(fallbackQueue) && fallbackQueue.length ? fallbackQueue[0] : null;
+}
+
+function getPracticeEntrySummary(errorLike) {
+  const e = errorLike || {};
+  const noteNodeId = String(e.noteNodeId || '').trim();
+  const noteNode = noteNodeId && typeof getKnowledgeNodeById === 'function' ? getKnowledgeNodeById(noteNodeId) : null;
+  const pathTitles = noteNodeId && typeof getKnowledgePathTitles === 'function'
+    ? getKnowledgePathTitles(noteNodeId)
+    : [];
+  const notePath = Array.isArray(pathTitles) && pathTitles.length ? pathTitles.join(' > ') : '';
+  const noteSummary = String((noteNode && noteNode.contentMd) || '').replace(/[#>*`\-\n\r]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
+  return {
+    noteNodeId,
+    noteTitle: String((noteNode && noteNode.title) || ''),
+    notePath,
+    noteSummary,
+    tip: String(e.tip || e.nextAction || '').trim(),
+    targetDuration: Math.max(Number(e.targetDurationSec || 0), 0),
+    recentDuration: Math.max(Number(e.lastDuration || e.actualDurationSec || 0), 0),
+  };
+}
+
+function ensurePracticeEntryModal() {
+  let mask = document.getElementById('practiceEntryModal');
+  if (mask) return mask;
+  mask = document.createElement('div');
+  mask.id = 'practiceEntryModal';
+  mask.className = 'modal-mask';
+  mask.innerHTML = `
+    <div class="modal" style="width:720px;max-width:96vw;max-height:88vh;overflow-y:auto">
+      <button class="modal-close" type="button" data-onclick="closeModal('practiceEntryModal')">×</button>
+      <div id="practiceEntryBody"></div>
+    </div>`;
+  document.body.appendChild(mask);
+  return mask;
+}
+
+function startQueuedPracticeNow() {
+  closeModal('practiceEntryModal');
+  quizIdx = 0;
+  quizAnswers = [];
+  quizSkipped = new Set();
+  openModal('quizModal');
+  renderQuizQuestion();
+}
+
+function openPracticeEntryNote() {
+  const item = getPracticeEntryLeadItem('note');
+  const noteNodeId = String(item && item.noteNodeId || '').trim();
+  if (!noteNodeId) {
+    startQueuedPracticeNow();
+    return;
+  }
+  if (typeof markRecommendedNoteViewed === 'function') {
+    markRecommendedNoteViewed(noteNodeId, { source: 'note_first_preflight' });
+  }
+  closeModal('practiceEntryModal');
+  if (typeof setCurrentKnowledgeNode === 'function') {
+    setCurrentKnowledgeNode(noteNodeId, { switchTab: true, mode: 'note' });
+  } else if (typeof openWorkspaceView === 'function') {
+    openWorkspaceView('notes');
+  }
+}
+
+function showPracticeEntryModal(mode) {
+  const item = getPracticeEntryLeadItem(mode);
+  if (!item) {
+    openModal('quizModal');
+    renderQuizQuestion();
+    return;
+  }
+  const summary = getPracticeEntrySummary(item);
+  ensurePracticeEntryModal();
+  const body = document.getElementById('practiceEntryBody');
+  if (!body) {
+    startQueuedPracticeNow();
+    return;
+  }
+  const questionPreview = escapeHtml(String(item.question || '').trim().slice(0, 80) || 'Untitled question');
+  const topMeta = `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <span class="quiz-result-chip">${escapeHtml(item.type || '')}</span>
+      ${item.subtype ? `<span class="quiz-result-chip">${escapeHtml(item.subtype)}</span>` : ''}
+      ${item.priorityReasons && item.priorityReasons[0] ? `<span class="quiz-result-chip">${escapeHtml(item.priorityReasons[0])}</span>` : ''}
+    </div>`;
+
+  if (mode === 'note') {
+    body.innerHTML = `
+      <h2 style="margin-bottom:6px">先看笔记</h2>
+      <div style="font-size:12px;color:#667085;line-height:1.8;margin-bottom:14px">这批题更像方法未稳或概念不牢，先用一条笔记把思路扶正，再进题更划算。</div>
+      ${topMeta}
+      <div class="home-dashboard-card" style="margin-bottom:12px">
+        <h3 style="margin-bottom:6px">${escapeHtml(summary.noteTitle || '还没有对应笔记')}</h3>
+        <div style="font-size:12px;color:#667085;line-height:1.7">${escapeHtml(summary.notePath || '当前题目还没挂到可阅读笔记')}</div>
+        ${summary.tip ? `<div style="margin-top:10px;font-size:13px;color:#b42318;line-height:1.8">${escapeHtml(summary.tip)}</div>` : ''}
+        <div style="margin-top:10px;font-size:13px;color:#344054;line-height:1.8">${escapeHtml(summary.noteSummary || '这条笔记还没有摘要内容，建议先补一条短规则总结。')}</div>
+      </div>
+      <div class="home-note-item" style="margin-bottom:14px"><strong>首题预览</strong><span>${questionPreview}</span></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+        ${summary.noteNodeId ? `<button class="btn btn-secondary" type="button" onclick="openPracticeEntryNote()">打开笔记</button>` : ''}
+        <button class="btn btn-primary" type="button" onclick="startQueuedPracticeNow()">直接开始做题</button>
+      </div>`;
+  } else if (mode === 'speed') {
+    body.innerHTML = `
+      <h2 style="margin-bottom:6px">限时复训</h2>
+      <div style="font-size:12px;color:#667085;line-height:1.8;margin-bottom:14px">先压时间，再决定要不要回看笔记。目标是把会做但偏慢的题拉回稳定节奏。</div>
+      ${topMeta}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+        ${summary.targetDuration ? `<span class="quiz-result-chip quiz-result-chip--warn">目标 ${summary.targetDuration}s</span>` : ''}
+        ${summary.recentDuration ? `<span class="quiz-result-chip">上次 ${summary.recentDuration}s</span>` : ''}
+        ${summary.tip ? `<span class="quiz-result-chip">${escapeHtml(summary.tip)}</span>` : ''}
+      </div>
+      <div class="home-note-item" style="margin-bottom:14px"><strong>首题预览</strong><span>${questionPreview}</span></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+        <button class="btn btn-primary" type="button" onclick="startQueuedPracticeNow()">开始限时做题</button>
+      </div>`;
+  } else {
+    body.innerHTML = `
+      <h2 style="margin-bottom:6px">直接开做</h2>
+      <div style="font-size:12px;color:#667085;line-height:1.8;margin-bottom:14px">这批题更像执行性失误，先看一句提醒，马上进题验证。</div>
+      ${topMeta}
+      ${summary.tip ? `<div class="home-dashboard-card" style="margin-bottom:14px"><div style="font-size:13px;color:#344054;line-height:1.8">${escapeHtml(summary.tip)}</div></div>` : ''}
+      <div class="home-note-item" style="margin-bottom:14px"><strong>首题预览</strong><span>${questionPreview}</span></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+        <button class="btn btn-primary" type="button" onclick="startQueuedPracticeNow()">直接开始</button>
+      </div>`;
+  }
+  openModal('practiceEntryModal');
+}
+
+function applyQuizResultFlow(errorItem, answerRecord) {
+  if (!errorItem || !answerRecord || answerRecord.skipped) return;
+  errorItem.actualDurationSec = Number(answerRecord.durationSec || 0);
+  errorItem.lastDuration = Number(answerRecord.durationSec || 0);
+  if (quizSessionMode === 'direct') {
+    if (!answerRecord.correct) {
+      errorItem.problemType = 'cognition';
+      errorItem.nextActionType = 'review_note';
+      errorItem.workflowStage = 'review_ready';
+      if (!String(errorItem.nextAction || '').trim()) {
+        errorItem.nextAction = '先回看笔记，再做同类题验证';
+      }
+    } else {
+      errorItem.nextActionType = 'observe';
+    }
+    return;
+  }
+  if (quizSessionMode === 'speed') {
+    const target = Math.max(Number(errorItem.targetDurationSec || 0), 0);
+    const actual = Math.max(Number(answerRecord.durationSec || 0), 0);
+    const slow = target > 0 && actual > target;
+    if (answerRecord.correct && !slow) {
+      errorItem.nextActionType = 'observe';
+      if (String(errorItem.workflowStage || '') === 'retrain_due') errorItem.workflowStage = 'review_ready';
+      return;
+    }
+    errorItem.workflowStage = 'review_ready';
+    if (!answerRecord.correct) {
+      errorItem.problemType = 'cognition';
+      errorItem.nextActionType = 'review_note';
+      if (!String(errorItem.nextAction || '').trim()) {
+        errorItem.nextAction = '先回看笔记，再做一轮限时验证';
+      }
+    } else if (slow) {
+      errorItem.problemType = errorItem.problemType || 'mixed';
+      errorItem.nextActionType = 'retrain';
+      if (!String(errorItem.nextAction || '').trim()) {
+        errorItem.nextAction = '方法没问题，但速度还要再压一轮';
+      }
+    }
+    return;
+  }
+  if (quizSessionMode === 'note') {
+    if (answerRecord.correct) {
+      errorItem.nextActionType = 'observe';
+    } else {
+      errorItem.nextActionType = 'mixed_train';
+      errorItem.workflowStage = 'review_ready';
+    }
+  }
+}
+
+const __mainlineStartPracticeQueue = startPracticeQueue;
+startPracticeQueue = async function startPracticeQueueMainline(mode) {
+  const normalizedMode = String(mode || 'daily');
+  await __mainlineStartPracticeQueue(normalizedMode);
+  if (!['note', 'direct', 'speed'].includes(normalizedMode)) return;
+  const quizModal = document.getElementById('quizModal');
+  if (!quizModal || !quizModal.classList.contains('open') || !Array.isArray(quizQueue) || !quizQueue.length) return;
+  closeModal('quizModal');
+  showPracticeEntryModal(normalizedMode);
+};
+
+window.startPracticeQueue = startPracticeQueue;
+
+const __mainlineSaveQuizResults = saveQuizResults;
+saveQuizResults = async function saveQuizResultsMainline() {
+  const answered = quizAnswers.filter(a => !a.skipped);
+  answered.forEach((answerRecord) => {
+    const errorItem = errors.find(x => x.id === answerRecord.id);
+    if (errorItem) applyQuizResultFlow(errorItem, answerRecord);
+  });
+  await __mainlineSaveQuizResults();
+  if (typeof invalidatePracticeWorkbench === 'function') invalidatePracticeWorkbench();
+};

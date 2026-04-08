@@ -90,6 +90,7 @@ function _applyFullBackup(data, mode, opts) {
     _typeRules = data.typeRules || null;
     _dirTree = data.dirTree || null;
     globalNote = data.globalNote !== undefined ? data.globalNote : '';
+    dailyJournalEntries = data.dailyJournalEntries && typeof data.dailyJournalEntries === 'object' ? data.dailyJournalEntries : {};
     knowledgeExpanded = new Set((data.knowledgeExpanded || []).map(String));
     knowledgeExpandedLoaded = true;
     todayDate = data.todayDate || today();
@@ -98,6 +99,7 @@ function _applyFullBackup(data, mode, opts) {
     DB.set(KEY_TYPE_RULES, JSON.stringify(_typeRules));
     DB.set(KEY_DIR_TREE, JSON.stringify(_dirTree));
     DB.set(KEY_GLOBAL_NOTE, globalNote);
+    DB.set(KEY_DAILY_JOURNAL, JSON.stringify(dailyJournalEntries || {}));
     DB.set(KEY_KNOWLEDGE_EXPANDED, JSON.stringify(Array.from(knowledgeExpanded)));
     DB.set(KEY_TODAY_DATE, todayDate);
     DB.set(KEY_TODAY_DONE, String(todayDone));
@@ -173,6 +175,7 @@ function _applyFullBackup(data, mode, opts) {
     _typeRules = data.typeRules || null;
     _dirTree = data.dirTree || null;
     globalNote = data.globalNote !== undefined ? data.globalNote : '';
+    dailyJournalEntries = data.dailyJournalEntries && typeof data.dailyJournalEntries === 'object' ? data.dailyJournalEntries : {};
     knowledgeExpanded = new Set((data.knowledgeExpanded || []).map(String));
     knowledgeExpandedLoaded = true;
     todayDate = data.todayDate || today();
@@ -181,6 +184,7 @@ function _applyFullBackup(data, mode, opts) {
     DB.set(KEY_TYPE_RULES, JSON.stringify(_typeRules));
     DB.set(KEY_DIR_TREE, JSON.stringify(_dirTree));
     DB.set(KEY_GLOBAL_NOTE, globalNote);
+    DB.set(KEY_DAILY_JOURNAL, JSON.stringify(dailyJournalEntries || {}));
     DB.set(KEY_KNOWLEDGE_EXPANDED, JSON.stringify(Array.from(knowledgeExpanded)));
     DB.set(KEY_TODAY_DATE, todayDate);
     DB.set(KEY_TODAY_DONE, String(todayDone));
@@ -263,6 +267,7 @@ async function _applyCloudBackupStaged(data, updatedAt, opts) {
     _typeRules = data.typeRules || null;
     _dirTree = data.dirTree || null;
     globalNote = data.globalNote !== undefined ? data.globalNote : '';
+    dailyJournalEntries = data.dailyJournalEntries && typeof data.dailyJournalEntries === 'object' ? data.dailyJournalEntries : {};
     knowledgeExpanded = new Set((data.knowledgeExpanded || []).map(String));
     knowledgeExpandedLoaded = true;
     todayDate = data.todayDate || today();
@@ -271,6 +276,7 @@ async function _applyCloudBackupStaged(data, updatedAt, opts) {
     DB.set(KEY_TYPE_RULES, JSON.stringify(_typeRules));
     DB.set(KEY_DIR_TREE, JSON.stringify(_dirTree));
     DB.set(KEY_GLOBAL_NOTE, globalNote);
+    DB.set(KEY_DAILY_JOURNAL, JSON.stringify(dailyJournalEntries || {}));
     DB.set(KEY_KNOWLEDGE_EXPANDED, JSON.stringify(Array.from(knowledgeExpanded)));
     DB.set(KEY_TODAY_DATE, todayDate);
     DB.set(KEY_TODAY_DONE, String(todayDone));

@@ -1,8 +1,8 @@
 {
-  "built_at": "2026-04-07T03:32:12Z",
+  "built_at": "2026-04-08T12:23:08Z",
   "css_bundle": {
     "path": "xingce_v3\\styles\\legacy-app.bundle.css",
-    "sha256": "0925acbcb59ea84c1f968a315c2e61ccfd07b1f16b0111bfe12aac3d9b8dacd4",
+    "sha256": "122b93e3aed25bee6bf8edb4c29e1f73d21478883ee34d9e1ca920d5eb0898a9",
     "sources": [
       "styles/main/00-base-reset.css",
       "styles/main/01-sidebar.css",
@@ -43,12 +43,13 @@
       "styles/main/36-review-finish-actions.css",
       "styles/main/37-layout-refresh-v31.css",
       "styles/main/38-presentation-polish-v31.css",
-      "styles/main/39-print.css"
+      "styles/main/39-print.css",
+      "styles/main/40-remark-list.css"
     ]
   },
   "js_bundle": {
     "path": "xingce_v3\\modules\\legacy-app.bundle.js",
-    "sha256": "29c41945cb64838cd10a03235c10cb532201ca39f7e18c3645186a851bf06d49",
+    "sha256": "29e3cd1f820dd45720a2015d103dcef1ca57cc804b371e0318c328e2d913270c",
     "sources": [
       "modules/main/00-event-dispatcher.js",
       "modules/main/01-state.js",
@@ -85,6 +86,7 @@
       "modules/main/32-difficulty-rating.js",
       "modules/main/33-bulk-actions.js",
       "modules/main/34-modal-controls.js",
+      "modules/main/35-remark-list.js",
       "modules/main/36-tab-coordination.js",
       "modules/main/99-bootstrap.js",
       "modules/knowledge-state.js",

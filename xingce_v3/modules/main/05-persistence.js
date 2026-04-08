@@ -101,6 +101,8 @@ async function loadData(options) {
   try { expMainSub2 = new Set(JSON.parse(await DB.get(KEY_EXP_SUB2)||'[]')); }
   catch(e) { expMainSub2 = new Set(); }
   globalNote = await DB.get(KEY_GLOBAL_NOTE)||'';
+  try { dailyJournalEntries = JSON.parse(await DB.get(KEY_DAILY_JOURNAL) || '{}') || {}; }
+  catch(e) { dailyJournalEntries = {}; }
   todayDate = today();
   const sd = await DB.get(KEY_TODAY_DATE);
   todayDone = sd===todayDate ? parseInt(await DB.get(KEY_TODAY_DONE)||'0') : 0;
@@ -312,6 +314,7 @@ function buildWorkspaceSyncSnapshot() {
     ['exp_types', [...expTypes]],
     ['expansion_state', buildExpansionStateSyncValue()],
     ['global_note', globalNote || ''],
+    ['daily_journal', dailyJournalEntries || {}],
     ['type_rules', _typeRules || null],
     ['dir_tree', _dirTree || null],
     ['knowledge_expanded', Array.from(knowledgeExpanded || [])],
@@ -487,6 +490,7 @@ function getFullBackupPayload() {
     typeRules: _typeRules,
     dirTree: _dirTree,
     globalNote: globalNote,
+    dailyJournalEntries: dailyJournalEntries || {},
     knowledgeTree: knowledgeTree,
     knowledgeNotes: knowledgeNotes,
     knowledgeExpanded: Array.from(knowledgeExpanded || []),
@@ -1503,6 +1507,9 @@ function applySettingSyncValue(key, value) {
     case 'global_note':
       globalNote = typeof value === 'string' ? value : '';
       return true;
+    case 'daily_journal':
+      dailyJournalEntries = value && typeof value === 'object' ? value : {};
+      return true;
     case 'type_rules':
       _typeRules = value || null;
       return true;
@@ -1645,6 +1652,7 @@ function applyOps(ops) {
         saveKnowledgeExpanded();
         saveTodayDone();
         queuePersist(KEY_GLOBAL_NOTE, globalNote || '');
+        queuePersist(KEY_DAILY_JOURNAL, dailyJournalEntries || {});
         queuePersist(KEY_TYPE_RULES, _typeRules);
         queuePersist(KEY_DIR_TREE, _dirTree);
         queuePersist(KEY_HISTORY, _history || [], 220);
@@ -1831,6 +1839,11 @@ function saveTodayDone(){
   syncWorkspaceOpsFromSnapshot();
   queuePersist(KEY_TODAY_DATE, todayDate || '');
   queuePersist(KEY_TODAY_DONE, String(todayDone || 0));
+  markIncrementalWorkspaceChange();
+}
+function saveDailyJournalEntries() {
+  syncWorkspaceOpsFromSnapshot();
+  queuePersist(KEY_DAILY_JOURNAL, dailyJournalEntries || {}, 120);
   markIncrementalWorkspaceChange();
 }
 let _history = [];

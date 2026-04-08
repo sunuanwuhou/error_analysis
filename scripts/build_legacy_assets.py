@@ -58,6 +58,7 @@ CSS_SOURCES = [
     'styles/main/37-layout-refresh-v31.css',
     'styles/main/38-presentation-polish-v31.css',
     'styles/main/39-print.css',
+    'styles/main/40-remark-list.css',
 ]
 
 JS_SOURCES = [
@@ -96,6 +97,7 @@ JS_SOURCES = [
     'modules/main/32-difficulty-rating.js',
     'modules/main/33-bulk-actions.js',
     'modules/main/34-modal-controls.js',
+    'modules/main/35-remark-list.js',
     'modules/main/36-tab-coordination.js',
     'modules/main/99-bootstrap.js',
     'modules/knowledge-state.js',

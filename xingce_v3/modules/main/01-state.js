@@ -7,6 +7,7 @@ const KEY_EXP_TYPES = 'xc_exp_types';
 const KEY_EXP_MAIN  = 'xc_exp_main';
 const KEY_EXP_SUB2  = 'xc_exp_sub2';   // 三级展开状态
 const KEY_GLOBAL_NOTE = 'xc_global_note';
+const KEY_DAILY_JOURNAL = 'xc_daily_journal';
 const KEY_TODAY_DATE  = 'xc_today_date';
 const KEY_TODAY_DONE  = 'xc_today_done';
 const KEY_HISTORY   = 'xc_history';
@@ -240,6 +241,7 @@ let saveErrorBusy = false;
 
 let todayDate = '';
 let todayDone = 0;
+let dailyJournalEntries = {};
 
 function setSaveErrorBusyState(next) {
   saveErrorBusy = !!next;
