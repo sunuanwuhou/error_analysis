@@ -1,10 +1,10 @@
-<template>
+﻿<template>
   <main class="workspace-shell">
     <aside class="workspace-sidebar">
       <section class="panel sidebar-brand">
         <div class="eyebrow">{{ isEditMode ? '笔记编辑' : '笔记查看' }}</div>
         <strong>{{ currentNode?.title || '知识笔记' }}</strong>
-        <p>{{ isEditMode ? '直接在 /next 中编辑当前知识点笔记。' : '直接在 /next 中查看当前知识点笔记。' }}</p>
+        <p>{{ isEditMode ? '在 /next 中直接编辑当前知识点笔记。' : '在 /next 中查看当前知识点笔记。' }}</p>
       </section>
 
       <section class="panel sidebar-card">
@@ -28,6 +28,18 @@
         </div>
         <div class="topbar-actions">
           <a class="action-button action-button--secondary" href="/next/workspace/notes">返回学习笔记</a>
+          <a
+            class="action-button action-button--secondary"
+            :href="isEditMode ? noteViewerHref : noteEditorHref"
+          >
+            {{ isEditMode ? '切到查看' : '切到编辑' }}
+          </a>
+          <button type="button" class="action-button action-button--secondary" :disabled="!prevNodeId" @click="selectNode(prevNodeId)">
+            上一个
+          </button>
+          <button type="button" class="action-button action-button--secondary" :disabled="!nextNodeId" @click="selectNode(nextNodeId)">
+            下一个
+          </button>
           <button v-if="isEditMode" type="button" class="action-button action-button--primary" @click="saveNode">{{ busy ? '保存中...' : '保存笔记' }}</button>
         </div>
       </article>
@@ -101,7 +113,7 @@ const renderedContent = computed(() => {
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/`(.+?)`/g, '<code>$1</code>')
-  // 无序列表（连续 - 行打包成 <ul>）
+  // 无序列表（连续 `- ` 行打包成 <ul>）
   html = html.replace(/((?:^- .+(?:\n|$))+)/gm, (match) => {
     const items = match.trim().split('\n').map((line) => `<li>${line.replace(/^- /, '')}</li>`).join('')
     return `<ul>${items}</ul>`
@@ -129,6 +141,22 @@ const flattenedNodes = computed(() => {
   walk(knowledgeRoots.value)
   return items
 })
+
+const nodeIndex = computed(() => flattenedNodes.value.findIndex((item) => item.id === selectedNodeId.value))
+const prevNodeId = computed(() => {
+  if (nodeIndex.value <= 0) return ''
+  return flattenedNodes.value[nodeIndex.value - 1]?.id || ''
+})
+const nextNodeId = computed(() => {
+  if (nodeIndex.value < 0 || nodeIndex.value >= flattenedNodes.value.length - 1) return ''
+  return flattenedNodes.value[nodeIndex.value + 1]?.id || ''
+})
+const noteViewerHref = computed(() =>
+  selectedNodeId.value ? `/next/tools/note-viewer?nodeId=${encodeURIComponent(selectedNodeId.value)}` : '/next/tools/note-viewer',
+)
+const noteEditorHref = computed(() =>
+  selectedNodeId.value ? `/next/tools/note-editor?nodeId=${encodeURIComponent(selectedNodeId.value)}` : '/next/tools/note-editor',
+)
 
 const currentNode = computed<KnowledgeNodeRecord | null>(() => {
   const walk = (nodes: KnowledgeNodeRecord[]): KnowledgeNodeRecord | null => {
@@ -195,3 +223,4 @@ onMounted(() => {
   void loadPage()
 })
 </script>
+

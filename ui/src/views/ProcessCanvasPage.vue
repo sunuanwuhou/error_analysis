@@ -30,12 +30,57 @@
         </div>
         <div class="topbar-actions">
           <a class="action-button action-button--secondary" href="/next/workspace/errors">返回错题工作台</a>
+          <a
+            class="action-button action-button--secondary"
+            :href="toolSwitchHref"
+          >
+            {{ isCanvasMode ? '切到过程图' : '切到画布' }}
+          </a>
           <button type="button" class="action-button action-button--primary" @click="saveCurrent" :disabled="busy || !selectedDetail">{{ busy ? '保存中...' : '保存' }}</button>
         </div>
       </article>
 
       <section class="workspace-split workspace-split--wide">
-        <article class="panel content-card content-card--workspace-focus">
+        <article v-if="!isCanvasMode" class="panel content-card content-card--workspace-focus">
+          <h2>过程图</h2>
+          <label class="link-button entry-upload-button">
+            <input type="file" accept="image/*" class="entry-file-input" @change="handleImageUpload" />
+            上传过程图
+          </label>
+          <div v-if="processImageUrl" class="detail-block">
+            <strong>预览</strong>
+            <img :src="processImageUrl" alt="过程图" class="entry-preview-image" />
+          </div>
+          <div v-else class="entry-upload-zone">
+            <p>还没有过程图</p>
+            <p class="legacy-section-copy">粘贴截图或点击「上传过程图」选择图片</p>
+          </div>
+          <div class="topbar-actions">
+            <button type="button" class="action-button action-button--quiet" @click="clearProcessImage" :disabled="!processImageUrl">清空</button>
+          </div>
+        </article>
+
+        <article v-else class="panel content-card content-card--workspace-focus">
+          <h2>画布</h2>
+          <canvas
+            ref="canvasRef"
+            class="next-scratch-canvas"
+            width="960"
+            height="560"
+            @mousedown="startDraw"
+            @mousemove="drawMove"
+            @mouseup="stopDraw"
+            @mouseleave="stopDraw"
+            @touchstart.prevent="startDraw"
+            @touchmove.prevent="drawMove"
+            @touchend.prevent="stopDraw"
+          />
+          <div class="topbar-actions">
+            <button type="button" class="action-button action-button--quiet" @click="clearCanvas">清空</button>
+          </div>
+        </article>
+
+        <article class="panel content-card">
           <h2>题目上下文</h2>
           <template v-if="selectedDetail">
             <div class="detail-title">{{ buildErrorTitle(selectedDetail) }}</div>
@@ -55,45 +100,6 @@
             </div>
           </template>
           <p v-else>先从左侧选一题。</p>
-        </article>
-
-        <article v-if="!isCanvasMode" class="panel content-card">
-          <h2>过程图</h2>
-          <label class="link-button entry-upload-button">
-            <input type="file" accept="image/*" class="entry-file-input" @change="handleImageUpload" />
-            上传过程图
-          </label>
-          <div v-if="processImageUrl" class="detail-block">
-            <strong>预览</strong>
-            <img :src="processImageUrl" alt="过程图" class="entry-preview-image" />
-          </div>
-          <div v-else class="entry-upload-zone">
-            <p>还没有过程图</p>
-            <p class="legacy-section-copy">粘贴截图或点击「上传过程图」选择图片</p>
-          </div>
-          <div class="topbar-actions">
-            <button type="button" @click="clearProcessImage" :disabled="!processImageUrl">清空</button>
-          </div>
-        </article>
-
-        <article v-else class="panel content-card">
-          <h2>画布</h2>
-          <canvas
-            ref="canvasRef"
-            class="next-scratch-canvas"
-            width="960"
-            height="560"
-            @mousedown="startDraw"
-            @mousemove="drawMove"
-            @mouseup="stopDraw"
-            @mouseleave="stopDraw"
-            @touchstart.prevent="startDraw"
-            @touchmove.prevent="drawMove"
-            @touchend.prevent="stopDraw"
-          />
-          <div class="topbar-actions">
-            <button type="button" @click="clearCanvas">清空</button>
-          </div>
         </article>
       </section>
     </section>
@@ -126,6 +132,11 @@ const pageCopy = computed(() =>
     ? '直接在 /next 里做草稿画布，并保存回当前错题。'
     : '直接在 /next 里上传并保存当前题目的过程图。',
 )
+const toolSwitchHref = computed(() => {
+  const rawId = String(route.query.id || selectedDetail.value?.id || '').trim()
+  const suffix = rawId ? `?id=${encodeURIComponent(rawId)}` : ''
+  return isCanvasMode.value ? `/next/tools/process-image${suffix}` : `/next/tools/canvas${suffix}`
+})
 
 function asText(value: unknown): string {
   return typeof value === 'string' ? value : String(value ?? '')

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from hashlib import sha256
 from html.parser import HTMLParser
 from pathlib import Path
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 LEGACY_HTML = ROOT / 'xingce_v3' / 'xingce_v3.html'
@@ -65,9 +66,10 @@ def parse_legacy_html(path: Path) -> LegacyHtmlReport:
 
 
 def assert_path_exists(asset_url: str) -> Path:
-    if not asset_url.startswith('/assets/'):
+    normalized_url = urlsplit(asset_url).path
+    if not normalized_url.startswith('/assets/'):
         raise CheckError(f'Unexpected asset URL: {asset_url}')
-    asset_path = ROOT / 'xingce_v3' / asset_url.removeprefix('/assets/')
+    asset_path = ROOT / 'xingce_v3' / normalized_url.removeprefix('/assets/')
     if not asset_path.exists():
         raise CheckError(f'Missing asset for URL {asset_url}: {asset_path}')
     return asset_path
@@ -109,9 +111,11 @@ def main() -> None:
     bundle_manifest = json.loads(BUNDLE_MANIFEST.read_text(encoding='utf-8'))
     expected_css_path = 'xingce_v3/styles/legacy-app.bundle.css'
     expected_js_path = 'xingce_v3/modules/legacy-app.bundle.js'
-    if bundle_manifest.get('css_bundle', {}).get('path') != expected_css_path:
+    css_path_in_manifest = str(bundle_manifest.get('css_bundle', {}).get('path', '')).replace('\\', '/')
+    js_path_in_manifest = str(bundle_manifest.get('js_bundle', {}).get('path', '')).replace('\\', '/')
+    if css_path_in_manifest != expected_css_path:
         raise CheckError('Bundle manifest CSS path is out of sync.')
-    if bundle_manifest.get('js_bundle', {}).get('path') != expected_js_path:
+    if js_path_in_manifest != expected_js_path:
         raise CheckError('Bundle manifest JS path is out of sync.')
     css_rel = str((ROOT / 'xingce_v3/styles/legacy-app.bundle.css').relative_to(ROOT))
     js_rel = str((ROOT / 'xingce_v3/modules/legacy-app.bundle.js').relative_to(ROOT))

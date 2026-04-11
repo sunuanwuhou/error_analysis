@@ -42,9 +42,25 @@
           <p v-if="sessionNotice" class="legacy-section-copy">{{ sessionNotice }}</p>
         </div>
         <div class="topbar-actions">
-          <a class="action-button action-button--secondary" href="/next/workspace/tasks/errors">关闭</a>
           <button type="button" class="action-button action-button--secondary" @click="goPrev" :disabled="currentIndex <= 0">上一题</button>
           <button type="button" class="action-button action-button--primary" @click="goNext" :disabled="currentIndex >= practiceItems.length - 1">下一题</button>
+          <button
+            type="button"
+            class="action-button action-button--primary"
+            :disabled="busy || !answered || !selectedDetail"
+            @click="saveAttemptAndNext"
+          >
+            {{ busy ? '保存中...' : '保存并下一题' }}
+          </button>
+          <button
+            type="button"
+            class="action-button action-button--secondary"
+            :disabled="busy || !answered || !selectedDetail"
+            @click="saveAttemptAndFinish"
+          >
+            {{ busy ? '保存中...' : '保存并结束' }}
+          </button>
+          <a class="action-button action-button--secondary" href="/next/workspace/tasks/errors">关闭</a>
         </div>
       </article>
 
@@ -71,7 +87,7 @@
                 <img v-if="selectedDetail.processImage?.imageUrl" :src="selectedDetail.processImage.imageUrl" alt="过程图" class="legacy-quiz-img" />
               </div>
 
-              <div class="legacy-quiz-answer-label">Choose your answer</div>
+              <div class="legacy-quiz-answer-label">选择你的答案</div>
               <div class="legacy-quiz-options">
                 <button
                   v-for="option in displayedOptions"
@@ -147,8 +163,11 @@
               </div>
 
               <div class="legacy-quiz-bottom-actions">
-                <button type="button" class="legacy-quiz-save-btn" :disabled="busy" @click="saveAttemptAndContinue">
-                  {{ busy ? '保存中...' : '保存结果' }}
+                <button type="button" class="legacy-quiz-save-btn" :disabled="busy" @click="saveAttemptAndNext">
+                  {{ busy ? '保存中...' : '保存并下一题' }}
+                </button>
+                <button type="button" class="legacy-quiz-bottom-btn" :disabled="busy" @click="saveAttemptAndFinish">
+                  {{ busy ? '保存中...' : '保存并结束' }}
                 </button>
                 <a
                   v-if="selectedDetail.id"
@@ -192,7 +211,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { apiRequest } from '@/services/api'
@@ -453,7 +472,7 @@ function goNext() {
   currentIndex.value += 1
 }
 
-async function saveAttemptAndContinue() {
+async function saveAttempt(advanceAfterSave: boolean) {
   if (!selectedDetail.value || busy.value) return
   busy.value = true
   pageError.value = ''
@@ -503,8 +522,10 @@ async function saveAttemptAndContinue() {
       [errorId]: attempt.value.result,
     }
     sessionNotice.value = '结果已保存。'
-    if (currentIndex.value < practiceItems.value.length - 1) {
+    if (advanceAfterSave && currentIndex.value < practiceItems.value.length - 1) {
       currentIndex.value += 1
+    } else if (!advanceAfterSave) {
+      await persistSessionLog()
     }
   } catch (error: unknown) {
     pageError.value = error instanceof Error ? error.message : '作答结果保存失败'
@@ -513,11 +534,19 @@ async function saveAttemptAndContinue() {
   }
 }
 
-async function finishSession() {
-  if (busy.value || !completedIds.value.length) return
-  busy.value = true
-  pageError.value = ''
-  sessionNotice.value = ''
+async function saveAttemptAndNext() {
+  await saveAttempt(true)
+}
+
+async function saveAttemptAndFinish() {
+  await saveAttempt(false)
+}
+
+async function persistSessionLog() {
+  if (!completedIds.value.length) {
+    sessionNotice.value = '本轮还没有已保存题目。'
+    return
+  }
   try {
     const correctCount = completedIds.value.filter((id) => {
       return completedResults.value[id] === 'correct'
@@ -536,8 +565,69 @@ async function finishSession() {
     sessionNotice.value = '本轮结果已保存。'
   } catch (error: unknown) {
     pageError.value = error instanceof Error ? error.message : '本轮练习收尾失败'
+  }
+}
+
+async function finishSession() {
+  if (busy.value || !completedIds.value.length) return
+  busy.value = true
+  pageError.value = ''
+  sessionNotice.value = ''
+  try {
+    await persistSessionLog()
   } finally {
     busy.value = false
+  }
+}
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  const element = target as HTMLElement | null
+  if (!element) {
+    return false
+  }
+  const tag = element.tagName.toLowerCase()
+  return tag === 'input' || tag === 'textarea' || tag === 'select' || element.isContentEditable
+}
+
+function handleGlobalKeydown(event: KeyboardEvent) {
+  if (busy.value) {
+    return
+  }
+  const typing = isTypingTarget(event.target)
+  const key = event.key.toLowerCase()
+  if (event.key === 'ArrowLeft' && !typing) {
+    event.preventDefault()
+    goPrev()
+    return
+  }
+  if (event.key === 'ArrowRight' && !typing) {
+    event.preventDefault()
+    goNext()
+    return
+  }
+  if (event.ctrlKey && key === 'enter' && answered.value) {
+    event.preventDefault()
+    void saveAttemptAndFinish()
+    return
+  }
+  if ((event.ctrlKey || event.metaKey) && key === 's' && answered.value) {
+    event.preventDefault()
+    void saveAttemptAndNext()
+    return
+  }
+  if (event.key === 'Escape' && !typing) {
+    event.preventDefault()
+    void router.push('/next/workspace/tasks/errors')
+    return
+  }
+  if (event.key === 'Enter' && !event.ctrlKey && answered.value && !typing) {
+    event.preventDefault()
+    void saveAttemptAndNext()
+    return
+  }
+  if (!answered.value && !typing && ['a', 'b', 'c', 'd'].includes(key)) {
+    event.preventDefault()
+    pickAnswer(key.toUpperCase())
   }
 }
 
@@ -553,6 +643,11 @@ watch(currentIndex, async () => {
 })
 
 onMounted(() => {
+  window.addEventListener('keydown', handleGlobalKeydown)
   void loadPage()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleGlobalKeydown)
 })
 </script>

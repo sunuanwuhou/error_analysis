@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <main class="workspace-shell entry-flow-shell legacy-overlay-shell">
     <aside class="workspace-sidebar">
       <section class="panel sidebar-brand">
@@ -20,7 +20,7 @@
 
       <section class="panel sidebar-card">
         <div class="sidebar-card-title">OCR</div>
-        <p class="legacy-section-copy">上传题目截图，识别后再把结果回填进当前表单。</p>
+        <p class="legacy-section-copy">上传题目截图，识别后回填到当前表单。</p>
         <label class="link-button entry-upload-button">
           <input type="file" accept="image/*" class="entry-file-input" @change="handleOcrFile" />
           {{ ocrBusy ? '识别中...' : '识别图片' }}
@@ -34,12 +34,21 @@
         <div>
           <div class="eyebrow">{{ isEditMode ? '编辑错题' : '添加错题' }}</div>
           <h1>{{ isEditMode ? '编辑错题' : '添加错题' }}</h1>
-          <p>{{ isEditMode ? '直接修改当前错题内容。' : '先把题目放进来，再补答案、根因和解析。' }}</p>
+          <p>{{ isEditMode ? '在 /next 中直接修改当前错题。' : '先录题，再补答案、根因和分析。' }}</p>
           <p v-if="pageError" class="form-error">{{ pageError }}</p>
+          <p v-if="saveNotice" class="legacy-section-copy">{{ saveNotice }}</p>
         </div>
         <div class="topbar-actions">
           <div class="entry-path-hint">当前路径：{{ currentKnowledgePath }}</div>
           <a class="action-button action-button--secondary" href="/next/workspace/errors">取消</a>
+          <button
+            v-if="!isEditMode"
+            type="button"
+            class="action-button action-button--secondary"
+            @click="saveAndContinue"
+          >
+            {{ busy ? '保存中...' : '保存并继续录题' }}
+          </button>
           <button type="button" class="action-button action-button--primary" @click="saveEntry">{{ busy ? '保存中...' : '保存题目' }}</button>
         </div>
       </article>
@@ -49,33 +58,22 @@
           <div class="entry-step-strip">
             <span class="entry-step-pill" :class="{ 'is-active': entryStep === 1 }">1 贴题目或识别题图</span>
             <span class="entry-step-pill" :class="{ 'is-active': entryStep === 2 }">2 确认选项与答案</span>
-            <span class="entry-step-pill" :class="{ 'is-active': entryStep === 3 }">3 补错因与分析</span>
-            <span class="entry-step-pill" :class="{ 'is-active': entryStep === 4 }">4 保存后继续复盘</span>
+            <span class="entry-step-pill" :class="{ 'is-active': entryStep === 3 }">3 补根因与分析</span>
+            <span class="entry-step-pill" :class="{ 'is-active': entryStep === 4 }">4 保存并复盘</span>
           </div>
           <div class="entry-section-head">
             <div>
               <h2>先完成最小录入</h2>
-              <p>先录题干、选项、答案和知识点。只要这几项对了，这道题就能先存下来。</p>
+              <p>优先录题干、选项、答案和知识点。</p>
             </div>
             <span class="entry-badge">优先必填</span>
           </div>
+
           <div class="entry-grid">
-            <label>
-              <span>一级分类</span>
-              <input v-model.trim="form.type" type="text" placeholder="题型" />
-            </label>
-            <label>
-              <span>二级分类</span>
-              <input v-model.trim="form.subtype" type="text" placeholder="子类型" />
-            </label>
-            <label>
-              <span>三级分类</span>
-              <input v-model.trim="form.subSubtype" type="text" placeholder="更细分类" />
-            </label>
-            <label>
-              <span>四级（可选）</span>
-              <input v-model.trim="form.srcOrigin" type="text" placeholder="最终叶子或补充标签" />
-            </label>
+            <label><span>一级分类</span><input v-model.trim="form.type" type="text" placeholder="题型" /></label>
+            <label><span>二级分类</span><input v-model.trim="form.subtype" type="text" placeholder="子类型" /></label>
+            <label><span>三级分类</span><input v-model.trim="form.subSubtype" type="text" placeholder="更细分类" /></label>
+            <label><span>四级（可选）</span><input v-model.trim="form.srcOrigin" type="text" placeholder="补充标签" /></label>
             <label>
               <span>状态</span>
               <select v-model="form.status">
@@ -86,64 +84,30 @@
             </label>
           </div>
 
-          <label class="entry-block">
-            <span>题干</span>
-            <textarea v-model.trim="form.question" rows="6" placeholder="粘贴或编辑题干" />
-          </label>
-
-          <label class="entry-block">
-            <span>选项</span>
-            <textarea v-model.trim="form.options" rows="4" placeholder="A.xxx | B.xxx | C.xxx | D.xxx" />
-          </label>
+          <label class="entry-block"><span>题干</span><textarea v-model.trim="form.question" rows="6" placeholder="粘贴或输入题干" /></label>
+          <label class="entry-block"><span>选项</span><textarea v-model.trim="form.options" rows="4" placeholder="A.xxx | B.xxx | C.xxx | D.xxx" /></label>
 
           <div class="entry-grid">
-            <label>
-              <span>正确答案</span>
-              <input v-model.trim="form.answer" type="text" placeholder="A / B / C / D" />
-            </label>
-            <label>
-              <span>我的答案</span>
-              <input v-model.trim="form.myAnswer" type="text" placeholder="可选" />
-            </label>
-            <label>
-              <span>来源年份</span>
-              <input v-model.trim="form.srcYear" type="text" placeholder="2026" />
-            </label>
-            <label>
-              <span>来源地区</span>
-              <input v-model.trim="form.srcProvince" type="text" placeholder="可选" />
-            </label>
+            <label><span>正确答案</span><input v-model.trim="form.answer" type="text" placeholder="A / B / C / D" /></label>
+            <label><span>我的答案</span><input v-model.trim="form.myAnswer" type="text" placeholder="可空" /></label>
+            <label><span>来源年份</span><input v-model.trim="form.srcYear" type="text" placeholder="2026" /></label>
+            <label><span>来源地区</span><input v-model.trim="form.srcProvince" type="text" placeholder="可空" /></label>
           </div>
 
           <div class="entry-grid">
-            <label class="entry-grid-span">
-              <span>根因</span>
-              <input v-model.trim="form.rootReason" type="text" placeholder="更深层原因" />
-            </label>
-            <label class="entry-grid-span">
-              <span>触发点</span>
-              <input v-model.trim="form.errorReason" type="text" placeholder="直接触发这次错误的点" />
-            </label>
+            <label class="entry-grid-span"><span>根因</span><input v-model.trim="form.rootReason" type="text" placeholder="深层原因" /></label>
+            <label class="entry-grid-span"><span>触发点</span><input v-model.trim="form.errorReason" type="text" placeholder="直接触发错误的点" /></label>
           </div>
 
-          <label class="entry-block">
-            <span>解析</span>
-            <textarea v-model.trim="form.analysis" rows="5" placeholder="正确思路或解释" />
-          </label>
-
-          <label class="entry-block">
-            <span>下一步</span>
-            <textarea v-model.trim="form.nextAction" rows="3" placeholder="接下来怎么改" />
-          </label>
+          <label class="entry-block"><span>分析</span><textarea v-model.trim="form.analysis" rows="5" placeholder="解题分析" /></label>
+          <label class="entry-block"><span>下一步</span><textarea v-model.trim="form.nextAction" rows="3" placeholder="下一步怎么改" /></label>
 
           <div class="entry-grid">
             <label class="entry-grid-span">
               <span>知识点</span>
               <select v-model="form.noteNodeId">
                 <option value="">暂不关联</option>
-                <option v-for="node in flattenedKnowledgeNodes" :key="node.id" :value="node.id">
-                  {{ node.label }}
-                </option>
+                <option v-for="node in flattenedKnowledgeNodes" :key="node.id" :value="node.id">{{ node.label }}</option>
               </select>
             </label>
           </div>
@@ -159,40 +123,28 @@
             </section>
 
             <section class="panel detail-panel">
-              <div class="sidebar-card-title">解析图片</div>
+              <div class="sidebar-card-title">分析图片</div>
               <label class="link-button entry-upload-button">
                 <input type="file" accept="image/*" class="entry-file-input" @change="(event) => handleImageUpload(event, 'analysisImgData')" />
                 上传图片
               </label>
-              <img v-if="form.analysisImgData" :src="form.analysisImgData" alt="解析图片" class="entry-preview-image" />
+              <img v-if="form.analysisImgData" :src="form.analysisImgData" alt="分析图片" class="entry-preview-image" />
             </section>
           </div>
         </article>
 
         <article class="panel content-card panel--muted">
           <h2>OCR 结果</h2>
-          <p class="legacy-section-copy">先识别，再选择怎么回填到当前表单。</p>
+          <p class="legacy-section-copy">识别后可一键回填到题干或选项。</p>
           <div v-if="ocrText" class="detail-block">
             <strong>识别文本</strong>
             <pre class="entry-ocr-preview">{{ ocrText }}</pre>
           </div>
           <div class="legacy-tool-grid">
-            <button type="button" class="legacy-tool-action entry-action-button" @click="applyOcr('question')" :disabled="!ocrQuestion">
-              <strong>回填题干</strong>
-              <span>用识别文本替换当前题干。</span>
-            </button>
-            <button type="button" class="legacy-tool-action entry-action-button" @click="applyOcr('options')" :disabled="!ocrOptions">
-              <strong>回填选项</strong>
-              <span>用识别到的选项替换当前选项区。</span>
-            </button>
-            <button type="button" class="legacy-tool-action entry-action-button" @click="applyOcr('all')" :disabled="!ocrQuestion">
-              <strong>整块回填</strong>
-              <span>同时回填题干和选项。</span>
-            </button>
-            <button type="button" class="legacy-tool-action entry-action-button" @click="applyOcr('append')" :disabled="!ocrText">
-              <strong>追加原文</strong>
-              <span>把原始 OCR 文本追加到当前题干末尾。</span>
-            </button>
+            <button type="button" class="legacy-tool-action entry-action-button" @click="applyOcr('question')" :disabled="!ocrQuestion"><strong>回填题干</strong><span>覆盖当前题干</span></button>
+            <button type="button" class="legacy-tool-action entry-action-button" @click="applyOcr('options')" :disabled="!ocrOptions"><strong>回填选项</strong><span>覆盖当前选项</span></button>
+            <button type="button" class="legacy-tool-action entry-action-button" @click="applyOcr('all')" :disabled="!ocrQuestion"><strong>整块回填</strong><span>题干+选项一起回填</span></button>
+            <button type="button" class="legacy-tool-action entry-action-button" @click="applyOcr('append')" :disabled="!ocrText"><strong>追加原文</strong><span>把 OCR 原文追加到题干</span></button>
           </div>
         </article>
       </section>
@@ -201,7 +153,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { ApiError, apiRequest } from '@/services/api'
@@ -235,6 +187,7 @@ const router = useRouter()
 const busy = ref(false)
 const ocrBusy = ref(false)
 const pageError = ref('')
+const saveNotice = ref('')
 const ocrStatus = ref('')
 const knowledgeRoots = ref<KnowledgeTreeNode[]>([])
 const ocrText = ref('')
@@ -273,8 +226,8 @@ const entryStep = computed(() => {
 })
 const pageCopy = computed(() =>
   isEditMode.value
-    ? '直接在 /next 里编辑当前错题，不再回旧版弹层。'
-    : '直接在 /next 里新增错题，并支持 OCR 回填和图片上传。',
+    ? '在 /next 中直接编辑当前错题，不再回旧版弹层。'
+    : '在 /next 中直接新增错题，并支持 OCR 回填和图片上传。',
 )
 
 const flattenedKnowledgeNodes = computed(() => {
@@ -347,7 +300,7 @@ async function loadPage() {
       applyRecord(payload.item)
     }
   } catch (error: unknown) {
-    pageError.value = error instanceof Error ? error.message : '录题页加载失败'
+    pageError.value = error instanceof Error ? error.message : '录题页面加载失败'
   }
 }
 
@@ -360,7 +313,7 @@ async function uploadImage(body: ArrayBuffer, contentType: string): Promise<stri
     body,
   })
   if (!response.ok) {
-    throw new Error((await response.text()) || '图片上传失败')
+    throw new Error((await response.text()) || '鍥剧墖涓婁紶澶辫触')
   }
   const payload = (await response.json()) as { url?: string }
   return String(payload.url || '')
@@ -384,7 +337,7 @@ async function handleImageUpload(event: Event, field: 'imgData' | 'analysisImgDa
 function parseOcrQuestionPayload(text: string) {
   const normalized = String(text || '').trim()
   const lines = normalized.split(/\r?\n/).map((item) => item.trim()).filter(Boolean)
-  const optionLines = lines.filter((item) => /^[A-DＡ-Ｄ][\\.．、\\s]/i.test(item))
+  const optionLines = lines.filter((item) => /^[A-D锛?锛[\\.锛庛€乗\s]/i.test(item))
   const questionLines = optionLines.length ? lines.slice(0, Math.max(lines.indexOf(optionLines[0]), 0)) : lines
   return {
     question: questionLines.join('\n').trim(),
@@ -416,7 +369,7 @@ async function handleOcrFile(event: Event) {
     const parsed = parseOcrQuestionPayload(ocrText.value)
     ocrQuestion.value = parsed.question
     ocrOptions.value = parsed.options
-    ocrStatus.value = ocrText.value ? 'OCR 已完成，请选择回填方式。' : 'OCR 没有识别出可用文本。'
+    ocrStatus.value = ocrText.value ? 'OCR 已完成，请选择回填方式。' : 'OCR 未识别出可用文本。'
   } catch (error: unknown) {
     pageError.value = error instanceof Error ? error.message : 'OCR 识别失败'
   } finally {
@@ -465,9 +418,10 @@ function buildPayload() {
   }
 }
 
-async function saveEntry() {
+async function saveEntryInternal(stayOnEntryPage: boolean) {
   if (busy.value) return
   pageError.value = ''
+  saveNotice.value = ''
   if (!form.value.question && !form.value.imgData) {
     pageError.value = '题干不能为空'
     return
@@ -493,6 +447,11 @@ async function saveEntry() {
         body: JSON.stringify(buildPayload()),
       })
       form.value.id = String(payload.item.id || '')
+      if (stayOnEntryPage) {
+        resetFormForNextEntry()
+        saveNotice.value = '已保存，可继续录下一题。'
+        return
+      }
     }
     await router.push({ name: 'workspace-errors' })
   } catch (error: unknown) {
@@ -502,7 +461,77 @@ async function saveEntry() {
   }
 }
 
+async function saveEntry() {
+  await saveEntryInternal(false)
+}
+
+async function saveAndContinue() {
+  await saveEntryInternal(true)
+}
+
+function resetFormForNextEntry() {
+  form.value = {
+    ...form.value,
+    id: '',
+    question: '',
+    options: '',
+    answer: '',
+    myAnswer: '',
+    rootReason: '',
+    errorReason: '',
+    analysis: '',
+    nextAction: '',
+    imgData: '',
+    analysisImgData: '',
+  }
+  ocrText.value = ''
+  ocrQuestion.value = ''
+  ocrOptions.value = ''
+  ocrStatus.value = ''
+}
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  const element = target as HTMLElement | null
+  if (!element) {
+    return false
+  }
+  const tag = element.tagName.toLowerCase()
+  return tag === 'input' || tag === 'textarea' || tag === 'select' || element.isContentEditable
+}
+
+function handleGlobalKeydown(event: KeyboardEvent) {
+  if (busy.value) {
+    return
+  }
+  const key = event.key.toLowerCase()
+  const typing = isTypingTarget(event.target)
+  if (event.ctrlKey && key === 's') {
+    event.preventDefault()
+    if (isEditMode.value) {
+      void saveEntry()
+    } else {
+      void saveAndContinue()
+    }
+    return
+  }
+  if (event.ctrlKey && key === 'enter' && !isEditMode.value) {
+    event.preventDefault()
+    void saveAndContinue()
+    return
+  }
+  if (key === 'escape' && !typing) {
+    event.preventDefault()
+    void router.push({ name: 'workspace-errors' })
+  }
+}
+
 onMounted(() => {
+  window.addEventListener('keydown', handleGlobalKeydown)
   void loadPage()
 })
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleGlobalKeydown)
+})
 </script>
+

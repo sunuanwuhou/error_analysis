@@ -43,9 +43,13 @@
           <p v-if="selectedPathText" class="legacy-section-copy">{{ selectedPathText }}</p>
         </div>
         <div class="topbar-actions">
+          <button type="button" @click="saveNode" :disabled="busy || !selectedNode">{{ busy ? '保存中...' : '保存节点' }}</button>
+          <button type="button" @click="createChildNode" :disabled="busy || !newChildTitle.trim() || !selectedNode">新增子节点</button>
+          <button type="button" @click="createSiblingNode" :disabled="busy || !newSiblingTitle.trim() || !selectedNode">
+            新增同级
+          </button>
           <a class="link-button" :href="notesBackHref">返回学习笔记</a>
           <a v-if="selectedNodeId" class="link-button" :href="noteViewerHref">查看笔记</a>
-          <button type="button" @click="saveNode" :disabled="busy || !selectedNode">{{ busy ? '保存中...' : '保存' }}</button>
         </div>
       </article>
 
@@ -114,8 +118,13 @@
                   <span>子节点标题</span>
                   <input v-model.trim="newChildTitle" type="text" placeholder="新的子节点标题" />
                 </label>
+                <label>
+                  <span>同级节点标题</span>
+                  <input v-model.trim="newSiblingTitle" type="text" placeholder="新的同级节点标题" />
+                </label>
                 <div class="topbar-actions">
                   <button type="button" @click="createChildNode" :disabled="busy || !newChildTitle.trim()">新增子节点</button>
+                  <button type="button" @click="createSiblingNode" :disabled="busy || !newSiblingTitle.trim() || !selectedNode">新增同级节点</button>
                 </div>
               </div>
             </div>
@@ -128,7 +137,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { apiRequest } from '@/services/api'
@@ -153,6 +162,7 @@ const draftTitle = ref('')
 const draftContent = ref('')
 const draftParentId = ref('')
 const newChildTitle = ref('')
+const newSiblingTitle = ref('')
 
 const isDirectoryMode = computed(() => route.name === 'tool-directory')
 const isMoveMode = computed(() => route.name === 'tool-knowledge-move')
@@ -312,6 +322,47 @@ async function createChildNode() {
   }
 }
 
+async function createSiblingNode() {
+  if (!selectedNode.value || busy.value || !newSiblingTitle.value.trim()) return
+  busy.value = true
+  pageError.value = ''
+  pageNotice.value = ''
+  try {
+    const payload = await apiRequest<{ ok: true; item: KnowledgeNodeRecord }>('/api/knowledge/nodes', {
+      method: 'POST',
+      body: JSON.stringify({
+        parentId: selectedParentNode.value?.id || '',
+        title: newSiblingTitle.value.trim(),
+        contentMd: '',
+        sort: Math.max(selectedSiblingNodes.value.length + 1, 1),
+      }),
+    })
+    newSiblingTitle.value = ''
+    pageNotice.value = '同级节点已创建。'
+    await loadPage()
+    selectedNodeId.value = payload.item.id
+  } catch (error: unknown) {
+    pageError.value = error instanceof Error ? error.message : '创建失败'
+  } finally {
+    busy.value = false
+  }
+}
+
+function handleHotkey(event: KeyboardEvent) {
+  if (!selectedNode.value || busy.value) {
+    return
+  }
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+    event.preventDefault()
+    void saveNode()
+    return
+  }
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    void router.push('/next/workspace/errors')
+  }
+}
+
 watch(
   selectedNode,
   (node) => {
@@ -333,5 +384,10 @@ watch(
 
 onMounted(() => {
   void loadPage()
+  window.addEventListener('keydown', handleHotkey)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleHotkey)
 })
 </script>
