@@ -15,6 +15,14 @@ These files are now the repository source of truth for project goals, current ph
 
 `xingce_v3_lab` is the current authenticated study workbench for error analysis, knowledge-note editing, cloud sync, and AI-assisted review.
 
+## Main Frontend Entry
+
+`frontend/` is the only primary frontend entry for new product work.
+
+- New user-facing features, routes, and frontend state should land in `frontend/`.
+- `xingce_v3/` and `v51_frontend/` are legacy surfaces. They are kept for bug fixes, compatibility, fallback pages, and migration references only.
+- Legacy frontend directories should not grow new product modules unless a migration plan explicitly moves that work back into `frontend/`.
+
 ## Current Product State
 
 The current production baseline already includes:
