@@ -137,6 +137,20 @@ Practical note from this rollout:
 - checking the served HTML was faster and more reliable than debating whether the source edit had already landed
 - the user-facing local page can stay visually stale even after source edits until both Docker rebuild and browser refresh happen
 
+## Legacy Bundle Refresh Rule
+
+When debugging the active legacy frontend (`v51_frontend` + `legacy-app.bundle.js`), use this fixed sequence after restart or hotfix:
+
+1. update `xingce_v3/legacy-app.bundle.manifest.json` -> `built_at` to current UTC time
+2. sync both files to runtime:
+   - `xingce_v3/modules/legacy-app.bundle.js`
+   - `xingce_v3/legacy-app.bundle.manifest.json`
+3. restart app runtime (`docker restart xingce_v3_app` for Docker path)
+4. verify `/assets/legacy-app.bundle.manifest.json` returns the new `built_at`
+5. hard refresh browser (`Ctrl + F5`) before judging whether fix is live
+
+This is mandatory for faster triage and to avoid stale-cache false negatives.
+
 ## Windows Encoding Rule
 
 This repo is edited on Windows and terminal output can show mojibake.

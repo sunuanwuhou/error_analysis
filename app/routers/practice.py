@@ -131,7 +131,7 @@ def _write_practice_attempts(user_id: str, items: list[dict[str, Any]]) -> list[
 def _read_practice_attempts(user_id: str, limit: int = 200) -> list[dict[str, Any]]:
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT * FROM practice_attempts WHERE user_id=? ORDER BY datetime(created_at) DESC, rowid DESC LIMIT ?",
+            "SELECT * FROM practice_attempts WHERE user_id=? ORDER BY datetime(created_at) DESC, id DESC LIMIT ?",
             (user_id, max(1, min(limit, 2000))),
         ).fetchall()
     items: list[dict[str, Any]] = []
@@ -189,7 +189,7 @@ def _build_attempt_summary_map(
 
     sql = (
         "SELECT * FROM practice_attempts WHERE " + " AND ".join(clauses) +
-        " ORDER BY datetime(updated_at) DESC, datetime(created_at) DESC, rowid DESC LIMIT ?"
+        " ORDER BY datetime(updated_at) DESC, datetime(created_at) DESC, id DESC LIMIT ?"
     )
     params.append(max(1, min(limit, 3000)))
     with get_conn() as conn:
@@ -249,7 +249,7 @@ def _build_attempt_summary_map(
 
     sql = (
         "SELECT * FROM practice_attempts WHERE " + " AND ".join(clauses) +
-        " ORDER BY datetime(updated_at) DESC, datetime(created_at) DESC, rowid DESC LIMIT ?"
+        " ORDER BY datetime(updated_at) DESC, datetime(created_at) DESC, id DESC LIMIT ?"
     )
     params.append(max(1, min(limit, 3000)))
     with get_conn() as conn:
@@ -307,7 +307,7 @@ def _read_attempt_behavior_map(
 
     sql = (
         "SELECT * FROM practice_attempts WHERE " + " AND ".join(clauses) +
-        " ORDER BY datetime(updated_at) DESC, datetime(created_at) DESC, rowid DESC LIMIT ?"
+        " ORDER BY datetime(updated_at) DESC, datetime(created_at) DESC, id DESC LIMIT ?"
     )
     params.append(max(1, min(limit, 5000)))
     with get_conn() as conn:

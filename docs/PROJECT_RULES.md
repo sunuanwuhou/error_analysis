@@ -74,6 +74,19 @@ The minimum persistent doc set is:
 5. `docs/RELEASE_CHECKLIST.md`
 6. `docs/SELF_TEST_REPORT.md`
 
+## Frontend cache-bust rule
+
+When the active runtime is the legacy entry (`v51_frontend` + `legacy-app.bundle.js`), runtime restart alone is not enough to prove frontend changes are live.
+
+Required rule after any user-visible change in `xingce_v3/modules/legacy-app.bundle.js`:
+
+1. bump `xingce_v3/legacy-app.bundle.manifest.json` field `built_at`
+2. deploy updated bundle + manifest to the runtime that serves the target URL
+3. verify the served manifest `built_at` is the new value
+4. then ask for browser hard refresh (`Ctrl + F5`) and continue verification
+
+This rule exists to prevent stale-bundle misdiagnosis during restart/debug cycles.
+
 ## Packaging rules
 
 1. before final delivery, archive names must be checked
