@@ -1,8 +1,46 @@
 data/
 runtime/
 __pycache__/
+*.py[cod]
+*$py.class
 *.db
 *.sqlite
 *.sqlite3
 cloudflared/
 .env
+
+# Editors / local workspace
+.bytro
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Frontend dependencies and build output
+node_modules/
+frontend/node_modules/
+dist/
+dist-ssr/
+frontend/dist/
+frontend/dist-ssr/
+*.local
+
+# Logs and temporary output
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+tmp/
+temp/
+
+# Generated conversion and legacy bundles
+converter/output/
+xingce_v3/modules/legacy-app.bundle.js
