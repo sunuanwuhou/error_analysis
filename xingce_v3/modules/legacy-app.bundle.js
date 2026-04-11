@@ -1168,13 +1168,12 @@ function setNextIncrementalSyncAt(at) {
   saveCloudMeta();
 }
 function scheduleDeferredSlowSync() {
-  const dueAt = new Date(Date.now() + AUTO_SYNC_DELAY_MS).toISOString();
-  setNextIncrementalSyncAt(dueAt);
   if (incrementalSyncTimer) clearTimeout(incrementalSyncTimer);
-  incrementalSyncTimer = setTimeout(() => {
-    incrementalSyncTimer = null;
-    syncWithServer({ forceFullPull: true });
-  }, AUTO_SYNC_DELAY_MS);
+  incrementalSyncTimer = null;
+  setNextIncrementalSyncAt('');
+  if (cloudUser) {
+    setCloudSyncState('dirty', 'Auto sync paused. Click Sync to Cloud manually.', '');
+  }
 }
 function isScheduledAtDue(isoText) {
   const value = Date.parse(String(isoText || '').trim());
@@ -1212,52 +1211,16 @@ function shouldRunIncrementalSyncInForeground() {
   if (hasPendingIncrementalOps()) return shouldRunIncrementalSyncDue();
   return getIsoAgeMs(cloudMeta && cloudMeta.lastIncrementalSyncAt) >= FOREGROUND_CLOUD_CHECK_TTL_MS;
 }
-async function runBackgroundCloudBootstrap(strategy) {
-  const run = async () => {
-    if (!cloudUser) return;
-    try {
-      const mode = String(strategy || 'startup');
-      const checkMeta = mode === 'startup' ? shouldCheckCloudMetaOnStartup() : shouldCheckCloudMetaInForeground();
-      const checkIncremental = mode === 'startup' ? shouldRunIncrementalSyncOnStartup() : shouldRunIncrementalSyncInForeground();
-      const checkCloudSave = shouldRunCloudSaveDue();
-      const incrementalOnlyAutoSave = shouldUseIncrementalOnlyAutoSave();
-      if (checkMeta) {
-        await maybeRestoreCloudBackup();
-      }
-      if (checkCloudSave) {
-        if (incrementalOnlyAutoSave) {
-          setNextCloudSaveAt('');
-          await syncWithServer();
-        } else {
-          await saveCloudBackup({ silent: true });
-        }
-      } else if (checkIncremental) {
-        await syncWithServer();
-      }
-    } finally {
-      renderCloudUi();
-      if (pendingCloudSave) {
-        pendingCloudSave = false;
-        scheduleCloudSave();
-      }
-    }
-  };
-  return run();
+async function runBackgroundCloudBootstrap() {
+  renderCloudUi();
 }
-function scheduleBackgroundCloudBootstrap(strategy) {
-  const run = () => { runBackgroundCloudBootstrap(strategy); };
-  if (typeof window.requestIdleCallback === 'function') {
-    window.requestIdleCallback(() => { run(); }, { timeout: 1200 });
-    return;
-  }
-  setTimeout(() => { run(); }, 120);
+function scheduleBackgroundCloudBootstrap() {
+  if (backgroundCloudBootstrapTimer) clearTimeout(backgroundCloudBootstrapTimer);
+  backgroundCloudBootstrapTimer = null;
 }
 function scheduleForegroundCloudWakeCheck() {
   if (backgroundCloudBootstrapTimer) clearTimeout(backgroundCloudBootstrapTimer);
-  backgroundCloudBootstrapTimer = setTimeout(() => {
-    backgroundCloudBootstrapTimer = null;
-    scheduleBackgroundCloudBootstrap('foreground');
-  }, 180);
+  backgroundCloudBootstrapTimer = null;
 }
 function getCloudBackupBytes(meta) {
   return Number(meta && meta.payloadBytes || 0);
@@ -1898,29 +1861,15 @@ async function saveCloudBackup(opts) {
 function scheduleCloudSave() {
   if (suppressCloudAutoSave > 0) return;
   markLocalChange();
+  if (cloudSaveTimer) clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = null;
+  setNextCloudSaveAt('');
+  pendingCloudSave = Boolean(cloudUser);
   if (!cloudUser) {
-    setCloudSyncState('dirty', '本地改动已记录，登录后再继续处理', '');
-    pendingCloudSave = true;
+    setCloudSyncState('dirty', 'Local changes saved. Sign in to sync manually.', '');
     return;
   }
-  if (shouldUseIncrementalOnlyAutoSave()) {
-    clearTimeout(cloudSaveTimer);
-    cloudSaveTimer = null;
-    pendingCloudSave = false;
-    setNextCloudSaveAt('');
-    setCloudSyncState('dirty', '检测到大数据量，自动流程已切换为增量同步；整包 Cloud Save 改为手动使用', '');
-    scheduleDeferredSlowSync();
-    return;
-  }
-  clearTimeout(cloudSaveTimer);
-  pendingCloudSave = false;
-  const dueAt = new Date(Date.now() + AUTO_SYNC_DELAY_MS).toISOString();
-  setNextCloudSaveAt(dueAt);
-  setCloudSyncState('dirty', '检测到改动，约 5 分钟后自动同步', '');
-  cloudSaveTimer = setTimeout(() => {
-    cloudSaveTimer = null;
-    saveCloudBackup({ silent: true });
-  }, AUTO_SYNC_DELAY_MS);
+  setCloudSyncState('dirty', 'Auto sync paused. Click Sync to Cloud manually.', '');
 }
 // 生成笔记图片短 ID
 async function migrateIntegerIds() {
@@ -1997,13 +1946,9 @@ function recordOp(opType, entityId, payload, opts) {
 }
 let incrementalSyncTimer = null;
 function scheduleIncrementalSync() {
-  if (!cloudUser) return;
-  clearTimeout(incrementalSyncTimer);
-  setNextIncrementalSyncAt(new Date(Date.now() + AUTO_SYNC_DELAY_MS).toISOString());
-  incrementalSyncTimer = setTimeout(() => {
-    incrementalSyncTimer = null;
-    syncWithServer();
-  }, AUTO_SYNC_DELAY_MS);
+  if (incrementalSyncTimer) clearTimeout(incrementalSyncTimer);
+  incrementalSyncTimer = null;
+  setNextIncrementalSyncAt('');
 }
 function recordErrorUpsert(errorItem) {
   if (!errorItem) return;
@@ -11958,29 +11903,15 @@ function scheduleWorkspaceWarmup() {
   window.addEventListener('beforeunload', () => {
     if (cloudSaveTimer) {
       clearTimeout(cloudSaveTimer);
-      saveCloudBackup({ silent: true });
+      cloudSaveTimer = null;
     }
   });
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && typeof scheduleForegroundCloudWakeCheck === 'function') {
-      scheduleForegroundCloudWakeCheck();
-    }
     if (document.visibilityState === 'hidden' && cloudSaveTimer) {
       clearTimeout(cloudSaveTimer);
-      saveCloudBackup({ silent: true });
+      cloudSaveTimer = null;
     }
   });
-  window.addEventListener('focus', () => {
-    if (typeof scheduleForegroundCloudWakeCheck === 'function') {
-      scheduleForegroundCloudWakeCheck();
-    }
-  });
-  setInterval(() => {
-    if (document.visibilityState !== 'visible') return;
-    if (typeof scheduleForegroundCloudWakeCheck === 'function') {
-      scheduleForegroundCloudWakeCheck();
-    }
-  }, 3 * 60 * 1000);
 })();
 /* END: modules/main/99-bootstrap.js */
 
