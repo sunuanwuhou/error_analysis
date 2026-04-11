@@ -10,7 +10,7 @@
 .note-md-anchor:hover{background:#ffe3df}
 .note-toc{margin:0;padding:0;border:none;border-radius:0;background:transparent}
 .note-toc-title{font-size:11px;font-weight:700;color:#b45309;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
-.note-toc-list{display:flex;flex-direction:column;gap:4px}
+.note-toc-list{display:flex;flex-direction:column;gap:4px;max-height:inherit}
 .note-toc-item{padding:6px 2px;border-radius:10px;color:#7c5a2f;cursor:pointer;font-size:12px;line-height:1.55}
 .note-toc-item:hover{background:#fff2df;color:#c2410c}
 .note-toc-item.active{background:#fff2df;color:#c2410c;font-weight:700}
@@ -21,8 +21,8 @@
 .note-preview-layout{display:grid;grid-template-columns:minmax(200px,240px) minmax(0,1fr);gap:24px;align-items:start;min-height:100%}
 .note-preview-layout-no-toc{display:block}
 .note-preview-article{min-width:0;max-width:none}
-.note-preview-toc{display:block!important;grid-column:1;grid-row:1;align-self:start;position:sticky;top:0;max-height:calc(100vh - 340px);overflow:hidden;padding:4px 0 12px}
-.note-preview-toc .note-toc-floating{position:relative;max-height:100%;overflow:auto;padding:12px 14px;border:1px solid #f1e2ce;border-radius:16px;background:linear-gradient(180deg,#fffdf8 0%,#fffaf2 100%);box-shadow:none}
+.note-preview-toc{display:block!important;grid-column:1;grid-row:1;align-self:start;position:sticky;top:0;max-height:min(520px,calc(100vh - 220px));overflow:hidden;padding:4px 0 12px}
+.note-preview-toc .note-toc-floating{position:relative;max-height:inherit;overflow:auto;overscroll-behavior:contain;padding:12px 14px;border:1px solid #f1e2ce;border-radius:8px;background:linear-gradient(180deg,#fffdf8 0%,#fffaf2 100%);box-shadow:none}
 .global-note-toc-dock{display:none!important}
 .note-toc-floating{z-index:3;display:block;width:100%;max-width:100%;margin:0;border-color:#f3d6b8;box-shadow:0 8px 24px rgba(180,83,9,.08)}
 .note-toc-floating .note-toc-title{display:flex;align-items:center;justify-content:space-between}
@@ -40,6 +40,6 @@
   .note-preview-scroll{max-height:none}
   .note-viewer-frame--read{height:100%;min-height:100%}
   .note-preview-article-scroll{max-height:none}
-  .note-preview-toc{position:static;max-height:none;width:auto;max-width:none;margin-bottom:12px}
-  .note-preview-toc .note-toc-floating{position:static;max-height:none}
+  .note-preview-toc{position:static;max-height:min(420px,60vh);width:auto;max-width:none;margin-bottom:12px}
+  .note-preview-toc .note-toc-floating{position:static;max-height:inherit;overflow:auto}
 }

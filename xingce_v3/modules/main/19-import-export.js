@@ -80,8 +80,8 @@ function getImportedErrorTargetNodeId(item, context) {
   const explicitSubSubtype = String(item?.subSubtype || '').trim();
   if (explicitType || explicitSubtype || explicitSubSubtype) {
     const branch = ensureKnowledgeBranchPath(
-      explicitType || context?.type || '鍏朵粬',
-      explicitSubtype || context?.subtype || '鏈垎绫?',
+      explicitType || context?.type || '其他',
+      explicitSubtype || context?.subtype || '未分类',
       explicitSubSubtype || context?.subSubtype || ''
     );
     ensureKnowledgeNoteRecord(branch.sub2);
@@ -208,8 +208,8 @@ function normalizeImportedErrorsForCurrentKnowledge(list, defaultKind) {
 function normalizeImportedErrorsForCurrentKnowledge(list, defaultKind) {
   const context = importKnowledgeNodeId ? getKnowledgeContextForEntry(importKnowledgeNodeId) : null;
   return (list || []).map(item => {
-    const normalizedType = item.type || context?.type || '鍏朵粬';
-    const normalizedSubtype = item.subtype || context?.subtype || '鏈垎绫?';
+    const normalizedType = item.type || context?.type || '其他';
+    const normalizedSubtype = item.subtype || context?.subtype || '未分类';
     const normalizedSubSubtype = item.subSubtype || context?.subSubtype || '';
     return {
       ...normalizeEntryRecord(item, defaultKind || 'error'),
