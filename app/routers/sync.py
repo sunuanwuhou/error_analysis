@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import json
 import os
 import re
@@ -49,6 +50,32 @@ from app.schemas import (
 from app.security import clear_session, create_user_account, get_user_by_token, issue_session, utcnow, verify_password
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+
+def _normalize_sync_op(raw: Any) -> Optional[dict[str, Any]]:
+    if not isinstance(raw, dict):
+        return None
+    op_type = str(raw.get("op_type") or raw.get("opType") or "").strip()
+    entity_id = str(raw.get("entity_id") or raw.get("entityId") or "").strip()
+    if not op_type or not entity_id:
+        return None
+    if op_type not in UPSERT_TO_ENTITY_TYPE and op_type not in DELETE_TO_ENTITY_TYPE:
+        return None
+    payload = raw.get("payload")
+    if payload is None:
+        payload = {}
+    if not isinstance(payload, (dict, list, str, int, float, bool, type(None))):
+        payload = {}
+    created_at = str(raw.get("created_at") or raw.get("createdAt") or utcnow().isoformat()).strip() or utcnow().isoformat()
+    op_id = str(raw.get("id") or raw.get("opId") or uuid.uuid4())
+    return {
+        "id": op_id,
+        "op_type": op_type,
+        "entity_id": entity_id,
+        "payload": payload,
+        "created_at": created_at,
+    }
 
 
 @router.get("/api/sync")
@@ -116,33 +143,49 @@ def sync_push(
 ) -> dict[str, Any]:
     user = require_user(xingce_session)
     current_origin = infer_request_origin(request)
+    accepted_ops = 0
+    skipped_ops = 0
     with get_conn() as conn:
         for op in body.ops:
-            op_payload = op.get("payload") or {}
-            conn.execute(
-                """
-                INSERT OR IGNORE INTO operations(id, user_id, op_type, entity_id, payload, created_at)
-                VALUES(?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    op["id"],
+            normalized = _normalize_sync_op(op)
+            if not normalized:
+                skipped_ops += 1
+                continue
+            op_payload = normalized["payload"]
+            try:
+                conn.execute(
+                    """
+                    INSERT OR IGNORE INTO operations(id, user_id, op_type, entity_id, payload, created_at)
+                    VALUES(?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        normalized["id"],
+                        user["id"],
+                        normalized["op_type"],
+                        normalized["entity_id"],
+                        json.dumps(op_payload, ensure_ascii=False),
+                        normalized["created_at"],
+                    ),
+                )
+                apply_sync_op_to_state_entity(
                     user["id"],
-                    op["op_type"],
-                    str(op["entity_id"]),
-                    json.dumps(op_payload, ensure_ascii=False),
-                    op["created_at"],
-                ),
-            )
-            apply_sync_op_to_state_entity(
-                user["id"],
-                {
-                    "op_type": op.get("op_type"),
-                    "entity_id": op.get("entity_id"),
-                    "payload": op_payload,
-                    "created_at": op.get("created_at"),
-                },
-                conn,
-            )
+                    {
+                        "op_type": normalized["op_type"],
+                        "entity_id": normalized["entity_id"],
+                        "payload": op_payload,
+                        "created_at": normalized["created_at"],
+                    },
+                    conn,
+                )
+                accepted_ops += 1
+            except Exception:
+                skipped_ops += 1
+                logger.exception(
+                    "sync push op apply failed user=%s op_type=%s entity_id=%s",
+                    user["id"],
+                    normalized.get("op_type"),
+                    normalized.get("entity_id"),
+                )
         cleanup_old_ops(user["id"], conn)
         snapshot_updated_at = get_workspace_snapshot_updated_at(user["id"], conn) or utcnow().isoformat()
         conn.commit()
@@ -158,4 +201,6 @@ def sync_push(
         "snapshotUpdatedAt": snapshot_updated_at,
         "currentOrigin": current_origin,
         "origins": list_origin_statuses(user["id"]),
+        "acceptedOps": accepted_ops,
+        "skippedOps": skipped_ops,
     }

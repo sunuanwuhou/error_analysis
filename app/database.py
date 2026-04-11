@@ -19,6 +19,12 @@ def _adapt_sql(sql: str) -> str:
     text = re.sub(r"\bINSERT\s+OR\s+IGNORE\s+INTO\b", "INSERT INTO", text, flags=re.IGNORECASE)
     text = text.replace("datetime(updated_at)", "updated_at")
     text = text.replace("datetime(created_at)", "created_at")
+    text = re.sub(
+        r"datetime\('now'\s*,\s*'-([0-9]+)\s+days?'\)",
+        lambda m: f"(CURRENT_TIMESTAMP - INTERVAL '{m.group(1)} days')::text",
+        text,
+        flags=re.IGNORECASE,
+    )
     text = text.replace("date('now', '-180 days')", "(CURRENT_DATE - INTERVAL '180 days')::text")
     text = text.replace("?", "%s")
     if "INSERT INTO operations" in text and "ON CONFLICT" not in text:
