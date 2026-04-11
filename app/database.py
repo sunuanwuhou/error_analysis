@@ -1,116 +1,174 @@
 from __future__ import annotations
 
-import sqlite3
+import os
+import re
+from typing import Any, Iterable
 
-from app.config import DATA_DIR, DB_PATH
+import psycopg
+from psycopg.rows import dict_row
 
 
-def get_conn() -> sqlite3.Connection:
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH, timeout=30)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA busy_timeout = 30000")
-    conn.execute("PRAGMA foreign_keys = ON")
-    return conn
+POSTGRES_DSN = os.getenv(
+    "DATABASE_URL",
+    "postgresql://xingce:xingce_password@postgres:5432/xingce",
+)
+
+
+def _adapt_sql(sql: str) -> str:
+    text = str(sql)
+    text = re.sub(r"\bINSERT\s+OR\s+IGNORE\s+INTO\b", "INSERT INTO", text, flags=re.IGNORECASE)
+    text = text.replace("datetime(updated_at)", "updated_at")
+    text = text.replace("datetime(created_at)", "created_at")
+    text = text.replace("date('now', '-180 days')", "(CURRENT_DATE - INTERVAL '180 days')::text")
+    text = text.replace("?", "%s")
+    if "INSERT INTO operations" in text and "ON CONFLICT" not in text:
+        text = text.rstrip()
+        text += "\nON CONFLICT (id) DO NOTHING"
+    return text
+
+
+class PgConn:
+    def __init__(self) -> None:
+        self._conn = psycopg.connect(POSTGRES_DSN, row_factory=dict_row, connect_timeout=10)
+
+    def execute(self, sql: str, params: Iterable[Any] | None = None):
+        return self._conn.execute(_adapt_sql(sql), tuple(params or ()))
+
+    def executemany(self, sql: str, params_seq: Iterable[Iterable[Any]]):
+        with self._conn.cursor() as cur:
+            cur.executemany(_adapt_sql(sql), [tuple(params) for params in params_seq])
+            return cur
+
+    def commit(self) -> None:
+        self._conn.commit()
+
+    def rollback(self) -> None:
+        self._conn.rollback()
+
+    def close(self) -> None:
+        self._conn.close()
+
+    def __enter__(self) -> "PgConn":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        if exc_type is not None:
+            self.rollback()
+        self.close()
+
+
+def get_conn() -> PgConn:
+    return PgConn()
 
 
 def init_db() -> None:
     with get_conn() as conn:
-        conn.execute("PRAGMA journal_mode = WAL")
-        conn.execute("PRAGMA synchronous = NORMAL")
-        conn.executescript(
+        conn.execute(
             """
             CREATE TABLE IF NOT EXISTS users (
               id TEXT PRIMARY KEY,
               username TEXT NOT NULL UNIQUE,
               password_hash TEXT NOT NULL,
               created_at TEXT NOT NULL
-            );
-
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS sessions (
               token TEXT PRIMARY KEY,
-              user_id TEXT NOT NULL,
+              user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
               expires_at TEXT NOT NULL,
-              created_at TEXT NOT NULL,
-              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            );
-
+              created_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS user_backups (
-              user_id TEXT PRIMARY KEY,
+              user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
               payload_json TEXT NOT NULL,
-              updated_at TEXT NOT NULL,
-              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            );
-
+              updated_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS user_origin_status (
-              user_id TEXT NOT NULL,
+              user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
               origin TEXT NOT NULL,
               last_local_change_at TEXT NOT NULL DEFAULT '',
               last_loaded_at TEXT NOT NULL DEFAULT '',
               last_saved_at TEXT NOT NULL DEFAULT '',
               last_backup_updated_at TEXT NOT NULL DEFAULT '',
               updated_at TEXT NOT NULL,
-              PRIMARY KEY (user_id, origin),
-              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            );
-
+              PRIMARY KEY (user_id, origin)
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS user_images (
               hash TEXT NOT NULL,
-              user_id TEXT NOT NULL,
+              user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
               content_type TEXT NOT NULL DEFAULT 'image/jpeg',
               size_bytes INTEGER NOT NULL DEFAULT 0,
               ref_count INTEGER NOT NULL DEFAULT 1,
               created_at TEXT NOT NULL,
-              PRIMARY KEY (hash, user_id),
-              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            );
-
+              PRIMARY KEY (hash, user_id)
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS operations (
               id TEXT PRIMARY KEY,
-              user_id TEXT NOT NULL,
+              user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
               op_type TEXT NOT NULL,
               entity_id TEXT NOT NULL,
               payload TEXT NOT NULL,
-              created_at TEXT NOT NULL,
-              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_ops_user_time
-              ON operations(user_id, created_at);
-
+              created_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_ops_user_time ON operations(user_id, created_at)")
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS state_entities (
-              user_id TEXT NOT NULL,
+              user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
               entity_type TEXT NOT NULL,
               entity_id TEXT NOT NULL,
               payload_json TEXT NOT NULL DEFAULT '{}',
               updated_at TEXT NOT NULL,
               deleted_at TEXT NOT NULL DEFAULT '',
-              PRIMARY KEY (user_id, entity_type, entity_id),
-              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_state_entities_user_type_time
-              ON state_entities(user_id, entity_type, updated_at);
-
+              PRIMARY KEY (user_id, entity_type, entity_id)
+            )
+            """
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_state_entities_user_type_time ON state_entities(user_id, entity_type, updated_at)"
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS practice_log (
               id TEXT PRIMARY KEY,
-              user_id TEXT NOT NULL,
+              user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
               date TEXT NOT NULL,
               mode TEXT NOT NULL,
               weakness_tag TEXT NOT NULL DEFAULT '',
               total INTEGER NOT NULL DEFAULT 0,
               correct INTEGER NOT NULL DEFAULT 0,
               error_ids TEXT NOT NULL DEFAULT '[]',
-              created_at TEXT NOT NULL,
-              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_plog_user_date
-              ON practice_log(user_id, date);
-
+              created_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_plog_user_date ON practice_log(user_id, date)")
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS practice_attempts (
               id TEXT PRIMARY KEY,
-              user_id TEXT NOT NULL,
+              user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
               created_at TEXT NOT NULL,
               updated_at TEXT NOT NULL,
               session_mode TEXT NOT NULL DEFAULT '',
@@ -130,45 +188,42 @@ def init_db() -> None:
               solving_note TEXT NOT NULL DEFAULT '',
               scratch_data_json TEXT NOT NULL DEFAULT '{}',
               note_node_id TEXT NOT NULL DEFAULT '',
-              meta_json TEXT NOT NULL DEFAULT '{}',
-              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_practice_attempts_user_time
-              ON practice_attempts(user_id, created_at DESC);
-
+              meta_json TEXT NOT NULL DEFAULT '{}'
+            )
+            """
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_practice_attempts_user_time ON practice_attempts(user_id, updated_at DESC)"
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS codex_threads (
               id TEXT PRIMARY KEY,
-              user_id TEXT NOT NULL,
+              user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
               title TEXT NOT NULL DEFAULT '',
               archived INTEGER NOT NULL DEFAULT 0,
               created_at TEXT NOT NULL,
-              updated_at TEXT NOT NULL,
-              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_codex_threads_user_updated
-              ON codex_threads(user_id, updated_at DESC);
-
+              updated_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_codex_threads_user_updated ON codex_threads(user_id, updated_at DESC)")
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS codex_messages (
               id TEXT PRIMARY KEY,
-              thread_id TEXT NOT NULL,
-              user_id TEXT NOT NULL,
+              thread_id TEXT NOT NULL REFERENCES codex_threads(id) ON DELETE CASCADE,
+              user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
               role TEXT NOT NULL,
               content TEXT NOT NULL,
               context_json TEXT NOT NULL DEFAULT '{}',
               status TEXT NOT NULL DEFAULT 'done',
               error_text TEXT NOT NULL DEFAULT '',
               created_at TEXT NOT NULL,
-              replied_at TEXT NOT NULL DEFAULT '',
-              FOREIGN KEY (thread_id) REFERENCES codex_threads(id) ON DELETE CASCADE,
-              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_codex_messages_thread_time
-              ON codex_messages(thread_id, created_at);
-
-            CREATE INDEX IF NOT EXISTS idx_codex_messages_pending
-              ON codex_messages(status, created_at);
+              replied_at TEXT NOT NULL DEFAULT ''
+            )
             """
         )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_codex_messages_thread_time ON codex_messages(thread_id, created_at)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_codex_messages_pending ON codex_messages(status, created_at)")
+        conn.commit()
