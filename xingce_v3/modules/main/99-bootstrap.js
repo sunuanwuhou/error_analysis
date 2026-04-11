@@ -98,12 +98,14 @@ function scheduleWorkspaceWarmup() {
   }, 4000);
 
   window.addEventListener('beforeunload', () => {
+    if (typeof isManualCloudSyncOnly === 'function' && isManualCloudSyncOnly()) return;
     if (cloudSaveTimer) {
       clearTimeout(cloudSaveTimer);
       saveCloudBackup({ silent: true });
     }
   });
   document.addEventListener('visibilitychange', () => {
+    if (typeof isManualCloudSyncOnly === 'function' && isManualCloudSyncOnly()) return;
     if (document.visibilityState === 'visible' && typeof scheduleForegroundCloudWakeCheck === 'function') {
       scheduleForegroundCloudWakeCheck();
     }
@@ -113,11 +115,13 @@ function scheduleWorkspaceWarmup() {
     }
   });
   window.addEventListener('focus', () => {
+    if (typeof isManualCloudSyncOnly === 'function' && isManualCloudSyncOnly()) return;
     if (typeof scheduleForegroundCloudWakeCheck === 'function') {
       scheduleForegroundCloudWakeCheck();
     }
   });
   setInterval(() => {
+    if (typeof isManualCloudSyncOnly === 'function' && isManualCloudSyncOnly()) return;
     if (document.visibilityState !== 'visible') return;
     if (typeof scheduleForegroundCloudWakeCheck === 'function') {
       scheduleForegroundCloudWakeCheck();

@@ -463,6 +463,7 @@ const AUTO_SYNC_DELAY_MS = 5 * 60 * 1000;
 const STARTUP_CLOUD_META_TTL_MS = 5 * 60 * 1000;
 const STARTUP_INCREMENTAL_SYNC_TTL_MS = 5 * 60 * 1000;
 const FOREGROUND_CLOUD_CHECK_TTL_MS = 5 * 60 * 1000;
+const CLOUD_MANUAL_SYNC_ONLY = true;
 let deferredCloudRestorePromise = null;
 let deferredCloudRestoreUpdatedAt = '';
 let backgroundCloudBootstrapTimer = null;
@@ -595,7 +596,11 @@ function setNextIncrementalSyncAt(at) {
   cloudMeta.nextIncrementalSyncAt = String(at || '');
   saveCloudMeta();
 }
+function isManualCloudSyncOnly() {
+  return CLOUD_MANUAL_SYNC_ONLY;
+}
 function scheduleDeferredSlowSync() {
+  if (isManualCloudSyncOnly()) return;
   const dueAt = new Date(Date.now() + AUTO_SYNC_DELAY_MS).toISOString();
   setNextIncrementalSyncAt(dueAt);
   if (incrementalSyncTimer) clearTimeout(incrementalSyncTimer);
@@ -641,6 +646,10 @@ function shouldRunIncrementalSyncInForeground() {
   return getIsoAgeMs(cloudMeta && cloudMeta.lastIncrementalSyncAt) >= FOREGROUND_CLOUD_CHECK_TTL_MS;
 }
 async function runBackgroundCloudBootstrap(strategy) {
+  if (isManualCloudSyncOnly()) {
+    renderCloudUi();
+    return;
+  }
   const run = async () => {
     if (!cloudUser) return;
     try {
@@ -673,6 +682,7 @@ async function runBackgroundCloudBootstrap(strategy) {
   return run();
 }
 function scheduleBackgroundCloudBootstrap(strategy) {
+  if (isManualCloudSyncOnly()) return;
   const run = () => { runBackgroundCloudBootstrap(strategy); };
   if (typeof window.requestIdleCallback === 'function') {
     window.requestIdleCallback(() => { run(); }, { timeout: 1200 });
@@ -681,6 +691,7 @@ function scheduleBackgroundCloudBootstrap(strategy) {
   setTimeout(() => { run(); }, 120);
 }
 function scheduleForegroundCloudWakeCheck() {
+  if (isManualCloudSyncOnly()) return;
   if (backgroundCloudBootstrapTimer) clearTimeout(backgroundCloudBootstrapTimer);
   backgroundCloudBootstrapTimer = setTimeout(() => {
     backgroundCloudBootstrapTimer = null;
@@ -1191,6 +1202,11 @@ async function refreshCloudSession() {
     window.location.replace('/login');
     return;
   }
+  if (isManualCloudSyncOnly()) {
+    setCloudSyncState('idle', '已登录，当前为手动同步模式（仅点击 Cloud Save 才会增量同步）', '');
+    renderCloudUi();
+    return;
+  }
   setCloudSyncState('idle', '已登录，默认优先显示本地数据', '');
   renderCloudUi();
   scheduleBackgroundCloudBootstrap();
@@ -1358,6 +1374,11 @@ async function saveCloudBackup(opts) {
 function scheduleCloudSave() {
   if (suppressCloudAutoSave > 0) return;
   markLocalChange();
+  if (isManualCloudSyncOnly()) {
+    pendingCloudSave = true;
+    setCloudSyncState('dirty', '本地改动已记录；仅在点击 Cloud Save 时执行增量同步', '');
+    return;
+  }
   if (!cloudUser) {
     setCloudSyncState('dirty', '本地改动已记录，登录后再继续处理', '');
     pendingCloudSave = true;
@@ -2087,6 +2108,7 @@ window.deleteLocalBackup = deleteLocalBackup;
 window.ensureDailyLocalBackup = ensureDailyLocalBackup;
 window.ensureLocalBackupMenuButton = ensureLocalBackupMenuButton;
 window.saveNoteReviewTracking = saveNoteReviewTracking;
+window.isManualCloudSyncOnly = isManualCloudSyncOnly;
 
 function formatCodexTime(raw){
   if(!raw) return '';
