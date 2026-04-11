@@ -1244,8 +1244,31 @@ async function loadCloudBackup(opts) {
     cloudBusy = false;
   }
 }
+async function saveCloudIncremental(opts) {
+  opts = opts || {};
+  if (!cloudUser) {
+    if (!opts.silent) window.location.replace('/login');
+    return;
+  }
+  if (incrementalSyncBusy) return;
+  setCloudSyncState('saving', '正在执行增量同步', '');
+  try {
+    await syncWithServer({ forceFullPull: Boolean(opts.forceFullPull) });
+    if (cloudSyncState !== 'error') {
+      setCloudSyncState('synced', '增量同步完成', cloudSyncUpdatedAt || new Date().toISOString());
+      showCloudInfo('Incremental sync completed', opts);
+    }
+  } catch (e) {
+    setCloudSyncState('error', e.message || '增量同步失败', '');
+    showCloudError(e, 'Incremental sync failed', opts);
+  }
+}
 async function saveCloudBackup(opts) {
   opts = opts || {};
+  if (!opts.forceOverwrite && !opts.forceFullBackup) {
+    await saveCloudIncremental(opts);
+    return;
+  }
   if (!cloudUser) {
     if (!opts.silent) window.location.replace('/login');
     return;
