@@ -530,7 +530,10 @@ def delete_local_backup(
     user = require_user(xingce_session)
     backup_dir = _user_backup_root(user["id"]) / backup_id
     if not backup_dir.exists():
-        raise HTTPException(status_code=404, detail="backup snapshot not found")
+        return {
+            "ok": True,
+            "items": _list_local_backups(user["id"]),
+        }
     shutil.rmtree(backup_dir, ignore_errors=True)
     return {
         "ok": True,
