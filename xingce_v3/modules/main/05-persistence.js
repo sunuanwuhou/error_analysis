@@ -1879,7 +1879,7 @@ function renderLocalBackupList(items){
   if(!summary || !list) return;
   const arr = Array.isArray(items) ? items : [];
   summary.textContent = arr.length
-    ? `共 ${arr.length} 份快照，自动备份默认一天一次。恢复前会再自动补一份安全备份。`
+    ? `共 ${arr.length} 份快照，自动备份默认一天一次。点击恢复会直接回到所选快照。`
     : '当前还没有本地快照，建议先点一次“立即备份”。';
   if(!arr.length){
     list.innerHTML = '<div style="padding:18px;border:1px dashed #d0d5dd;border-radius:12px;color:#667085">暂无备份快照</div>';
@@ -1998,13 +1998,13 @@ async function createManualLocalBackup(){
 
 async function restoreLocalBackup(backupId){
   if(!backupId) return;
-  const ok = confirm('恢复这份备份后，当前账号的数据会回到该时间点。\n\n恢复前会自动再做一份安全备份，确认继续吗？');
+  const ok = confirm('恢复这份备份后，当前账号的数据会直接回到该时间点。\n\n不会自动创建恢复前备份，确认继续吗？');
   if(!ok) return;
   try{
     const data = await fetchJsonWithAuth('/api/local-backups/restore', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ backupId, createSafetyBackup:true })
+      body: JSON.stringify({ backupId, createSafetyBackup:false })
     });
     localBackupState.items = Array.isArray(data.items) ? data.items : localBackupState.items;
     renderLocalBackupList(localBackupState.items);

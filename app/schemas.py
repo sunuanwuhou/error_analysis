@@ -49,7 +49,7 @@ class LocalBackupCreatePayload(BaseModel):
 
 class LocalBackupRestorePayload(BaseModel):
     backupId: str = Field(min_length=8, max_length=120)
-    createSafetyBackup: bool = True
+    createSafetyBackup: bool = False
 
 
 class CodexThreadCreatePayload(BaseModel):
