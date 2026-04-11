@@ -1022,7 +1022,7 @@ function updateQuizAnswerState(errorLike, answerRecord) {
   if (analysisHost) analysisHost.innerHTML = getQuizAnalysisPanelHtml(errorLike, answerRecord);
 }
 
-renderQuizQuestion = function renderQuizQuestionFenbiMode() {
+function renderQuizQuestionFenbiMode() {
   const total = quizQueue.length;
   document.getElementById('quizProgress').textContent = `${quizIdx + 1} / ${total}`;
   document.getElementById('quizProgFill').style.width = `${(quizIdx / total) * 100}%`;
@@ -1106,7 +1106,7 @@ renderQuizQuestion = function renderQuizQuestionFenbiMode() {
   closeQuizProcessCanvas();
 };
 
-selectQuizAnswer = function selectQuizAnswerFenbiMode(letter) {
+function selectQuizAnswerFenbiMode(letter) {
   document.querySelectorAll('.quiz-opt-btn').forEach((b) => { b.disabled = true; });
   const e = quizQueue[quizIdx];
   const correct = e.answer ? e.answer.trim().toUpperCase() : '';
@@ -1134,7 +1134,7 @@ selectQuizAnswer = function selectQuizAnswerFenbiMode(letter) {
   }
 };
 
-renderQuizReview = function renderQuizReviewFenbiMode() {
+function renderQuizReviewFenbiMode() {
   const realAnswers = quizAnswers.filter((a) => !a.skipped);
   const total = realAnswers.length;
   const correctN = realAnswers.filter((a) => a.correct).length;
