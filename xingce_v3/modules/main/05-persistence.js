@@ -814,9 +814,16 @@ function isLocalDebugOrigin(origin) {
   const value = String(origin || getCloudOriginKey() || '').toLowerCase();
   return value.includes('127.0.0.1') || value.includes('localhost');
 }
+function normalizeCloudIso(value) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  if (/(?:Z|[+-]\d{2}:\d{2})$/i.test(text)) return text;
+  if (/^\d{4}-\d{2}-\d{2}T/.test(text)) return `${text}Z`;
+  return text;
+}
 function formatCloudTime(value) {
   if (!value) return '';
-  const dt = new Date(value);
+  const dt = new Date(normalizeCloudIso(value));
   if (Number.isNaN(dt.getTime())) return '';
   const mm = String(dt.getMonth() + 1).padStart(2, '0');
   const dd = String(dt.getDate()).padStart(2, '0');
@@ -827,7 +834,7 @@ function formatCloudTime(value) {
 }
 function toCloudTimeMs(value) {
   if (!value) return 0;
-  const ms = new Date(value).getTime();
+  const ms = new Date(normalizeCloudIso(value)).getTime();
   return Number.isNaN(ms) ? 0 : ms;
 }
 function escapeHtml(value) {
