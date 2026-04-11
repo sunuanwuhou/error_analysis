@@ -7,16 +7,28 @@ from fastapi.responses import JSONResponse
 
 from app.core import require_user
 from app.runtime import infer_request_origin
-from app.schemas import BackupPayload, LocalBackupCreatePayload, LocalBackupRestorePayload, OriginStatusPayload
+from app.schemas import (
+    BackupPayload,
+    CloudChunkCompletePayload,
+    CloudChunkInitPayload,
+    LocalBackupCreatePayload,
+    LocalBackupRestorePayload,
+    OriginStatusPayload,
+)
 from app.services.backup_service import (
     BackupConflictError,
     BackupSnapshotNotFoundError,
+    ChunkUploadInvalidError,
+    ChunkUploadNotFoundError,
+    complete_chunk_upload,
     create_local_backup_response,
     delete_local_backup_response,
     get_backup_response,
+    init_chunk_upload,
     list_local_backup_items,
     restore_local_backup_response,
     save_backup,
+    upload_chunk_part,
     update_origin_status,
 )
 
@@ -57,6 +69,53 @@ def put_backup(
         )
     except BackupConflictError as exc:
         return JSONResponse(exc.payload, status_code=409)
+
+
+@router.post("/api/backup/chunk/init")
+def init_backup_chunk_upload(
+    payload: CloudChunkInitPayload,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    user_id = _user_id_from_session(xingce_session)
+    return init_chunk_upload(user_id, payload)
+
+
+@router.put("/api/backup/chunk/{upload_id}/part")
+async def put_backup_chunk_part(
+    upload_id: str,
+    request: Request,
+    index: int = Query(default=0, ge=0),
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    user_id = _user_id_from_session(xingce_session)
+    body = await request.body()
+    try:
+        return upload_chunk_part(user_id, upload_id, index, body)
+    except ChunkUploadNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=exc.detail) from exc
+    except ChunkUploadInvalidError as exc:
+        raise HTTPException(status_code=400, detail=exc.detail) from exc
+
+
+@router.post("/api/backup/chunk/complete")
+def complete_backup_chunk_upload(
+    payload: CloudChunkCompletePayload,
+    request: Request,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> Any:
+    user_id = _user_id_from_session(xingce_session)
+    try:
+        return complete_chunk_upload(
+            user_id,
+            payload.uploadId,
+            current_origin=infer_request_origin(request),
+        )
+    except BackupConflictError as exc:
+        return JSONResponse(exc.payload, status_code=409)
+    except ChunkUploadNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=exc.detail) from exc
+    except ChunkUploadInvalidError as exc:
+        raise HTTPException(status_code=400, detail=exc.detail) from exc
 
 
 @router.post("/api/origin-status")

@@ -6,6 +6,7 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
+from uuid import uuid4
 
 from app.config import BACKUPS_DIR, IMAGES_DIR
 from app.core import (
@@ -17,7 +18,13 @@ from app.core import (
     upsert_origin_status,
 )
 from app.database import get_conn
-from app.schemas import BackupPayload, LocalBackupCreatePayload, LocalBackupRestorePayload, OriginStatusPayload
+from app.schemas import (
+    BackupPayload,
+    CloudChunkInitPayload,
+    LocalBackupCreatePayload,
+    LocalBackupRestorePayload,
+    OriginStatusPayload,
+)
 from app.security import parse_iso_datetime, utcnow
 
 
@@ -33,8 +40,26 @@ class BackupSnapshotNotFoundError(Exception):
         self.detail = detail
 
 
+class ChunkUploadNotFoundError(Exception):
+    def __init__(self, detail: str) -> None:
+        super().__init__(detail)
+        self.detail = detail
+
+
+class ChunkUploadInvalidError(Exception):
+    def __init__(self, detail: str) -> None:
+        super().__init__(detail)
+        self.detail = detail
+
+
 def _now_local_iso() -> str:
     return datetime.now().astimezone().isoformat()
+
+
+def _chunk_upload_root(user_id: str) -> Path:
+    root = BACKUPS_DIR / "_chunk_uploads" / user_id
+    root.mkdir(parents=True, exist_ok=True)
+    return root
 
 
 def _user_backup_root(user_id: str) -> Path:
@@ -225,6 +250,139 @@ def _restore_user_images(user_id: str, backup_dir: Path) -> int:
         return 0
     shutil.copytree(source_dir, target_dir)
     return sum(1 for item in target_dir.iterdir() if item.is_file())
+
+
+def _chunk_session_dir(user_id: str, upload_id: str) -> Path:
+    return _chunk_upload_root(user_id) / upload_id
+
+
+def _load_chunk_meta(user_id: str, upload_id: str) -> dict[str, Any]:
+    session_dir = _chunk_session_dir(user_id, upload_id)
+    if not session_dir.exists():
+        raise ChunkUploadNotFoundError("chunk upload session not found")
+    meta_path = session_dir / "meta.json"
+    if not meta_path.exists():
+        raise ChunkUploadInvalidError("chunk upload metadata missing")
+    return _read_json(meta_path, {})
+
+
+def _save_chunk_meta(user_id: str, upload_id: str, meta: dict[str, Any]) -> None:
+    session_dir = _chunk_session_dir(user_id, upload_id)
+    session_dir.mkdir(parents=True, exist_ok=True)
+    _write_json(session_dir / "meta.json", meta)
+
+
+def _purge_stale_chunk_uploads(user_id: str, keep: int = 6) -> None:
+    root = _chunk_upload_root(user_id)
+    sessions = [child for child in root.iterdir() if child.is_dir()]
+    sessions.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    for stale in sessions[keep:]:
+        shutil.rmtree(stale, ignore_errors=True)
+
+
+def init_chunk_upload(user_id: str, payload: CloudChunkInitPayload) -> dict[str, Any]:
+    upload_id = f"up_{uuid4().hex}"
+    session_dir = _chunk_session_dir(user_id, upload_id)
+    parts_dir = session_dir / "parts"
+    parts_dir.mkdir(parents=True, exist_ok=True)
+    now = _now_local_iso()
+    meta = {
+        "uploadId": upload_id,
+        "createdAt": now,
+        "updatedAt": now,
+        "totalBytes": int(payload.totalBytes),
+        "totalChunks": int(payload.totalChunks),
+        "chunkSize": int(payload.chunkSize),
+        "receivedBytes": 0,
+        "receivedChunks": [],
+        "baseUpdatedAt": str(payload.baseUpdatedAt or ""),
+        "forceOverwrite": bool(payload.forceOverwrite),
+        "exportTime": str(payload.exportTime or ""),
+    }
+    _save_chunk_meta(user_id, upload_id, meta)
+    _purge_stale_chunk_uploads(user_id)
+    return {
+        "ok": True,
+        "uploadId": upload_id,
+        "totalBytes": meta["totalBytes"],
+        "totalChunks": meta["totalChunks"],
+        "chunkSize": meta["chunkSize"],
+        "receivedBytes": 0,
+        "receivedChunks": 0,
+    }
+
+
+def upload_chunk_part(user_id: str, upload_id: str, chunk_index: int, body: bytes) -> dict[str, Any]:
+    meta = _load_chunk_meta(user_id, upload_id)
+    total_chunks = int(meta.get("totalChunks") or 0)
+    if chunk_index < 0 or chunk_index >= total_chunks:
+        raise ChunkUploadInvalidError("chunk index out of range")
+    if not body:
+        raise ChunkUploadInvalidError("empty chunk body")
+
+    session_dir = _chunk_session_dir(user_id, upload_id)
+    parts_dir = session_dir / "parts"
+    parts_dir.mkdir(parents=True, exist_ok=True)
+    part_path = parts_dir / f"{chunk_index:06d}.part"
+    previous_size = part_path.stat().st_size if part_path.exists() else 0
+    part_path.write_bytes(body)
+    current_size = part_path.stat().st_size
+    received_list = [int(v) for v in list(meta.get("receivedChunks") or [])]
+    if chunk_index not in received_list:
+        received_list.append(chunk_index)
+    meta["receivedChunks"] = sorted(received_list)
+    meta["receivedBytes"] = max(0, int(meta.get("receivedBytes") or 0) - previous_size + current_size)
+    meta["updatedAt"] = _now_local_iso()
+    _save_chunk_meta(user_id, upload_id, meta)
+    return {
+        "ok": True,
+        "uploadId": upload_id,
+        "chunkIndex": chunk_index,
+        "receivedChunks": len(meta["receivedChunks"]),
+        "totalChunks": total_chunks,
+        "receivedBytes": int(meta.get("receivedBytes") or 0),
+        "totalBytes": int(meta.get("totalBytes") or 0),
+    }
+
+
+def complete_chunk_upload(user_id: str, upload_id: str, *, current_origin: str) -> dict[str, Any]:
+    meta = _load_chunk_meta(user_id, upload_id)
+    total_chunks = int(meta.get("totalChunks") or 0)
+    total_bytes = int(meta.get("totalBytes") or 0)
+    received_chunks = sorted(int(v) for v in list(meta.get("receivedChunks") or []))
+    if len(received_chunks) != total_chunks:
+        raise ChunkUploadInvalidError("chunk upload not complete")
+    for idx, value in enumerate(received_chunks):
+        if value != idx:
+            raise ChunkUploadInvalidError("missing chunk segments")
+
+    session_dir = _chunk_session_dir(user_id, upload_id)
+    parts_dir = session_dir / "parts"
+    assembled = bytearray()
+    for idx in range(total_chunks):
+        part_path = parts_dir / f"{idx:06d}.part"
+        if not part_path.exists():
+            raise ChunkUploadInvalidError(f"chunk part {idx} missing")
+        assembled.extend(part_path.read_bytes())
+    if len(assembled) != total_bytes:
+        raise ChunkUploadInvalidError("chunk byte size mismatch")
+    try:
+        payload_data = json.loads(assembled.decode("utf-8"))
+    except Exception as exc:
+        raise ChunkUploadInvalidError("chunk payload decode failed") from exc
+
+    payload_data["baseUpdatedAt"] = str(meta.get("baseUpdatedAt") or payload_data.get("baseUpdatedAt") or "")
+    payload_data["forceOverwrite"] = bool(meta.get("forceOverwrite") or payload_data.get("forceOverwrite") or False)
+    if meta.get("exportTime") and not payload_data.get("exportTime"):
+        payload_data["exportTime"] = str(meta.get("exportTime"))
+    payload = BackupPayload(**payload_data)
+    result = save_backup(user_id, payload, current_origin=current_origin)
+    shutil.rmtree(session_dir, ignore_errors=True)
+    return {
+        "ok": True,
+        "mode": "chunked_full_backup",
+        **result,
+    }
 
 
 def get_backup_response(user_id: str, *, current_origin: str, meta: bool) -> dict[str, Any]:

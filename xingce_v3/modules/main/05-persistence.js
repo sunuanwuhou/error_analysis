@@ -464,6 +464,7 @@ const STARTUP_CLOUD_META_TTL_MS = 5 * 60 * 1000;
 const STARTUP_INCREMENTAL_SYNC_TTL_MS = 5 * 60 * 1000;
 const FOREGROUND_CLOUD_CHECK_TTL_MS = 5 * 60 * 1000;
 const CLOUD_MANUAL_SYNC_ONLY = true;
+const FULL_BACKUP_CHUNK_BYTES = 256 * 1024;
 let deferredCloudRestorePromise = null;
 let deferredCloudRestoreUpdatedAt = '';
 let backgroundCloudBootstrapTimer = null;
@@ -1378,6 +1379,118 @@ async function saveCloudBackup(opts) {
     cloudBusy = false;
   }
 }
+
+async function saveCloudFullBackup(opts) {
+  opts = opts || {};
+  if (!cloudUser) {
+    if (!opts.silent) window.location.replace('/login');
+    return;
+  }
+  if (cloudBusy || incrementalSyncBusy) return;
+  if (cloudSaveTimer) {
+    clearTimeout(cloudSaveTimer);
+    cloudSaveTimer = null;
+  }
+  setNextCloudSaveAt('');
+  pendingCloudSave = false;
+  cloudBusy = true;
+  try {
+    const payload = {
+      ...getFullBackupPayload(),
+      forceOverwrite: Boolean(opts.forceOverwrite)
+    };
+    const text = JSON.stringify(payload);
+    const bytes = new TextEncoder().encode(text);
+    const totalBytes = bytes.length;
+    const chunkSize = FULL_BACKUP_CHUNK_BYTES;
+    const totalChunks = Math.max(1, Math.ceil(totalBytes / chunkSize));
+    setCloudSyncState('saving', `全量备份上传中 0% (0/${totalChunks})`, '');
+
+    const initData = await fetchJsonWithAuth('/api/backup/chunk/init', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        totalBytes: totalBytes,
+        totalChunks: totalChunks,
+        chunkSize: chunkSize,
+        baseUpdatedAt: cloudMeta.lastSeenBackupAt || '',
+        forceOverwrite: Boolean(opts.forceOverwrite),
+        exportTime: payload.exportTime || ''
+      })
+    });
+    const uploadId = String(initData.uploadId || '');
+    if (!uploadId) throw new Error('chunk upload init failed');
+
+    for (let index = 0; index < totalChunks; index += 1) {
+      const start = index * chunkSize;
+      const end = Math.min(start + chunkSize, totalBytes);
+      const chunk = bytes.slice(start, end);
+      const partRes = await fetch(`/api/backup/chunk/${encodeURIComponent(uploadId)}/part?index=${index}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/octet-stream' },
+        body: chunk
+      });
+      const partData = await partRes.json().catch(() => ({}));
+      if (!partRes.ok) {
+        throw new Error(partData.detail || partData.error || `chunk upload failed: ${partRes.status}`);
+      }
+      const uploadedChunks = Number(partData.receivedChunks || (index + 1));
+      const pct = Math.min(100, Math.round((uploadedChunks / totalChunks) * 100));
+      setCloudSyncState('saving', `全量备份上传中 ${pct}% (${uploadedChunks}/${totalChunks})`, '');
+    }
+
+    const doneRes = await fetch('/api/backup/chunk/complete', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uploadId })
+    });
+    const data = await doneRes.json().catch(() => ({}));
+    if (doneRes.status === 409) {
+      updateCloudOriginStatuses(data.origins);
+      if (!cloudMeta || typeof cloudMeta !== 'object') cloudMeta = getDefaultCloudMeta();
+      if (data.currentUpdatedAt) {
+        cloudMeta.lastSeenBackupAt = data.currentUpdatedAt;
+        saveCloudMeta();
+      }
+      cloudConflictBlocked = true;
+      setCloudSyncState('dirty', '云端版本已更新，请先确认时间后再执行全量覆盖', data.currentUpdatedAt || '');
+      if (!opts.silent) {
+        const shouldForce = confirm('检测到云端比当前基线更新。是否强制全量覆盖云端？');
+        if (shouldForce) {
+          cloudBusy = false;
+          await saveCloudFullBackup({ ...opts, forceOverwrite: true });
+        }
+      }
+      return;
+    }
+    if (!doneRes.ok) throw new Error(data.detail || data.error || 'full backup complete failed');
+
+    updateCloudOriginStatuses(data.origins);
+    rememberCloudDecision(data.updatedAt || '', 'saved');
+    cloudConflictBlocked = false;
+    await syncWithServer({ pushOnly: true });
+    setCloudSyncState('synced', `全量备份完成（${formatBackupBytes(totalBytes)}）`, data.updatedAt || '');
+    showCloudInfo('Full cloud backup completed', opts);
+  } catch (e) {
+    setCloudSyncState('error', e.message || '全量备份失败，请重试', '');
+    showCloudError(e, 'Full cloud backup failed', opts);
+  } finally {
+    cloudBusy = false;
+  }
+}
+
+async function saveCloudFullBackupFromMore() {
+  if (!cloudUser) {
+    window.location.replace('/login');
+    return;
+  }
+  const ok = confirm('将把当前本地完整数据分块上传到云端。继续吗？');
+  if (!ok) return;
+  await saveCloudFullBackup({ silent: false, forceOverwrite: false });
+}
+
 function scheduleCloudSave() {
   if (suppressCloudAutoSave > 0) return;
   markLocalChange();
@@ -2135,6 +2248,8 @@ window.restoreLocalBackup = restoreLocalBackup;
 window.deleteLocalBackup = deleteLocalBackup;
 window.ensureDailyLocalBackup = ensureDailyLocalBackup;
 window.ensureLocalBackupMenuButton = ensureLocalBackupMenuButton;
+window.saveCloudFullBackupFromMore = saveCloudFullBackupFromMore;
+window.saveCloudFullBackup = saveCloudFullBackup;
 window.saveNoteReviewTracking = saveNoteReviewTracking;
 window.isManualCloudSyncOnly = isManualCloudSyncOnly;
 
