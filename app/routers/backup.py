@@ -300,6 +300,43 @@ def get_backup(
         "origins": list_origin_statuses(user["id"]),
     }
 
+
+@router.get("/api/backup/cloud")
+def get_cloud_backup(
+    request: Request,
+    meta: bool = Query(default=False),
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    user = require_user(xingce_session)
+    current_origin = infer_request_origin(request)
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT payload_json, updated_at FROM user_backups WHERE user_id = ?",
+            (user["id"],),
+        ).fetchone()
+    if not row:
+        return {
+            "exists": False,
+            "currentOrigin": current_origin,
+            "payloadBytes": 0,
+            "summary": {},
+            "payload": None,
+            "backup": None,
+            "origins": list_origin_statuses(user["id"]),
+        }
+    payload_text = row["payload_json"] or "{}"
+    backup = json.loads(payload_text)
+    return {
+        "exists": True,
+        "currentOrigin": current_origin,
+        "updatedAt": row["updated_at"],
+        "payloadBytes": len(payload_text.encode("utf-8")),
+        "summary": build_backup_summary(backup),
+        "payload": None if meta else backup,
+        "backup": None if meta else backup,
+        "origins": list_origin_statuses(user["id"]),
+    }
+
 @router.put("/api/backup")
 def put_backup(payload: BackupPayload, request: Request, xingce_session: Optional[str] = Cookie(default=None)) -> dict[str, Any]:
     user = require_user(xingce_session)

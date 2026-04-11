@@ -8,6 +8,9 @@
 4. `docs/DEVLOG.md`
 5. `docs/RELEASE_CHECKLIST.md`
 6. `docs/SELF_TEST_REPORT.md`
+7. `docs/NEXT_CUTOVER_EXECUTION_PLAN.md` when working on `/next` migration
+8. `docs/NEXT_SCREENSHOT_PARITY_BASELINE.md` when checking layout parity
+9. `docs/NEXT_BRIDGE_INVENTORY.md` when replacing legacy bridges
 
 ## Source of truth
 
@@ -20,6 +23,9 @@ The repository docs are the source of truth.
 - versioned changes: `docs/DEVLOG.md`
 - delivery gate: `docs/RELEASE_CHECKLIST.md`
 - self-test evidence: `docs/SELF_TEST_REPORT.md`
+- `/next` cutover execution contract: `docs/NEXT_CUTOVER_EXECUTION_PLAN.md`
+- screenshot parity contract: `docs/NEXT_SCREENSHOT_PARITY_BASELINE.md`
+- bridge ownership inventory: `docs/NEXT_BRIDGE_INVENTORY.md`
 
 ## How to use these docs in future sessions
 

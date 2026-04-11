@@ -169,3 +169,48 @@ class PracticeAttemptItemPayload(BaseModel):
 
 class PracticeAttemptsBatchPayload(BaseModel):
     items: list[PracticeAttemptItemPayload] = Field(default_factory=list)
+
+
+class ErrorUpsertPayload(BaseModel):
+    id: str = ""
+    entryKind: str = "error"
+    type: str = ""
+    subtype: str = ""
+    subSubtype: str = ""
+    question: str = ""
+    options: str = ""
+    answer: str = ""
+    myAnswer: str = ""
+    rootReason: str = ""
+    errorReason: str = ""
+    analysis: str = ""
+    nextAction: str = ""
+    status: str = "focus"
+    difficulty: int = Field(default=0, ge=0, le=5)
+    noteNodeId: str = ""
+    imgData: str = ""
+    analysisImgData: str = ""
+    srcYear: str = ""
+    srcProvince: str = ""
+    srcOrigin: str = ""
+    knowledgePathTitles: list[str] = Field(default_factory=list)
+    knowledgePath: str = ""
+    knowledgeNodePath: str = ""
+    notePath: str = ""
+    mistakeType: str = ""
+    triggerPoint: str = ""
+    correctModel: str = ""
+    processCanvasData: str = ""
+    processImage: dict[str, Any] = Field(default_factory=dict)
+    addDate: str = ""
+    createdAt: str = ""
+    updatedAt: str = ""
+
+
+class KnowledgeNodeUpsertPayload(BaseModel):
+    id: str = ""
+    parentId: str = ""
+    title: str = ""
+    contentMd: str = ""
+    sort: int = 0
+    updatedAt: str = ""

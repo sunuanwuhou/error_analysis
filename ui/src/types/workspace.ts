@@ -13,11 +13,39 @@ export type KnowledgeTreeNode = {
   children?: KnowledgeTreeNode[]
 }
 
+export type TypeRuleItem = {
+  keywords: string[]
+  type: string
+  subtype?: string
+}
+
+export type WorkspaceSnapshot = {
+  xc_version?: number
+  exportTime?: string
+  baseUpdatedAt?: string
+  forceOverwrite?: boolean
+  errors?: ErrorSummary[]
+  revealed?: string[]
+  expTypes?: string[]
+  expMain?: string[]
+  expMainSub?: string[]
+  expMainSub2?: string[]
+  notesByType?: Record<string, unknown>
+  noteImages?: Record<string, unknown>
+  typeRules?: TypeRuleItem[] | null
+  dirTree?: unknown
+  globalNote?: string
+  knowledgeTree?: KnowledgeTreeNode[] | { roots?: KnowledgeTreeNode[] }
+  knowledgeNotes?: Record<string, unknown>
+  knowledgeExpanded?: string[]
+  todayDate?: string
+  todayDone?: number
+  history?: PracticeHistoryRecord[]
+}
+
 export type BackupPayloadResponse = BackupMetaResponse & {
-  payload?: {
-    knowledgeTree?: KnowledgeTreeNode[] | { roots?: KnowledgeTreeNode[] }
-    errors?: ErrorSummary[]
-  } | null
+  payload?: WorkspaceSnapshot | null
+  backup?: WorkspaceSnapshot | null
 }
 
 export type LocalBackupItem = {
@@ -42,10 +70,12 @@ export type LocalBackupsResponse = {
 
 export type ErrorSummary = {
   id?: string
+  entryKind?: string
   type?: string
   subtype?: string
   subSubtype?: string
   question?: string
+  options?: string
   answer?: string
   myAnswer?: string
   status?: string
@@ -57,10 +87,39 @@ export type ErrorSummary = {
   errorReason?: string
   rootReason?: string
   analysis?: string
+  nextAction?: string
   tip?: string
   masteryLevel?: string
+  masteryUpdatedAt?: string | null
+  lastPracticedAt?: string | null
   updatedAt?: string
+  addDate?: string
+  createdAt?: string
   noteNodeId?: string
+  imgData?: string
+  analysisImgData?: string
+  srcYear?: string
+  srcProvince?: string
+  srcOrigin?: string
+  knowledgePathTitles?: string[]
+  knowledgePath?: string
+  knowledgeNodePath?: string
+  notePath?: string
+  mistakeType?: string
+  triggerPoint?: string
+  correctModel?: string
+  processCanvasData?: string
+  processImage?: {
+    imageUrl?: string
+    updatedAt?: string
+  }
+}
+
+export type AdviceItem = {
+  key?: string
+  title?: string
+  description?: string
+  targetIds?: string[]
 }
 
 export type PracticeWorkbenchOverview = {
@@ -96,8 +155,8 @@ export type WeaknessGroup = {
 export type PracticeWorkbenchResponse = {
   ok: true
   overview: PracticeWorkbenchOverview
-  advice: string[]
-  workflowAdvice: string[]
+  advice: AdviceItem[]
+  workflowAdvice: AdviceItem[]
   reviewQueue: PracticeQueueItem[]
   retrainQueue: PracticeQueueItem[]
   noteFirstQueue: PracticeQueueItem[]
@@ -146,7 +205,49 @@ export type PracticeDailyResponse = {
   ok: true
   items: PracticeDailyItem[]
   practicedTodayCount: number
-  advice: string[]
+  advice: AdviceItem[]
+}
+
+export type PracticeAttempt = {
+  id: string
+  createdAt?: string
+  updatedAt?: string
+  sessionMode?: string
+  source?: string
+  questionId?: string
+  errorId?: string
+  type?: string
+  subtype?: string
+  subSubtype?: string
+  questionText?: string
+  myAnswer?: string
+  correctAnswer?: string
+  result?: string
+  durationSec?: number
+  statusTag?: string
+  confidence?: number
+  solvingNote?: string
+  noteNodeId?: string
+  scratchData?: Record<string, unknown>
+  meta?: Record<string, unknown>
+}
+
+export type PracticeAttemptsResponse = {
+  ok: true
+  items: PracticeAttempt[]
+}
+
+export type PracticeHistoryRecord = {
+  date?: string
+  sessionType?: string
+  total?: number
+  correct?: number
+  skipped?: number
+  details?: Array<{
+    id?: string
+    correct?: boolean
+    skipped?: boolean
+  }>
 }
 
 export type CodexThreadSummary = {

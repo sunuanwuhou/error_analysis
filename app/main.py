@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import BASE_DIR, UI_DIST_DIR, V51_STATIC_DIR
 from app.core import on_startup
-from app.routers import ai, auth, backup, codex, images, knowledge, practice, sync, web
+from app.routers import ai, auth, backup, codex, errors, images, knowledge, practice, sync, web
 
 
 def create_app() -> FastAPI:
@@ -55,7 +55,7 @@ def create_app() -> FastAPI:
         return response
 
     app.add_event_handler("startup", on_startup)
-    for router_module in (web, auth, backup, ai, images, sync, practice, knowledge, codex):
+    for router_module in (web, auth, backup, ai, images, sync, practice, knowledge, errors, codex):
         app.include_router(router_module.router)
     return app
 

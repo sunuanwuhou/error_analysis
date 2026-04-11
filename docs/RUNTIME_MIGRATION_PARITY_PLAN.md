@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This plan defines how the project can migrate toward a more stable MGMT-grade engineering baseline without changing the user-facing workbench shape.
+This plan defines how the project will move the real user-facing runtime from the current legacy chain to `/next` without changing the user-facing workbench shape in harmful ways.
 
 It is a migration contract, not a brainstorming note.
 
@@ -10,16 +10,18 @@ It is a migration contract, not a brainstorming note.
 
 The objective is:
 
-1. replace the fragile current baseline with a more maintainable one
-2. keep the current workbench workflow intact
+1. replace the fragile current baseline with `/next` as the only long-lived frontend line
+2. keep the current workbench workflow intact during migration
 3. keep layout behavior in high-frequency paths intact
-4. cut over only when the new baseline is proven equivalent or safer
+4. use legacy only as a parity reference and temporary bridge
+5. cut over only when the `/next` slice is proven equivalent or safer
 
 The objective is not:
 
 1. redesign the product into a different admin shell
 2. move high-frequency buttons for aesthetics
 3. merge or remove old useful workflow just because a cleaner architecture exists
+4. keep two long-lived frontend products after parity is proven
 
 ## Current runtime truth
 
@@ -33,6 +35,13 @@ The current active chain is:
 The legacy fallback route remains:
 
 1. `/legacy` -> `xingce_v3/xingce_v3.html`
+
+The migration target chain is:
+
+1. `/login` -> `app/login.html`
+2. authenticated `/next` -> `ui/dist/index.html`
+3. after final cutover, authenticated `/` -> `ui/dist/index.html`
+4. legacy routes retained only until final retirement
 
 ## Non-negotiable parity rules
 
@@ -73,6 +82,7 @@ The migration cannot be accepted unless:
 1. source-of-truth frontend and runtime frontend are the same chain
 2. Docker build truth matches route truth
 3. smoke checks match real runtime behavior
+4. `/next` is the only accepted long-lived destination
 
 ## Approved engineering target
 
@@ -90,12 +100,15 @@ The target baseline should borrow these characteristics from MGMT:
    - typed models
 5. build and smoke checks aligned with runtime
 
+For this project, that means the final active frontend line is `ui/`, not `v51_frontend/` plus `xingce_v3/`.
+
 ## What must stay out of scope
 
 1. replacing the current workbench with a generic back-office shell
 2. moving to a permanent aside/header/main shape just because MGMT uses it
 3. reinterpreting study tools as CRM-style pages
 4. introducing a second long-lived ambiguous frontend baseline
+5. treating legacy bridge pages as a permanent solution
 
 ## Migration strategy
 
@@ -114,6 +127,7 @@ Done:
 Status: current required baseline
 
 The active runtime must be treated as the canonical behavior reference.
+The reference is legacy behavior, not legacy ownership.
 
 Before any rewrite work, we must preserve:
 
@@ -124,21 +138,21 @@ Before any rewrite work, we must preserve:
 5. first-load neutral filter state
 6. active-user data truth
 
-### Stage 2: slice-by-slice extraction under the same runtime
+### Stage 2: `/next` slice-by-slice replacement under temporary dual routing
 
-The next baseline should be built by extracting one slice at a time behind the same runtime entry.
+The `/next` baseline should be built by replacing one workflow slice at a time.
 
 Recommended order:
 
-1. shell and route bridge
+1. `/next` shell and route bridge
 2. auth and runtime bootstrap
-3. knowledge tree and workspace shell
-4. quick-create and OCR flow
-5. notes workspace
-6. error list and detail actions
-7. cloud backup and sync status
+3. workbench shell, navigation, and layout parity
+4. error list and detail actions
+5. quick-create and OCR flow
+6. knowledge tree and notes workspace
+7. practice and review flows
 8. process-image/canvas chain
-9. practice and codex adjunct flows
+9. cloud backup, sync, codex, export, and adjunct flows
 
 Rule:
 
@@ -147,6 +161,10 @@ Do not migrate low-frequency pages first if a high-frequency path still depends 
 Additional rule:
 
 Do not widen the migration slice when browser-visible behavior still disagrees with API or code-walk truth.
+
+Additional rule:
+
+Every bridge added in this stage must have a named deletion target.
 
 ### Stage 3: dual implementation, single appearance
 
@@ -161,10 +179,11 @@ But:
 1. route shape should not change casually
 2. visible layout should not drift
 3. interaction depth should not increase
+4. legacy bridges should shrink over time, not grow indefinitely
 
-### Stage 4: parity proof before cutover
+### Stage 4: parity proof before root cutover
 
-Before removing an old slice, prove:
+Before removing an old slice or bridge, prove:
 
 1. same entry point
 2. same visible controls
@@ -172,6 +191,16 @@ Before removing an old slice, prove:
 4. same major side effects
 5. same or better smoke coverage
 6. same browser-visible result for the active verification user
+
+### Stage 5: `/` cutover and legacy retirement
+
+After the last critical workflow is proven in `/next`:
+
+1. switch authenticated `/` to `ui/dist/index.html`
+2. keep `/legacy` for a short rollback window only
+3. remove obsolete `/next` bridges that still point back into legacy
+4. retire `v51_frontend/` from active runtime
+5. update Docker, route, smoke, and packaging truth to match the new single line
 
 ## Functional parity checklist
 

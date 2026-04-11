@@ -13,8 +13,7 @@ try {
 
 if ($dockerApp -and ($dockerApp | Select-String -Pattern "xingce_v3_app")) {
   Write-Host "Docker app is already running at http://127.0.0.1:8080"
-  Write-Host "Per repo rule, prefer Docker first. Stop Docker only if you explicitly need local Python on 8000."
-  exit 0
+  Write-Host "Keeping Docker/domain setup untouched and continuing to start local Python on http://127.0.0.1:8000"
 }
 
 $existing = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue |
