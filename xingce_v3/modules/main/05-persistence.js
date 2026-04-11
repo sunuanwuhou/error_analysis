@@ -1274,12 +1274,12 @@ async function saveCloudIncremental(opts) {
     return;
   }
   if (incrementalSyncBusy) return;
-  setCloudSyncState('saving', '正在执行增量同步', '');
+  setCloudSyncState('saving', '正在上传本地增量到云端', '');
   try {
-    await syncWithServer({ forceFullPull: Boolean(opts.forceFullPull) });
+    await syncWithServer({ forceFullPull: Boolean(opts.forceFullPull), pushOnly: true });
     if (cloudSyncState !== 'error') {
-      setCloudSyncState('synced', '增量同步完成', cloudSyncUpdatedAt || new Date().toISOString());
-      showCloudInfo('Incremental sync completed', opts);
+      setCloudSyncState('synced', '本地增量已上传到云端（未自动下拉）', cloudSyncUpdatedAt || new Date().toISOString());
+      showCloudInfo('Incremental upload completed', opts);
     }
   } catch (e) {
     setCloudSyncState('error', e.message || '增量同步失败', '');
@@ -1607,6 +1607,11 @@ function applyOps(ops) {
   let knowledgeChanged = false;
   let settingsChanged = false;
   let knowledgeRecordMap = null;
+  const isCorruptedKnowledgeTitle = (title) => {
+    const text = String(title || '').trim();
+    if (!text) return true;
+    return /^\?+$/.test(text);
+  };
   for (const op of ops) {
     if (op.op_type === 'error_upsert') {
       const remote = parseSyncPayload(op.payload);
@@ -1661,10 +1666,14 @@ function applyOps(ops) {
       const remote = parseSyncPayload(op.payload);
       const nodeId = String(remote.id || op.entity_id || '');
       if (nodeId) {
+        const remoteTitle = String(remote.title || '');
+        if (isCorruptedKnowledgeTitle(remoteTitle)) {
+          continue;
+        }
         knowledgeRecordMap.set(nodeId, {
           id: nodeId,
           parentId: String(remote.parentId || ''),
-          title: String(remote.title || ''),
+          title: remoteTitle,
           contentMd: String(remote.contentMd || ''),
           updatedAt: String(remote.updatedAt || op.created_at || ''),
           sort: Number(remote.sort || 0)
@@ -1772,6 +1781,18 @@ async function syncWithServer(opts) {
       pushed = true;
       latestSnapshotAt = pushData.snapshotUpdatedAt || latestSnapshotAt;
       if (Array.isArray(pushData.origins)) updateCloudOriginStatuses(pushData.origins);
+    }
+    if (options.pushOnly) {
+      markIncrementalSyncChecked(latestSnapshotAt || new Date().toISOString());
+      setNextIncrementalSyncAt('');
+      if (latestSnapshotAt) {
+        cloudMeta.lastSeenBackupAt = latestSnapshotAt;
+        saveCloudMeta();
+      }
+      if (pushed) {
+        setCloudSyncState('synced', '本地增量已上传到云端（未自动下拉）', latestSnapshotAt || '');
+      }
+      return;
     }
     if (options.resetCursor) clearLastSyncCursor();
     const syncCursor = getLastSyncCursor();
