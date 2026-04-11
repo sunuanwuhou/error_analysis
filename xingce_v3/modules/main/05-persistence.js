@@ -555,6 +555,7 @@ function getDefaultCloudMeta() {
   return {
     restoreDecisions: {},
     lastSeenBackupAt: '',
+    lastIncrementalAlignedAt: '',
     lastLoadedAt: '',
     lastSavedAt: '',
     lastLocalChangeAt: '',
@@ -579,7 +580,9 @@ function markCloudMetaChecked(at) {
 }
 function markIncrementalSyncChecked(at) {
   if (!cloudMeta || typeof cloudMeta !== 'object') cloudMeta = getDefaultCloudMeta();
-  cloudMeta.lastIncrementalSyncAt = String(at || new Date().toISOString());
+  const value = String(at || new Date().toISOString());
+  cloudMeta.lastIncrementalSyncAt = value;
+  cloudMeta.lastIncrementalAlignedAt = value;
   saveCloudMeta();
 }
 function setNextCloudSaveAt(at) {
@@ -836,7 +839,8 @@ function mergeCurrentOriginStatus() {
     lastLocalChangeAt: cloudMeta.lastLocalChangeAt || current.lastLocalChangeAt || '',
     lastLoadedAt: cloudMeta.lastLoadedAt || current.lastLoadedAt || '',
     lastSavedAt: cloudMeta.lastSavedAt || current.lastSavedAt || '',
-    lastBackupUpdatedAt: cloudMeta.lastSeenBackupAt || current.lastBackupUpdatedAt || ''
+    lastBackupUpdatedAt: current.lastBackupUpdatedAt || cloudMeta.lastSeenBackupAt || '',
+    lastIncrementalAlignedAt: cloudMeta.lastIncrementalAlignedAt || ''
   };
 }
 function updateCloudOriginStatuses(items) {
@@ -1112,6 +1116,9 @@ function getCloudActionHint(state) {
   if (state === 'synced') return '当前入口和云端已经对齐';
   return '默认先使用本地数据，必要时再后台检查云端';
 }
+function getLastIncrementalAlignedIso() {
+  return String((cloudMeta && cloudMeta.lastIncrementalAlignedAt) || '').trim();
+}
 renderCloudUi = function() {
   const badge = document.getElementById('cloudUserBadge');
   const syncBadge = document.getElementById('cloudSyncBadge');
@@ -1132,13 +1139,17 @@ renderCloudUi = function() {
   const currentOrigin = mergeCurrentOriginStatus();
   const originText = currentOrigin.origin || getCloudOriginKey();
   const currentLocalIso = currentOrigin.lastLocalChangeAt || currentOrigin.lastSavedAt || currentOrigin.lastLoadedAt || '';
-  const currentCloudIso = cloudMeta.lastSeenBackupAt || currentOrigin.lastBackupUpdatedAt || '';
-  const cloudUpdatedText = formatCloudTime(currentCloudIso);
+  const currentCloudBackupIso = currentOrigin.lastBackupUpdatedAt || cloudMeta.lastSeenBackupAt || '';
+  const currentIncrementalIso = getLastIncrementalAlignedIso();
+  const cloudIncrementalText = formatCloudTime(currentIncrementalIso);
+  const cloudBackupText = formatCloudTime(currentCloudBackupIso);
+  const currentCloudIsoForFreshness = currentIncrementalIso || currentCloudBackupIso;
   const localUpdatedText = formatCloudTime(currentLocalIso);
-  const freshnessText = getCloudFreshnessText(currentLocalIso, currentCloudIso);
+  const freshnessText = getCloudFreshnessText(currentLocalIso, currentCloudIsoForFreshness);
   const hintLines = [
     localUpdatedText ? `本地最后修改: ${localUpdatedText}` : '本地最后修改: 暂无',
-    cloudUpdatedText ? `云端最后备份: ${cloudUpdatedText}` : '云端最后备份: 暂无',
+    cloudIncrementalText ? `云端最后增量同步: ${cloudIncrementalText}` : '云端最后增量同步: 暂无',
+    cloudBackupText ? `云端最后全量备份: ${cloudBackupText}` : '云端最后全量备份: 暂无',
     freshnessText,
     cloudSyncMessage || '',
     getCloudActionHint(cloudSyncState)
@@ -1150,7 +1161,8 @@ renderCloudUi = function() {
   if (newerOrigins.length) lines.push(`<div class="cloud-origin-alert">当前入口比其他 ${newerOrigins.length} 个入口更新，保存前请确认是否要覆盖云端</div>`);
   lines.push(`<div>当前入口: ${escapeHtml(originText)}</div>`);
   lines.push(`<div>本地最后修改: ${escapeHtml(localUpdatedText || '暂无')}</div>`);
-  lines.push(`<div>云端最后备份: ${escapeHtml(cloudUpdatedText || '暂无')}</div>`);
+  lines.push(`<div>云端最后增量同步: ${escapeHtml(cloudIncrementalText || '暂无')}</div>`);
+  lines.push(`<div>云端最后全量备份: ${escapeHtml(cloudBackupText || '暂无')}</div>`);
   const mergedItems = [currentOrigin].concat((cloudOriginStatuses || []).filter(item => item.origin !== originText));
   mergedItems.forEach(item => {
     const label = item.origin === originText ? '当前' : '其他';
@@ -2027,8 +2039,8 @@ async function deleteLocalBackup(backupId){
     const data = await fetchJsonWithAuth(`/api/local-backups/${encodeURIComponent(backupId)}`, {
       method:'DELETE'
     });
-    localBackupState.items = Array.isArray(data.items) ? data.items : [];
-    renderLocalBackupList(localBackupState.items);
+    localBackupState.items = Array.isArray(data.items) ? data.items : localBackupState.items;
+    await refreshLocalBackups({ force:true, silent:true });
     showToast('备份快照已删除', 'success');
   }catch(e){
     showToast(e.message || '删除备份失败', 'error');
