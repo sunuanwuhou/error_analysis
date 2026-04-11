@@ -1258,7 +1258,7 @@ async function saveCloudBackup(opts) {
   const busyTimer = setTimeout(() => {
     cloudBusy = false;
     controller.abort();
-  }, 30000);
+  }, 180000);
   setCloudSyncState('saving', '正在后台保存本地改动', '');
   try {
     const res = await fetch('/api/backup', {
