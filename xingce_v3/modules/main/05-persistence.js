@@ -2157,6 +2157,7 @@ async function refreshLocalBackups(opts){
 
 async function openLocalBackupModal(){
   ensureLocalBackupMenuButton();
+  ensureCloudFullBackupMenuButton();
   openModal('localBackupModal');
   await refreshLocalBackups({ force:true, silent:true });
 }
@@ -2232,6 +2233,24 @@ async function deleteLocalBackup(backupId){
   }
 }
 
+function ensureCloudFullBackupMenuButton(){
+  const panel = document.getElementById('moreMenuPanel');
+  if(!panel || panel.querySelector('[data-role="cloud-full-backup-entry"]')) return;
+  const btn = document.createElement('button');
+  btn.className = 'btn btn-secondary';
+  btn.setAttribute('data-role', 'cloud-full-backup-entry');
+  btn.setAttribute('data-onclick', "closeMoreMenu();saveCloudFullBackupFromMore()");
+  btn.textContent = '全量备份到云端';
+  const exportBtn = panel.querySelector('[data-onclick="closeMoreMenu();openExportModal()"]');
+  if(exportBtn && exportBtn.nextSibling){
+    panel.insertBefore(btn, exportBtn.nextSibling);
+  }else if(exportBtn){
+    exportBtn.insertAdjacentElement('afterend', btn);
+  }else{
+    panel.appendChild(btn);
+  }
+}
+
 async function ensureDailyLocalBackup(){
   if(!cloudUser) return;
   try{
@@ -2248,6 +2267,7 @@ window.restoreLocalBackup = restoreLocalBackup;
 window.deleteLocalBackup = deleteLocalBackup;
 window.ensureDailyLocalBackup = ensureDailyLocalBackup;
 window.ensureLocalBackupMenuButton = ensureLocalBackupMenuButton;
+window.ensureCloudFullBackupMenuButton = ensureCloudFullBackupMenuButton;
 window.saveCloudFullBackupFromMore = saveCloudFullBackupFromMore;
 window.saveCloudFullBackup = saveCloudFullBackup;
 window.saveNoteReviewTracking = saveNoteReviewTracking;
