@@ -9,14 +9,6 @@ from typing import Any, Optional
 from uuid import uuid4
 
 from app.config import BACKUPS_DIR, IMAGES_DIR
-from app.core import (
-    append_workspace_snapshot_ops,
-    build_backup_summary,
-    build_workspace_snapshot_from_entities,
-    list_origin_statuses,
-    replace_workspace_entities_from_snapshot,
-    upsert_origin_status,
-)
 from app.database import get_conn
 from app.schemas import (
     BackupPayload,
@@ -24,6 +16,13 @@ from app.schemas import (
     LocalBackupCreatePayload,
     LocalBackupRestorePayload,
     OriginStatusPayload,
+)
+from app.services.origin_status_service import list_origin_statuses, upsert_origin_status
+from app.services.snapshot_service import build_backup_summary
+from app.services.workspace_entity_service import (
+    append_workspace_snapshot_ops,
+    build_workspace_snapshot_from_entities,
+    replace_workspace_entities_from_snapshot,
 )
 from app.security import parse_iso_datetime, utcnow
 

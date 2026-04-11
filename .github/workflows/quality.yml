@@ -1,4 +1,4 @@
-name: Quality
+﻿name: Quality
 
 on:
   pull_request:
@@ -32,6 +32,9 @@ jobs:
       - name: Check router layout
         run: python scripts/check_router_layout.py
 
+      - name: Guard legacy monolith growth
+        run: python scripts/check_legacy_monolith_guard.py --changed origin/${{ github.base_ref }}
+
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
@@ -40,8 +43,8 @@ jobs:
         working-directory: frontend
         run: npm run typecheck
 
-  format:
-    name: Format
+  text-policy:
+    name: Text Policy
     runs-on: ubuntu-latest
 
     steps:
@@ -53,21 +56,5 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Check text formatting
-        run: python scripts/check_text_policy.py --changed origin/${{ github.base_ref }}
-
-  encoding:
-    name: Encoding
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Check UTF-8 policy
+      - name: Check text formatting + encoding + mojibake
         run: python scripts/check_text_policy.py --changed origin/${{ github.base_ref }}

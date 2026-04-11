@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -61,6 +62,25 @@ TEXT_EXTENSIONS = {
     '.py',
     '.sh',
     '.toml',
+    '.ts',
+    '.tsx',
+    '.vue',
+    '.xml',
+    '.yaml',
+    '.yml',
+}
+
+SUSPICIOUS_PATTERNS: list[tuple[re.Pattern[str], str]] = [
+    (re.compile('\ufffd'), 'contains replacement character \ufffd'),
+    (re.compile(r'(?:浣犳|鍏|涓€|锛屼|鐣欒)'), 'contains common mojibake token sequence'),
+]
+
+SUSPICIOUS_SCAN_EXTENSIONS = {
+    '.css',
+    '.html',
+    '.js',
+    '.json',
+    '.md',
     '.ts',
     '.tsx',
     '.vue',
@@ -149,9 +169,14 @@ def main() -> None:
         if data and not data.endswith(b'\n'):
             errors.append(f'{relative}: missing final newline')
 
+        scan_suspicious = path.suffix.lower() in SUSPICIOUS_SCAN_EXTENSIONS
         for line_number, line in enumerate(text.splitlines(), start=1):
             if line.rstrip(' \t') != line:
                 errors.append(f'{relative}:{line_number}: trailing whitespace')
+            if scan_suspicious:
+                for pattern, reason in SUSPICIOUS_PATTERNS:
+                    if pattern.search(line):
+                        errors.append(f'{relative}:{line_number}: suspicious text: {reason}')
 
     if errors:
         raise SystemExit('Text policy check failed:\n' + '\n'.join(errors))
