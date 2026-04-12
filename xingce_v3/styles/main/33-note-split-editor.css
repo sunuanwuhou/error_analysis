@@ -17,12 +17,12 @@
 .note-preview-scroll{flex:1;overflow:hidden;min-height:0;position:relative;padding-right:6px;max-height:calc(100vh - 320px)}
 .note-preview-scroll::-webkit-scrollbar{width:5px}
 .note-preview-scroll::-webkit-scrollbar-thumb{background:#ddd;border-radius:3px}
-.note-preview-frame-scroll{padding-right:0;max-height:none}
+.note-preview-frame-scroll{padding-right:0;max-height:none;min-height:0}
 .knowledge-workspace-note-wrap{flex:1;display:flex;flex-direction:column;min-height:0}
 .knowledge-workspace-list-head{flex-shrink:0}
 .knowledge-workspace-note-wrap .note-preview-scroll,
 .note-split-preview .note-preview-scroll{max-height:none}
-.knowledge-workspace-note-wrap>.note-preview-frame-scroll{flex:0 0 auto;height:auto;overflow:hidden}
+.knowledge-workspace-note-wrap>.note-preview-frame-scroll{flex:1;min-height:0;height:100%;overflow:hidden}
 .note-split-preview .note-preview-frame-scroll{height:100%;flex:1;overflow:hidden}
 .note-viewer-frame{display:block;width:100%;border:0;background:transparent;border-radius:18px}
 .note-viewer-frame--split{height:100%;min-height:100%}
@@ -58,7 +58,7 @@
 .global-search-modal-close{position:absolute;top:18px;right:18px;z-index:2;width:36px;height:36px;border:0;border-radius:999px;background:rgba(15,23,42,.08);color:#0f172a;font-size:24px;line-height:1;cursor:pointer}
 .global-search-modal-close:hover{background:rgba(15,23,42,.14)}
 .global-search-modal-frame{display:block;width:100%;height:100%;border:0;border-radius:22px;background:transparent}
-.note-preview-article-scroll{min-width:0;max-width:none;grid-column:2;max-height:calc(100vh - 320px);overflow-y:auto;overflow-x:hidden;padding-right:6px;scroll-padding-top:14px}
+.note-preview-article-scroll{min-width:0;max-width:none;grid-column:2;height:100%;min-height:0;max-height:none;overflow-y:auto;overflow-x:hidden;padding-right:6px;scroll-padding-top:14px}
 .note-preview-article-scroll::-webkit-scrollbar{width:5px}
 .note-preview-article-scroll::-webkit-scrollbar-thumb{background:#ddd;border-radius:3px}
 .note-page-shell{display:flex;flex-direction:column;gap:16px;height:100%}

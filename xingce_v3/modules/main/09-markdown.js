@@ -23,7 +23,7 @@ function scrollToRenderedAnchor(anchorId, opts) {
   if (!target) return false;
   const scroller = target.closest('.note-preview-article-scroll') || target.closest('.note-preview-scroll');
   if (scroller) {
-    const top = target.offsetTop - 12;
+    const top = target.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop - 12;
     scroller.scrollTo({ top: top < 0 ? 0 : top, behavior: (opts && opts.behavior) || 'smooth' });
   } else {
     target.scrollIntoView({ behavior: (opts && opts.behavior) || 'smooth', block: 'start' });
@@ -41,9 +41,9 @@ function setActiveNoteTocItem(anchorId) {
   items.forEach(item => item.classList.toggle('active', item.getAttribute('data-anchor-id') === anchorId));
   const active = document.querySelector(`.note-toc-item[data-anchor-id="${anchorId}"]`);
   if (!active) return;
-  const container = active.closest('.note-toc-floating');
+  const container = active.closest('.note-toc-list') || active.closest('.note-toc-floating');
   if (!container) return;
-  const top = active.offsetTop;
+  const top = active.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
   const bottom = top + active.offsetHeight;
   const viewTop = container.scrollTop;
   const viewBottom = viewTop + container.clientHeight;

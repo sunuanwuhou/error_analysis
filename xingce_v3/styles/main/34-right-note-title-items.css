@@ -8,9 +8,9 @@
 .note-md-heading:hover .note-md-anchor{opacity:1}
 .note-md-anchor{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;margin-right:6px;border-radius:999px;color:#e74c3c;text-decoration:none;font-size:11px;opacity:0;transition:.15s;background:#fff2f0;vertical-align:middle}
 .note-md-anchor:hover{background:#ffe3df}
-.note-toc{margin:0;padding:0;border:none;border-radius:0;background:transparent}
+.note-toc{margin:0;padding:0;border:none;border-radius:0;background:transparent;display:flex;flex-direction:column;min-height:0;height:100%}
 .note-toc-title{font-size:11px;font-weight:700;color:#b45309;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
-.note-toc-list{display:flex;flex-direction:column;gap:4px;max-height:inherit}
+.note-toc-list{display:flex;flex-direction:column;gap:4px;max-height:inherit;min-height:0;flex:1;overflow:auto}
 .note-toc-item{padding:6px 2px;border-radius:10px;color:#7c5a2f;cursor:pointer;font-size:12px;line-height:1.55}
 .note-toc-item:hover{background:#fff2df;color:#c2410c}
 .note-toc-item.active{background:#fff2df;color:#c2410c;font-weight:700}
@@ -18,11 +18,11 @@
 .note-toc-item.lv3{padding-left:24px}
 .note-toc-item.lv4{padding-left:34px}
 .note-toc-inline{margin:10px 14px 0}
-.note-preview-layout{display:grid;grid-template-columns:minmax(200px,240px) minmax(0,1fr);gap:24px;align-items:start;min-height:100%}
+.note-preview-layout{display:grid;grid-template-columns:minmax(200px,240px) minmax(0,1fr);gap:24px;align-items:stretch;min-height:0;height:100%;max-height:100%;overflow:hidden}
 .note-preview-layout-no-toc{display:block}
 .note-preview-article{min-width:0;max-width:none}
-.note-preview-toc{display:block!important;grid-column:1;grid-row:1;align-self:start;position:sticky;top:0;max-height:min(520px,calc(100vh - 220px));overflow:hidden;padding:4px 0 12px}
-.note-preview-toc .note-toc-floating{position:relative;max-height:inherit;overflow:auto;overscroll-behavior:contain;padding:12px 14px;border:1px solid #f1e2ce;border-radius:8px;background:linear-gradient(180deg,#fffdf8 0%,#fffaf2 100%);box-shadow:none}
+.note-preview-toc{display:block!important;grid-column:1;grid-row:1;align-self:stretch;position:relative;top:auto;min-height:0;max-height:100%;overflow:hidden;padding:4px 0 12px}
+.note-preview-toc .note-toc-floating{position:relative;height:100%;max-height:100%;overflow:hidden;overscroll-behavior:contain;padding:12px 14px;border:1px solid #f1e2ce;border-radius:8px;background:linear-gradient(180deg,#fffdf8 0%,#fffaf2 100%);box-shadow:none}
 .global-note-toc-dock{display:none!important}
 .note-toc-floating{z-index:3;display:block;width:100%;max-width:100%;margin:0;border-color:#f3d6b8;box-shadow:0 8px 24px rgba(180,83,9,.08)}
 .note-toc-floating .note-toc-title{display:flex;align-items:center;justify-content:space-between}

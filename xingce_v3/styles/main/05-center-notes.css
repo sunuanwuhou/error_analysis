@@ -3,7 +3,7 @@
 .notes-header{display:none}
 .notes-header h2{font-size:16px;margin:0;color:#2c3e50}
 .notes-header .btn{font-size:12px;padding:6px 12px}
-.notes-content{flex:1;overflow:hidden;background:#fff;display:flex;flex-direction:column}
+.notes-content{flex:1;overflow-y:auto;overflow-x:hidden;background:#fff;display:flex;flex-direction:column;min-height:0}
 .notes-content::-webkit-scrollbar{width:6px}
 .notes-content::-webkit-scrollbar-thumb{background:#ddd;border-radius:4px}
 .notes-content h1{font-size:22px;color:#2c3e50;margin:16px 0 12px}

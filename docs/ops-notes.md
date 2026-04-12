@@ -142,6 +142,28 @@ Practical note from this rollout:
 - checking the served HTML was faster and more reliable than debating whether the source edit had already landed
 - the user-facing local page can stay visually stale even after source edits until both Docker rebuild and browser refresh happen
 
+## 2026-04-12 Note Scroll Triage Rule (Must Follow)
+
+Problem pattern we hit:
+
+- kept editing CSS but the active render path was not the file being patched
+- read-mode preview lost fixed viewport context (`height:auto`), so left TOC never became independently scrollable
+- required class `knowledge-notes-active` was missing in the live render path
+
+Fixed triage sequence:
+
+1. confirm active renderer file for the current page (for this repo: prioritize `modules/knowledge-workspace.js` runtime path)
+2. confirm served bundle includes expected marker lines before behavior testing
+3. confirm `#notesContent` contains `knowledge-notes-active`
+4. confirm `#noteSplitPreview` has fixed computed height in read mode (not auto)
+5. confirm left TOC container and right article container each have their own overflow scroll
+
+Acceptance check:
+
+1. left TOC can reach bottom independently
+2. right note body can reach bottom independently
+3. clicking TOC item moves right pane to the matching heading
+
 ## Legacy Bundle Refresh Rule
 
 When debugging the active legacy frontend (`v51_frontend` + `legacy-app.bundle.js`), use this fixed sequence after restart or hotfix:

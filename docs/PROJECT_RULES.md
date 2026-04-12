@@ -87,6 +87,27 @@ Required rule after any user-visible change in `xingce_v3/modules/legacy-app.bun
 
 This rule exists to prevent stale-bundle misdiagnosis during restart/debug cycles.
 
+## Note scroll contract (2026-04-12)
+
+For knowledge-note preview pages, the target interaction is fixed:
+
+1. left TOC scrolls independently
+2. right note body scrolls independently
+3. clicking left TOC item scrolls right body to the anchor
+
+Mandatory implementation contract:
+
+1. `#notesContent` must include class `knowledge-notes-active` before rendering note workspace
+2. note preview container must have fixed viewport height in both edit and read modes (never rely on `height:auto` for this view)
+3. TOC auto-follow should scroll the real list container (`.note-toc-list`) instead of an outer wrapper when they differ
+
+Mandatory debug order for this issue type:
+
+1. verify active runtime JS entry first (do not patch inactive legacy/module path)
+2. verify served bundle contains the expected marker code
+3. verify `knowledge-notes-active` exists in live DOM
+4. then validate CSS overflow/height chain from parent to child
+
 ## Packaging rules
 
 1. before final delivery, archive names must be checked

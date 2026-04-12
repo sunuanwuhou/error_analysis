@@ -146,9 +146,13 @@
         var nextHeight = Math.max(120, Math.min(contentHeight, available));
         container.style.height = nextHeight + "px";
         frame.style.height = nextHeight + "px";
+      } else if (available > 0) {
+        var fallbackHeight = Math.max(260, available);
+        container.style.height = fallbackHeight + "px";
+        if (frame) frame.style.height = fallbackHeight + "px";
       } else {
-        container.style.height = "auto";
-        if (frame) frame.style.height = "auto";
+        container.style.height = "";
+        if (frame) frame.style.height = "";
       }
       container.style.maxHeight = "none";
       return;
@@ -183,6 +187,7 @@
     frame.dataset.contentHeight = String(measuredHeight);
     frame.style.height = measuredHeight + "px";
   }
+
 
   function ensureEmbeddedNoteEditorModal() {
     var existing = document.getElementById("knowledgeNoteEditorModal");
@@ -572,6 +577,7 @@
     clearGlobalNoteTocDock();
     var content = document.getElementById("notesContent");
     if (!content) return;
+    content.classList.add("knowledge-notes-active");
 
     var currentNode = getCurrentKnowledgeNode() || getKnowledgeRootNodes()[0];
     if (!currentNode) {
