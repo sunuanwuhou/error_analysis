@@ -1425,15 +1425,39 @@ async function saveCloudFullBackup(opts) {
       const start = index * chunkSize;
       const end = Math.min(start + chunkSize, totalBytes);
       const chunk = bytes.slice(start, end);
-      const partRes = await fetch(`/api/backup/chunk/${encodeURIComponent(uploadId)}/part?index=${index}`, {
-        method: 'PUT',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/octet-stream' },
-        body: chunk
-      });
-      const partData = await partRes.json().catch(() => ({}));
-      if (!partRes.ok) {
-        throw new Error(partData.detail || partData.error || `chunk upload failed: ${partRes.status}`);
+      let partData = {};
+      let uploaded = false;
+      const maxAttempts = 5;
+      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 30000);
+          const partRes = await fetch(`/api/backup/chunk/${encodeURIComponent(uploadId)}/part?index=${index}`, {
+            method: 'PUT',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/octet-stream' },
+            body: chunk,
+            signal: controller.signal
+          });
+          clearTimeout(timeout);
+          partData = await partRes.json().catch(() => ({}));
+          if (partRes.ok) {
+            uploaded = true;
+            break;
+          }
+          const status = Number(partRes.status || 0);
+          const retriable = status >= 500 || status === 429 || status === 408;
+          if (!retriable || attempt >= maxAttempts) {
+            throw new Error(partData.detail || partData.error || `chunk upload failed: ${status}`);
+          }
+        } catch (err) {
+          if (attempt >= maxAttempts) throw err;
+        }
+        setCloudSyncState('saving', `全量备份分块重试 ${attempt}/${maxAttempts}（第 ${index + 1}/${totalChunks} 块）`, '');
+        await new Promise(resolve => setTimeout(resolve, 500 * attempt));
+      }
+      if (!uploaded) {
+        throw new Error(`chunk upload failed at part ${index}`);
       }
       const uploadedChunks = Number(partData.receivedChunks || (index + 1));
       const pct = Math.min(100, Math.round((uploadedChunks / totalChunks) * 100));

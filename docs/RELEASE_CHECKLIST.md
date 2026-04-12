@@ -12,6 +12,7 @@
 - [x] router layout check passed
 - [x] Python compile checks passed
 - [x] smoke test passed
+- [x] domain asset freshness check passed (`/assets/modules/legacy-app.bundle.js` on `erroranaly.qzz.io`)
 - [x] release archive was created
 - [x] archive name and extraction self-check passed
 - [x] changed files are included in the delivery package

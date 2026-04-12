@@ -8,6 +8,11 @@ This project now has one preferred Docker entry, one fallback local debug entry,
 - fallback local Python entry: `http://127.0.0.1:8000`
 - production/public: `https://erroranaly.qzz.io`
 
+Legacy entry policy:
+
+- `/legacy` is soft-deprecated and now always redirects to `/`
+- active web entry is `/` only
+
 Do not assume `localhost`, `127.0.0.1`, Docker port mappings, and the public domain share one browser-local state.
 Do not assume `8080` and `8000` are interchangeable. Under the current rule, `8080` is the default Docker entry.
 
@@ -150,6 +155,35 @@ When debugging the active legacy frontend (`v51_frontend` + `legacy-app.bundle.j
 5. hard refresh browser (`Ctrl + F5`) before judging whether fix is live
 
 This is mandatory for faster triage and to avoid stale-cache false negatives.
+
+## 2026-04-12 Domain Cache Rule (Must Follow)
+
+Problem we hit:
+
+- source and local `8080` were new, but domain still served old JS
+- reason: stable asset filename + CDN/browser long cache caused stale bundle
+
+Fixed rule:
+
+1. for legacy stable-name assets (`/assets/modules/legacy-app.bundle.js`, `partials.bundle.html`), do not use long immutable cache headers
+2. keep `Cache-Control` as `no-store, no-cache, must-revalidate, max-age=0, s-maxage=0`
+3. after deploy, verify domain returns fresh asset content before asking user to retest
+
+Mandatory verification commands:
+
+```powershell
+# local should contain new marker/function
+Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8080/assets/modules/legacy-app.bundle.js
+
+# domain must not be stale
+Invoke-WebRequest -UseBasicParsing "https://erroranaly.qzz.io/assets/modules/legacy-app.bundle.js?ts=$(Get-Random)"
+```
+
+Acceptance criteria:
+
+1. domain response contains the new code marker/function name
+2. `CF-Cache-Status` is not stale HIT for old content
+3. only then continue UI behavior verification
 
 ## Windows Encoding Rule
 

@@ -16,7 +16,6 @@ from fastapi import APIRouter, Cookie, File, HTTPException, Query, Request, Resp
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 
 from app.config import (
-    HTML_PATH,
     V51_INDEX_PATH,
     IMAGES_DIR,
     LOGIN_HTML_PATH,
@@ -71,18 +70,9 @@ def root(xingce_session: Optional[str] = Cookie(default=None)) -> Response:
     )
 
 @router.get("/legacy")
-def legacy_root(xingce_session: Optional[str] = Cookie(default=None)) -> Response:
-    user = get_user_by_token(xingce_session)
-    if not user:
-        return RedirectResponse(url="/login", status_code=302)
-    return FileResponse(
-        HTML_PATH,
-        headers={
-            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
-            "Pragma": "no-cache",
-            "Expires": "0",
-        },
-    )
+def legacy_root() -> Response:
+    # Legacy entry is soft-deprecated; keep URL but route to the active shell.
+    return RedirectResponse(url="/", status_code=302)
 
 @router.get("/shenlun")
 def shenlun_root(xingce_session: Optional[str] = Cookie(default=None)) -> Response:
