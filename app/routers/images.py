@@ -77,7 +77,7 @@ async def upload_image(
             INSERT INTO user_images(hash, user_id, content_type, size_bytes, ref_count, created_at)
             VALUES(?, ?, ?, ?, 1, ?)
             ON CONFLICT(hash, user_id) DO UPDATE SET
-              ref_count = ref_count + 1,
+              ref_count = user_images.ref_count + 1,
               content_type = excluded.content_type,
               size_bytes = excluded.size_bytes
             """,
