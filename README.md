@@ -17,11 +17,12 @@ These files are now the repository source of truth for project goals, current ph
 
 ## Main Frontend Entry
 
-`frontend/` is the only primary frontend entry for new product work.
+`frontend/` is the target primary frontend entry for new product work.
 
 - New user-facing features, routes, and frontend state should land in `frontend/`.
 - `xingce_v3/` and `v51_frontend/` are legacy surfaces. They are kept for bug fixes, compatibility, fallback pages, and migration references only.
 - Legacy frontend directories should not grow new product modules unless a migration plan explicitly moves that work back into `frontend/`.
+- Current runtime fact: `/` still serves the legacy shell during migration; this repository is not yet cut over to `frontend/` as runtime entry.
 
 ## Current Product State
 
@@ -35,7 +36,7 @@ The current production baseline already includes:
 4. split image storage through backend image APIs
 5. DeepSeek-first AI routing with MiniMax fallback
 6. stable Cloudflare named tunnel on `https://erroranaly.qzz.io`
-7. async `Codex Inbox` for remote留言 and scheduled reply write-back
+7. async `Codex Inbox` for remote messages and scheduled reply write-back
 
 The right-side related-errors rail has been retired from the active layout.
 

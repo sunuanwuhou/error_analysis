@@ -6,7 +6,7 @@ This repository keeps one active product path and a small set of legacy/runtime 
 
 | Path | Status | Responsibility | Change Rule |
 | --- | --- | --- | --- |
-| `frontend/` | Primary | Main Vue frontend for new user-facing product work. | New frontend features, routes, state, and UI modules go here. |
+| `frontend/` | Target primary (migration in progress) | Main Vue frontend target for new user-facing product work. | New frontend features, routes, state, and UI modules go here; production root routing is still legacy until migration cutover. |
 | `app/routers/` | Active backend protocol layer | FastAPI route definitions, request/response validation, auth dependencies, and exception mapping. | Keep thin. Business logic should move into `app/services/`. |
 | `app/services/` | Active backend business layer | Reusable backend workflows and domain logic called by routers. | Add or extend services when router logic grows beyond protocol handling. |
 | `app/database.py`, `app/schemas.py`, `app/security.py`, `app/config.py` | Active backend support | Database access, schemas, security helpers, and runtime configuration. | Keep shared behavior here when it is not route-specific business logic. |
@@ -20,7 +20,7 @@ This repository keeps one active product path and a small set of legacy/runtime 
 
 ## Entry Contract
 
-`frontend/` is the single main frontend entry. Legacy directories exist so the current product remains recoverable while migration continues, but they are not expansion points for new functionality.
+`frontend/` is the target main frontend entry, but the current `/` production route still serves the legacy shell during migration. Legacy directories exist so the current product remains recoverable while migration continues, but they are not expansion points for new functionality.
 
 When frontend work is ambiguous, prefer moving the active path forward in `frontend/` and add only the smallest compatibility layer needed in legacy code.
 

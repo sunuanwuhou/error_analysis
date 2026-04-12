@@ -11,20 +11,46 @@ from app.core import on_startup
 from app.routers import ai, auth, backup, codex, images, knowledge, practice, sync, web
 
 
+def _parse_csv_env(value: str) -> list[str]:
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
 def create_app() -> FastAPI:
     app = FastAPI(title="xingce_v3_lab")
+    environment = os.getenv("XINGCE_ENV", "development").strip().lower()
+    runtime_mode = os.getenv("XINGCE_RUNTIME_MODE", "").strip().lower()
+    is_production = environment in {"prod", "production"} or runtime_mode == "production"
+
     _raw_origins = os.getenv(
         "ALLOWED_ORIGINS",
-        "http://127.0.0.1:8000,http://localhost:8000",
+        "https://erroranaly.qzz.io" if is_production else "http://127.0.0.1:8080,http://localhost:8080,http://127.0.0.1:8000,http://localhost:8000",
     )
-    allowed_origins = [origin.strip() for origin in _raw_origins.split(",") if origin.strip()]
-    allowed_origin_regex = os.getenv("ALLOWED_ORIGIN_REGEX", r"https://([a-z0-9-]+\.)?qzz\.io")
+    allowed_origins = _parse_csv_env(_raw_origins)
+
+    _raw_allowed_methods = os.getenv(
+        "ALLOWED_METHODS",
+        "GET,POST,PUT,DELETE,OPTIONS" if is_production else "*",
+    )
+    allowed_methods = ["*"] if _raw_allowed_methods.strip() == "*" else _parse_csv_env(_raw_allowed_methods)
+
+    _raw_allowed_headers = os.getenv(
+        "ALLOWED_HEADERS",
+        "Accept,Accept-Language,Authorization,Content-Language,Content-Type,Origin,X-Requested-With"
+        if is_production
+        else "*",
+    )
+    allowed_headers = ["*"] if _raw_allowed_headers.strip() == "*" else _parse_csv_env(_raw_allowed_headers)
+
+    allowed_origin_regex = os.getenv(
+        "ALLOWED_ORIGIN_REGEX",
+        r"https://([a-z0-9-]+\.)?qzz\.io" if is_production else "",
+    ).strip()
     app.add_middleware(
         CORSMiddleware,
         allow_origins=allowed_origins,
-        allow_origin_regex=allowed_origin_regex,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_origin_regex=allowed_origin_regex or None,
+        allow_methods=allowed_methods,
+        allow_headers=allowed_headers,
         allow_credentials=True,
     )
     app.mount("/assets", StaticFiles(directory=str(BASE_DIR / "xingce_v3")), name="assets")

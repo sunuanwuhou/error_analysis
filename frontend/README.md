@@ -1,5 +1,14 @@
-# Vue 3 + TypeScript + Vite
+# frontend (migration target)
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+This directory is the target Vue frontend for future product work.
 
-Learn more about the recommended Project Setup and IDE Support in the [Vue Docs TypeScript Guide](https://vuejs.org/guide/typescript/overview.html#project-setup).
+Current state:
+
+- runtime `/` is still served by the legacy shell (`v51_frontend` path via backend router)
+- this directory is not yet the production entrypoint
+
+Rules:
+
+- new frontend feature work should go here
+- legacy directories (`xingce_v3/`, `v51_frontend/`) are bugfix/compatibility only
+- do not claim migration cutover in docs until routing actually switches
