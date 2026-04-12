@@ -48,6 +48,7 @@ from app.schemas import (
     SynthesizeNodePayload,
 )
 from app.security import clear_session, create_user_account, get_user_by_token, issue_session, utcnow, verify_password
+from app.services.workspace_entity_service import DELETE_TO_ENTITY_TYPE, UPSERT_TO_ENTITY_TYPE
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
