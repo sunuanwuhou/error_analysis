@@ -12,6 +12,9 @@ HTML_PATH = BASE_DIR / "xingce_v3" / "xingce_v3.html"
 V51_DIR = BASE_DIR / "v51_frontend"
 V51_INDEX_PATH = V51_DIR / "index.html"
 V51_STATIC_DIR = V51_DIR
+FRONTEND_DIR = BASE_DIR / "frontend"
+FRONTEND_DIST_DIR = FRONTEND_DIR / "dist"
+FRONTEND_DIST_INDEX_PATH = FRONTEND_DIST_DIR / "index.html"
 SHENLUN_HTML_PATH = BASE_DIR / "xingce_v3" / "shenlun.html"
 LOGIN_HTML_PATH = BASE_DIR / "app" / "login.html"
 RUNTIME_DIR = BASE_DIR / "runtime"
@@ -63,3 +66,4 @@ RUNTIME_MODE = os.getenv("XINGCE_RUNTIME_MODE", "").strip().lower() or "local"
 RUNTIME_LABEL = os.getenv("XINGCE_RUNTIME_LABEL", "").strip() or (
     "Docker App" if RUNTIME_MODE == "docker" else "Local Python"
 )
+NEW_FRONTEND_ENABLED = os.getenv("XINGCE_ENABLE_NEW_FRONTEND", "").strip().lower() in {"1", "true", "yes", "on"}

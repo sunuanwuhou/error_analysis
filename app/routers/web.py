@@ -6,7 +6,9 @@ from fastapi import APIRouter, Cookie, Request, Response
 from fastapi.responses import FileResponse, RedirectResponse
 
 from app.config import (
+    FRONTEND_DIST_INDEX_PATH,
     LOGIN_HTML_PATH,
+    NEW_FRONTEND_ENABLED,
     RUNTIME_MODE,
     SHENLUN_HTML_PATH,
     V51_INDEX_PATH,
@@ -15,6 +17,23 @@ from app.runtime import build_runtime_label, infer_request_origin, read_tunnel_u
 from app.security import get_user_by_token, utcnow
 
 router = APIRouter()
+
+
+def _new_frontend_ready() -> bool:
+    return NEW_FRONTEND_ENABLED and FRONTEND_DIST_INDEX_PATH.exists()
+
+
+def _serve_new_frontend_or_fallback() -> Response:
+    if _new_frontend_ready():
+        return FileResponse(
+            FRONTEND_DIST_INDEX_PATH,
+            headers={
+                "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            },
+        )
+    return RedirectResponse(url="/", status_code=302)
 
 
 @router.get("/health")
@@ -69,6 +88,22 @@ def new_frontend_spa(path: str, xingce_session: Optional[str] = Cookie(default=N
     if not user:
         return RedirectResponse(url="/login", status_code=302)
     return RedirectResponse(url="/", status_code=302)
+
+
+@router.get("/new")
+def migration_frontend_root(xingce_session: Optional[str] = Cookie(default=None)) -> Response:
+    user = get_user_by_token(xingce_session)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    return _serve_new_frontend_or_fallback()
+
+
+@router.get("/new/{path:path}")
+def migration_frontend_spa(path: str, xingce_session: Optional[str] = Cookie(default=None)) -> Response:
+    user = get_user_by_token(xingce_session)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    return _serve_new_frontend_or_fallback()
 
 @router.get("/login")
 def login_page(request: Request, xingce_session: Optional[str] = Cookie(default=None)) -> Response:
