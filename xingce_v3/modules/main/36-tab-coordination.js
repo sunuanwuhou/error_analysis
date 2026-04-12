@@ -64,6 +64,37 @@ function openWorkspaceQuickAdd() {
   openQuickAddModal();
 }
 
+function ensureErrorsListScrollable() {
+  const workspace = document.getElementById('workspaceView');
+  const tabErrors = document.getElementById('tabContentErrors');
+  const errorsArea = tabErrors ? tabErrors.querySelector('.errors-area') : null;
+  const errorsList = document.getElementById('errorList');
+  if (!workspace || !tabErrors || !errorsArea || !errorsList) return;
+  workspace.style.overflow = 'hidden';
+  tabErrors.style.display = 'flex';
+  tabErrors.style.flexDirection = 'column';
+  tabErrors.style.flex = '1';
+  tabErrors.style.minHeight = '0';
+  tabErrors.style.overflow = 'hidden';
+  errorsArea.style.display = 'flex';
+  errorsArea.style.flexDirection = 'column';
+  errorsArea.style.flex = '1';
+  errorsArea.style.minHeight = '0';
+  errorsArea.style.overflow = 'hidden';
+  const occupiedHeight = Array.from(errorsArea.children || [])
+    .filter(el => el !== errorsList)
+    .reduce((sum, el) => sum + (el instanceof HTMLElement ? el.offsetHeight : 0), 0);
+  const fallbackTopGap = 8;
+  const availableHeight = Math.max(180, (errorsArea.clientHeight || 0) - occupiedHeight - fallbackTopGap);
+  errorsList.style.flex = '0 0 auto';
+  errorsList.style.minHeight = '180px';
+  errorsList.style.height = `${availableHeight}px`;
+  errorsList.style.maxHeight = `${availableHeight}px`;
+  errorsList.style.overflowY = 'auto';
+  errorsList.style.overflowX = 'hidden';
+  errorsList.style.touchAction = 'pan-y';
+}
+
 function switchTab(tabName) {
   const activeTab = tabName === 'errors' ? 'errors' : 'notes';
   if (appView !== 'workspace') {
@@ -95,8 +126,18 @@ function switchTab(tabName) {
   if (tabContentErrors) tabContentErrors.classList.toggle('active', activeTab === 'errors');
   if (tabContentNotes) tabContentNotes.classList.toggle('active', activeTab === 'notes');
 
+  if (activeTab === 'errors' && typeof closeMobileSidebar === 'function') {
+    closeMobileSidebar();
+  }
   renderSidebar();
   renderAll();
+  if (activeTab === 'errors') {
+    requestAnimationFrame(() => {
+      ensureErrorsListScrollable();
+      setTimeout(ensureErrorsListScrollable, 80);
+      setTimeout(ensureErrorsListScrollable, 260);
+    });
+  }
   if (activeTab === 'notes') {
     renderNotesByType();
   }

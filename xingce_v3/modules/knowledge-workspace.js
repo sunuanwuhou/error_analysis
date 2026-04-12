@@ -482,6 +482,58 @@
     "</div>";
   }
 
+  function ensureKnowledgeWorkspaceListScrollable() {
+    var content = document.getElementById("notesContent");
+    if (!content) return;
+    var shell = content.querySelector(".knowledge-workspace-shell");
+    if (!shell) return;
+    var listWrap = shell.querySelector(".knowledge-workspace-list-wrap");
+    var list = shell.querySelector(".knowledge-workspace-list");
+    if (!listWrap || !list) return;
+    var shellHeader = shell.querySelector(".knowledge-workspace-shell-header");
+    var listHead = listWrap.querySelector(".knowledge-workspace-list-head");
+    listWrap.style.display = "flex";
+    listWrap.style.flexDirection = "column";
+    listWrap.style.flex = "1";
+    listWrap.style.minHeight = "0";
+    listWrap.style.overflow = "hidden";
+
+    var wrapHeight = listWrap.clientHeight || 0;
+    if (wrapHeight < 120) {
+      var shellHeight = shell.clientHeight || 0;
+      var shellHeaderHeight = shellHeader ? shellHeader.offsetHeight : 0;
+      wrapHeight = Math.max(220, shellHeight - shellHeaderHeight - 8);
+      listWrap.style.height = wrapHeight + "px";
+      listWrap.style.maxHeight = wrapHeight + "px";
+    } else {
+      listWrap.style.height = "";
+      listWrap.style.maxHeight = "";
+    }
+
+    var occupied = listHead ? listHead.offsetHeight : 0;
+    var availableHeight = Math.max(200, wrapHeight - occupied - 8);
+    list.style.minHeight = "200px";
+    list.style.height = availableHeight + "px";
+    list.style.maxHeight = availableHeight + "px";
+    list.style.overflowY = "auto";
+    list.style.overflowX = "hidden";
+    list.style.touchAction = "pan-y";
+    list.style.webkitOverflowScrolling = "touch";
+  }
+
+  var __knowledgeWorkspaceScrollListenerBound = false;
+  function bindKnowledgeWorkspaceScrollListener() {
+    if (__knowledgeWorkspaceScrollListenerBound) return;
+    __knowledgeWorkspaceScrollListenerBound = true;
+    window.addEventListener("resize", function () {
+      var content = document.getElementById("notesContent");
+      if (!content || !content.classList.contains("knowledge-notes-active")) return;
+      if (getWorkspaceMode() !== "list") return;
+      ensureKnowledgeWorkspaceListScrollable();
+      setTimeout(ensureKnowledgeWorkspaceListScrollable, 80);
+    });
+  }
+
   function renderInlineNotePreview(currentNode, noteContent) {
     var markdown = String(noteContent || "");
     if (!markdown.trim()) {
@@ -613,6 +665,16 @@
       renderWorkspaceHeader(currentNode, pathText, directCount, linkedCount, relatedErrors.length, mode) +
       bodyHtml +
     "</div>";
+
+    if (mode === "list") {
+      bindKnowledgeWorkspaceScrollListener();
+      requestAnimationFrame(function () {
+        ensureKnowledgeWorkspaceListScrollable();
+        setTimeout(ensureKnowledgeWorkspaceListScrollable, 80);
+        setTimeout(ensureKnowledgeWorkspaceListScrollable, 260);
+        setTimeout(ensureKnowledgeWorkspaceListScrollable, 520);
+      });
+    }
 
     syncNotePreviewViewportHeight();
 

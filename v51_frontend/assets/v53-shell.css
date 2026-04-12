@@ -1082,6 +1082,68 @@ body:not(.v51-shell-loading) .v53-boot { display:none; }
 #workspaceView .errors-list,
 #workspaceView .notes-content{min-height:0}
 #workspaceView #tabContentErrors .errors-list{height:100%;display:block;touch-action:pan-y}
+/* Fallback: if workspace active class is missing, keep error list scrollable in workspace mode. */
+body.app-view-workspace #workspaceView{display:flex;flex-direction:column;flex:1;min-width:0;min-height:0;overflow:hidden}
+body.app-view-workspace #workspaceView .tab-content.active{display:flex;flex:1;min-width:0;min-height:0;overflow:hidden}
+body.app-view-workspace #workspaceView #tabContentErrors{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+body.app-view-workspace #workspaceView #tabContentErrors .errors-area{display:flex;flex-direction:column;flex:1;min-width:0;min-height:0;overflow:hidden}
+body.app-view-workspace #workspaceView #tabContentErrors .errors-list{
+  flex:1;
+  min-height:0;
+  height:100%;
+  overflow-y:auto;
+  overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  touch-action:pan-y;
+}
+/* Fallback: knowledge workspace list mode in notes tab must keep an explicit height chain for scrolling. */
+body.app-view-workspace #workspaceView #tabContentNotes{
+  display:flex;
+  flex-direction:column;
+  flex:1;
+  min-height:0;
+  overflow:hidden;
+}
+body.app-view-workspace #workspaceView #tabContentNotes .notes-area{
+  display:flex;
+  flex-direction:column;
+  flex:1;
+  min-width:0;
+  min-height:0;
+  overflow:hidden;
+}
+body.app-view-workspace #workspaceView #tabContentNotes #notesContent.knowledge-notes-active{
+  display:flex;
+  flex-direction:column;
+  flex:1;
+  min-height:0;
+  height:100%;
+  overflow:hidden;
+}
+body.app-view-workspace #workspaceView #tabContentNotes #notesContent.knowledge-notes-active .knowledge-workspace-shell{
+  display:flex;
+  flex-direction:column;
+  flex:1;
+  min-height:0;
+  height:100%;
+}
+body.app-view-workspace #workspaceView #tabContentNotes #notesContent.knowledge-notes-active .knowledge-workspace-list-wrap{
+  display:flex;
+  flex-direction:column;
+  flex:1;
+  min-height:0;
+  overflow:hidden;
+}
+body.app-view-workspace #workspaceView #tabContentNotes #notesContent.knowledge-notes-active .knowledge-workspace-list{
+  flex:1;
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  touch-action:pan-y;
+}
 .workspace-switch-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 20px 12px;border-bottom:1px solid #eef2f7;background:linear-gradient(180deg,#fff 0%,#f8fafc 100%)}
 .workspace-switch-title{display:flex;flex-direction:column;gap:4px}
 .workspace-switch-title strong{font-size:18px;color:#0f172a}
