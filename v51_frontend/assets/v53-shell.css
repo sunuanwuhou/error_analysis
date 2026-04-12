@@ -153,6 +153,11 @@ body:not(.v51-shell-loading) .v53-boot { display:none; }
 
 /* error list readability upgrade */
 #workspaceView .errors-list{
+  flex:1;
+  min-height:0;
+  overflow:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
   padding:20px 22px 28px;
   gap:16px;
 }
@@ -1070,11 +1075,13 @@ body:not(.v51-shell-loading) .v53-boot { display:none; }
 .app-view{display:none;min-width:0;min-height:0}
 .app-view.active{display:block}
 #workspaceView.active{display:flex;flex-direction:column;flex:1;min-width:0;min-height:0;overflow:hidden}
-#workspaceView .tab-content.active{display:flex;flex:1;min-width:0;min-height:0}
+#workspaceView .tab-content.active{display:flex;flex:1;min-width:0;min-height:0;overflow:hidden}
+#workspaceView #tabContentErrors{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
 #workspaceView #tabContentErrors .errors-area,
-#workspaceView #tabContentNotes .notes-area{flex:1;min-width:0;min-height:0}
+#workspaceView #tabContentNotes .notes-area{display:flex;flex-direction:column;flex:1;min-width:0;min-height:0;overflow:hidden}
 #workspaceView .errors-list,
 #workspaceView .notes-content{min-height:0}
+#workspaceView #tabContentErrors .errors-list{height:100%;display:block;touch-action:pan-y}
 .workspace-switch-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 20px 12px;border-bottom:1px solid #eef2f7;background:linear-gradient(180deg,#fff 0%,#f8fafc 100%)}
 .workspace-switch-title{display:flex;flex-direction:column;gap:4px}
 .workspace-switch-title strong{font-size:18px;color:#0f172a}

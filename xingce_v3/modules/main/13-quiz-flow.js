@@ -5,6 +5,13 @@ function buildQuizQueueFromItems(items) {
   return (items || []).map(item => ({ ...findErrorById(item.id), ...item })).filter(isErrorEntry);
 }
 
+function findQuizErrorById(errorId) {
+  const direct = findErrorById(errorId);
+  if (direct) return direct;
+  const normalized = normalizeErrorId(errorId);
+  return errors.find(x => normalizeErrorId(x && x.id) === normalized) || null;
+}
+
 let quizQuestionStartedAt = 0;
 
 function getCurrentQuizElapsedSec() {
@@ -282,7 +289,7 @@ function renderQuizReview() {
   // 章节统计
   const chapterMap = {};
   quizAnswers.forEach(a=>{
-    const e=errors.find(x=>x.id===a.id);if(!e)return;
+    const e = findQuizErrorById(a.id); if(!e) return;
     const key=e.type+(e.subtype?'/'+e.subtype:'');
     if(!chapterMap[key]) chapterMap[key]={name:key,correct:0,total:0,skipped:0};
     if(a.skipped){chapterMap[key].skipped++;chapterMap[key].total++;}
@@ -299,7 +306,7 @@ function renderQuizReview() {
   }).join('');
 
   const items = quizAnswers.map(a => {
-    const e = errors.find(x=>x.id===a.id);
+    const e = findQuizErrorById(a.id);
     if (!e) return '';
     if(a.skipped) return `<div class="quiz-review-item" style="border-left:4px solid #fa8c16;background:#fff9f0">
       <div class="review-meta">
@@ -357,7 +364,7 @@ async function saveQuizResults() {
   const touchedIds = [];
   const nowIso = new Date().toISOString();
   realAnswers.forEach(a => {
-    const e = errors.find(x=>x.id===a.id);
+    const e = findQuizErrorById(a.id);
     if (!e) return;
     normalizeErrorForWorkflow(e);
     if (!e.quiz) e.quiz = {streak:0,wrongCount:0,reviewCount:0,lastReview:null,nextReview:null};

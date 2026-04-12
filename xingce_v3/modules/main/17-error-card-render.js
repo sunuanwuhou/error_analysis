@@ -38,6 +38,15 @@ function renderPracticeSummaryMeta(summary){
   return bits.join(' / ');
 }
 
+function getErrorWrongCount(errorItem, summary){
+  const summaryWrong = Number(summary && (summary.recentWrongCount ?? summary.wrongCount ?? 0));
+  const quizWrong = Number(errorItem && errorItem.quiz && errorItem.quiz.wrongCount);
+  const directWrong = Number(errorItem && (errorItem.recentWrongCount ?? errorItem.wrongCount));
+  const values = [summaryWrong, quizWrong, directWrong].filter(v => Number.isFinite(v) && v >= 0).map(v => Math.floor(v));
+  if(!values.length) return 0;
+  return Math.max.apply(null, values);
+}
+
 function renderPracticeSummaryBlock(summary){
   const metaLine = renderPracticeSummaryMeta(summary);
   if(!metaLine) return '';
@@ -248,10 +257,8 @@ function renderCard(e){
   const noteNodeLit = noteNodeArg(e.noteNodeId || '');
   const practiceSummary = getPracticeSummaryForError(e);
   let practiceSummaryMeta = renderPracticeSummaryMeta(practiceSummary);
-  if(!practiceSummaryMeta){
-    const localWrongCount = Number((e && e.quiz && e.quiz.wrongCount) || 0);
-    if(localWrongCount > 0) practiceSummaryMeta = `Wrong x${localWrongCount}`;
-  }
+  const wrongCount = getErrorWrongCount(e, practiceSummary);
+  if(!practiceSummaryMeta && wrongCount > 0) practiceSummaryMeta = `Wrong x${wrongCount}`;
   const statusLabel = getErrorStatusLabel(e.status);
   const problemTypeLabel = problemTypeLabelMap[e.problemType] || 'Observe';
   const knowledgePathText = typeof getErrorKnowledgePathText === 'function'
@@ -275,6 +282,7 @@ function renderCard(e){
       ${starHtml}
       ${e.problemType && e.problemType !== 'unknown' ? `<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe">${escapeHtml(problemTypeLabel)}</span>` : ''}
       <span style="font-size:11px;padding:1px 7px;border-radius:8px;background:${stageMeta.bg};color:${stageMeta.color};border:1px solid ${stageMeta.border}">Stage ${escapeHtml(stageMeta.shortLabel)}</span>
+      <span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#fff1f2;color:#be123c;border:1px solid #fecdd3">错 ${wrongCount} 次</span>
       ${practiceSummaryMeta?`<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#ecfeff;color:#155e75;border:1px solid #a5f3fc">${escapeHtml(practiceSummaryMeta)}</span>`:''}
       <span class="card-drag-handle" title="drag to change node" draggable="true" ondragstart='startErrorDrag(${idLit}, event)' ondragend="endErrorDrag()" onclick="event.preventDefault();event.stopPropagation()">⋮⋯ Move</span>
     </div>
