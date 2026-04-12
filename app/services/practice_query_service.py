@@ -79,25 +79,34 @@ def build_attempt_summary_map(
     with get_conn() as conn:
         rows = conn.execute(sql, tuple(params)).fetchall()
 
-    summary_map: dict[str, dict[str, Any]] = {}
+    grouped_rows: dict[str, list[sqlite3.Row]] = defaultdict(list)
     for row in rows:
         error_id = str(row["error_id"] or "").strip()
         question_id = str(row["question_id"] or "").strip()
         key = error_id or question_id
-        if not key or key in summary_map:
+        if not key:
             continue
-        meta = json.loads(row["meta_json"] or "{}")
+        grouped_rows[key].append(row)
+
+    summary_map: dict[str, dict[str, Any]] = {}
+    for key, key_rows in grouped_rows.items():
+        latest = key_rows[0]
+        meta = json.loads(latest["meta_json"] or "{}")
+        recent_rows = key_rows[:5]
+        recent_wrong_count = sum(1 for row in recent_rows if str(row["result"] or "") == "wrong")
         summary_map[key] = {
-            "attemptId": row["id"],
-            "errorId": error_id,
-            "questionId": question_id,
-            "lastResult": row["result"],
-            "lastTime": row["updated_at"] or row["created_at"],
-            "lastConfidence": row["confidence"],
-            "lastDuration": row["duration_sec"],
-            "statusTag": row["status_tag"],
-            "solvingNote": row["solving_note"],
-            "noteNodeId": row["note_node_id"],
+            "attemptId": latest["id"],
+            "errorId": str(latest["error_id"] or "").strip(),
+            "questionId": str(latest["question_id"] or "").strip(),
+            "lastResult": latest["result"],
+            "lastTime": latest["updated_at"] or latest["created_at"],
+            "lastConfidence": latest["confidence"],
+            "lastDuration": latest["duration_sec"],
+            "statusTag": latest["status_tag"],
+            "solvingNote": latest["solving_note"],
+            "noteNodeId": latest["note_node_id"],
+            "recentAttemptCount": len(recent_rows),
+            "recentWrongCount": recent_wrong_count,
             "lastMistakeType": str(meta.get("mistakeType") or ""),
             "lastTriggerPoint": str(meta.get("triggerPoint") or ""),
             "lastCorrectModel": str(meta.get("correctModel") or ""),

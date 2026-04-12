@@ -30,6 +30,7 @@ function renderPracticeSummaryMeta(summary){
   };
   const bits = [];
   if(summary.lastResult) bits.push(`Last ${resultMap[summary.lastResult] || summary.lastResult}`);
+  if(Number(summary.recentWrongCount || 0) > 0) bits.push(`Wrong x${Number(summary.recentWrongCount)}`);
   if(summary.lastConfidence) bits.push(`Confidence ${summary.lastConfidence}`);
   if(summary.lastDuration) bits.push(`Last ${summary.lastDuration}s`);
   if(summary.avgDuration) bits.push(`Avg ${summary.avgDuration}s`);
@@ -245,7 +246,12 @@ function renderCard(e){
   const isRev = revealed.has(normalizedId);
   const idLit = idArg(e.id);
   const noteNodeLit = noteNodeArg(e.noteNodeId || '');
-  const practiceSummaryMeta = renderPracticeSummaryMeta(getPracticeSummaryForError(e));
+  const practiceSummary = getPracticeSummaryForError(e);
+  let practiceSummaryMeta = renderPracticeSummaryMeta(practiceSummary);
+  if(!practiceSummaryMeta){
+    const localWrongCount = Number((e && e.quiz && e.quiz.wrongCount) || 0);
+    if(localWrongCount > 0) practiceSummaryMeta = `Wrong x${localWrongCount}`;
+  }
   const statusLabel = getErrorStatusLabel(e.status);
   const problemTypeLabel = problemTypeLabelMap[e.problemType] || 'Observe';
   const knowledgePathText = typeof getErrorKnowledgePathText === 'function'

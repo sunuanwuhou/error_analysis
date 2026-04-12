@@ -469,6 +469,9 @@
   }
 
   function renderListMode(currentNode, relatedErrors) {
+    if (typeof queueVisiblePracticeSummaryLoad === "function") {
+      queueVisiblePracticeSummaryLoad(relatedErrors);
+    }
     var body = relatedErrors.length
       ? relatedErrors.map(function (item) { return renderCard(item); }).join("")
       : "<div class=\"knowledge-workspace-empty\">" + TEXT.noQuestions + "</div>";
