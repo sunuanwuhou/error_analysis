@@ -51,3 +51,30 @@ document.addEventListener('click', event => {
   const menu = document.getElementById('moreMenu');
   if (menu && !menu.contains(event.target)) closeMoreMenu();
 });
+
+function openRichNoteEditorFromMore() {
+  if (typeof ensureKnowledgeState === 'function') {
+    ensureKnowledgeState();
+  }
+  let targetNode = typeof getCurrentKnowledgeNode === 'function' ? getCurrentKnowledgeNode() : null;
+  if (!targetNode && typeof collectKnowledgeLeaves === 'function') {
+    const leaves = collectKnowledgeLeaves() || [];
+    targetNode = leaves.length ? leaves[0] : null;
+  }
+  if (!targetNode && typeof collectKnowledgeNodes === 'function') {
+    const allNodes = collectKnowledgeNodes() || [];
+    targetNode = allNodes.length ? allNodes[0] : null;
+  }
+  if (!targetNode) {
+    showToast('暂无可编辑的知识点，请先录入一道题并关联知识点', 'warning');
+    return;
+  }
+  if (typeof setCurrentKnowledgeNode === 'function') {
+    setCurrentKnowledgeNode(targetNode.id, { switchTab: false });
+  }
+  if (typeof openExternalKnowledgeNoteEditor === 'function') {
+    openExternalKnowledgeNoteEditor(targetNode.id);
+    return;
+  }
+  showToast('备注编辑器暂不可用，请稍后重试', 'warning');
+}
