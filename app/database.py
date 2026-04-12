@@ -16,20 +16,31 @@ POSTGRES_DSN = os.getenv(
 
 def _adapt_sql(sql: str) -> str:
     text = str(sql)
+    had_insert_or_ignore = bool(re.search(r"\bINSERT\s+OR\s+IGNORE\s+INTO\b", text, flags=re.IGNORECASE))
     text = re.sub(r"\bINSERT\s+OR\s+IGNORE\s+INTO\b", "INSERT INTO", text, flags=re.IGNORECASE)
-    text = text.replace("datetime(updated_at)", "updated_at")
-    text = text.replace("datetime(created_at)", "created_at")
+    # SQLite accepts datetime(column) in ORDER BY; PostgreSQL does not have datetime().
+    text = re.sub(r"datetime\(\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\)", r"\1", text, flags=re.IGNORECASE)
     text = re.sub(
         r"datetime\('now'\s*,\s*'-([0-9]+)\s+days?'\)",
         lambda m: f"(CURRENT_TIMESTAMP - INTERVAL '{m.group(1)} days')::text",
         text,
         flags=re.IGNORECASE,
     )
-    text = text.replace("date('now', '-180 days')", "(CURRENT_DATE - INTERVAL '180 days')::text")
+    text = re.sub(
+        r"date\('now'\s*,\s*'-([0-9]+)\s+days?'\)",
+        lambda m: f"(CURRENT_DATE - INTERVAL '{m.group(1)} days')::text",
+        text,
+        flags=re.IGNORECASE,
+    )
     text = text.replace("?", "%s")
-    if "INSERT INTO operations" in text and "ON CONFLICT" not in text:
-        text = text.rstrip()
-        text += "\nON CONFLICT (id) DO NOTHING"
+    if had_insert_or_ignore and "ON CONFLICT" not in text.upper():
+        stripped = text.rstrip()
+        trailing_semicolon = stripped.endswith(";")
+        if trailing_semicolon:
+            stripped = stripped[:-1].rstrip()
+        text = stripped + "\nON CONFLICT DO NOTHING"
+        if trailing_semicolon:
+            text += ";"
     return text
 
 

@@ -156,8 +156,9 @@ def sync_push(
             try:
                 conn.execute(
                     """
-                    INSERT OR IGNORE INTO operations(id, user_id, op_type, entity_id, payload, created_at)
+                    INSERT INTO operations(id, user_id, op_type, entity_id, payload, created_at)
                     VALUES(?, ?, ?, ?, ?, ?)
+                    ON CONFLICT (id) DO NOTHING
                     """,
                     (
                         normalized["id"],

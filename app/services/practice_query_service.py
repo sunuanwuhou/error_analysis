@@ -14,7 +14,7 @@ from app.services.practice_stats_service import build_flow_workbench, build_prac
 def read_practice_attempts(user_id: str, limit: int = 200) -> list[dict[str, Any]]:
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT * FROM practice_attempts WHERE user_id=? ORDER BY datetime(created_at) DESC, id DESC LIMIT ?",
+            "SELECT * FROM practice_attempts WHERE user_id=? ORDER BY created_at DESC, id DESC LIMIT ?",
             (user_id, max(1, min(limit, 2000))),
         ).fetchall()
     items: list[dict[str, Any]] = []
@@ -73,7 +73,7 @@ def build_attempt_summary_map(
     sql = (
         "SELECT * FROM practice_attempts WHERE "
         + " AND ".join(clauses)
-        + " ORDER BY datetime(updated_at) DESC, datetime(created_at) DESC, id DESC LIMIT ?"
+        + " ORDER BY updated_at DESC, created_at DESC, id DESC LIMIT ?"
     )
     params.append(max(1, min(limit, 3000)))
     with get_conn() as conn:
@@ -141,7 +141,7 @@ def read_attempt_behavior_map(
     sql = (
         "SELECT * FROM practice_attempts WHERE "
         + " AND ".join(clauses)
-        + " ORDER BY datetime(updated_at) DESC, datetime(created_at) DESC, id DESC LIMIT ?"
+        + " ORDER BY updated_at DESC, created_at DESC, id DESC LIMIT ?"
     )
     params.append(max(1, min(limit, 5000)))
     with get_conn() as conn:

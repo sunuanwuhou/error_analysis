@@ -27,7 +27,7 @@ IMAGE_API_REF_RE = re.compile(r"^/api/images/([a-f0-9]{32,64})$", re.I)
 
 def cleanup_old_ops(user_id: str, conn: sqlite3.Connection) -> None:
     conn.execute(
-        "DELETE FROM operations WHERE user_id = ? AND created_at < datetime('now', '-30 days')",
+        "DELETE FROM operations WHERE user_id = ? AND created_at < (CURRENT_TIMESTAMP - INTERVAL '30 days')::text",
         (user_id,),
     )
 
@@ -252,8 +252,9 @@ def append_workspace_snapshot_ops(
         upsert_op = ENTITY_SYNC_OPS[entity_type][0]
         conn.execute(
             """
-            INSERT OR IGNORE INTO operations(id, user_id, op_type, entity_id, payload, created_at)
+            INSERT INTO operations(id, user_id, op_type, entity_id, payload, created_at)
             VALUES(?, ?, ?, ?, ?, ?)
+            ON CONFLICT (id) DO NOTHING
             """,
             (str(uuid.uuid4()), user_id, upsert_op, entity_id, payload_json, created_at),
         )
@@ -262,8 +263,9 @@ def append_workspace_snapshot_ops(
         delete_op = ENTITY_SYNC_OPS[entity_type][1]
         conn.execute(
             """
-            INSERT OR IGNORE INTO operations(id, user_id, op_type, entity_id, payload, created_at)
+            INSERT INTO operations(id, user_id, op_type, entity_id, payload, created_at)
             VALUES(?, ?, ?, ?, '{}', ?)
+            ON CONFLICT (id) DO NOTHING
             """,
             (str(uuid.uuid4()), user_id, delete_op, entity_id, created_at),
         )
