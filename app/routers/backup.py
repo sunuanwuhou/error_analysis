@@ -3,13 +3,14 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from fastapi import APIRouter, Cookie, HTTPException, Query, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from app.core import require_user
 from app.runtime import infer_request_origin
 from app.schemas import (
     BackupPayload,
     CloudChunkCompletePayload,
+    CloudChunkDownloadInitPayload,
     CloudChunkInitPayload,
     LocalBackupCreatePayload,
     LocalBackupRestorePayload,
@@ -21,15 +22,19 @@ from app.services.backup_service import (
     ChunkUploadInvalidError,
     ChunkUploadNotFoundError,
     complete_chunk_upload,
+    download_chunk_part,
     create_local_backup_response,
     delete_local_backup_response,
     get_backup_response,
+    init_chunk_download,
     init_chunk_upload,
     list_local_backup_items,
     restore_local_backup_response,
     save_backup,
     upload_chunk_part,
     update_origin_status,
+    ChunkDownloadInvalidError,
+    ChunkDownloadNotFoundError,
 )
 
 router = APIRouter()
@@ -116,6 +121,44 @@ def complete_backup_chunk_upload(
         raise HTTPException(status_code=404, detail=exc.detail) from exc
     except ChunkUploadInvalidError as exc:
         raise HTTPException(status_code=400, detail=exc.detail) from exc
+
+
+@router.post("/api/backup/chunk/download/init")
+def init_backup_chunk_download(
+    payload: CloudChunkDownloadInitPayload,
+    request: Request,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    user_id = _user_id_from_session(xingce_session)
+    return init_chunk_download(
+        user_id,
+        payload,
+        current_origin=infer_request_origin(request),
+    )
+
+
+@router.get("/api/backup/chunk/download/{download_id}/part")
+def get_backup_chunk_download_part(
+    download_id: str,
+    index: int = Query(default=0, ge=0),
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> Response:
+    user_id = _user_id_from_session(xingce_session)
+    try:
+        chunk, meta = download_chunk_part(user_id, download_id, index)
+    except ChunkDownloadNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=exc.detail) from exc
+    except ChunkDownloadInvalidError as exc:
+        raise HTTPException(status_code=400, detail=exc.detail) from exc
+    return Response(
+        content=chunk,
+        media_type="application/octet-stream",
+        headers={
+            "x-chunk-index": str(index),
+            "x-total-chunks": str(int(meta.get("totalChunks") or 0)),
+            "x-total-bytes": str(int(meta.get("totalBytes") or 0)),
+        },
+    )
 
 
 @router.post("/api/origin-status")

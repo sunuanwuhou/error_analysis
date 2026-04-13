@@ -12,6 +12,7 @@ from app.config import BACKUPS_DIR, IMAGES_DIR
 from app.database import get_conn
 from app.schemas import (
     BackupPayload,
+    CloudChunkDownloadInitPayload,
     CloudChunkInitPayload,
     LocalBackupCreatePayload,
     LocalBackupRestorePayload,
@@ -51,6 +52,18 @@ class ChunkUploadInvalidError(Exception):
         self.detail = detail
 
 
+class ChunkDownloadNotFoundError(Exception):
+    def __init__(self, detail: str) -> None:
+        super().__init__(detail)
+        self.detail = detail
+
+
+class ChunkDownloadInvalidError(Exception):
+    def __init__(self, detail: str) -> None:
+        super().__init__(detail)
+        self.detail = detail
+
+
 def _now_local_iso() -> str:
     return datetime.now().astimezone().isoformat()
 
@@ -63,6 +76,12 @@ def _chunk_upload_root(user_id: str) -> Path:
 
 def _user_backup_root(user_id: str) -> Path:
     root = BACKUPS_DIR / user_id
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def _chunk_download_root(user_id: str) -> Path:
+    root = BACKUPS_DIR / "_chunk_downloads" / user_id
     root.mkdir(parents=True, exist_ok=True)
     return root
 
@@ -279,6 +298,34 @@ def _purge_stale_chunk_uploads(user_id: str, keep: int = 6) -> None:
         shutil.rmtree(stale, ignore_errors=True)
 
 
+def _chunk_download_session_dir(user_id: str, download_id: str) -> Path:
+    return _chunk_download_root(user_id) / download_id
+
+
+def _load_chunk_download_meta(user_id: str, download_id: str) -> dict[str, Any]:
+    session_dir = _chunk_download_session_dir(user_id, download_id)
+    if not session_dir.exists():
+        raise ChunkDownloadNotFoundError("chunk download session not found")
+    meta_path = session_dir / "meta.json"
+    if not meta_path.exists():
+        raise ChunkDownloadInvalidError("chunk download metadata missing")
+    return _read_json(meta_path, {})
+
+
+def _save_chunk_download_meta(user_id: str, download_id: str, meta: dict[str, Any]) -> None:
+    session_dir = _chunk_download_session_dir(user_id, download_id)
+    session_dir.mkdir(parents=True, exist_ok=True)
+    _write_json(session_dir / "meta.json", meta)
+
+
+def _purge_stale_chunk_downloads(user_id: str, keep: int = 6) -> None:
+    root = _chunk_download_root(user_id)
+    sessions = [child for child in root.iterdir() if child.is_dir()]
+    sessions.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    for stale in sessions[keep:]:
+        shutil.rmtree(stale, ignore_errors=True)
+
+
 def init_chunk_upload(user_id: str, payload: CloudChunkInitPayload) -> dict[str, Any]:
     upload_id = f"up_{uuid4().hex}"
     session_dir = _chunk_session_dir(user_id, upload_id)
@@ -382,6 +429,89 @@ def complete_chunk_upload(user_id: str, upload_id: str, *, current_origin: str) 
         "mode": "chunked_full_backup",
         **result,
     }
+
+
+def init_chunk_download(
+    user_id: str,
+    payload: CloudChunkDownloadInitPayload,
+    *,
+    current_origin: str,
+) -> dict[str, Any]:
+    data = get_backup_response(user_id, current_origin=current_origin, meta=False)
+    if not data.get("exists") or not data.get("backup"):
+        return {
+            "ok": True,
+            "exists": False,
+            "currentOrigin": current_origin,
+            "payloadBytes": 0,
+            "summary": {},
+            "origins": list_origin_statuses(user_id),
+        }
+
+    backup = dict(data.get("backup") or {})
+    payload_bytes = json.dumps(backup, ensure_ascii=False).encode("utf-8")
+    total_bytes = len(payload_bytes)
+    chunk_size = int(payload.chunkSize)
+    total_chunks = max(1, (total_bytes + chunk_size - 1) // chunk_size)
+    download_id = f"down_{uuid4().hex}"
+    session_dir = _chunk_download_session_dir(user_id, download_id)
+    session_dir.mkdir(parents=True, exist_ok=True)
+    payload_path = session_dir / "payload.bin"
+    payload_path.write_bytes(payload_bytes)
+    now = _now_local_iso()
+    updated_at = str(data.get("updatedAt") or backup.get("exportTime") or now)
+    meta = {
+        "downloadId": download_id,
+        "createdAt": now,
+        "updatedAt": now,
+        "backupUpdatedAt": updated_at,
+        "totalBytes": total_bytes,
+        "totalChunks": total_chunks,
+        "chunkSize": chunk_size,
+    }
+    _save_chunk_download_meta(user_id, download_id, meta)
+    _purge_stale_chunk_downloads(user_id)
+    return {
+        "ok": True,
+        "exists": True,
+        "mode": "chunked_cloud_load",
+        "downloadId": download_id,
+        "currentOrigin": current_origin,
+        "updatedAt": updated_at,
+        "payloadBytes": total_bytes,
+        "summary": data.get("summary") or build_backup_summary(backup),
+        "origins": data.get("origins") or list_origin_statuses(user_id),
+        "chunkSize": chunk_size,
+        "totalBytes": total_bytes,
+        "totalChunks": total_chunks,
+    }
+
+
+def download_chunk_part(user_id: str, download_id: str, chunk_index: int) -> tuple[bytes, dict[str, Any]]:
+    meta = _load_chunk_download_meta(user_id, download_id)
+    total_chunks = int(meta.get("totalChunks") or 0)
+    total_bytes = int(meta.get("totalBytes") or 0)
+    chunk_size = int(meta.get("chunkSize") or 0)
+    if chunk_index < 0 or chunk_index >= total_chunks:
+        raise ChunkDownloadInvalidError("chunk index out of range")
+    if chunk_size <= 0:
+        raise ChunkDownloadInvalidError("chunk size is invalid")
+
+    session_dir = _chunk_download_session_dir(user_id, download_id)
+    payload_path = session_dir / "payload.bin"
+    if not payload_path.exists():
+        raise ChunkDownloadInvalidError("chunk payload missing")
+
+    start = chunk_index * chunk_size
+    if start >= total_bytes:
+        raise ChunkDownloadInvalidError("chunk offset out of range")
+    size = min(chunk_size, total_bytes - start)
+    with payload_path.open("rb") as fp:
+        fp.seek(start)
+        chunk = fp.read(size)
+    if len(chunk) != size:
+        raise ChunkDownloadInvalidError("chunk payload truncated")
+    return chunk, meta
 
 
 def get_backup_response(user_id: str, *, current_origin: str, meta: bool) -> dict[str, Any]:

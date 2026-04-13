@@ -65,6 +65,10 @@ class CloudChunkCompletePayload(BaseModel):
     uploadId: str = Field(min_length=8, max_length=120)
 
 
+class CloudChunkDownloadInitPayload(BaseModel):
+    chunkSize: int = Field(default=256 * 1024, ge=32 * 1024, le=2 * 1024 * 1024)
+
+
 class CodexThreadCreatePayload(BaseModel):
     title: str = Field(default="", max_length=80)
 
