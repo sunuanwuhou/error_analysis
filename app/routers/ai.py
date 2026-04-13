@@ -25,7 +25,22 @@ from app.config import (
     SESSION_TTL_DAYS,
     SHENLUN_HTML_PATH,
 )
-from app.core import *
+from app.core import (
+    build_local_diagnosis_safe,
+    call_ai,
+    call_analyze_entry,
+    clean_multiline_text,
+    clean_short_text,
+    extract_json_object,
+    extract_json_value,
+    filter_errors,
+    flatten_knowledge_tree,
+    get_backup_errors,
+    load_backup_payload,
+    require_user,
+    run_ocr_bytes,
+    summarize_error,
+)
 from app.database import get_conn
 from app.runtime import build_runtime_label, infer_request_origin, read_tunnel_url, request_is_secure
 from app.schemas import (

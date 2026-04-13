@@ -169,6 +169,7 @@ Useful checks:
 ```powershell
 python -m py_compile app/main.py
 python .\scripts\verify_v31_smoke.py
+python .\scripts\check_repo_layout.py
 docker compose up --build -d app
 ```
 
@@ -177,6 +178,6 @@ docker compose up --build -d app
 - [current roadmap](E:\IdeaProject\git\xingce_v3_lab\docs\roadmap.md)
 - [ops notes](E:\IdeaProject\git\xingce_v3_lab\docs\ops-notes.md)
 - [Codex inbox](E:\IdeaProject\git\xingce_v3_lab\docs\codex-inbox.md)
-- [v3.1 integration plan](E:\IdeaProject\git\xingce_v3_lab\docs\v3.1-integration-plan.md)
-- [v3.1 rollout notes](E:\IdeaProject\git\xingce_v3_lab\docs\v3.1-rollout-notes-2026-03-26.md)
-- [shenlun workbench plan](E:\IdeaProject\git\xingce_v3_lab\docs\shenlun-workbench-plan.md)
+- [v3.1 integration plan (archive)](E:\IdeaProject\git\xingce_v3_lab\docs\archive\v3.1-integration-plan.md)
+- [v3.1 rollout notes (archive)](E:\IdeaProject\git\xingce_v3_lab\docs\archive\v3.1-rollout-notes-2026-03-26.md)
+- [shenlun workbench plan (archive)](E:\IdeaProject\git\xingce_v3_lab\docs\archive\shenlun-workbench-plan.md)

@@ -21,6 +21,12 @@ The repository docs are the source of truth.
 - delivery gate: `docs/RELEASE_CHECKLIST.md`
 - self-test evidence: `docs/SELF_TEST_REPORT.md`
 
+## Structure
+
+- active docs stay in `docs/` root
+- historical/closed milestone docs live under `docs/archive/`
+- when referencing older plans, link `docs/archive/...` explicitly
+
 ## How to use these docs in future sessions
 
 1. read `PROJECT_RULES.md` before changing code

@@ -4,8 +4,9 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, Cookie, Query
 
-from app.core import read_recent_practice_logs, require_user, write_practice_log
+from app.core import require_user
 from app.schemas import PracticeAttemptsBatchPayload, PracticeLogPayload
+from app.services.practice_log_service import read_recent_practice_logs, write_practice_log
 from app.services.practice_query_service import (
     build_attempt_summary_map,
     build_practice_daily_response,

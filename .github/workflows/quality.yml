@@ -32,6 +32,9 @@ jobs:
       - name: Check router layout
         run: python scripts/check_router_layout.py
 
+      - name: Check repository layout
+        run: python scripts/check_repo_layout.py --changed origin/${{ github.base_ref }}
+
       - name: Guard legacy monolith growth
         run: python scripts/check_legacy_monolith_guard.py --changed origin/${{ github.base_ref }}
 

@@ -26,7 +26,15 @@ from app.config import (
     SESSION_TTL_DAYS,
     SHENLUN_HTML_PATH,
 )
-from app.core import *
+from app.core import (
+    apply_sync_op_to_state_entity,
+    cleanup_old_ops,
+    get_workspace_snapshot_updated_at,
+    list_current_sync_ops,
+    list_origin_statuses,
+    require_user,
+    upsert_origin_status,
+)
 from app.database import get_conn
 from app.runtime import build_runtime_label, infer_request_origin, read_tunnel_url, request_is_secure
 from app.schemas import (

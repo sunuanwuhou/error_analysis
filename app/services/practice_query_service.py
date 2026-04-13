@@ -5,9 +5,10 @@ import sqlite3
 from collections import Counter, defaultdict
 from typing import Any, Optional
 
-from app.core import compute_daily_practice, get_backup_errors, read_recent_practice_logs, summarize_error
+from app.core import compute_daily_practice, get_backup_errors, summarize_error
 from app.database import get_conn
 from app.security import utcnow
+from app.services.practice_log_service import read_recent_practice_logs
 from app.services.practice_stats_service import build_flow_workbench, build_practice_insights
 
 

@@ -25,7 +25,7 @@ from app.config import (
     SESSION_TTL_DAYS,
     SHENLUN_HTML_PATH,
 )
-from app.core import *
+from app.core import require_user
 from app.database import get_conn
 from app.runtime import build_runtime_label, infer_request_origin, read_tunnel_url, request_is_secure
 from app.schemas import (
