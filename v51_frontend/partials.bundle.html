@@ -17,11 +17,6 @@
 <div class="runtime-badge" data-mode="unknown" id="runtimeBadge">Runtime: loading</div>
 </div>
 <div class="sidebar-tools">
-<div class="sidebar-tools-row workspace-entry-row">
-<button class="btn btn-secondary" data-onclick="switchAppView('home')" id="sidebarHomeBtn" type="button">学习首页</button>
-<button class="btn btn-secondary" data-onclick="openWorkspaceView('errors')" id="sidebarWorkspaceBtn" type="button">错题工作台</button>
-<button class="btn btn-secondary" data-onclick="window.location.href='/shenlun'" type="button">申论工作台</button>
-</div>
 <div class="sidebar-tools-row">
 <button class="btn btn-primary" data-onclick="openQuickAddModal()">+ 添加</button>
 <div class="more-menu" id="moreMenu">
@@ -111,18 +106,6 @@
 </div>
 
 <div class="app-view app-view-workspace" id="workspaceView">
-<div class="workspace-switch-bar">
-<div class="workspace-switch-title">
-<strong>错题工作台</strong>
-<span>录题、改错因、看列表、写笔记都在这里完成</span>
-</div>
-<div class="workspace-switch-actions">
-<button class="btn btn-secondary" data-onclick="switchAppView('home')">返回首页</button>
-<button class="btn btn-secondary active" data-onclick="switchTab('errors')" id="tabErrors" type="button">错题列表</button>
-<button class="btn btn-secondary" data-onclick="switchTab('notes')" id="tabNotes" type="button">学习笔记</button>
-</div>
-</div>
-
 <div class="tab-content" id="tabContentErrors">
 <div class="errors-area">
 <div class="errors-header">
