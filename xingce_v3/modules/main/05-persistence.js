@@ -995,6 +995,8 @@ async function queueDeferredCloudRestore(meta, opts) {
   return deferredCloudRestorePromise;
 }
 async function maybeRestoreCloudBackup() {
+  if (typeof isManualCloudSyncOnly === 'function' && isManualCloudSyncOnly()) return;
+  if (typeof hasFullWorkspaceDataLoaded === 'function' && !hasFullWorkspaceDataLoaded()) return;
   if (!cloudUser || cloudBusy) return;
   cloudBusy = true;
   try {
