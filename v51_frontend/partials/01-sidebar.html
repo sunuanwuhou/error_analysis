@@ -4,11 +4,6 @@
 <div class="runtime-badge" data-mode="unknown" id="runtimeBadge">Runtime: loading</div>
 </div>
 <div class="sidebar-tools">
-<div class="sidebar-tools-row workspace-entry-row">
-<button class="btn btn-secondary" data-onclick="switchAppView('home')" id="sidebarHomeBtn" type="button">学习首页</button>
-<button class="btn btn-secondary" data-onclick="openWorkspaceView('errors')" id="sidebarWorkspaceBtn" type="button">错题工作台</button>
-<button class="btn btn-secondary" data-onclick="window.location.href='/shenlun'" type="button">申论工作台</button>
-</div>
 <div class="sidebar-tools-row">
 <button class="btn btn-primary" data-onclick="openQuickAddModal()">+ 添加</button>
 <div class="more-menu" id="moreMenu">
@@ -43,7 +38,7 @@
 </div>
 <div class="sidebar-tools-row sidebar-cloud-actions">
 <button class="btn btn-secondary" data-onclick="loadCloudBackup()">Cloud Load</button>
-<button class="btn btn-secondary" data-onclick="saveCloudBackup()">Cloud Save</button>
+<button class="btn btn-secondary" data-onclick="saveCloudFullBackupFromMore()">Cloud Full Save</button>
 <button class="btn btn-secondary" data-onclick="logoutCloud()" id="cloudLogoutBtn">Logout</button>
 </div>
 </div>
