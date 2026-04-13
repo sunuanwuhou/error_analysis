@@ -247,6 +247,22 @@
       } catch (_) {}
     }
 
+    async function clearClientCacheForFreshLogin() {
+      try { localStorage.clear(); } catch (_) {}
+      try { sessionStorage.clear(); } catch (_) {}
+      try {
+        if (typeof indexedDB !== 'undefined' && indexedDB && typeof indexedDB.deleteDatabase === 'function') {
+          indexedDB.deleteDatabase('xingce_db');
+        }
+      } catch (_) {}
+      try {
+        if (typeof caches !== 'undefined' && caches && typeof caches.keys === 'function') {
+          const names = await caches.keys();
+          await Promise.all(names.map(name => caches.delete(name)));
+        }
+      } catch (_) {}
+    }
+
     function setHint(message, ok) {
       hintEl.textContent = message || '';
       hintEl.className = ok ? 'hint ok' : 'hint';
@@ -288,8 +304,16 @@
       if (event.key === 'Enter') submitAuth();
     });
 
-    refreshRuntimeBadge();
-    checkSession();
+    const params = new URLSearchParams(window.location.search || '');
+    if (params.get('fresh') === '1') {
+      clearClientCacheForFreshLogin().finally(() => {
+        refreshRuntimeBadge();
+        checkSession();
+      });
+    } else {
+      refreshRuntimeBadge();
+      checkSession();
+    }
   </script>
 </body>
 </html>

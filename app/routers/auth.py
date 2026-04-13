@@ -75,7 +75,16 @@ def register(payload: AuthPayload, response: Response, request: Request) -> dict
     return {"ok": True, "user": user}
 
 @router.post("/api/auth/login")
-def login(payload: AuthPayload, response: Response, request: Request) -> dict[str, Any]:
+def login(
+    payload: AuthPayload,
+    response: Response,
+    request: Request,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    # Clear any stale cookie first to avoid duplicated/dirty session state in browser.
+    if xingce_session:
+        clear_session(xingce_session)
+    response.delete_cookie(SESSION_COOKIE, path="/")
     with get_conn() as conn:
         user = conn.execute(
             "SELECT id, username, password_hash FROM users WHERE username = ?",
@@ -98,12 +107,14 @@ def login(payload: AuthPayload, response: Response, request: Request) -> dict[st
 @router.post("/api/auth/logout")
 def logout(response: Response, xingce_session: Optional[str] = Cookie(default=None)) -> dict[str, Any]:
     clear_session(xingce_session)
-    response.delete_cookie(SESSION_COOKIE)
+    response.delete_cookie(SESSION_COOKIE, path="/")
     return {"ok": True}
 
 @router.get("/api/me")
-def me(xingce_session: Optional[str] = Cookie(default=None)) -> dict[str, Any]:
+def me(response: Response, xingce_session: Optional[str] = Cookie(default=None)) -> dict[str, Any]:
     user = get_user_by_token(xingce_session)
     if not user:
+        if xingce_session:
+            response.delete_cookie(SESSION_COOKIE, path="/")
         return {"authenticated": False}
     return {"authenticated": True, "user": user}

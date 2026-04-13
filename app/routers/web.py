@@ -10,6 +10,7 @@ from app.config import (
     LOGIN_HTML_PATH,
     NEW_FRONTEND_ENABLED,
     RUNTIME_MODE,
+    SESSION_COOKIE,
     SHENLUN_HTML_PATH,
     V51_INDEX_PATH,
 )
@@ -17,6 +18,11 @@ from app.runtime import build_runtime_label, infer_request_origin, read_tunnel_u
 from app.security import get_user_by_token, utcnow
 
 router = APIRouter()
+
+def _redirect_login_with_cookie_cleanup() -> Response:
+    response = RedirectResponse(url="/login", status_code=302)
+    response.delete_cookie(SESSION_COOKIE, path="/")
+    return response
 
 
 def _new_frontend_ready() -> bool:
@@ -44,7 +50,7 @@ def health() -> dict[str, Any]:
 def root(xingce_session: Optional[str] = Cookie(default=None)) -> Response:
     user = get_user_by_token(xingce_session)
     if not user:
-        return RedirectResponse(url="/login", status_code=302)
+        return _redirect_login_with_cookie_cleanup()
     return FileResponse(
         V51_INDEX_PATH,
         headers={
@@ -63,7 +69,7 @@ def legacy_root() -> Response:
 def shenlun_root(xingce_session: Optional[str] = Cookie(default=None)) -> Response:
     user = get_user_by_token(xingce_session)
     if not user:
-        return RedirectResponse(url="/login", status_code=302)
+        return _redirect_login_with_cookie_cleanup()
     return FileResponse(
         SHENLUN_HTML_PATH,
         headers={
@@ -78,7 +84,7 @@ def shenlun_root(xingce_session: Optional[str] = Cookie(default=None)) -> Respon
 def new_frontend_root(xingce_session: Optional[str] = Cookie(default=None)) -> Response:
     user = get_user_by_token(xingce_session)
     if not user:
-        return RedirectResponse(url="/login", status_code=302)
+        return _redirect_login_with_cookie_cleanup()
     return RedirectResponse(url="/", status_code=302)
 
 @router.get("/v51/{path:path}")
@@ -86,7 +92,7 @@ def new_frontend_root(xingce_session: Optional[str] = Cookie(default=None)) -> R
 def new_frontend_spa(path: str, xingce_session: Optional[str] = Cookie(default=None)) -> Response:
     user = get_user_by_token(xingce_session)
     if not user:
-        return RedirectResponse(url="/login", status_code=302)
+        return _redirect_login_with_cookie_cleanup()
     return RedirectResponse(url="/", status_code=302)
 
 
@@ -94,7 +100,7 @@ def new_frontend_spa(path: str, xingce_session: Optional[str] = Cookie(default=N
 def migration_frontend_root(xingce_session: Optional[str] = Cookie(default=None)) -> Response:
     user = get_user_by_token(xingce_session)
     if not user:
-        return RedirectResponse(url="/login", status_code=302)
+        return _redirect_login_with_cookie_cleanup()
     return _serve_new_frontend_or_fallback()
 
 
@@ -102,7 +108,7 @@ def migration_frontend_root(xingce_session: Optional[str] = Cookie(default=None)
 def migration_frontend_spa(path: str, xingce_session: Optional[str] = Cookie(default=None)) -> Response:
     user = get_user_by_token(xingce_session)
     if not user:
-        return RedirectResponse(url="/login", status_code=302)
+        return _redirect_login_with_cookie_cleanup()
     return _serve_new_frontend_or_fallback()
 
 @router.get("/login")
