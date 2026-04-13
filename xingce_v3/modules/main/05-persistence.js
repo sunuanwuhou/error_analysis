@@ -344,19 +344,23 @@ function withIncrementalSyncSuppressed(fn) {
 }
 function syncErrorOpsFromSnapshot() {
   const nextSnapshot = buildErrorSyncSnapshot();
+  let changed = false;
   if (suppressIncrementalSync > 0) {
     errorSyncSnapshot = nextSnapshot;
-    return;
+    return changed;
   }
   for (const [id, payloadText] of nextSnapshot.entries()) {
     if (errorSyncSnapshot.get(id) === payloadText) continue;
     recordOp('error_upsert', id, JSON.parse(payloadText), { skipSnapshotUpdate: true });
+    changed = true;
   }
   for (const id of errorSyncSnapshot.keys()) {
     if (nextSnapshot.has(id)) continue;
     recordOp('error_delete', id, {}, { skipSnapshotUpdate: true });
+    changed = true;
   }
   errorSyncSnapshot = nextSnapshot;
+  return changed;
 }
 function getSyncEntityBase(opType) {
   return String(opType || '').replace(/_(upsert|delete)$/, '');
@@ -375,70 +379,74 @@ function getEntityIdFromSyncKey(entityKey) {
 }
 function syncWorkspaceOpsFromSnapshot() {
   const nextSnapshot = buildWorkspaceSyncSnapshot();
+  let changed = false;
   if (suppressIncrementalSync > 0) {
     workspaceSyncSnapshot = nextSnapshot;
-    return;
+    return changed;
   }
   for (const [entityKey, payloadText] of nextSnapshot.entries()) {
     if (workspaceSyncSnapshot.get(entityKey) === payloadText) continue;
     const opTypes = getSyncOpTypesForEntityKey(entityKey);
     if (!opTypes) continue;
     recordOp(opTypes.upsert, getEntityIdFromSyncKey(entityKey), JSON.parse(payloadText), { skipSnapshotUpdate: true, silentState: true });
+    changed = true;
   }
   for (const entityKey of workspaceSyncSnapshot.keys()) {
     if (nextSnapshot.has(entityKey)) continue;
     const opTypes = getSyncOpTypesForEntityKey(entityKey);
     if (!opTypes) continue;
     recordOp(opTypes.delete, getEntityIdFromSyncKey(entityKey), {}, { skipSnapshotUpdate: true, silentState: true });
+    changed = true;
   }
   workspaceSyncSnapshot = nextSnapshot;
+  return changed;
 }
 function markIncrementalWorkspaceChange() {
   if (suppressIncrementalSync === 0) markLocalChange();
 }
 saveData = function() {
-  syncErrorOpsFromSnapshot();
+  const changed = syncErrorOpsFromSnapshot();
   const encodedErrors = JSON.stringify(errors);
   queuePersist(KEY_ERRORS, encodedErrors);
   persistStartupSummary(encodedErrors);
-  markIncrementalWorkspaceChange();
+  if (changed) markIncrementalWorkspaceChange();
 };
 saveReveal = function() {
-  syncWorkspaceOpsFromSnapshot();
+  const changed = syncWorkspaceOpsFromSnapshot();
   queuePersist(KEY_REVEALED, [...revealed]);
-  markIncrementalWorkspaceChange();
+  if (changed) markIncrementalWorkspaceChange();
 };
 saveExpMain = function() {
-  syncWorkspaceOpsFromSnapshot();
+  const changed = syncWorkspaceOpsFromSnapshot();
   queuePersist(KEY_EXP_MAIN, [...expMain, ...expMainSub]);
   queuePersist(KEY_EXP_SUB2, [...expMainSub2]);
-  markIncrementalWorkspaceChange();
+  if (changed) markIncrementalWorkspaceChange();
 };
 saveExpTypes = function() {
-  syncWorkspaceOpsFromSnapshot();
+  const changed = syncWorkspaceOpsFromSnapshot();
   queuePersist(KEY_EXP_TYPES, [...expTypes]);
-  markIncrementalWorkspaceChange();
+  if (changed) markIncrementalWorkspaceChange();
 };
 saveNotesByType = function() {
-  syncWorkspaceOpsFromSnapshot();
+  const changed = syncWorkspaceOpsFromSnapshot();
   queuePersist(KEY_NOTES_BY_TYPE, notesByType);
   queuePersist(KEY_NOTE_IMAGES, noteImages);
-  markIncrementalWorkspaceChange();
+  if (changed) markIncrementalWorkspaceChange();
 };
 saveKnowledgeState = function() {
   mergeDuplicateKnowledgeSiblings(getKnowledgeRootNodes());
   collapseDuplicateKnowledgeWrappers(getKnowledgeRootNodes());
   pruneKnowledgeGhostNodes(getKnowledgeRootNodes(), getKnowledgeDirectErrorCountMap());
   syncKnowledgeNotesFromTree();
-  syncWorkspaceOpsFromSnapshot();
+  const changed = syncWorkspaceOpsFromSnapshot();
   queuePersist(KEY_KNOWLEDGE_TREE, knowledgeTree);
   queuePersist(KEY_KNOWLEDGE_NOTES, knowledgeNotes);
-  markIncrementalWorkspaceChange();
+  if (changed) markIncrementalWorkspaceChange();
 };
 saveKnowledgeExpanded = function() {
-  syncWorkspaceOpsFromSnapshot();
+  const changed = syncWorkspaceOpsFromSnapshot();
   queuePersist(KEY_KNOWLEDGE_EXPANDED, Array.from(knowledgeExpanded));
-  markIncrementalWorkspaceChange();
+  if (changed) markIncrementalWorkspaceChange();
 };
 function saveNoteReviewTracking() {
   queuePersist(KEY_NOTE_REVIEW_TRACKING, noteReviewTracking || {});
@@ -2144,10 +2152,10 @@ function syncNoteTypeNames() {
     renderNotesByType();
 }
 function saveTodayDone(){
-  syncWorkspaceOpsFromSnapshot();
+  const changed = syncWorkspaceOpsFromSnapshot();
   queuePersist(KEY_TODAY_DATE, todayDate || '');
   queuePersist(KEY_TODAY_DONE, String(todayDone || 0));
-  markIncrementalWorkspaceChange();
+  if (changed) markIncrementalWorkspaceChange();
 }
 let _history = [];
 function loadHistory(){ return _history; }
