@@ -472,8 +472,8 @@ const STARTUP_CLOUD_META_TTL_MS = 5 * 60 * 1000;
 const STARTUP_INCREMENTAL_SYNC_TTL_MS = 5 * 60 * 1000;
 const FOREGROUND_CLOUD_CHECK_TTL_MS = 5 * 60 * 1000;
 const CLOUD_MANUAL_SYNC_ONLY = true;
-const FULL_BACKUP_CHUNK_BYTES = 256 * 1024;
-const FULL_BACKUP_DOWNLOAD_CHUNK_BYTES = 256 * 1024;
+const FULL_BACKUP_CHUNK_BYTES = 1024 * 1024;
+const FULL_BACKUP_DOWNLOAD_CHUNK_BYTES = 1024 * 1024;
 let deferredCloudRestorePromise = null;
 let deferredCloudRestoreUpdatedAt = '';
 let backgroundCloudBootstrapTimer = null;
@@ -935,7 +935,6 @@ function rememberCloudDecision(updatedAt, action) {
   }
   if (action === 'loaded') {
     cloudMeta.lastLoadedAt = updatedAt || new Date().toISOString();
-    cloudMeta.lastLocalChangeAt = updatedAt || cloudMeta.lastLocalChangeAt || '';
   }
   if (action === 'saved') {
     cloudMeta.lastSavedAt = updatedAt || new Date().toISOString();
@@ -1040,7 +1039,6 @@ async function applyCloudBackup(data, updatedAt, opts) {
   }
   rememberCloudDecision(updatedAt || data.exportTime || '', 'loaded');
   scheduleOriginStatusSync({
-    localChangedAt: updatedAt || data.exportTime || '',
     lastLoadedAt: updatedAt || data.exportTime || '',
     lastBackupUpdatedAt: updatedAt || data.exportTime || ''
   });
@@ -1370,6 +1368,38 @@ async function loadCloudBackup(opts) {
   } finally {
     cloudBusy = false;
   }
+}
+async function loadCloudIncrementalFromSidebar(opts) {
+  opts = opts || {};
+  if (!cloudUser) {
+    window.location.replace('/login');
+    return;
+  }
+  if (incrementalSyncBusy || cloudBusy) return;
+  setCloudSyncState('saving', '正在从云端拉取增量更新', '');
+  try {
+    await syncWithServer({
+      pullOnly: true,
+      forceFullPull: Boolean(opts.forceFullPull),
+      resetCursor: Boolean(opts.resetCursor)
+    });
+    if (cloudSyncState !== 'error') {
+      setCloudSyncState('synced', '云端增量同步完成', cloudSyncUpdatedAt || new Date().toISOString());
+      if (!opts.silent) showCloudInfo('Incremental cloud pull completed', opts);
+    }
+  } catch (e) {
+    setCloudSyncState('error', e.message || '云端增量同步失败，请稍后重试', '');
+    showCloudError(e, 'Cloud incremental pull failed', opts);
+  }
+}
+async function loadCloudFullBackupFromMore() {
+  if (!cloudUser) {
+    window.location.replace('/login');
+    return;
+  }
+  const ok = confirm('将从云端全量同步并覆盖当前本地数据。继续吗？');
+  if (!ok) return;
+  await loadCloudBackup({ silent: false, askBeforeRestore: false, forceOverwriteLocal: true });
 }
 async function saveCloudIncremental(opts) {
   opts = opts || {};
@@ -2008,7 +2038,7 @@ async function syncWithServer(opts) {
     const pending = getPendingOps();
     let pushed = false;
     let latestSnapshotAt = '';
-    if (pending.length > 0) {
+    if (!options.pullOnly && pending.length > 0) {
       const pushRes = await fetch('/api/sync', {
         method: 'POST',
         credentials: 'include',
@@ -2397,6 +2427,8 @@ window.ensureLocalBackupMenuButton = ensureLocalBackupMenuButton;
 window.ensureCloudFullBackupMenuButton = ensureCloudFullBackupMenuButton;
 window.saveCloudFullBackupFromMore = saveCloudFullBackupFromMore;
 window.saveCloudFullBackup = saveCloudFullBackup;
+window.loadCloudIncrementalFromSidebar = loadCloudIncrementalFromSidebar;
+window.loadCloudFullBackupFromMore = loadCloudFullBackupFromMore;
 window.saveNoteReviewTracking = saveNoteReviewTracking;
 window.isManualCloudSyncOnly = isManualCloudSyncOnly;
 

@@ -6,7 +6,6 @@
 <div class="sidebar-tools">
 <div class="sidebar-tools-row workspace-entry-row">
 <button class="btn btn-secondary" data-onclick="switchAppView('home')" id="sidebarHomeBtn" type="button">学习首页</button>
-<button class="btn btn-secondary" data-onclick="openWorkspaceView('errors')" id="sidebarWorkspaceBtn" type="button">错题工作台</button>
 <button class="btn btn-secondary" data-onclick="window.location.href='/shenlun'" type="button">申论工作台</button>
 </div>
 <div class="sidebar-tools-row">
@@ -16,6 +15,7 @@
 <div class="more-menu-panel" id="moreMenuPanel">
 <button class="btn btn-secondary" data-onclick="closeMoreMenu();openQuickImportModal()">导入错题</button>
 <button class="btn btn-secondary" data-onclick="closeMoreMenu();openExportModal()">导出</button>
+<button class="btn btn-secondary" data-onclick="closeMoreMenu();loadCloudFullBackupFromMore()">全量从云端同步（覆盖本地）</button>
 <button class="btn btn-secondary" data-onclick="closeMoreMenu();openClaudeHelper()">发给CC</button>
 <button class="btn btn-secondary" data-onclick="closeMoreMenu();openRichNoteEditorFromMore()">Markdown备注（专业）</button>
 <button class="btn btn-secondary" data-onclick="closeMoreMenu();openDashboard()">学习统计</button>
@@ -42,7 +42,7 @@
 <div class="cloud-origin-list" id="cloudOriginStatus"></div>
 </div>
 <div class="sidebar-tools-row sidebar-cloud-actions">
-<button class="btn btn-secondary" data-onclick="loadCloudBackup()">Cloud Load</button>
+<button class="btn btn-secondary" data-onclick="loadCloudIncrementalFromSidebar()">Cloud Load</button>
 <button class="btn btn-secondary" data-onclick="saveCloudBackup()">Cloud Save</button>
 <button class="btn btn-secondary" data-onclick="logoutCloud()" id="cloudLogoutBtn">Logout</button>
 </div>

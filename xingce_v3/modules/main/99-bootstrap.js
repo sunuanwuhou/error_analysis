@@ -86,6 +86,7 @@ function scheduleWorkspaceWarmup() {
   renderSidebar();
   if (typeof ensureLocalBackupMenuButton === 'function') ensureLocalBackupMenuButton();
   if (typeof ensureCloudFullBackupMenuButton === 'function') ensureCloudFullBackupMenuButton();
+  if (typeof ensureCloudFullRestoreMenuButton === 'function') ensureCloudFullRestoreMenuButton();
   if (typeof syncAppViewChrome === 'function') syncAppViewChrome();
   if (typeof renderHomeDashboard === 'function') renderHomeDashboard();
   if (deferErrorsOnStartup && typeof scheduleDeferredFullWorkspaceLoad === 'function') {

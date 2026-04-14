@@ -17,6 +17,10 @@
 <div class="runtime-badge" data-mode="unknown" id="runtimeBadge">Runtime: loading</div>
 </div>
 <div class="sidebar-tools">
+<div class="sidebar-tools-row workspace-entry-row">
+<button class="btn btn-secondary" data-onclick="switchAppView('home')" id="sidebarHomeBtn" type="button">学习首页</button>
+<button class="btn btn-secondary" data-onclick="window.location.href='/shenlun'" type="button">申论工作台</button>
+</div>
 <div class="sidebar-tools-row">
 <button class="btn btn-primary" data-onclick="openQuickAddModal()">+ 添加</button>
 <div class="more-menu" id="moreMenu">
@@ -24,6 +28,7 @@
 <div class="more-menu-panel" id="moreMenuPanel">
 <button class="btn btn-secondary" data-onclick="closeMoreMenu();openQuickImportModal()">导入错题</button>
 <button class="btn btn-secondary" data-onclick="closeMoreMenu();openExportModal()">导出</button>
+<button class="btn btn-secondary" data-onclick="closeMoreMenu();loadCloudFullBackupFromMore()">全量从云端同步（覆盖本地）</button>
 <button class="btn btn-secondary" data-onclick="closeMoreMenu();openClaudeHelper()">发给CC</button>
 <button class="btn btn-secondary" data-onclick="closeMoreMenu();openRichNoteEditorFromMore()">Markdown备注（专业）</button>
 <button class="btn btn-secondary" data-onclick="closeMoreMenu();openDashboard()">学习统计</button>
@@ -50,7 +55,7 @@
 <div class="cloud-origin-list" id="cloudOriginStatus"></div>
 </div>
 <div class="sidebar-tools-row sidebar-cloud-actions">
-<button class="btn btn-secondary" data-onclick="loadCloudBackup()">Cloud Load</button>
+<button class="btn btn-secondary" data-onclick="loadCloudIncrementalFromSidebar()">Cloud Load</button>
 <button class="btn btn-secondary" data-onclick="saveCloudBackup()">Cloud Save</button>
 <button class="btn btn-secondary" data-onclick="logoutCloud()" id="cloudLogoutBtn">Logout</button>
 </div>
@@ -97,7 +102,6 @@
 <div class="home-shell-sub">首页负责调度任务、弱点和必看笔记；进入工作台后再录题、看错题和写笔记。</div>
 </div>
 <div class="home-shell-actions">
-<button class="btn btn-primary" data-onclick="openWorkspaceView('errors')">进入错题工作台</button>
 <button class="btn btn-secondary" data-onclick="openWorkspaceQuickAdd()">继续录题</button>
 </div>
 </div>
