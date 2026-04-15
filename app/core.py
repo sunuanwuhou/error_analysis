@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import base64
 import hashlib
@@ -45,8 +45,6 @@ from app.schemas import (
     AuthPayload,
     BackupPayload,
     ChatPayload,
-    CodexMessageCreatePayload,
-    CodexThreadCreatePayload,
     DiscoverPatternsPayload,
     DistillPayload,
     EvaluateAnswerPayload,
@@ -111,60 +109,6 @@ def parse_context_json(raw: str) -> dict[str, Any]:
         return {}
     return parsed if isinstance(parsed, dict) else {}
 
-def normalize_codex_title(title: str) -> str:
-    cleaned = re.sub(r"\s+", " ", (title or "").strip())
-    return cleaned[:80] if cleaned else "Codex 收件箱"
-
-def build_codex_thread_summary(conn: sqlite3.Connection, row: sqlite3.Row) -> dict[str, Any]:
-    last_message = conn.execute(
-        """
-        SELECT role, content, created_at, status
-        FROM codex_messages
-        WHERE thread_id = ?
-        ORDER BY created_at DESC
-        LIMIT 1
-        """,
-        (row["id"],),
-    ).fetchone()
-    counts = conn.execute(
-        """
-        SELECT
-          COUNT(*) AS total_count,
-          SUM(CASE WHEN role = 'user' AND status = 'pending' THEN 1 ELSE 0 END) AS pending_count,
-          SUM(CASE WHEN role = 'assistant' THEN 1 ELSE 0 END) AS reply_count
-        FROM codex_messages
-        WHERE thread_id = ?
-        """,
-        (row["id"],),
-    ).fetchone()
-    return {
-        "id": row["id"],
-        "title": row["title"],
-        "archived": bool(row["archived"]),
-        "createdAt": row["created_at"],
-        "updatedAt": row["updated_at"],
-        "lastMessagePreview": clean_multiline_text(last_message["content"], 120) if last_message else "",
-        "lastMessageRole": last_message["role"] if last_message else "",
-        "lastMessageAt": last_message["created_at"] if last_message else "",
-        "lastMessageStatus": last_message["status"] if last_message else "",
-        "messageCount": int(counts["total_count"] or 0),
-        "pendingCount": int(counts["pending_count"] or 0),
-        "replyCount": int(counts["reply_count"] or 0),
-    }
-
-def ensure_codex_thread_owner(conn: sqlite3.Connection, thread_id: str, user_id: str) -> sqlite3.Row:
-    row = conn.execute(
-        """
-        SELECT id, user_id, title, archived, created_at, updated_at
-        FROM codex_threads
-        WHERE id = ? AND user_id = ?
-        """,
-        (thread_id, user_id),
-    ).fetchone()
-    if not row:
-        raise HTTPException(status_code=404, detail="codex thread not found")
-    return row
-
 def extract_json_object(text: str) -> dict[str, Any]:
     cleaned = (text or "").strip()
     if cleaned.startswith("```"):
@@ -204,9 +148,9 @@ def clean_multiline_text(value: Any, limit: int) -> str:
     return text[:limit]
 
 def validate_analyze_result(parsed: dict[str, Any], payload: AnalyzeEntryPayload) -> dict[str, Any]:
-    entry_type = clean_short_text(parsed.get("type") or payload.type or "其他", 20)
+    entry_type = clean_short_text(parsed.get("type") or payload.type or "鍏朵粬", 20)
     if entry_type not in ALLOWED_ENTRY_TYPES:
-        entry_type = payload.type if payload.type in ALLOWED_ENTRY_TYPES else "其他"
+        entry_type = payload.type if payload.type in ALLOWED_ENTRY_TYPES else "鍏朵粬"
 
     subtype = clean_short_text(parsed.get("subtype") or payload.subtype, 30)
     sub_subtype = clean_short_text(parsed.get("subSubtype") or payload.subSubtype, 30)
@@ -234,28 +178,10 @@ def validate_analyze_result(parsed: dict[str, Any], payload: AnalyzeEntryPayload
 
 def build_ai_messages(payload: AnalyzeEntryPayload) -> list[dict[str, str]]:
     system_prompt = (
-        "你是公务员行测错题录入助手。"
-        "你必须只返回一个 JSON 对象。"
-        "不要返回 markdown，不要返回解释，不要返回代码块，不要返回 JSON 之外的任何字符。"
-        "字段固定为 type, subtype, subSubtype, rootReason, errorReason, analysis, knowledgeCandidates。"
-        "knowledgeCandidates 必须是字符串数组，最多 3 项。"
-        "type 只能从以下值中选一个：言语理解与表达、数量关系、判断推理、资料分析、常识判断、其他。"
-        "subtype 和 subSubtype 要尽量简洁，适合直接回填表单。"
-        "\n"
-        "rootReason：20 字以内，写深层能力短板，不复述题面，不照抄 errorReason。"
-        "\n"
-        "errorReason：8 字以内。优先从以下参考词中选择；若均不贴切，可自由填写但不超过 8 字：\n"
-        "审题类：粗心看错题目/题目没读完/选项没看全/关键词漏看\n"
-        "知识类：公式/方法不会/知识点遗忘/概念理解错误/概念混淆/常识知识空白\n"
-        "言语类：词义/语义理解偏差/主旨提炼失误/过度推断/绝对化/语境分析错误/近义词辨析失误\n"
-        "推理类：逻辑推理出错/充分必要条件混淆/矛盾/反对关系混淆/论证结构误判/加强/削弱方向判反/图形规律识别失误/类比关系判断错误/定义关键要素未抓住\n"
-        "资料分析类：读数/找数出错/增长率与增长量混淆/倍数与百分比混淆/计算量大估算偏差\n"
-        "计算类：粗心计算错误/方程列错\n"
-        "方法类：方法不熟练/解题思路错误/题型识别错误/代入排除法未用\n"
-        "状态类：没时间/蒙的/会做但慌了\n"
-        "\n"
-        "analysis：先写【根本主因分析】，再写【解题思路】，用 \\n\\n 分隔，总计 150 字以内。"
-        "如果信息不足，也要给出最稳妥的短答案，但仍然只能返回 JSON 对象。"
+        "You are an assistant for error-entry analysis. "
+        "Return only one JSON object with keys: "
+        "type, subtype, subSubtype, rootReason, errorReason, analysis, knowledgeCandidates. "
+        "knowledgeCandidates must be an array with at most 3 items."
     )
     user_prompt = {
         "entry": {
@@ -278,15 +204,15 @@ def build_ai_messages(payload: AnalyzeEntryPayload) -> list[dict[str, str]]:
             "type": "判断推理",
             "subtype": "逻辑判断",
             "subSubtype": "条件推理",
-            "rootReason": "条件推理规则不稳，无法稳定写出条件链",
+            "rootReason": "条件链条不稳，无法稳定推出结论",
             "errorReason": "把逆命题当成可推出结论",
-            "analysis": "先整理条件链，再只验证原命题与逆否命题，排除主客体混淆。",
-            "knowledgeCandidates": ["判断推理 > 逻辑判断 > 条件推理"]
-        }
+            "analysis": "先整理条件链，再核验命题关系，排除主体混淆。",
+            "knowledgeCandidates": ["判断推理 > 逻辑判断 > 条件推理"],
+        },
     }
     return [
         {"role": "system", "name": "AI", "content": system_prompt},
-        {"role": "user", "name": "用户", "content": json.dumps(user_prompt, ensure_ascii=False)},
+        {"role": "user", "name": "鐢ㄦ埛", "content": json.dumps(user_prompt, ensure_ascii=False)},
     ]
 
 def call_ai(
@@ -810,7 +736,7 @@ def run_ocr_bytes(image_bytes: bytes) -> dict[str, Any]:
     selected_text = str(selected.get("text") or "").strip()
     text_token_count = count_numeric_tokens(selected_text) + count_cjk_tokens(selected_text)
     if text_token_count <= 6 and len(selected_text) <= 24:
-        low_text_hint = "检测到图片里的可识别文字较少，像图形推理或纯图题这类内容更适合保留题图并手动补题干。"
+        low_text_hint = "Detected very little OCR text; keep the original image and fill the question manually."
 
     return {
         "engine": "tesseract",
@@ -922,20 +848,20 @@ def compute_daily_practice(
         mastery = str(error.get("masteryLevel") or "not_mastered")
         if mastery == "not_mastered":
             score += 28
-            reasons.append("未掌握")
+            reasons.append("not mastered")
         elif mastery == "fuzzy":
             score += 18
-            reasons.append("掌握模糊")
+            reasons.append("鎺屾彙妯＄硦")
         elif mastery == "mastered":
             score += 6
 
         status = str(error.get("status") or "")
         if status == "focus":
             score += 16
-            reasons.append("重点复习")
+            reasons.append("閲嶇偣澶嶄範")
         elif status == "review":
             score += 10
-            reasons.append("待复习")
+            reasons.append("needs review")
 
         stale_days = _safe_days_between(error.get("lastPracticedAt") or error.get("updatedAt") or error.get("addDate"))
         if stale_days is None:
@@ -943,12 +869,12 @@ def compute_daily_practice(
         else:
             score += min(stale_days, 18)
             if stale_days >= 10:
-                reasons.append("长期未练")
+                reasons.append("闀挎湡鏈粌")
 
         recent_days = _safe_days_between(error.get("addDate"))
         if recent_days is not None and recent_days <= 7:
             score += 8
-            reasons.append("新近错题")
+            reasons.append("鏂拌繎閿欓")
 
         attempt_count = int(behavior.get("recentAttemptCount") or 0)
         wrong_count = int(behavior.get("recentWrongCount") or 0)
@@ -963,39 +889,39 @@ def compute_daily_practice(
 
         if wrong_count >= 2:
             score += 18 + min(wrong_count * 2, 8)
-            reasons.append("近期反复做错")
+            reasons.append("杩戞湡鍙嶅鍋氶敊")
         elif last_result == "wrong":
             score += 12
-            reasons.append("最近一次做错")
+            reasons.append("last attempt wrong")
 
         if confidence and confidence <= 2:
             score += 10
-            reasons.append("把握度低")
+            reasons.append("鎶婃彙搴︿綆")
         elif confidence == 3:
             score += 4
 
         duration_threshold = max(avg_duration, duration)
         if duration_threshold >= 180:
             score += 10
-            reasons.append("高耗时")
+            reasons.append("楂樿€楁椂")
         elif duration_threshold >= 90:
             score += 6
 
         if attempt_count and not closure_done:
             score += 12
-            reasons.append("已练未补全")
+            reasons.append("attempted without closure")
         if closure_done and wrong_count == 0 and correct_count > 0 and status != "mastered":
             score += 8
-            reasons.append("已复盘待复训")
+            reasons.append("宸插鐩樺緟澶嶈")
         if solved_but_unstable:
             score += 8
-            reasons.append("做对但不稳")
+            reasons.append("correct but unstable")
         if review_gap_days is not None and review_gap_days >= 5 and attempt_count:
             score += 6
-            reasons.append("复训间隔过长")
+            reasons.append("澶嶈闂撮殧杩囬暱")
 
         if not reasons:
-            reasons.append("基础兜底排序")
+            reasons.append("鍩虹鍏滃簳鎺掑簭")
 
         ranked.append((score, error, {
             "recentAttemptCount": attempt_count,
@@ -1041,20 +967,20 @@ def build_local_diagnosis(errors: list[dict[str, Any]]) -> dict[str, Any]:
     top_subtypes = sorted(subtype_counts.items(), key=lambda item: (-item[1], item[0]))[:5]
     summary_parts = []
     if top_reasons:
-        summary_parts.append("高频根因：" + "；".join(f"{name}({count})" for name, count in top_reasons))
+        summary_parts.append("Top root causes: " + ", ".join(f"{name}({count})" for name, count in top_reasons))
     if top_subtypes:
-        summary_parts.append("高频题型：" + "；".join(f"{name}({count})" for name, count in top_subtypes))
+        summary_parts.append("Top question types: " + ", ".join(f"{name}({count})" for name, count in top_subtypes))
     weak_points = [
         {
             "area": name,
-            "description": f"最近累计出现 {count} 次，建议优先复盘同类题目的分析与正确思路。",
+            "description": f"Seen {count} times recently. Review similar mistakes and the correct solving path first.",
             "priority": "high" if idx == 0 else "medium",
-            "suggestion": "先做 3-5 题同类题，再回看错因和知识点笔记。",
+            "suggestion": "Practice 3-5 similar questions, then revisit the mistake reason and note.",
         }
         for idx, (name, count) in enumerate(top_reasons[:3])
     ]
     return {
-        "summary": "；".join(summary_parts) if summary_parts else "当前数据量较少，建议继续积累错题后再做 AI 诊断。",
+        "summary": " | ".join(summary_parts) if summary_parts else "Not enough data yet. Add more mistakes and run diagnosis again.",
         "weakPoints": weak_points,
         "model": "local-fallback",
     }
@@ -1090,3 +1016,4 @@ def build_local_diagnosis_safe(errors: list[dict[str, Any]]) -> dict[str, Any]:
         "weakPoints": weak_points,
         "model": "local-fallback",
     }
+

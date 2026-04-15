@@ -69,15 +69,6 @@ class CloudChunkDownloadInitPayload(BaseModel):
     chunkSize: int = Field(default=256 * 1024, ge=32 * 1024, le=2 * 1024 * 1024)
 
 
-class CodexThreadCreatePayload(BaseModel):
-    title: str = Field(default="", max_length=80)
-
-
-class CodexMessageCreatePayload(BaseModel):
-    content: str = Field(min_length=1, max_length=8000)
-    context: dict[str, Any] = Field(default_factory=dict)
-
-
 class AnalyzeEntryPayload(BaseModel):
     type: str = ""
     subtype: str = ""

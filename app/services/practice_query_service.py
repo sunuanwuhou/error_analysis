@@ -12,6 +12,83 @@ from app.services.practice_log_service import read_recent_practice_logs
 from app.services.practice_stats_service import build_flow_workbench, build_practice_insights
 
 
+def _normalize_id_list(values: Optional[list[Any]], *, max_size: int = 5000) -> list[str]:
+    seen: set[str] = set()
+    normalized: list[str] = []
+    for raw in values or []:
+        value = str(raw or "").strip()
+        if not value or value in seen:
+            continue
+        seen.add(value)
+        normalized.append(value)
+        if len(normalized) >= max_size:
+            break
+    return normalized
+
+
+def _collect_attempt_filter_ids(errors: list[dict[str, Any]]) -> tuple[list[str], list[str]]:
+    error_ids: list[Any] = []
+    question_ids: list[Any] = []
+    for error in errors:
+        error_ids.append(error.get("id"))
+        question_ids.append(error.get("questionId") or error.get("id"))
+    return _normalize_id_list(error_ids), _normalize_id_list(question_ids)
+
+
+def _attempt_sort_key(row: sqlite3.Row) -> tuple[str, str, str]:
+    return (
+        str(row["updated_at"] or ""),
+        str(row["created_at"] or ""),
+        str(row["id"] or ""),
+    )
+
+
+def _fetch_attempt_rows_by_keys(
+    user_id: str,
+    *,
+    error_ids: list[str],
+    question_ids: list[str],
+    limit: int,
+    columns: Optional[tuple[str, ...]] = None,
+) -> list[sqlite3.Row]:
+    normalized_error_ids = _normalize_id_list(error_ids)
+    normalized_question_ids = _normalize_id_list(question_ids)
+    if not normalized_error_ids and not normalized_question_ids:
+        return []
+
+    rows: list[sqlite3.Row] = []
+    normalized_limit = max(1, min(limit, 5000))
+    select_clause = ", ".join(columns) if columns else "*"
+    with get_conn() as conn:
+        if normalized_error_ids:
+            sql_error = (
+                f"SELECT {select_clause} FROM practice_attempts "
+                "WHERE user_id=? AND error_id IN (" + ",".join("?" for _ in normalized_error_ids) + ") "
+                "ORDER BY updated_at DESC, created_at DESC, id DESC LIMIT ?"
+            )
+            rows.extend(conn.execute(sql_error, (user_id, *normalized_error_ids, normalized_limit)).fetchall())
+        if normalized_question_ids:
+            sql_question = (
+                f"SELECT {select_clause} FROM practice_attempts "
+                "WHERE user_id=? AND question_id IN (" + ",".join("?" for _ in normalized_question_ids) + ") "
+                "ORDER BY updated_at DESC, created_at DESC, id DESC LIMIT ?"
+            )
+            rows.extend(conn.execute(sql_question, (user_id, *normalized_question_ids, normalized_limit)).fetchall())
+
+    # When one row matches both filters, keep one copy.
+    best_by_id: dict[str, sqlite3.Row] = {}
+    for row in rows:
+        row_id = str(row["id"] or "")
+        if not row_id:
+            continue
+        existing = best_by_id.get(row_id)
+        if not existing or _attempt_sort_key(row) > _attempt_sort_key(existing):
+            best_by_id[row_id] = row
+
+    ordered = sorted(best_by_id.values(), key=_attempt_sort_key, reverse=True)
+    return ordered[:normalized_limit]
+
+
 def read_practice_attempts(user_id: str, limit: int = 200) -> list[dict[str, Any]]:
     with get_conn() as conn:
         rows = conn.execute(
@@ -54,31 +131,31 @@ def build_attempt_summary_map(
     question_ids: Optional[list[str]] = None,
     limit: int = 500,
 ) -> dict[str, dict[str, Any]]:
-    normalized_error_ids = [str(item).strip() for item in (error_ids or []) if str(item).strip()]
-    normalized_question_ids = [str(item).strip() for item in (question_ids or []) if str(item).strip()]
+    normalized_error_ids = _normalize_id_list(error_ids)
+    normalized_question_ids = _normalize_id_list(question_ids)
     if not normalized_error_ids and not normalized_question_ids:
         return {}
 
-    clauses: list[str] = ["user_id=?"]
-    params: list[Any] = [user_id]
-    filters: list[str] = []
-    if normalized_error_ids:
-        filters.append("error_id IN (" + ",".join("?" for _ in normalized_error_ids) + ")")
-        params.extend(normalized_error_ids)
-    if normalized_question_ids:
-        filters.append("question_id IN (" + ",".join("?" for _ in normalized_question_ids) + ")")
-        params.extend(normalized_question_ids)
-    if filters:
-        clauses.append("(" + " OR ".join(filters) + ")")
-
-    sql = (
-        "SELECT * FROM practice_attempts WHERE "
-        + " AND ".join(clauses)
-        + " ORDER BY updated_at DESC, created_at DESC, id DESC LIMIT ?"
+    rows = _fetch_attempt_rows_by_keys(
+        user_id,
+        error_ids=normalized_error_ids,
+        question_ids=normalized_question_ids,
+        limit=max(1, min(limit, 3000)),
+        columns=(
+            "id",
+            "created_at",
+            "updated_at",
+            "question_id",
+            "error_id",
+            "result",
+            "duration_sec",
+            "status_tag",
+            "confidence",
+            "solving_note",
+            "note_node_id",
+            "meta_json",
+        ),
     )
-    params.append(max(1, min(limit, 3000)))
-    with get_conn() as conn:
-        rows = conn.execute(sql, tuple(params)).fetchall()
 
     grouped_rows: dict[str, list[sqlite3.Row]] = defaultdict(list)
     for row in rows:
@@ -122,31 +199,31 @@ def read_attempt_behavior_map(
     question_ids: Optional[list[str]] = None,
     limit: int = 1200,
 ) -> dict[str, dict[str, Any]]:
-    normalized_error_ids = [str(item).strip() for item in (error_ids or []) if str(item).strip()]
-    normalized_question_ids = [str(item).strip() for item in (question_ids or []) if str(item).strip()]
+    normalized_error_ids = _normalize_id_list(error_ids)
+    normalized_question_ids = _normalize_id_list(question_ids)
     if not normalized_error_ids and not normalized_question_ids:
         return {}
 
-    clauses: list[str] = ["user_id=?"]
-    params: list[Any] = [user_id]
-    filters: list[str] = []
-    if normalized_error_ids:
-        filters.append("error_id IN (" + ",".join("?" for _ in normalized_error_ids) + ")")
-        params.extend(normalized_error_ids)
-    if normalized_question_ids:
-        filters.append("question_id IN (" + ",".join("?" for _ in normalized_question_ids) + ")")
-        params.extend(normalized_question_ids)
-    if filters:
-        clauses.append("(" + " OR ".join(filters) + ")")
-
-    sql = (
-        "SELECT * FROM practice_attempts WHERE "
-        + " AND ".join(clauses)
-        + " ORDER BY updated_at DESC, created_at DESC, id DESC LIMIT ?"
+    rows = _fetch_attempt_rows_by_keys(
+        user_id,
+        error_ids=normalized_error_ids,
+        question_ids=normalized_question_ids,
+        limit=max(1, min(limit, 5000)),
+        columns=(
+            "id",
+            "created_at",
+            "updated_at",
+            "question_id",
+            "error_id",
+            "result",
+            "duration_sec",
+            "status_tag",
+            "confidence",
+            "solving_note",
+            "note_node_id",
+            "meta_json",
+        ),
     )
-    params.append(max(1, min(limit, 5000)))
-    with get_conn() as conn:
-        rows = conn.execute(sql, tuple(params)).fetchall()
 
     grouped: dict[str, list[sqlite3.Row]] = defaultdict(list)
     for row in rows:
@@ -208,10 +285,11 @@ def build_practice_daily_response(user_id: str, limit: int = 12) -> dict[str, An
     if len(filtered_errors) < max(3, limit // 2):
         filtered_errors = errors
 
+    error_ids, question_ids = _collect_attempt_filter_ids(filtered_errors)
     behavior_map = read_attempt_behavior_map(
         user_id,
-        error_ids=[str(e.get("id") or "") for e in filtered_errors],
-        question_ids=[str(e.get("questionId") or e.get("id") or "") for e in filtered_errors],
+        error_ids=error_ids,
+        question_ids=question_ids,
         limit=max(len(filtered_errors) * 4, 200),
     )
     queue = compute_daily_practice(filtered_errors, max(1, min(limit, 30)), behavior_map)
@@ -234,10 +312,11 @@ def build_practice_daily_response(user_id: str, limit: int = 12) -> dict[str, An
 def build_practice_workbench_response(user_id: str, limit: int = 6) -> dict[str, Any]:
     errors = get_backup_errors(user_id)
     normalized_limit = max(1, min(limit, 12))
+    error_ids, question_ids = _collect_attempt_filter_ids(errors)
     behavior_map = read_attempt_behavior_map(
         user_id,
-        error_ids=[str(e.get("id") or "") for e in errors],
-        question_ids=[str(e.get("questionId") or e.get("id") or "") for e in errors],
+        error_ids=error_ids,
+        question_ids=question_ids,
         limit=max(len(errors) * 4, 200),
     )
     insights = build_practice_insights(
@@ -340,10 +419,11 @@ def build_practice_workbench_response(user_id: str, limit: int = 6) -> dict[str,
 
 def build_practice_insights_response(user_id: str, limit: int = 6) -> dict[str, Any]:
     errors = get_backup_errors(user_id)
+    error_ids, question_ids = _collect_attempt_filter_ids(errors)
     behavior_map = read_attempt_behavior_map(
         user_id,
-        error_ids=[str(e.get("id") or "") for e in errors],
-        question_ids=[str(e.get("questionId") or e.get("id") or "") for e in errors],
+        error_ids=error_ids,
+        question_ids=question_ids,
         limit=max(len(errors) * 4, 200),
     )
     insights = build_practice_insights(errors, behavior_map, daily_limit=max(1, min(limit, 12)), review_limit=max(1, min(limit, 12)))

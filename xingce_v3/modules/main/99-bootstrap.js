@@ -93,7 +93,6 @@ function scheduleWorkspaceWarmup() {
     scheduleDeferredFullWorkspaceLoad();
   }
   scheduleWorkspaceWarmup();
-  renderCodexContextLine();
   checkStorageUsage();
   setTimeout(() => {
     if (typeof ensureDailyLocalBackup === 'function') ensureDailyLocalBackup();

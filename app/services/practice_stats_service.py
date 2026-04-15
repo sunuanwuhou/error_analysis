@@ -49,6 +49,7 @@ def build_practice_insights(
     review_limit: int = 6,
 ) -> dict[str, Any]:
     daily_queue = compute_daily_practice(errors, max(1, min(daily_limit, 30)), behavior_map)
+    score_by_error_id = {str(item.get("id") or "").strip(): int(item.get("practiceScore") or 0) for item in daily_queue}
     review_candidates: list[tuple[int, dict[str, Any]]] = []
     retrain_candidates: list[tuple[int, dict[str, Any]]] = []
     reason_counter: Counter[str] = Counter()
@@ -71,7 +72,7 @@ def build_practice_insights(
         wrong_count = int(behavior.get("recentWrongCount") or 0)
         confidence = int(behavior.get("lastConfidence") or 0)
         last_result = str(behavior.get("lastResult") or "")
-        score = int(next((item.get("practiceScore") for item in daily_queue if str(item.get("id")) == error_id), 0) or 0)
+        score = int(score_by_error_id.get(error_id) or 0)
 
         if attempt_count and not review_done:
             review_candidates.append((score + 15 + wrong_count * 2, error))

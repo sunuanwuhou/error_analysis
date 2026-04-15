@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import hashlib
 import json
@@ -33,8 +33,6 @@ from app.schemas import (
     AuthPayload,
     BackupPayload,
     ChatPayload,
-    CodexMessageCreatePayload,
-    CodexThreadCreatePayload,
     DiscoverPatternsPayload,
     DistillPayload,
     EvaluateAnswerPayload,
@@ -145,3 +143,4 @@ def unref_image(
         conn.commit()
 
     return {"ok": True, "deleted": deleted}
+

@@ -1,30 +1,9 @@
 from __future__ import annotations
 
-import hashlib
 import json
-import os
-import re
-import secrets
-import sqlite3
-import urllib.error
-import urllib.request
-import uuid
-from datetime import datetime
 from typing import Any, Optional
 
-from fastapi import APIRouter, Cookie, File, HTTPException, Query, Request, Response, UploadFile
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
-
-from app.config import (
-    HTML_PATH,
-    IMAGES_DIR,
-    LOGIN_HTML_PATH,
-    RUNTIME_MODE,
-    SELF_SERVICE_REGISTRATION_ENABLED,
-    SESSION_COOKIE,
-    SESSION_TTL_DAYS,
-    SHENLUN_HTML_PATH,
-)
+from fastapi import APIRouter, Cookie, File, UploadFile
 from app.core import (
     build_local_diagnosis_safe,
     call_ai,
@@ -41,27 +20,17 @@ from app.core import (
     run_ocr_bytes,
     summarize_error,
 )
-from app.database import get_conn
-from app.runtime import build_runtime_label, infer_request_origin, read_tunnel_url, request_is_secure
 from app.schemas import (
     AnalyzeEntryPayload,
-    AuthPayload,
-    BackupPayload,
     ChatPayload,
-    CodexMessageCreatePayload,
-    CodexThreadCreatePayload,
     DiscoverPatternsPayload,
     DistillPayload,
     EvaluateAnswerPayload,
     GenerateQuestionPayload,
     ModuleSummaryPayload,
-    OriginStatusPayload,
-    PracticeLogPayload,
     SuggestRestructurePayload,
-    SyncPushPayload,
     SynthesizeNodePayload,
 )
-from app.security import clear_session, create_user_account, get_user_by_token, issue_session, utcnow, verify_password
 
 router = APIRouter()
 

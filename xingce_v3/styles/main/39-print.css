@@ -63,7 +63,6 @@
   body.mobile-sidebar-open .mobile-sidebar-mask{opacity:1;pointer-events:auto}
   body.mobile-sidebar-open{overflow:hidden}
   .top-bar{padding-left:14px;padding-right:14px}
-  #codexInboxBtn{right:14px;bottom:72px;max-width:calc(100vw - 28px)}
 }
 @media(min-width:769px){
   .mobile-sidebar-toggle,

@@ -36,6 +36,7 @@ function getQuizDurationHint(errorLike) {
 }
 
 async function startPracticeQueue(mode) {
+  if (!(await ensureQuizModalReady())) return;
   const normalizedMode = String(mode || 'daily');
   let serverPayload = null;
   try {
@@ -119,6 +120,10 @@ function chapterFilterSelectAll(v){
   document.querySelectorAll('#chapterFilterList input[type=checkbox]').forEach(c=>c.checked=v);
 }
 function startFullPracticeFiltered() {
+  if (!document.getElementById('quizTitleText') || !document.getElementById('quizModal')) {
+    showToast('题目弹窗尚未加载完成，请稍后再试', 'warning');
+    return;
+  }
   const selected=new Set();
   document.querySelectorAll('.cf-sub:checked').forEach(cb=>{
     selected.add(cb.getAttribute('data-type')+'::::'+(cb.getAttribute('data-sub')||'未分类'));
@@ -142,6 +147,30 @@ function startFullPracticeFiltered() {
   document.getElementById('quizTitleText').textContent='📚 全量练习';
   openModal('quizModal');
   renderQuizQuestion();
+}
+
+async function ensureQuizModalReady() {
+  const hasModal = document.getElementById('quizModal');
+  const hasTitle = document.getElementById('quizTitleText');
+  const hasContent = document.getElementById('quizContent');
+  if (hasModal && hasTitle && hasContent) return true;
+
+  if (typeof window.ensureDeferredPartialsLoaded === 'function') {
+    try {
+      await window.ensureDeferredPartialsLoaded();
+    } catch (e) {
+      console.warn('ensure deferred partials for quiz failed', e);
+    }
+  }
+
+  const ready =
+    !!document.getElementById('quizModal') &&
+    !!document.getElementById('quizTitleText') &&
+    !!document.getElementById('quizContent');
+  if (!ready) {
+    showToast('题目弹窗尚未加载完成，请稍后再试', 'warning');
+  }
+  return ready;
 }
 function resetQuizSession() {
   quizQueue = [];

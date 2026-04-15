@@ -42,7 +42,6 @@ body:not(.v51-shell-loading) .v51-boot { display:none; }
   .errors-header-actions { width: 100%; justify-content: space-between; }
   .search-box { flex: 1; min-width: 0; }
   .date-filter-bar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
-  .codex-inbox-layout { grid-template-columns: 1fr !important; }
   .modal, .quiz-modal, .claude-modal { width: min(96vw, 100%) !important; max-width: 96vw !important; }
   .entry-modal { max-height: 92vh; }
 }

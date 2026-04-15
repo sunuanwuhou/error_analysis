@@ -388,7 +388,7 @@ function normalizeEntryRecord(item, fallbackKind) {
   const addDate = String(record.addDate || '').trim();
   const updatedAt = String(record.updatedAt || record.modifiedAt || record.lastModifiedAt || '').trim();
   const masteryUpdatedAt = String(record.masteryUpdatedAt || record.masteredAt || '').trim();
-  const createdAt = String(record.createdAt || record.sentAt || record.sharedAt || record.ccSentAt || record.claudeSentAt || record.codexSentAt || '').trim();
+  const createdAt = String(record.createdAt || record.sentAt || record.sharedAt || record.ccSentAt || record.claudeSentAt || '').trim();
   if (addDate) record.addDate = addDate;
   if (updatedAt) record.updatedAt = updatedAt;
   if (masteryUpdatedAt) record.masteryUpdatedAt = masteryUpdatedAt;

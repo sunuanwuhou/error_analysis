@@ -1,31 +1,12 @@
 from __future__ import annotations
 
-import hashlib
-import logging
 import json
-import os
-import re
-import secrets
-import sqlite3
-import urllib.error
-import urllib.request
+import logging
+import time
 import uuid
-from datetime import datetime
 from typing import Any, Optional
 
-from fastapi import APIRouter, Cookie, File, HTTPException, Query, Request, Response, UploadFile
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
-
-from app.config import (
-    HTML_PATH,
-    IMAGES_DIR,
-    LOGIN_HTML_PATH,
-    RUNTIME_MODE,
-    SELF_SERVICE_REGISTRATION_ENABLED,
-    SESSION_COOKIE,
-    SESSION_TTL_DAYS,
-    SHENLUN_HTML_PATH,
-)
+from fastapi import APIRouter, Cookie, Request
 from app.core import (
     apply_sync_op_to_state_entity,
     cleanup_old_ops,
@@ -36,30 +17,16 @@ from app.core import (
     upsert_origin_status,
 )
 from app.database import get_conn
-from app.runtime import build_runtime_label, infer_request_origin, read_tunnel_url, request_is_secure
+from app.runtime import infer_request_origin
 from app.schemas import (
-    AnalyzeEntryPayload,
-    AuthPayload,
-    BackupPayload,
-    ChatPayload,
-    CodexMessageCreatePayload,
-    CodexThreadCreatePayload,
-    DiscoverPatternsPayload,
-    DistillPayload,
-    EvaluateAnswerPayload,
-    GenerateQuestionPayload,
-    ModuleSummaryPayload,
-    OriginStatusPayload,
-    PracticeLogPayload,
-    SuggestRestructurePayload,
     SyncPushPayload,
-    SynthesizeNodePayload,
 )
-from app.security import clear_session, create_user_account, get_user_by_token, issue_session, utcnow, verify_password
+from app.security import utcnow
 from app.services.workspace_entity_service import DELETE_TO_ENTITY_TYPE, UPSERT_TO_ENTITY_TYPE
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+SLOW_SYNC_QUERY_MS = 200
 
 
 def _normalize_sync_op(raw: Any) -> Optional[dict[str, Any]]:
@@ -95,10 +62,19 @@ def sync_pull(
     xingce_session: Optional[str] = Cookie(default=None),
 ) -> dict[str, Any]:
     user = require_user(xingce_session)
+    query_start = time.perf_counter()
     with get_conn() as conn:
         snapshot_updated_at = get_workspace_snapshot_updated_at(user["id"], conn)
         if not since:
             ops = list_current_sync_ops(user["id"], conn)
+            elapsed_ms = (time.perf_counter() - query_start) * 1000
+            if elapsed_ms >= SLOW_SYNC_QUERY_MS:
+                logger.warning(
+                    "sync pull snapshot slow user=%s ops=%s elapsed_ms=%.2f",
+                    user["id"],
+                    len(ops),
+                    elapsed_ms,
+                )
             return {
                 "ops": ops,
                 "serverTime": utcnow().isoformat(),
@@ -132,6 +108,16 @@ def sync_pull(
                 """,
                 (user["id"], since or ""),
             ).fetchall()
+    elapsed_ms = (time.perf_counter() - query_start) * 1000
+    if elapsed_ms >= SLOW_SYNC_QUERY_MS:
+        logger.warning(
+            "sync pull delta slow user=%s rows=%s since=%s cursor_at=%s elapsed_ms=%.2f",
+            user["id"],
+            len(rows),
+            bool(since),
+            bool(cursorAt),
+            elapsed_ms,
+        )
     next_cursor_at = rows[-1]["created_at"] if rows else ""
     next_cursor_id = rows[-1]["id"] if rows else ""
     return {
@@ -154,6 +140,7 @@ def sync_push(
     current_origin = infer_request_origin(request)
     accepted_ops = 0
     skipped_ops = 0
+    write_start = time.perf_counter()
     with get_conn() as conn:
         for op in body.ops:
             normalized = _normalize_sync_op(op)
@@ -199,6 +186,16 @@ def sync_push(
         cleanup_old_ops(user["id"], conn)
         snapshot_updated_at = get_workspace_snapshot_updated_at(user["id"], conn) or utcnow().isoformat()
         conn.commit()
+    elapsed_ms = (time.perf_counter() - write_start) * 1000
+    if elapsed_ms >= SLOW_SYNC_QUERY_MS:
+        logger.warning(
+            "sync push slow user=%s accepted=%s skipped=%s input=%s elapsed_ms=%.2f",
+            user["id"],
+            accepted_ops,
+            skipped_ops,
+            len(body.ops),
+            elapsed_ms,
+        )
     upsert_origin_status(
         user["id"],
         current_origin,

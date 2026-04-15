@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import hashlib
 import json
@@ -40,8 +40,6 @@ from app.schemas import (
     AuthPayload,
     BackupPayload,
     ChatPayload,
-    CodexMessageCreatePayload,
-    CodexThreadCreatePayload,
     DiscoverPatternsPayload,
     DistillPayload,
     EvaluateAnswerPayload,
@@ -107,3 +105,4 @@ def knowledge_search(
                 break
 
     return {"ok": True, "nodes": node_hits, "errors": error_hits}
+

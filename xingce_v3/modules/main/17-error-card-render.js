@@ -23,19 +23,29 @@ function formatPracticeSummaryTime(raw){
 function renderPracticeSummaryMeta(summary){
   if(!summary) return '';
   const resultMap = {
-    correct: 'Correct',
-    wrong: 'Wrong',
-    skipped: 'Skipped',
-    partial: 'Partial'
+    correct: '正确',
+    wrong: '错误',
+    skipped: '跳过',
+    partial: '部分正确'
   };
   const bits = [];
-  if(summary.lastResult) bits.push(`Last ${resultMap[summary.lastResult] || summary.lastResult}`);
-  if(Number(summary.recentWrongCount || 0) > 0) bits.push(`Wrong x${Number(summary.recentWrongCount)}`);
-  if(summary.lastConfidence) bits.push(`Confidence ${summary.lastConfidence}`);
-  if(summary.lastDuration) bits.push(`Last ${summary.lastDuration}s`);
-  if(summary.avgDuration) bits.push(`Avg ${summary.avgDuration}s`);
+  if(summary.lastResult) bits.push(`最近结果 ${resultMap[summary.lastResult] || summary.lastResult}`);
+  if(Number(summary.recentWrongCount || 0) > 0) bits.push(`错 ${Number(summary.recentWrongCount)} 次`);
+  if(summary.lastConfidence) bits.push(`信心 ${summary.lastConfidence}`);
+  if(summary.lastDuration) bits.push(`上次用时 ${formatDurationSecondsLabel(summary.lastDuration) || `${summary.lastDuration}秒`}`);
+  if(summary.avgDuration) bits.push(`平均用时 ${formatDurationSecondsLabel(summary.avgDuration) || `${summary.avgDuration}秒`}`);
   if(summary.lastTime) bits.push(formatPracticeSummaryTime(summary.lastTime));
   return bits.join(' / ');
+}
+
+function formatDurationSecondsLabel(raw){
+  const seconds = Number(raw || 0);
+  if(!Number.isFinite(seconds) || seconds <= 0) return '';
+  const total = Math.round(seconds);
+  if(total < 60) return `${total}秒`;
+  const mins = Math.floor(total / 60);
+  const remain = total % 60;
+  return remain ? `${mins}分${remain}秒` : `${mins}分钟`;
 }
 
 function getErrorWrongCount(errorItem, summary){

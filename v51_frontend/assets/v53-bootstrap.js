@@ -49,6 +49,7 @@ async function ensureDeferredPartialsLoaded() {
   });
   return deferredPartialsPromise;
 }
+window.ensureDeferredPartialsLoaded = ensureDeferredPartialsLoaded;
 
 function scheduleDeferredPartialsLoad() {
   const run = () => { ensureDeferredPartialsLoaded(); };

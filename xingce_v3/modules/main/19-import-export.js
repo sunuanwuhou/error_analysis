@@ -18,7 +18,7 @@ function download(name,content){
 function sanitizeExportRecord(item) {
   const kind = normalizeEntryKind(item && item.entryKind, 'error');
   const record = normalizeEntryRecord(item, kind);
-  const createdAt = String(record.createdAt || record.sentAt || record.sharedAt || record.ccSentAt || record.claudeSentAt || record.codexSentAt || '').trim();
+  const createdAt = String(record.createdAt || record.sentAt || record.sharedAt || record.ccSentAt || record.claudeSentAt || '').trim();
   return {
     ...record,
     tip: String(record.tip || record.nextAction || '').trim(),

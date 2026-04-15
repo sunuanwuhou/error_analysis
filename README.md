@@ -36,7 +36,6 @@ The current production baseline already includes:
 4. split image storage through backend image APIs
 5. DeepSeek-first AI routing with MiniMax fallback
 6. stable Cloudflare named tunnel on `https://erroranaly.qzz.io`
-7. async `Codex Inbox` for remote messages and scheduled reply write-back
 
 The right-side related-errors rail has been retired from the active layout.
 
@@ -84,17 +83,6 @@ The backend already exposes:
 
 DeepSeek is preferred when `DEEPSEEK_API_KEY` is present.
 
-## Codex Inbox
-
-The workbench now includes an async `Codex Inbox` for remote use.
-
-- users leave a message inside the app
-- the message is stored in SQLite as `pending`
-- the Codex desktop client scans pending messages on a schedule
-- the reply is written back into the same thread
-
-This is designed for domain-only access when the user cannot directly open Codex desktop.
-
 ## Practice Capabilities
 
 The backend already exposes:
@@ -128,10 +116,6 @@ docker compose up --build -d app
 ```
 
 Optional fallback only:
-
-```bash
-docker compose --profile server-inbox up --build -d codex-inbox-worker
-```
 
 ## Run Without Docker
 

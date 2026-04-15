@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import os
 import re
@@ -214,33 +214,21 @@ def init_db() -> None:
         )
         conn.execute(
             """
-            CREATE TABLE IF NOT EXISTS codex_threads (
-              id TEXT PRIMARY KEY,
-              user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-              title TEXT NOT NULL DEFAULT '',
-              archived INTEGER NOT NULL DEFAULT 0,
-              created_at TEXT NOT NULL,
-              updated_at TEXT NOT NULL
-            )
+            CREATE INDEX IF NOT EXISTS idx_practice_attempts_user_error_time
+            ON practice_attempts(user_id, error_id, updated_at DESC, created_at DESC, id DESC)
             """
         )
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_codex_threads_user_updated ON codex_threads(user_id, updated_at DESC)")
         conn.execute(
             """
-            CREATE TABLE IF NOT EXISTS codex_messages (
-              id TEXT PRIMARY KEY,
-              thread_id TEXT NOT NULL REFERENCES codex_threads(id) ON DELETE CASCADE,
-              user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-              role TEXT NOT NULL,
-              content TEXT NOT NULL,
-              context_json TEXT NOT NULL DEFAULT '{}',
-              status TEXT NOT NULL DEFAULT 'done',
-              error_text TEXT NOT NULL DEFAULT '',
-              created_at TEXT NOT NULL,
-              replied_at TEXT NOT NULL DEFAULT ''
-            )
+            CREATE INDEX IF NOT EXISTS idx_practice_attempts_user_question_time
+            ON practice_attempts(user_id, question_id, updated_at DESC, created_at DESC, id DESC)
             """
         )
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_codex_messages_thread_time ON codex_messages(thread_id, created_at)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_codex_messages_pending ON codex_messages(status, created_at)")
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_ops_user_created_id
+            ON operations(user_id, created_at, id)
+            """
+        )
         conn.commit()
+

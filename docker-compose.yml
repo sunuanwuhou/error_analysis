@@ -42,26 +42,6 @@ services:
       retries: 20
     restart: unless-stopped
 
-  codex-inbox-worker:
-    build:
-      context: .
-    container_name: xingce_v3_codex_inbox_worker
-    depends_on:
-      - app
-    command: python /app/scripts/codex_inbox_worker.py
-    environment:
-      CODEX_INBOX_INTERVAL_MINUTES: ${CODEX_INBOX_INTERVAL_MINUTES:-30}
-      CODEX_INBOX_BATCH_SIZE: ${CODEX_INBOX_BATCH_SIZE:-5}
-      CODEX_INBOX_TIMEOUT_SECONDS: ${CODEX_INBOX_TIMEOUT_SECONDS:-90}
-      CODEX_INBOX_WEBHOOK_URL: ${CODEX_INBOX_WEBHOOK_URL:-}
-      CODEX_INBOX_WEBHOOK_TOKEN: ${CODEX_INBOX_WEBHOOK_TOKEN:-}
-      TZ: Asia/Shanghai
-    volumes:
-      - ./data:/app/data
-    restart: unless-stopped
-    profiles:
-      - server-inbox
-
   umi-ocr:
     image: xtulnx/ocr-umi:latest
     container_name: xingce_v3_umi_ocr

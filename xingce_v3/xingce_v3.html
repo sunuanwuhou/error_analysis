@@ -34,7 +34,6 @@
           <button class="btn btn-secondary" data-onclick="closeMoreMenu();clearAllErrorsData()">🗑 清空全部错题</button>
           <button class="btn btn-secondary" data-onclick="closeMoreMenu();resetAllStudyData()">♻ 重置全部学习数据</button>
           <button class="btn btn-secondary" data-onclick="closeMoreMenu();openDashboard()">📊 统计</button>
-          <button class="btn btn-secondary" data-onclick="closeMoreMenu();openCodexInboxModal()">🧾 Codex</button>
           <button class="btn btn-secondary" data-onclick="closeMoreMenu();openModal(&#x27;claudeModal&#x27;)">🤖 导入Claude题</button>
           <button class="btn btn-secondary" data-onclick="closeMoreMenu();openClaudeBankModal()">📚 Claude题库</button>
           <button class="btn btn-secondary" data-onclick="closeMoreMenu();printList()">🖨 打印</button>
@@ -93,48 +92,7 @@
 <div class="main-area">
 
   <div class="toast-stack" id="toastStack"></div>
-  <button id="codexInboxBtn" class="btn btn-secondary" style="position:fixed;right:18px;bottom:18px;z-index:1200;box-shadow:0 10px 24px rgba(15,23,42,.18)" data-onclick="openCodexInboxModal()">Codex 留言</button>
-
-  <div class="modal-mask" id="codexInboxModal">
-    <div class="modal" style="width:1120px;max-width:96vw;max-height:92vh;overflow-y:auto">
-      <button class="modal-close" data-onclick="closeModal(&#x27;codexInboxModal&#x27;)">✕</button>
-      <h2 style="margin-bottom:6px">Codex 留言箱</h2>
-      <div class="codex-chat-note" style="margin-bottom:14px">这是异步留言，不是实时聊天。你发出去后会先进入待处理队列，Codex 默认每小时扫描一次并把回复写回这里。</div>
-      <div class="codex-inbox-layout">
-        <div class="codex-thread-panel">
-          <div class="codex-thread-toolbar">
-            <strong style="font-size:14px">会话列表</strong>
-            <div style="display:flex;gap:8px">
-              <button class="btn btn-sm btn-secondary" data-onclick="refreshCodexInbox()">刷新</button>
-              <button class="btn btn-sm btn-primary" data-onclick="createCodexThread()">新建</button>
-            </div>
-          </div>
-          <div id="codexThreadList" class="codex-thread-list"></div>
-        </div>
-        <div class="codex-chat-panel">
-          <div class="codex-chat-toolbar">
-            <div>
-              <div id="codexThreadTitle" style="font-size:15px;font-weight:700;color:#243041">Codex 收件箱</div>
-              <div id="codexThreadHint" style="font-size:12px;color:#8a94a6;margin-top:4px">等待加载会话…</div>
-            </div>
-            <button class="btn btn-sm btn-secondary" data-onclick="refreshCodexInbox()">手动刷新</button>
-          </div>
-          <div id="codexContextLine" class="codex-context-line"></div>
-          <div id="codexMessageList" class="codex-message-list"></div>
-          <div class="codex-chat-composer">
-            <textarea id="codexMessageInput" placeholder="直接留言给 Codex。可以让它分析当前筛选结果、当前知识点、最近录入的问题。"></textarea>
-            <div class="codex-chat-actions">
-              <label><input type="checkbox" id="codexIncludeContext" checked> 附带当前页面上下文</label>
-              <button class="btn btn-primary" id="codexSendBtn" data-onclick="submitCodexMessage()">发送到队列</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Tab内容区域 -->
-  <div class="tab-content" id="tabContentErrors">
+<div class="tab-content" id="tabContentErrors">
     <div class="errors-area">
       <div class="errors-header">
         <h2>错题列表</h2>

@@ -335,10 +335,9 @@
   }
 
   function simplifyChrome(){
-    document.getElementById('codexInboxBtn')?.remove();
     document.querySelectorAll('#moreMenuPanel .btn').forEach(btn => {
       const text = (btn.textContent || '').trim();
-      if(/Codex|Claude|AI/.test(text)) btn.remove();
+      if(/Claude|AI/.test(text)) btn.remove();
     });
     const more = document.getElementById('moreMenuPanel');
     if(more){

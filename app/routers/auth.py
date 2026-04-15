@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import hashlib
 import json
@@ -32,8 +32,6 @@ from app.schemas import (
     AuthPayload,
     BackupPayload,
     ChatPayload,
-    CodexMessageCreatePayload,
-    CodexThreadCreatePayload,
     DiscoverPatternsPayload,
     DistillPayload,
     EvaluateAnswerPayload,
@@ -117,3 +115,4 @@ def me(response: Response, xingce_session: Optional[str] = Cookie(default=None))
             response.delete_cookie(SESSION_COOKIE, path="/")
         return {"authenticated": False}
     return {"authenticated": True, "user": user}
+
