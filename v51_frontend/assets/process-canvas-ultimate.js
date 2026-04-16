@@ -777,8 +777,8 @@
     const targetId = normalizeId(errorId);
     if (!targetId) return false;
     const options = opts || {};
-    if (typeof window.openWorkspaceView === 'function') window.openWorkspaceView('errors');
-    else if (typeof window.switchTab === 'function') window.switchTab('errors');
+    if (typeof window.openWorkspaceView === 'function') window.openWorkspaceView('notes');
+    else if (typeof window.switchTab === 'function') window.switchTab('notes');
     const openAttempt = (attempt) => {
       const card = document.getElementById(`card-${targetId}`);
       if (!card) {

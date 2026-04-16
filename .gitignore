@@ -8,6 +8,7 @@ __pycache__/
 *.sqlite3
 cloudflared/
 .env
+.venv-wsl/
 
 # Editors / local workspace
 .bytro

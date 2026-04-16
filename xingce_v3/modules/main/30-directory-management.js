@@ -1282,14 +1282,23 @@ function openKnowledgeForError(errorId) {
   setCurrentKnowledgeNode(errorItem.noteNodeId, { switchTab: true });
 }
 function jumpToErrorInList(errorId) {
-  switchTab('errors');
-  revealed.add(errorId);
-  saveReveal();
-  renderAll();
+  const targetId = normalizeErrorId(errorId);
+  const errorItem = findErrorById(targetId);
+  if (!errorItem) return;
+  openKnowledgeForError(targetId);
   setTimeout(() => {
-    const el = document.getElementById(`card-${errorId}`);
-    if (el) el.scrollIntoView({ behavior:'smooth', block:'nearest' });
-  }, 50);
+    const selectors = [
+      `[data-error-id="${targetId}"]`,
+      `#card-${targetId}`
+    ];
+    for (const selector of selectors) {
+      const el = document.querySelector(selector);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        break;
+      }
+    }
+  }, 120);
 }
 function updateKnowledgeWorkspaceChrome(currentNode, linkedCount) {
   const titleEl = document.querySelector('.notes-header h2');
@@ -1299,7 +1308,7 @@ function updateKnowledgeWorkspaceChrome(currentNode, linkedCount) {
   if (actionWrap) {
     actionWrap.innerHTML = `
       <button class="btn btn-secondary" onclick="openGlobalSearchModal()">全局搜索</button>
-      <button class="btn btn-secondary" onclick="switchTab('errors')">题目列表</button>
+      <button class="btn btn-secondary" onclick="setKnowledgeRelatedMode('all');renderNotesPanelRight()">关联错题</button>
       <button class="btn btn-secondary" onclick="addKnowledgeLeafUnderSelected()">+ 新建知识点</button>
       ${currentNode ? `<button class="btn btn-secondary" onclick="renameKnowledgeNode('${currentNode.id}')">重命名</button>` : ''}
       ${currentNode && findKnowledgeParent(currentNode.id) ? `<button class="btn btn-secondary" onclick="moveKnowledgeNode('${currentNode.id}')">移动</button>` : ''}

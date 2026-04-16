@@ -986,34 +986,5 @@ def build_local_diagnosis(errors: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 def build_local_diagnosis_safe(errors: list[dict[str, Any]]) -> dict[str, Any]:
-    reason_counts: dict[str, int] = {}
-    subtype_counts: dict[str, int] = {}
-    for error in errors:
-        reason = clean_short_text(error.get("rootReason"), 80)
-        subtype = clean_short_text(error.get("subtype"), 40)
-        if reason:
-            reason_counts[reason] = reason_counts.get(reason, 0) + 1
-        if subtype:
-            subtype_counts[subtype] = subtype_counts.get(subtype, 0) + 1
-    top_reasons = sorted(reason_counts.items(), key=lambda item: (-item[1], item[0]))[:5]
-    top_subtypes = sorted(subtype_counts.items(), key=lambda item: (-item[1], item[0]))[:5]
-    summary_parts = []
-    if top_reasons:
-        summary_parts.append("Top root causes: " + ", ".join(f"{name}({count})" for name, count in top_reasons))
-    if top_subtypes:
-        summary_parts.append("Top question types: " + ", ".join(f"{name}({count})" for name, count in top_subtypes))
-    weak_points = [
-        {
-            "area": name,
-            "description": f"Seen {count} times recently. Review similar mistakes and the correct solving path first.",
-            "priority": "high" if idx == 0 else "medium",
-            "suggestion": "Practice 3-5 similar questions, then revisit the mistake reason and note.",
-        }
-        for idx, (name, count) in enumerate(top_reasons[:3])
-    ]
-    return {
-        "summary": " | ".join(summary_parts) if summary_parts else "Not enough data yet. Add more mistakes and run diagnosis again.",
-        "weakPoints": weak_points,
-        "model": "local-fallback",
-    }
+    return build_local_diagnosis(errors)
 

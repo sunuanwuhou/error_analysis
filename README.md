@@ -115,6 +115,24 @@ set TUNNEL_TOKEN=your_cloudflare_tunnel_token
 docker compose up --build -d app
 ```
 
+## WSL-First Workflow (Default)
+
+Use WSL as the default execution path on Windows:
+
+```powershell
+cd E:\IdeaProject\git\xingce_v3_lab
+powershell -ExecutionPolicy Bypass -File .\scripts\wsl.ps1 -Action up
+powershell -ExecutionPolicy Bypass -File .\scripts\wsl.ps1 -Action ps
+powershell -ExecutionPolicy Bypass -File .\scripts\wsl.ps1 -Action logs -Service app -Tail 200
+powershell -ExecutionPolicy Bypass -File .\scripts\wsl.ps1 -Action smoke
+```
+
+Run arbitrary WSL command in project root:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\wsl.ps1 -Action sh -Cmd "docker compose exec -T app python -m py_compile app/main.py"
+```
+
 Optional fallback only:
 
 ## Run Without Docker
@@ -151,10 +169,10 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start-quick-tunnel-docker.ps1
 Useful checks:
 
 ```powershell
-python -m py_compile app/main.py
-python .\scripts\verify_v31_smoke.py
-python .\scripts\check_repo_layout.py
-docker compose up --build -d app
+powershell -ExecutionPolicy Bypass -File .\scripts\wsl.ps1 -Action sh -Cmd "docker compose exec -T app python -m py_compile app/main.py"
+powershell -ExecutionPolicy Bypass -File .\scripts\wsl.ps1 -Action smoke
+powershell -ExecutionPolicy Bypass -File .\scripts\wsl.ps1 -Action sh -Cmd "docker compose exec -T app python scripts/check_repo_layout.py"
+powershell -ExecutionPolicy Bypass -File .\scripts\wsl.ps1 -Action up
 ```
 
 ## Documentation Map

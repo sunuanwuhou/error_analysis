@@ -2157,7 +2157,7 @@ function filterByNoteTitle(type, subtype, subSubtype) {
     } else {
         typeFilter = {level:'type', value: type};
     }
-    switchTab('errors');
+    switchTab('notes');
     renderSidebar();
     renderAll();
 }

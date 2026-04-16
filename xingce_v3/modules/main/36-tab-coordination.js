@@ -47,20 +47,19 @@ function switchAppView(nextView, opts) {
     if (typeof renderHomeDashboard === 'function') renderHomeDashboard();
     return;
   }
-  const options = opts || {};
-  switchTab(options.tab === 'notes' ? 'notes' : 'errors');
+  switchTab('notes');
 }
 
 function openWorkspaceView(tabName) {
-  switchAppView('workspace', { tab: tabName === 'notes' ? 'notes' : 'errors' });
+  switchAppView('workspace', { tab: 'notes' });
 }
 
 function openWorkspaceTaskView(taskMode) {
-  openWorkspaceView(taskMode === 'notes' ? 'notes' : 'errors');
+  openWorkspaceView('notes');
 }
 
 function openWorkspaceQuickAdd() {
-  openWorkspaceView('errors');
+  openWorkspaceView('notes');
   openQuickAddModal();
 }
 
@@ -96,16 +95,14 @@ function ensureErrorsListScrollable() {
 }
 
 function switchTab(tabName) {
-  const activeTab = tabName === 'errors' ? 'errors' : 'notes';
+  const activeTab = 'notes';
   if (appView !== 'workspace') {
     appView = 'workspace';
   }
   if (typeof hasFullWorkspaceDataLoaded === 'function'
       && typeof ensureFullWorkspaceDataLoaded === 'function'
       && !hasFullWorkspaceDataLoaded()) {
-    const target = activeTab === 'notes'
-      ? document.getElementById('tabContentNotes')
-      : document.getElementById('tabContentErrors');
+    const target = document.getElementById('tabContentNotes');
     if (target) {
       target.innerHTML = '<div style="padding:24px;color:#64748b;font-size:13px;line-height:1.8">Loading the full workspace data. This usually takes only a moment.</div>';
       target.classList.add('active');
@@ -121,26 +118,14 @@ function switchTab(tabName) {
   const tabNotes = document.getElementById('tabNotes');
   const tabContentErrors = document.getElementById('tabContentErrors');
   const tabContentNotes = document.getElementById('tabContentNotes');
-  if (tabErrors) tabErrors.classList.toggle('active', activeTab === 'errors');
-  if (tabNotes) tabNotes.classList.toggle('active', activeTab === 'notes');
-  if (tabContentErrors) tabContentErrors.classList.toggle('active', activeTab === 'errors');
-  if (tabContentNotes) tabContentNotes.classList.toggle('active', activeTab === 'notes');
+  if (tabErrors) tabErrors.classList.toggle('active', false);
+  if (tabNotes) tabNotes.classList.toggle('active', true);
+  if (tabContentErrors) tabContentErrors.classList.toggle('active', false);
+  if (tabContentNotes) tabContentNotes.classList.toggle('active', true);
 
-  if (activeTab === 'errors' && typeof closeMobileSidebar === 'function') {
-    closeMobileSidebar();
-  }
   renderSidebar();
   renderAll();
-  if (activeTab === 'errors') {
-    requestAnimationFrame(() => {
-      ensureErrorsListScrollable();
-      setTimeout(ensureErrorsListScrollable, 80);
-      setTimeout(ensureErrorsListScrollable, 260);
-    });
-  }
-  if (activeTab === 'notes') {
-    renderNotesByType();
-  }
+  renderNotesByType();
 }
 
 // Check whether a note chapter can be deleted.

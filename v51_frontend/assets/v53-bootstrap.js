@@ -27,10 +27,8 @@ async function injectPartials() {
   const mount = document.createElement('div');
   mount.id = 'v53ShellMount';
   mount.innerHTML = html;
-  document.body.innerHTML = '';
-  while (mount.firstChild) {
-    document.body.appendChild(mount.firstChild);
-  }
+  const nextChildren = Array.from(mount.childNodes);
+  document.body.replaceChildren(...nextChildren);
 }
 
 async function ensureDeferredPartialsLoaded() {
@@ -60,11 +58,9 @@ function scheduleDeferredPartialsLoad() {
   }
   const eager = () => {
     ensureDeferredPartialsLoaded();
-    window.removeEventListener('pointerdown', eager, true);
-    window.removeEventListener('keydown', eager, true);
   };
-  window.addEventListener('pointerdown', eager, true);
-  window.addEventListener('keydown', eager, true);
+  window.addEventListener('pointerdown', eager, { capture: true, once: true, passive: true });
+  window.addEventListener('keydown', eager, { capture: true, once: true });
 }
 
 const deferredActionCalls = [];
@@ -125,30 +121,37 @@ async function loadLegacyModules() {
   await loadScript(withVersion(`/assets/${bootstrapRel}`, version));
 }
 
+async function loadV53FeatureModules() {
+  const registry = window.V53ModuleRegistry || {};
+  const modules = [
+    ...(registry.shellModules || []),
+    ...(registry.viewModules || []),
+    ...(registry.rendererModules || []),
+    ...(registry.featureModules || []),
+  ];
+  for (const src of modules) {
+    await loadScript(withVersion(src));
+  }
+}
+
 (async () => {
   try {
-    [
-      'switchAppView',
-      'openWorkspaceView',
-      'openWorkspaceTaskView',
-      'openWorkspaceQuickAdd',
-      'switchTab',
-      'openQuickAddModal',
-      'startQuiz',
-      'startFullPractice'
-    ].forEach(installDeferredAction);
+    await loadScript(withVersion('/v51-static/assets/module-registry.js'));
+    const registry = window.V53ModuleRegistry || {};
+    (registry.deferredActions || []).forEach(installDeferredAction);
     await injectPartials();
     scheduleDeferredPartialsLoad();
-    await loadScript(withVersion('/assets/modules/mathjax-config.js'));
-    await loadScript(withVersion('/assets/vendor/mathjax/tex-svg.js'), { defer: true });
+    await loadScript(withVersion((registry.bootScripts || [])[0] || '/assets/modules/mathjax-config.js'));
+    await loadScript(withVersion((registry.bootScripts || [])[1] || '/assets/vendor/mathjax/tex-svg.js'), { defer: true });
     await loadLegacyModules();
-    await loadScript(withVersion('/v51-static/assets/v53-shell.js'));
-    await loadScript(withVersion('/v51-static/assets/final-flow.js'));
+    await loadV53FeatureModules();
+    await loadScript(withVersion((registry.appEntryModules || [])[0] || '/v51-static/assets/v53-shell.js'));
+    await loadScript(withVersion((registry.appEntryModules || [])[1] || '/v51-static/assets/final-flow.js'));
     const pcCss = document.createElement('link');
     pcCss.rel = 'stylesheet';
     pcCss.href = withVersion('/v51-static/assets/process-canvas-ultimate.css');
     document.head.appendChild(pcCss);
-    await loadScript(withVersion('/v51-static/assets/process-canvas-ultimate.js'));
+    await loadScript(withVersion((registry.appEntryModules || [])[2] || '/v51-static/assets/process-canvas-ultimate.js'));
     flushDeferredActions();
     document.body.classList.remove('v51-shell-loading');
   } catch (error) {

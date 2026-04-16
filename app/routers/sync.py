@@ -65,6 +65,7 @@ def sync_pull(
     query_start = time.perf_counter()
     with get_conn() as conn:
         snapshot_updated_at = get_workspace_snapshot_updated_at(user["id"], conn)
+        origins = list_origin_statuses(user["id"], conn=conn)
         if not since:
             ops = list_current_sync_ops(user["id"], conn)
             elapsed_ms = (time.perf_counter() - query_start) * 1000
@@ -79,7 +80,7 @@ def sync_pull(
                 "ops": ops,
                 "serverTime": utcnow().isoformat(),
                 "snapshotUpdatedAt": snapshot_updated_at,
-                "origins": list_origin_statuses(user["id"]),
+                "origins": origins,
                 "hasMore": False,
             }
         if cursorAt:
@@ -124,7 +125,7 @@ def sync_pull(
         "ops": [dict(row) for row in rows],
         "serverTime": utcnow().isoformat(),
         "snapshotUpdatedAt": snapshot_updated_at,
-        "origins": list_origin_statuses(user["id"]),
+        "origins": origins,
         "hasMore": len(rows) == 500,
         "nextCursorAt": next_cursor_at,
         "nextCursorId": next_cursor_id,
@@ -185,6 +186,13 @@ def sync_push(
                 )
         cleanup_old_ops(user["id"], conn)
         snapshot_updated_at = get_workspace_snapshot_updated_at(user["id"], conn) or utcnow().isoformat()
+        upsert_origin_status(
+            user["id"],
+            current_origin,
+            conn=conn,
+            last_backup_updated_at=snapshot_updated_at,
+        )
+        origins = list_origin_statuses(user["id"], conn=conn)
         conn.commit()
     elapsed_ms = (time.perf_counter() - write_start) * 1000
     if elapsed_ms >= SLOW_SYNC_QUERY_MS:
@@ -196,18 +204,12 @@ def sync_push(
             len(body.ops),
             elapsed_ms,
         )
-    upsert_origin_status(
-        user["id"],
-        current_origin,
-        last_backup_updated_at=snapshot_updated_at,
-    )
-
     return {
         "ok": True,
         "serverTime": utcnow().isoformat(),
         "snapshotUpdatedAt": snapshot_updated_at,
         "currentOrigin": current_origin,
-        "origins": list_origin_statuses(user["id"]),
+        "origins": origins,
         "acceptedOps": accepted_ops,
         "skippedOps": skipped_ops,
     }
