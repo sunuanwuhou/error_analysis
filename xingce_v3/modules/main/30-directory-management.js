@@ -1286,14 +1286,26 @@ function jumpToErrorInList(errorId) {
   const errorItem = findErrorById(targetId);
   if (!errorItem) {
     showToast('未找到对应错题', 'warning');
+    if (typeof openEditModal === 'function') {
+      try { openEditModal(targetId); } catch (e) {}
+    }
     return;
   }
+  const forceOpenEditor = () => {
+    if (typeof openEditModal === 'function') {
+      try { openEditModal(targetId); } catch (e) {}
+    }
+  };
   const openWorkspaceAndLocate = () => {
-    if (typeof switchAppView === 'function') switchAppView('workspace');
-    if (errorItem.noteNodeId) {
-      setCurrentKnowledgeNode(errorItem.noteNodeId, { switchTab: true });
-    } else if (typeof switchTab === 'function') {
-      switchTab('notes');
+    try {
+      if (typeof switchAppView === 'function') switchAppView('workspace');
+      if (errorItem.noteNodeId) {
+        setCurrentKnowledgeNode(errorItem.noteNodeId, { switchTab: true });
+      } else if (typeof switchTab === 'function') {
+        switchTab('notes');
+      }
+    } catch (e) {
+      console.warn('[jumpToErrorInList] switch workspace failed', e);
     }
     if (typeof renderAll === 'function') renderAll();
     if (typeof renderNotesPanelRight === 'function') renderNotesPanelRight();
@@ -1314,9 +1326,7 @@ function jumpToErrorInList(errorId) {
       const el = document.querySelector(selector);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        if (typeof openEditModal === 'function') {
-          setTimeout(() => openEditModal(targetId), 80);
-        }
+        setTimeout(forceOpenEditor, 80);
         return;
       }
     }
@@ -1325,7 +1335,7 @@ function jumpToErrorInList(errorId) {
       return;
     }
     if (typeof openEditModal === 'function') {
-      openEditModal(targetId);
+      forceOpenEditor();
       showToast('已定位到题目编辑面板', 'success');
     } else {
       showToast('未找到对应题卡，请稍后重试', 'warning');
@@ -1338,6 +1348,11 @@ function jumpToErrorInList(errorId) {
     return;
   }
   setTimeout(openWorkspaceAndLocate, 60);
+  // Hard fallback: always open editor even if list rendering timing misses.
+  setTimeout(forceOpenEditor, 700);
+}
+if (typeof window !== 'undefined') {
+  window.__mainJumpToErrorInList = jumpToErrorInList;
 }
 function updateKnowledgeWorkspaceChrome(currentNode, linkedCount) {
   const titleEl = document.querySelector('.notes-header h2');

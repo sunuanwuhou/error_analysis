@@ -403,7 +403,21 @@ function activateGlobalSearchResult(result) {
   if (!result || !result.kind || !result.id) return false;
   if (result.kind === 'question') {
     closeGlobalSearchModal(true);
-    jumpToErrorInList(result.id);
+    if (typeof switchAppView === 'function') switchAppView('workspace');
+    if (typeof jumpToErrorInList === 'function') {
+      try {
+        jumpToErrorInList(result.id);
+      } catch (e) {
+        console.warn('[activateGlobalSearchResult] jump failed', e);
+      }
+    } else if (typeof openEditModal === 'function') {
+      try { openEditModal(result.id); } catch (e) {}
+    }
+    setTimeout(() => {
+      if (typeof openEditModal === 'function') {
+        try { openEditModal(result.id); } catch (e) {}
+      }
+    }, 260);
     return true;
   }
   if (result.kind === 'note') {

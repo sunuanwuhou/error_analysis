@@ -362,7 +362,10 @@
   }
 
   function openKnowledgeForError(errorId) {
-    var errorItem = errors.find(function (item) { return item.id === errorId; });
+    var targetId = typeof normalizeErrorId === "function" ? normalizeErrorId(errorId) : String(errorId || "").trim();
+    var errorItem = typeof findErrorById === "function"
+      ? findErrorById(targetId)
+      : errors.find(function (item) { return String(item.id || "").trim() === targetId; });
     if (!errorItem || !errorItem.noteNodeId) {
       showToast(TEXT.noKnowledgeNode, "warning");
       return;
@@ -371,14 +374,75 @@
   }
 
   function jumpToErrorInList(errorId) {
-    switchTab("errors");
-    revealed.add(errorId);
-    saveReveal();
-    renderAll();
-    setTimeout(function () {
-      var el = document.getElementById("card-" + errorId);
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }, 50);
+    var targetId = typeof normalizeErrorId === "function" ? normalizeErrorId(errorId) : String(errorId || "").trim();
+    var errorItem = typeof findErrorById === "function"
+      ? findErrorById(targetId)
+      : errors.find(function (item) { return String(item.id || "").trim() === targetId; });
+
+    function forceOpenEditor() {
+      if (typeof openEditModal === "function") {
+        try { openEditModal(targetId); } catch (e) {}
+      }
+    }
+
+    if (!errorItem) {
+      showToast("未找到对应错题", "warning");
+      forceOpenEditor();
+      return;
+    }
+
+    var selectors = [
+      "[data-error-id=\"" + targetId + "\"]",
+      "#card-" + targetId,
+      ".notes-panel-right [data-error-id=\"" + targetId + "\"]",
+      "#noteErrorList [data-error-id=\"" + targetId + "\"]"
+    ];
+
+    var attempts = 0;
+    var maxAttempts = 14;
+
+    function attemptLocate() {
+      attempts += 1;
+      for (var i = 0; i < selectors.length; i += 1) {
+        var el = document.querySelector(selectors[i]);
+        if (!el) continue;
+        try { el.scrollIntoView({ behavior: "smooth", block: "nearest" }); } catch (e) {}
+        setTimeout(forceOpenEditor, 80);
+        return;
+      }
+      if (attempts < maxAttempts) {
+        setTimeout(attemptLocate, 140);
+        return;
+      }
+      forceOpenEditor();
+      showToast("已定位到题目编辑面板", "success");
+    }
+
+    function openWorkspaceAndLocate() {
+      try {
+        if (typeof switchAppView === "function") switchAppView("workspace");
+        if (errorItem.noteNodeId) {
+          setCurrentKnowledgeNode(errorItem.noteNodeId, { switchTab: true, mode: "list" });
+        } else if (typeof switchTab === "function") {
+          switchTab("notes");
+        }
+      } catch (e) {
+        console.warn("[knowledge-workspace] jumpToErrorInList workspace switch failed", e);
+      }
+      if (typeof renderAll === "function") renderAll();
+      if (typeof renderNotesByType === "function") renderNotesByType();
+      if (typeof renderNotesPanelRight === "function") renderNotesPanelRight();
+      attemptLocate();
+    }
+
+    if (typeof hasFullWorkspaceDataLoaded === "function"
+      && typeof ensureFullWorkspaceDataLoaded === "function"
+      && !hasFullWorkspaceDataLoaded()) {
+      ensureFullWorkspaceDataLoaded().finally(function () { setTimeout(openWorkspaceAndLocate, 60); });
+    } else {
+      setTimeout(openWorkspaceAndLocate, 60);
+    }
+    setTimeout(forceOpenEditor, 700);
   }
 
   function bindKnowledgeEditorShortcuts(content) {
@@ -765,7 +829,12 @@
   window.selectKnowledgeLeaf = selectKnowledgeLeaf;
   window.selectNoteType = selectNoteType;
   window.openKnowledgeForError = openKnowledgeForError;
-  window.jumpToErrorInList = jumpToErrorInList;
+  window.jumpToErrorInList = function (errorId) {
+    if (typeof window.__mainJumpToErrorInList === "function") {
+      return window.__mainJumpToErrorInList(errorId);
+    }
+    return jumpToErrorInList(errorId);
+  };
   window.liveNotePreview = liveNotePreview;
   window.saveNoteTypeContent = saveNoteTypeContent;
   window.setKnowledgeWorkspaceMode = setKnowledgeWorkspaceMode;

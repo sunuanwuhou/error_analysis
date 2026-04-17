@@ -41,7 +41,7 @@ function renderAnalysis(text, kw) {
 function newId() { return crypto.randomUUID(); }
 function idArg(id) { return JSON.stringify(String(id)); }
 function noteNodeArg(id) { return JSON.stringify(String(id || '')); }
-function normalizeErrorId(id) { return String(id); }
+function normalizeErrorId(id) { return String(id || '').trim(); }
 function findErrorById(id) {
   const targetId = normalizeErrorId(id);
   return errors.find(x => normalizeErrorId(x.id) === targetId) || null;

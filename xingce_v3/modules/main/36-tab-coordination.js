@@ -295,7 +295,7 @@ function renderKnowledgeNotesView() {
       ${findKnowledgeParent(currentNode.id) ? `<button class="btn btn-secondary btn-sm" onclick="moveKnowledgeNode('${currentNode.id}')">移动</button>` : ''}
       <button class="btn btn-secondary btn-sm" onclick="addKnowledgeLeafUnderSelected()">+ 新建知识点</button>
       <button class="btn btn-secondary btn-sm" onclick="openAddModalForCurrentKnowledge()">+ 录入错题</button>
-      <button class="btn btn-secondary btn-sm" onclick="openImportModalForCurrentKnowledge()">JSON导入</button>
+      <button class="btn btn-secondary btn-sm" onclick="openImportModalForCurrentKnowledge()">导入错题</button>
       <button class="btn btn-secondary btn-sm" onclick="deleteKnowledgeNode('${currentNode.id}')">删除节点</button>
       ${currentNode.isLeaf ? `<button class="btn btn-primary btn-sm" onclick="noteEditing=${noteEditing ? 'false' : 'true'};renderNotesByType()">${noteEditing ? '完成编辑' : '编辑笔记'}</button>` : ''}
     </div>
@@ -449,7 +449,7 @@ function renderKnowledgeNotesViewV2() {
       ${findKnowledgeParent(currentNode.id) ? `<button class="btn btn-secondary btn-sm" onclick="moveKnowledgeNode('${currentNode.id}')">移动</button>` : ''}
       <button class="btn btn-secondary btn-sm" onclick="selectedKnowledgeNodeId='${currentNode.id}';addKnowledgeLeafUnderSelected()">+ 新建下级</button>
       <button class="btn btn-secondary btn-sm" onclick="openAddModalForCurrentKnowledge()">+ 录入错题</button>
-      <button class="btn btn-secondary btn-sm" onclick="openImportModalForCurrentKnowledge()">JSON导入</button>
+      <button class="btn btn-secondary btn-sm" onclick="openImportModalForCurrentKnowledge()">导入错题</button>
       <button class="btn btn-secondary btn-sm" onclick="deleteKnowledgeNode('${currentNode.id}')">删除节点</button>
       <button class="btn btn-primary btn-sm" onclick="noteEditing=${noteEditing ? 'false' : 'true'};renderNotesByType()">${noteEditing ? '完成编辑' : '编辑笔记'}</button>
     </div>
@@ -483,7 +483,7 @@ function renderKnowledgeNotesViewV2() {
             <button class="btn btn-primary btn-sm" onclick="saveNoteTypeContent()">保存</button>
             <button class="btn btn-secondary btn-sm" onclick="selectedKnowledgeNodeId='${currentNode.id}';addKnowledgeLeafUnderSelected()">+ 新建下级</button>
             <button class="btn btn-secondary btn-sm" onclick="openAddModalForCurrentKnowledge()">+ 录入错题</button>
-            <button class="btn btn-secondary btn-sm" onclick="openImportModalForCurrentKnowledge()">JSON导入</button>
+            <button class="btn btn-secondary btn-sm" onclick="openImportModalForCurrentKnowledge()">导入错题</button>
             <span class="save-hint">Ctrl+S 快捷保存</span>
           </div>
         </div>
@@ -664,6 +664,7 @@ function renderKnowledgeWorkspaceHeader(node, pathText, directCount, linkedCount
     </div>
     <div class="knowledge-page-actions">
       <button class="btn btn-primary btn-sm" onclick="noteEditing=${noteEditing ? 'false' : 'true'};renderNotesByType()">${noteEditing ? '完成' : '编辑'}</button>
+      <button class="btn btn-secondary btn-sm" onclick="openImportModalForCurrentKnowledge()">导入错题</button>
       <details class="note-more-menu">
         <summary class="btn btn-secondary btn-sm">更多</summary>
         <div class="note-more-menu-panel">
@@ -671,7 +672,7 @@ function renderKnowledgeWorkspaceHeader(node, pathText, directCount, linkedCount
           ${findKnowledgeParent(node.id) ? `<button class="btn btn-secondary btn-sm" onclick="moveKnowledgeNode('${node.id}')">移动</button>` : ''}
           <button class="btn btn-secondary btn-sm" onclick="selectedKnowledgeNodeId='${node.id}';addKnowledgeLeafUnderSelected()">新建下级</button>
           <button class="btn btn-secondary btn-sm" onclick="openAddModalForCurrentKnowledge()">录入题目</button>
-          <button class="btn btn-secondary btn-sm" onclick="openImportModalForCurrentKnowledge()">导入 JSON</button>
+          <button class="btn btn-secondary btn-sm" onclick="openImportModalForCurrentKnowledge()">导入错题</button>
           <button class="btn btn-secondary btn-sm" onclick="deleteKnowledgeNode('${node.id}')">删除节点</button>
         </div>
       </details>
