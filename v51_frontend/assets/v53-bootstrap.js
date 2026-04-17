@@ -7,6 +7,7 @@ async function loadText(url) {
 let legacyAssetVersion = '';
 let legacyManifestPromise = null;
 let deferredPartialsPromise = null;
+let legacyModalBundlePromise = null;
 
 async function loadLegacyManifest() {
   if (!legacyManifestPromise) {
@@ -64,22 +65,39 @@ function scheduleDeferredPartialsLoad() {
 }
 
 const deferredActionCalls = [];
+const DEFERRED_MODAL_ACTIONS = new Set([
+  'openQuickAddModal',
+  'startQuiz',
+  'startFullPractice',
+]);
 
 function installDeferredAction(name) {
-  if (typeof window[name] === 'function') return;
-  window[name] = function deferredBootstrapAction() {
+  if (typeof window[name] === 'function' && !window[name].__isDeferredActionStub) return;
+  const deferredStub = function deferredBootstrapAction() {
+    if (DEFERRED_MODAL_ACTIONS.has(name)) {
+      ensureLegacyModalBundleLoaded();
+    }
     deferredActionCalls.push({ name, args: Array.from(arguments) });
   };
+  deferredStub.__isDeferredActionStub = true;
+  window[name] = deferredStub;
 }
 
 function flushDeferredActions() {
+  if (!deferredActionCalls.length) return;
   const queued = deferredActionCalls.splice(0, deferredActionCalls.length);
+  const pending = [];
   queued.forEach(item => {
     const fn = window[item.name];
-    if (typeof fn === 'function' && fn !== window.__deferredNoop) {
+    if (typeof fn === 'function' && !fn.__isDeferredActionStub && fn !== window.__deferredNoop) {
       try { fn.apply(window, item.args || []); } catch (error) { console.warn(`deferred action failed: ${item.name}`, error); }
+    } else {
+      pending.push(item);
     }
   });
+  if (pending.length) {
+    deferredActionCalls.unshift.apply(deferredActionCalls, pending);
+  }
 }
 
 function loadScript(src, { defer = false } = {}) {
@@ -107,6 +125,17 @@ function withVersion(url, explicitVersion) {
 async function loadLegacyModules() {
   const manifest = await loadLegacyManifest();
   const version = String(legacyAssetVersion || manifest?.built_at || manifest?.js_bundle?.sha256 || Date.now());
+  const viewBundles = manifest?.js_view_bundles || {};
+  const homeBundlePath = toPublicAssetPath(viewBundles?.home?.path || '');
+  const workspaceBundlePath = toPublicAssetPath(viewBundles?.workspace?.path || '');
+  const bootstrapBundlePath = toPublicAssetPath(viewBundles?.bootstrap?.path || '');
+  if (homeBundlePath && workspaceBundlePath && bootstrapBundlePath) {
+    await loadScript(withVersion(`/assets/${homeBundlePath}`, version));
+    await loadScript(withVersion(`/assets/${workspaceBundlePath}`, version));
+    await loadScript(withVersion(`/assets/${bootstrapBundlePath}`, version));
+    scheduleDeferredLegacyModalLoad();
+    return;
+  }
   const bundlePath = toPublicAssetPath(manifest?.js_bundle?.path || '');
   if (bundlePath) {
     await loadScript(withVersion(`/assets/${bundlePath}`, version));
@@ -119,6 +148,35 @@ async function loadLegacyModules() {
     await loadScript(withVersion(`/assets/${rel}`, version));
   }
   await loadScript(withVersion(`/assets/${bootstrapRel}`, version));
+}
+
+async function ensureLegacyModalBundleLoaded() {
+  const manifest = await loadLegacyManifest();
+  const version = String(legacyAssetVersion || manifest?.built_at || manifest?.js_bundle?.sha256 || Date.now());
+  const modalBundlePath = toPublicAssetPath(manifest?.js_view_bundles?.modal?.path || '');
+  if (!modalBundlePath) return;
+  if (!legacyModalBundlePromise) {
+    legacyModalBundlePromise = loadScript(withVersion(`/assets/${modalBundlePath}`, version)).then(() => {
+      flushDeferredActions();
+    }).catch((error) => {
+      legacyModalBundlePromise = null;
+      throw error;
+    });
+  }
+  return legacyModalBundlePromise;
+}
+
+function scheduleDeferredLegacyModalLoad() {
+  const run = () => {
+    ensureLegacyModalBundleLoaded().catch((error) => {
+      console.warn('legacy modal bundle load failed', error);
+    });
+  };
+  if (typeof window.requestIdleCallback === 'function') {
+    window.requestIdleCallback(run, { timeout: 2200 });
+  } else {
+    setTimeout(run, 650);
+  }
 }
 
 async function loadV53FeatureModules() {

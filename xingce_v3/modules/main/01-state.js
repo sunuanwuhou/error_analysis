@@ -223,6 +223,36 @@ window.refreshWorkspaceAfterErrorMutation = refreshWorkspaceAfterErrorMutation;
 window.hasFullWorkspaceDataLoaded = hasFullWorkspaceDataLoaded;
 window.getStartupSummaryCache = getStartupSummaryCache;
 
+const AppState = {
+  get() {
+    return {
+      appView,
+      searchKw,
+      statusFilter,
+      taskFilter,
+      typeFilter,
+      reasonFilter,
+      selectedKnowledgeNodeId,
+      knowledgeNodeFilter,
+      knowledgeTreeSearchQuery,
+    };
+  },
+  set(patch) {
+    if (!patch || typeof patch !== 'object') return;
+    if (Object.prototype.hasOwnProperty.call(patch, 'appView')) appView = String(patch.appView || appView);
+    if (Object.prototype.hasOwnProperty.call(patch, 'searchKw')) searchKw = String(patch.searchKw || '');
+    if (Object.prototype.hasOwnProperty.call(patch, 'statusFilter')) statusFilter = String(patch.statusFilter || 'all');
+    if (Object.prototype.hasOwnProperty.call(patch, 'taskFilter')) taskFilter = String(patch.taskFilter || 'all');
+    if (Object.prototype.hasOwnProperty.call(patch, 'typeFilter')) typeFilter = patch.typeFilter || null;
+    if (Object.prototype.hasOwnProperty.call(patch, 'reasonFilter')) reasonFilter = patch.reasonFilter || null;
+    if (Object.prototype.hasOwnProperty.call(patch, 'selectedKnowledgeNodeId')) selectedKnowledgeNodeId = patch.selectedKnowledgeNodeId || null;
+    if (Object.prototype.hasOwnProperty.call(patch, 'knowledgeNodeFilter')) knowledgeNodeFilter = patch.knowledgeNodeFilter || null;
+    if (Object.prototype.hasOwnProperty.call(patch, 'knowledgeTreeSearchQuery')) knowledgeTreeSearchQuery = String(patch.knowledgeTreeSearchQuery || '');
+    window.dispatchEvent(new CustomEvent('xc:state-changed', { detail: AppState.get() }));
+  }
+};
+window.AppState = AppState;
+
 let statusFilter = 'all';
 let taskFilter = 'all';
 let typeFilter   = null;   // {level:'type'|'subtype'|'sub2', value, type?, subtype?}
@@ -305,9 +335,9 @@ function syncKnowledgeTreeSearchUi(){
   if(meta){
     if(hasKnowledgeTreeSearch()){
       const visibleCount = countVisibleKnowledgeNodes(getKnowledgeRootNodes());
-      meta.textContent = visibleCount ? '\u547D\u4E2D ' + visibleCount + ' \u4E2A\u8282\u70B9' : '\u672A\u627E\u5230\u5339\u914D\u8282\u70B9';
+      meta.textContent = visibleCount ? '命中 ' + visibleCount + ' 个节点' : '未找到匹配节点';
     }else{
-      meta.textContent = '\u652F\u6301\u6309\u8282\u70B9\u540D\u548C\u8DEF\u5F84\u641C\u7D22';
+      meta.textContent = '支持按节点名和路径搜索';
     }
   }
 }
@@ -326,7 +356,7 @@ function clearKnowledgeTreeSearch(){
 function applyErrorsTopCollapsedState(){
   document.body.classList.toggle('errors-top-collapsed', errorsTopCollapsed);
   const btn = document.getElementById('errorsTopToggleBtn');
-  if(btn) btn.textContent = errorsTopCollapsed ? '\u5C55\u5F00\u5934\u90E8' : '\u6536\u8D77\u5934\u90E8';
+  if(btn) btn.textContent = errorsTopCollapsed ? '展开头部' : '收起头部';
 }
 function toggleErrorsTopCollapsed(){
   errorsTopCollapsed = !errorsTopCollapsed;
@@ -336,7 +366,7 @@ function toggleErrorsTopCollapsed(){
 function applyKnowledgeTreeFocusMode(){
   document.body.classList.toggle('sidebar-tree-focus', knowledgeTreeFocusMode);
   const btn = document.getElementById('knowledgeTreeFocusBtn');
-  if(btn) btn.textContent = knowledgeTreeFocusMode ? '\u9000\u51FA\u4E13\u6CE8' : '\u4E13\u6CE8\u6811';
+  if(btn) btn.textContent = knowledgeTreeFocusMode ? '退出专注' : '专注树';
 }
 function toggleKnowledgeTreeFocusMode(){
   knowledgeTreeFocusMode = !knowledgeTreeFocusMode;

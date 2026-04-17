@@ -14,7 +14,7 @@ from app.security import utcnow
 from app.services.practice_log_service import read_recent_practice_logs
 from app.services.practice_stats_service import build_flow_workbench, build_practice_insights
 
-_CACHE_TTL_SECONDS = 8.0
+_CACHE_TTL_SECONDS = 45.0
 _PRACTICE_CACHE_LOCK = threading.Lock()
 _PRACTICE_RESPONSE_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
 

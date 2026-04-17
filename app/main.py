@@ -63,8 +63,19 @@ def create_app() -> FastAPI:
     async def disable_static_cache_for_local_debug(request: Request, call_next):
         response = await call_next(request)
         path = request.url.path or ""
-        if path.startswith("/assets/") or path.startswith("/v51-static/assets/") or path in {"/v51-static/partials.bundle.html", "/v51-static/deferred-partials.bundle.html"}:
-            # Bundle filenames are stable in this project; avoid stale CDN/browser cache after deploy.
+        query = request.url.query or ""
+        has_asset_version = "v=" in query
+        if path.startswith("/assets/") or path.startswith("/v51-static/assets/"):
+            if path.endswith("legacy-app.bundle.manifest.json"):
+                response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+                response.headers["Pragma"] = "no-cache"
+                response.headers["Expires"] = "0"
+            elif has_asset_version:
+                response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            else:
+                response.headers["Cache-Control"] = "public, max-age=600"
+            return response
+        if path in {"/v51-static/partials.bundle.html", "/v51-static/deferred-partials.bundle.html"}:
             response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, s-maxage=0"
             response.headers["Pragma"] = "no-cache"
             response.headers["Expires"] = "0"

@@ -105,6 +105,59 @@ JS_SOURCES = [
     'modules/data-management.js',
 ]
 
+JS_VIEW_SPLIT_SOURCES = {
+    'home': [
+        'modules/main/00-event-dispatcher.js',
+        'modules/main/01-state.js',
+        'modules/main/02-indexeddb.js',
+        'modules/main/03-storage-usage.js',
+        'modules/main/04-utils.js',
+        'modules/main/05-persistence.js',
+        'modules/main/08-initial-data.js',
+        'modules/main/09-markdown.js',
+        'modules/main/12-review-engine.js',
+        'modules/main/13-quiz-flow.js',
+        'modules/main/14-sidebar-render.js',
+        'modules/main/15-filters.js',
+        'modules/main/21-dashboard-modules.js',
+        'modules/main/22-history.js',
+        'modules/main/24-type-detection.js',
+        'modules/main/29-quiz-shortcuts.js',
+        'modules/main/36-tab-coordination.js',
+        'modules/knowledge-state.js',
+        'modules/knowledge-workbench.js',
+    ],
+    'workspace': [
+        'modules/main/10-notes-panel.js',
+        'modules/main/11-typed-note-tree.js',
+        'modules/main/16-main-render.js',
+        'modules/main/17-error-card-render.js',
+        'modules/main/27-backup-restore.js',
+        'modules/main/30-directory-management.js',
+        'modules/knowledge-workspace.js',
+        'modules/data-management.js',
+    ],
+    'modal': [
+        'modules/main/06-ai-workbench.js',
+        'modules/main/07-image-processing.js',
+        'modules/main/18-crud-modal.js',
+        'modules/main/19-import-export.js',
+        'modules/main/20-claude-helper.js',
+        'modules/main/23-md-toolbar.js',
+        'modules/main/25-quick-print.js',
+        'modules/main/26-export-upgrade.js',
+        'modules/main/28-vocabulary-bank.js',
+        'modules/main/31-inline-quiz.js',
+        'modules/main/32-difficulty-rating.js',
+        'modules/main/33-bulk-actions.js',
+        'modules/main/34-modal-controls.js',
+        'modules/knowledge-node-modal.js',
+    ],
+    'bootstrap': [
+        'modules/main/99-bootstrap.js',
+    ],
+}
+
 
 def load_v51_partials_manifest() -> list[str]:
     manifest_path = V51_FRONTEND / 'partials-manifest.json'
@@ -141,8 +194,8 @@ def file_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def build_manifest(css_bundle_path: Path, js_bundle_path: Path) -> dict[str, object]:
-    return {
+def build_manifest(css_bundle_path: Path, js_bundle_path: Path, view_bundle_paths: dict[str, Path]) -> dict[str, object]:
+    manifest = {
         'built_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
         'css_bundle': {
             'path': str(css_bundle_path.relative_to(ROOT)),
@@ -155,12 +208,25 @@ def build_manifest(css_bundle_path: Path, js_bundle_path: Path) -> dict[str, obj
             'sources': JS_SOURCES,
         },
     }
+    manifest['js_view_bundles'] = {
+        name: {
+            'path': str(path.relative_to(ROOT)),
+            'sha256': file_sha256(path),
+            'sources': JS_VIEW_SPLIT_SOURCES[name],
+        }
+        for name, path in view_bundle_paths.items()
+    }
+    return manifest
 
 
 def main() -> None:
     css_bundle_path = XINGCE / 'styles' / 'legacy-app.bundle.css'
     js_bundle_path = XINGCE / 'modules' / 'legacy-app.bundle.js'
     manifest_path = XINGCE / 'legacy-app.bundle.manifest.json'
+    view_bundle_paths = {
+        name: XINGCE / 'modules' / f'legacy-app.{name}.bundle.js'
+        for name in JS_VIEW_SPLIT_SOURCES.keys()
+    }
     partials_bundle_path = V51_FRONTEND / 'partials.bundle.html'
     deferred_partials_bundle_path = V51_FRONTEND / 'deferred-partials.bundle.html'
     partials_manifest = load_v51_partials_manifest()
@@ -168,12 +234,16 @@ def main() -> None:
 
     css_bundle_path.write_text(bundle_contents(CSS_SOURCES, '/*'), encoding='utf-8')
     js_bundle_path.write_text(bundle_contents(JS_SOURCES, '/*'), encoding='utf-8')
+    for name, source_list in JS_VIEW_SPLIT_SOURCES.items():
+        view_bundle_paths[name].write_text(bundle_contents(source_list, '/*'), encoding='utf-8')
     partials_bundle_path.write_text(build_partials_bundle(CORE_PARTIALS), encoding='utf-8')
     deferred_partials_bundle_path.write_text(build_partials_bundle(deferred_partials), encoding='utf-8')
-    manifest_path.write_text(json.dumps(build_manifest(css_bundle_path, js_bundle_path), ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    manifest_path.write_text(json.dumps(build_manifest(css_bundle_path, js_bundle_path, view_bundle_paths), ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 
     print(f'Wrote {css_bundle_path.relative_to(ROOT)}')
     print(f'Wrote {js_bundle_path.relative_to(ROOT)}')
+    for name, path in view_bundle_paths.items():
+        print(f'Wrote {path.relative_to(ROOT)}')
     print(f'Wrote {partials_bundle_path.relative_to(ROOT)}')
     print(f'Wrote {deferred_partials_bundle_path.relative_to(ROOT)}')
     print(f'Wrote {manifest_path.relative_to(ROOT)}')
