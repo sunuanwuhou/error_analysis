@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import copy
 import json
 import sqlite3
+import threading
+import time
 from collections import Counter, defaultdict
 from typing import Any, Optional
 
@@ -10,6 +13,41 @@ from app.database import get_conn
 from app.security import utcnow
 from app.services.practice_log_service import read_recent_practice_logs
 from app.services.practice_stats_service import build_flow_workbench, build_practice_insights
+
+_CACHE_TTL_SECONDS = 8.0
+_PRACTICE_CACHE_LOCK = threading.Lock()
+_PRACTICE_RESPONSE_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
+
+
+def _cache_key(prefix: str, user_id: str, limit: int) -> str:
+    return f"{prefix}:{user_id}:{max(1, int(limit or 1))}"
+
+
+def _cache_get(key: str) -> Optional[dict[str, Any]]:
+    now = time.monotonic()
+    with _PRACTICE_CACHE_LOCK:
+        entry = _PRACTICE_RESPONSE_CACHE.get(key)
+        if not entry:
+            return None
+        expires_at, payload = entry
+        if expires_at <= now:
+            _PRACTICE_RESPONSE_CACHE.pop(key, None)
+            return None
+        return copy.deepcopy(payload)
+
+
+def _cache_set(key: str, payload: dict[str, Any]) -> None:
+    now = time.monotonic()
+    with _PRACTICE_CACHE_LOCK:
+        _PRACTICE_RESPONSE_CACHE[key] = (now + _CACHE_TTL_SECONDS, copy.deepcopy(payload))
+
+
+def invalidate_practice_cache(user_id: str) -> None:
+    prefix = f":{user_id}:"
+    with _PRACTICE_CACHE_LOCK:
+        stale_keys = [key for key in _PRACTICE_RESPONSE_CACHE.keys() if prefix in key]
+        for key in stale_keys:
+            _PRACTICE_RESPONSE_CACHE.pop(key, None)
 
 
 def _normalize_id_list(values: Optional[list[Any]], *, max_size: int = 5000) -> list[str]:
@@ -273,6 +311,11 @@ def read_attempt_behavior_map(
 
 
 def build_practice_daily_response(user_id: str, limit: int = 12) -> dict[str, Any]:
+    cache_key = _cache_key("daily", user_id, limit)
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     errors = get_backup_errors(user_id)
     recent_logs = read_recent_practice_logs(user_id, 14)
     today_str = utcnow().date().isoformat()
@@ -295,7 +338,7 @@ def build_practice_daily_response(user_id: str, limit: int = 12) -> dict[str, An
     queue = compute_daily_practice(filtered_errors, max(1, min(limit, 30)), behavior_map)
     insights = build_practice_insights(filtered_errors, behavior_map, daily_limit=max(1, min(limit, 30)), review_limit=min(max(limit // 2, 4), 8))
     flow = build_flow_workbench(filtered_errors, behavior_map, limit=min(max(limit // 2, 4), 8))
-    return {
+    response = {
         "ok": True,
         "items": queue,
         "recentLogs": recent_logs,
@@ -307,9 +350,16 @@ def build_practice_daily_response(user_id: str, limit: int = 12) -> dict[str, An
         "directDoQueue": flow.get("directDoQueue") or [],
         "speedDrillQueue": flow.get("speedDrillQueue") or [],
     }
+    _cache_set(cache_key, response)
+    return response
 
 
 def build_practice_workbench_response(user_id: str, limit: int = 6) -> dict[str, Any]:
+    cache_key = _cache_key("workbench", user_id, limit)
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     errors = get_backup_errors(user_id)
     normalized_limit = max(1, min(limit, 12))
     error_ids, question_ids = _collect_attempt_filter_ids(errors)
@@ -396,7 +446,7 @@ def build_practice_workbench_response(user_id: str, limit: int = 6) -> dict[str,
         "attemptTrackedCount": len(behavior_map),
     }
 
-    return {
+    response = {
         "ok": True,
         "overview": overview,
         "advice": insights.get("advice") or [],
@@ -415,9 +465,16 @@ def build_practice_workbench_response(user_id: str, limit: int = 6) -> dict[str,
         "stableQueue": [],
         "weaknessGroups": weakness_list[:normalized_limit],
     }
+    _cache_set(cache_key, response)
+    return response
 
 
 def build_practice_insights_response(user_id: str, limit: int = 6) -> dict[str, Any]:
+    cache_key = _cache_key("insights", user_id, limit)
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     errors = get_backup_errors(user_id)
     error_ids, question_ids = _collect_attempt_filter_ids(errors)
     behavior_map = read_attempt_behavior_map(
@@ -427,4 +484,6 @@ def build_practice_insights_response(user_id: str, limit: int = 6) -> dict[str, 
         limit=max(len(errors) * 4, 200),
     )
     insights = build_practice_insights(errors, behavior_map, daily_limit=max(1, min(limit, 12)), review_limit=max(1, min(limit, 12)))
-    return {"ok": True, **insights}
+    response = {"ok": True, **insights}
+    _cache_set(cache_key, response)
+    return response

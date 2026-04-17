@@ -6,12 +6,43 @@ from typing import Any, Iterable
 
 import psycopg
 from psycopg.rows import dict_row
+from psycopg_pool import ConnectionPool
 
 
 POSTGRES_DSN = os.getenv(
     "DATABASE_URL",
     "postgresql://xingce:xingce_password@postgres:5432/xingce",
 )
+
+_MIN_POOL_SIZE = max(1, int(os.getenv("DB_POOL_MIN_SIZE", "2")))
+_MAX_POOL_SIZE = max(_MIN_POOL_SIZE, int(os.getenv("DB_POOL_MAX_SIZE", "12")))
+_CONNECT_TIMEOUT = max(3, int(os.getenv("DB_CONNECT_TIMEOUT_SEC", "10")))
+_POOL: ConnectionPool | None = None
+
+
+def _get_pool() -> ConnectionPool:
+    global _POOL
+    if _POOL is None:
+        _POOL = ConnectionPool(
+            conninfo=POSTGRES_DSN,
+            min_size=_MIN_POOL_SIZE,
+            max_size=_MAX_POOL_SIZE,
+            timeout=_CONNECT_TIMEOUT,
+            kwargs={
+                "row_factory": dict_row,
+                "connect_timeout": _CONNECT_TIMEOUT,
+            },
+        )
+        _POOL.open(wait=True, timeout=_CONNECT_TIMEOUT)
+    return _POOL
+
+
+def close_pool() -> None:
+    global _POOL
+    if _POOL is None:
+        return
+    _POOL.close()
+    _POOL = None
 
 
 def _adapt_sql(sql: str) -> str:
@@ -46,14 +77,28 @@ def _adapt_sql(sql: str) -> str:
 
 class PgConn:
     def __init__(self) -> None:
-        self._conn = psycopg.connect(POSTGRES_DSN, row_factory=dict_row, connect_timeout=10)
+        self._ctx = _get_pool().connection()
+        self._conn = self._ctx.__enter__()
 
-    def execute(self, sql: str, params: Iterable[Any] | None = None):
-        return self._conn.execute(_adapt_sql(sql), tuple(params or ()))
+    @staticmethod
+    def _normalize_params(params: Any) -> Any:
+        if params is None:
+            return ()
+        if isinstance(params, dict):
+            return params
+        if isinstance(params, tuple):
+            return params
+        if isinstance(params, list):
+            return tuple(params)
+        return tuple(params)
 
-    def executemany(self, sql: str, params_seq: Iterable[Iterable[Any]]):
+    def execute(self, sql: str, params: Iterable[Any] | dict[str, Any] | None = None):
+        return self._conn.execute(_adapt_sql(sql), self._normalize_params(params))
+
+    def executemany(self, sql: str, params_seq: Iterable[Iterable[Any] | dict[str, Any]]):
         with self._conn.cursor() as cur:
-            cur.executemany(_adapt_sql(sql), [tuple(params) for params in params_seq])
+            normalized = [self._normalize_params(params) for params in params_seq]
+            cur.executemany(_adapt_sql(sql), normalized)
             return cur
 
     def commit(self) -> None:
@@ -63,7 +108,10 @@ class PgConn:
         self._conn.rollback()
 
     def close(self) -> None:
-        self._conn.close()
+        if self._ctx is not None:
+            self._ctx.__exit__(None, None, None)
+            self._ctx = None
+            self._conn = None
 
     def __enter__(self) -> "PgConn":
         return self
@@ -71,6 +119,8 @@ class PgConn:
     def __exit__(self, exc_type, exc, tb) -> None:
         if exc_type is not None:
             self.rollback()
+        else:
+            self.commit()
         self.close()
 
 
@@ -166,6 +216,9 @@ def init_db() -> None:
             "CREATE INDEX IF NOT EXISTS idx_state_entities_user_type_time ON state_entities(user_id, entity_type, updated_at)"
         )
         conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_state_entities_user_type_deleted_time ON state_entities(user_id, entity_type, deleted_at, updated_at)"
+        )
+        conn.execute(
             """
             CREATE TABLE IF NOT EXISTS practice_log (
               id TEXT PRIMARY KEY,
@@ -228,6 +281,12 @@ def init_db() -> None:
             """
             CREATE INDEX IF NOT EXISTS idx_ops_user_created_id
             ON operations(user_id, created_at, id)
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_ops_user_type_created
+            ON operations(user_id, op_type, created_at)
             """
         )
         conn.commit()

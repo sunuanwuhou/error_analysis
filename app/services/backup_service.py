@@ -19,6 +19,7 @@ from app.schemas import (
     OriginStatusPayload,
 )
 from app.services.origin_status_service import list_origin_statuses, upsert_origin_status
+from app.services.practice_query_service import invalidate_practice_cache
 from app.services.snapshot_service import build_backup_summary
 from app.services.workspace_entity_service import (
     append_workspace_snapshot_ops,
@@ -623,6 +624,7 @@ def save_backup(user_id: str, payload: BackupPayload, *, current_origin: str) ->
         last_saved_at=updated_at,
         last_backup_updated_at=updated_at,
     )
+    invalidate_practice_cache(user_id)
 
     return {
         "ok": True,
@@ -721,6 +723,7 @@ def restore_local_backup_response(
         last_saved_at=updated_at,
         last_backup_updated_at=updated_at,
     )
+    invalidate_practice_cache(user_id)
     return {
         "ok": True,
         "updatedAt": updated_at,

@@ -42,6 +42,9 @@ def write_practice_log(user_id: str, payload: PracticeLogPayload) -> dict[str, A
             (user_id,),
         )
         conn.commit()
+    from app.services.practice_query_service import invalidate_practice_cache
+
+    invalidate_practice_cache(user_id)
     return entry
 
 

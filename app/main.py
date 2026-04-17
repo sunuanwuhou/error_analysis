@@ -4,10 +4,12 @@ import os
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.config import BASE_DIR, V51_STATIC_DIR
 from app.core import on_startup
+from app.database import close_pool
 from app.routers import ai, auth, backup, images, knowledge, practice, sync, web
 
 
@@ -53,6 +55,7 @@ def create_app() -> FastAPI:
         allow_headers=allowed_headers,
         allow_credentials=True,
     )
+    app.add_middleware(GZipMiddleware, minimum_size=1024)
     app.mount("/assets", StaticFiles(directory=str(BASE_DIR / "xingce_v3")), name="assets")
     if V51_STATIC_DIR.exists():
         app.mount("/v51-static", StaticFiles(directory=str(V51_STATIC_DIR)), name="v51-static")
@@ -73,6 +76,7 @@ def create_app() -> FastAPI:
         return response
 
     app.add_event_handler("startup", on_startup)
+    app.add_event_handler("shutdown", close_pool)
     for router_module in (web, auth, backup, ai, images, sync, practice, knowledge):
         app.include_router(router_module.router)
     return app

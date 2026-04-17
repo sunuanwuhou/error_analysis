@@ -6,6 +6,7 @@ from typing import Any
 
 from app.database import get_conn
 from app.security import utcnow
+from app.services.practice_query_service import invalidate_practice_cache
 
 
 def write_practice_attempts(user_id: str, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -85,4 +86,5 @@ def write_practice_attempts(user_id: str, items: list[dict[str, Any]]) -> list[d
     if payloads:
         with get_conn() as conn:
             conn.executemany(sql, payloads)
+        invalidate_practice_cache(user_id)
     return saved

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import base64
+import copy
 import json
 import mimetypes
 import re
 import sqlite3
+import threading
 import uuid
 from typing import Any, Optional
 
@@ -23,6 +25,13 @@ UPSERT_TO_ENTITY_TYPE: dict[str, str] = {ops[0]: entity_type for entity_type, op
 DELETE_TO_ENTITY_TYPE: dict[str, str] = {ops[1]: entity_type for entity_type, ops in ENTITY_SYNC_OPS.items()}
 
 IMAGE_API_REF_RE = re.compile(r"^/api/images/([a-f0-9]{32,64})$", re.I)
+_SNAPSHOT_CACHE_LOCK = threading.Lock()
+_WORKSPACE_SNAPSHOT_CACHE: dict[str, tuple[tuple[int, str], dict[str, Any]]] = {}
+
+
+def invalidate_workspace_snapshot_cache(user_id: str) -> None:
+    with _SNAPSHOT_CACHE_LOCK:
+        _WORKSPACE_SNAPSHOT_CACHE.pop(user_id, None)
 
 
 def cleanup_old_ops(user_id: str, conn: sqlite3.Connection) -> None:
@@ -222,6 +231,7 @@ def replace_workspace_entities_from_snapshot(
             """,
             [(user_id, entity_type, entity_id, payload_json, updated_at) for entity_type, entity_id, payload_json, updated_at in entities],
         )
+    invalidate_workspace_snapshot_cache(user_id)
     return len(entities)
 
 
@@ -290,6 +300,7 @@ def apply_sync_op_to_state_entity(user_id: str, op: dict[str, Any], conn: sqlite
             """,
             (user_id, entity_type, entity_id, created_at, created_at),
         )
+        invalidate_workspace_snapshot_cache(user_id)
         return
 
     payload = op.get("payload") or {}
@@ -324,6 +335,7 @@ def apply_sync_op_to_state_entity(user_id: str, op: dict[str, Any], conn: sqlite
             str(record.get("updatedAt") or created_at),
         ),
     )
+    invalidate_workspace_snapshot_cache(user_id)
 
 
 def ensure_workspace_entities_seeded(user_id: str, conn: sqlite3.Connection) -> None:
@@ -451,6 +463,23 @@ def build_knowledge_tree_snapshot(records: list[dict[str, Any]]) -> dict[str, An
 
 def build_workspace_snapshot_from_entities(user_id: str, conn: sqlite3.Connection) -> dict[str, Any]:
     ensure_workspace_entities_seeded(user_id, conn)
+    signature_row = conn.execute(
+        """
+        SELECT COUNT(*) AS total_count, COALESCE(MAX(updated_at), '') AS latest_updated_at
+        FROM state_entities
+        WHERE user_id = ? AND entity_type IN ('error', 'note_type', 'note_image', 'knowledge_node', 'setting')
+        """,
+        (user_id,),
+    ).fetchone()
+    signature = (
+        int(signature_row["total_count"] or 0) if signature_row else 0,
+        str(signature_row["latest_updated_at"] or "") if signature_row else "",
+    )
+    with _SNAPSHOT_CACHE_LOCK:
+        cached = _WORKSPACE_SNAPSHOT_CACHE.get(user_id)
+        if cached and cached[0] == signature:
+            return copy.deepcopy(cached[1])
+
     rows = conn.execute(
         """
         SELECT entity_type, entity_id, payload_json, updated_at, deleted_at
@@ -461,6 +490,8 @@ def build_workspace_snapshot_from_entities(user_id: str, conn: sqlite3.Connectio
         (user_id,),
     ).fetchall()
     if not rows:
+        with _SNAPSHOT_CACHE_LOCK:
+            _WORKSPACE_SNAPSHOT_CACHE[user_id] = (signature, {})
         return {}
 
     latest_updated_at = ""
@@ -521,7 +552,7 @@ def build_workspace_snapshot_from_entities(user_id: str, conn: sqlite3.Connectio
     expansion_state = settings.get("expansion_state") if isinstance(settings.get("expansion_state"), dict) else {}
     today_progress = settings.get("today_progress") if isinstance(settings.get("today_progress"), dict) else {}
 
-    return {
+    snapshot = {
         "xc_version": 2,
         "exportTime": latest_updated_at or utcnow().isoformat(),
         "baseUpdatedAt": latest_updated_at or "",
@@ -543,4 +574,7 @@ def build_workspace_snapshot_from_entities(user_id: str, conn: sqlite3.Connectio
         "todayDone": int(today_progress.get("done") or 0),
         "history": settings.get("history") or [],
     }
+    with _SNAPSHOT_CACHE_LOCK:
+        _WORKSPACE_SNAPSHOT_CACHE[user_id] = (signature, copy.deepcopy(snapshot))
+    return snapshot
 
