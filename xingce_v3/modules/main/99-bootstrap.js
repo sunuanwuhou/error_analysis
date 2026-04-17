@@ -63,6 +63,7 @@ function scheduleStartupNoteSync() {
 
 function scheduleWorkspaceWarmup() {
   if (typeof hasFullWorkspaceDataLoaded === 'function' && !hasFullWorkspaceDataLoaded()) return;
+  if (typeof getErrorEntries === 'function' && getErrorEntries().length >= 800) return;
   const run = () => {
     if (appView !== 'home') return;
     try {

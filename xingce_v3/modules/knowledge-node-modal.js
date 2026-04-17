@@ -1,4 +1,6 @@
 (function () {
+  var knowledgeNodeDropHint = { nodeId: null, mode: "" };
+
   function rerenderKnowledgeShell() {
     renderSidebar();
     renderAll();
@@ -341,7 +343,7 @@
   function endKnowledgeNodeDrag() {
     draggingKnowledgeNodeId = null;
     document.querySelectorAll(".knowledge-dragging").forEach(function (el) { el.classList.remove("knowledge-dragging"); });
-    document.querySelectorAll(".knowledge-drop-over").forEach(function (el) { el.classList.remove("knowledge-drop-over"); });
+    clearKnowledgeDropIndicators();
   }
 
   function startErrorDrag(errorId, event) {
@@ -355,26 +357,124 @@
 
   function endErrorDrag() {
     draggingErrorId = null;
-    document.querySelectorAll(".knowledge-drop-over").forEach(function (el) { el.classList.remove("knowledge-drop-over"); });
+    clearKnowledgeDropIndicators();
+  }
+
+  function clearKnowledgeDropIndicators() {
+    knowledgeNodeDropHint = { nodeId: null, mode: "" };
+    document.querySelectorAll(".knowledge-drop-over,.knowledge-drop-before,.knowledge-drop-after,.knowledge-drop-invalid").forEach(function (el) {
+      el.classList.remove("knowledge-drop-over");
+      el.classList.remove("knowledge-drop-before");
+      el.classList.remove("knowledge-drop-after");
+      el.classList.remove("knowledge-drop-invalid");
+    });
+  }
+
+  function resolveKnowledgeDropMode(event, el) {
+    if (!event || !el || typeof event.clientY !== "number") return "inside";
+    var rect = el.getBoundingClientRect();
+    if (!rect || !rect.height) return "inside";
+    var y = event.clientY - rect.top;
+    var edge = Math.max(7, Math.min(18, rect.height * 0.28));
+    if (y <= edge) return "before";
+    if (y >= rect.height - edge) return "after";
+    return "inside";
+  }
+
+  function canDropKnowledgeNodeToMode(fromNodeId, toNodeId, mode) {
+    if (!fromNodeId || !toNodeId) return false;
+    if (fromNodeId === toNodeId) return false;
+    if (isKnowledgeDescendant(fromNodeId, toNodeId)) return false;
+    return mode === "before" || mode === "after" || mode === "inside";
+  }
+
+  function moveKnowledgeNodeToSiblingPosition(nodeId, targetId, mode) {
+    if (mode !== "before" && mode !== "after") return false;
+    var node = getKnowledgeNodeById(nodeId);
+    var target = getKnowledgeNodeById(targetId);
+    if (!node || !target) return false;
+    if (node.id === target.id) return false;
+    if (isKnowledgeDescendant(node.id, target.id)) {
+      showToast("不能拖到自己的下级节点范围", "warning");
+      return false;
+    }
+
+    var oldParent = findKnowledgeParent(node.id);
+    var newParent = findKnowledgeParent(target.id);
+    var oldList = oldParent ? (oldParent.children || []) : getKnowledgeRootNodes();
+    var newList = newParent ? (newParent.children || []) : getKnowledgeRootNodes();
+    var oldIdx = oldList.findIndex(function (item) { return item.id === node.id; });
+    var targetIdx = newList.findIndex(function (item) { return item.id === target.id; });
+    if (oldIdx < 0 || targetIdx < 0) return false;
+
+    var movedNode = oldList.splice(oldIdx, 1)[0];
+    if (oldParent) oldParent.isLeaf = oldList.length === 0;
+    if (oldList === newList && oldIdx < targetIdx) targetIdx -= 1;
+
+    var insertIdx = mode === "before" ? targetIdx : targetIdx + 1;
+    newList.splice(insertIdx, 0, movedNode);
+    if (newParent) newParent.isLeaf = false;
+    movedNode.updatedAt = new Date().toISOString();
+
+    saveKnowledgeState();
+    expandKnowledgePath(target.id);
+    setCurrentKnowledgeNode(movedNode.id, { switchTab: false });
+    showToast(mode === "before" ? "已插入到目标节点上方" : "已插入到目标节点下方", "success");
+    return true;
   }
 
   function allowKnowledgeDrop(event, nodeId) {
     if (!draggingKnowledgeNodeId && !draggingErrorId) return;
     event.preventDefault();
     var el = document.querySelector("[data-knowledge-node-id=\"" + nodeId + "\"]");
-    if (el) el.classList.add("knowledge-drop-over");
+    if (!el) return;
+
+    clearKnowledgeDropIndicators();
+
+    if (draggingKnowledgeNodeId) {
+      var mode = resolveKnowledgeDropMode(event, el);
+      var allowed = canDropKnowledgeNodeToMode(draggingKnowledgeNodeId, nodeId, mode);
+      knowledgeNodeDropHint = { nodeId: nodeId, mode: mode };
+      if (!allowed) {
+        el.classList.add("knowledge-drop-invalid");
+        return;
+      }
+      if (mode === "before") {
+        el.classList.add("knowledge-drop-before");
+      } else if (mode === "after") {
+        el.classList.add("knowledge-drop-after");
+      } else {
+        el.classList.add("knowledge-drop-over");
+      }
+      return;
+    }
+
+    el.classList.add("knowledge-drop-over");
   }
 
   function leaveKnowledgeDrop(event) {
-    if (event && event.currentTarget) event.currentTarget.classList.remove("knowledge-drop-over");
+    if (!event || !event.currentTarget) return;
+    var current = event.currentTarget;
+    current.classList.remove("knowledge-drop-over");
+    current.classList.remove("knowledge-drop-before");
+    current.classList.remove("knowledge-drop-after");
+    current.classList.remove("knowledge-drop-invalid");
   }
 
   function handleKnowledgeDrop(nodeId, event) {
     event.preventDefault();
     event.stopPropagation();
-    document.querySelectorAll(".knowledge-drop-over").forEach(function (el) { el.classList.remove("knowledge-drop-over"); });
+    var hintedMode = (knowledgeNodeDropHint && knowledgeNodeDropHint.nodeId === nodeId && knowledgeNodeDropHint.mode)
+      ? knowledgeNodeDropHint.mode
+      : "";
+    clearKnowledgeDropIndicators();
     if (draggingKnowledgeNodeId) {
-      moveKnowledgeNodeToTarget(draggingKnowledgeNodeId, nodeId);
+      var mode = hintedMode || resolveKnowledgeDropMode(event, event.currentTarget);
+      if (mode === "before" || mode === "after") {
+        moveKnowledgeNodeToSiblingPosition(draggingKnowledgeNodeId, nodeId, mode);
+      } else {
+        moveKnowledgeNodeToTarget(draggingKnowledgeNodeId, nodeId);
+      }
       endKnowledgeNodeDrag();
       return;
     }
@@ -468,6 +568,7 @@
   window.submitKnowledgeNodeModal = submitKnowledgeNodeModal;
   window.renameKnowledgeNode = renameKnowledgeNode;
   window.moveKnowledgeNodeToTarget = moveKnowledgeNodeToTarget;
+  window.moveKnowledgeNodeToSiblingPosition = moveKnowledgeNodeToSiblingPosition;
   window.moveKnowledgeNode = moveKnowledgeNode;
   window.deleteKnowledgeNode = deleteKnowledgeNode;
   window.assignErrorToKnowledgeNode = assignErrorToKnowledgeNode;

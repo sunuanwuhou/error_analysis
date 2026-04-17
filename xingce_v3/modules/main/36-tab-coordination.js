@@ -258,7 +258,7 @@ function renderKnowledgeTreeHtml(nodes, depth) {
     const active = node.id === selectedKnowledgeNodeId;
     return `<div>
       <div class="note-panel-item-header${active ? ' active' : ''}" style="padding-left:${pad}px">
-        <button type="button" class="knowledge-tree-toggle${hasChildren ? '' : ' placeholder'}" onclick="toggleKnowledgeExpanded('${node.id}', event)" aria-label="${hasChildren ? 'Toggle' : 'No children'}">${hasChildren ? (expanded ? '▼' : '▶') : '•'}</button>
+        <button type="button" class="knowledge-tree-toggle${hasChildren ? '' : ' placeholder'}" onclick="event.stopPropagation();" ondblclick="handleKnowledgeNodeDoubleClick('${node.id}', event)" aria-label="${hasChildren ? 'Double click to expand/collapse' : 'No children'}">${hasChildren ? (expanded ? '▼' : '▶') : '•'}</button>
         <button type="button" class="note-panel-title" style="background:none;border:none;padding:0;cursor:pointer;text-align:left" onclick="selectKnowledgeBranch('${node.id}', event)">${escapeHtml(node.title)}</button>
         <span style="font-size:11px;color:#aaa;margin-left:auto">${count}题</span>
       </div>

@@ -1,8 +1,8 @@
 {
-  "built_at": "2026-04-16T23:43:06Z",
+  "built_at": "2026-04-17T14:29:57Z",
   "css_bundle": {
     "path": "xingce_v3\\styles\\legacy-app.bundle.css",
-    "sha256": "6619dd8bbecfab787f96b76723f90a38564db815be8401c7d8b4a0e80f434f82",
+    "sha256": "c06db6209abe8633a4faf26a167be8f6b146e9216235798cd46e0afed0879f91",
     "sources": [
       "styles/main/00-base-reset.css",
       "styles/main/01-sidebar.css",
@@ -48,7 +48,7 @@
   },
   "js_bundle": {
     "path": "xingce_v3\\modules\\legacy-app.bundle.js",
-    "sha256": "f68d66e89093b750161b97fc98e9181f5139e5789e3cecc2c17db61621319bc7",
+    "sha256": "e609802e2718115c9971135f239f855e0dc81e62a4162110a926eba622574ad1",
     "sources": [
       "modules/main/00-event-dispatcher.js",
       "modules/main/01-state.js",

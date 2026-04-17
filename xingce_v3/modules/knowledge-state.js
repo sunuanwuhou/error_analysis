@@ -389,8 +389,34 @@
     setCurrentKnowledgeNode(nodeId, { switchTab: true });
   }
 
+  var knowledgeNodeClickTimer = null;
+  function clearKnowledgeNodeClickTimer() {
+    if (!knowledgeNodeClickTimer) return;
+    clearTimeout(knowledgeNodeClickTimer);
+    knowledgeNodeClickTimer = null;
+  }
+
+  function handleKnowledgeNodeClick(nodeId, event) {
+    if (event) event.stopPropagation();
+    clearKnowledgeNodeClickTimer();
+    knowledgeNodeClickTimer = setTimeout(function () {
+      knowledgeNodeClickTimer = null;
+      selectKnowledgeNodeFromSidebar(nodeId);
+    }, 170);
+  }
+
+  function handleKnowledgeNodeDoubleClick(nodeId, event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    clearKnowledgeNodeClickTimer();
+    toggleKnowledgeExpanded(nodeId);
+  }
+
   function selectKnowledgeNodeFromSidebar(nodeId) {
-    setCurrentKnowledgeNode(nodeId, { switchTab: true });
+    // Single click should not auto-expand tree path.
+    setCurrentKnowledgeNode(nodeId, { switchTab: true, expandPath: false });
   }
 
   window.normalizeKnowledgeTitle = normalizeKnowledgeTitle;
@@ -430,5 +456,7 @@
   window.createKnowledgeLeafFromModal = createKnowledgeLeafFromModal;
   window.resolveKnowledgeNodeIdForSave = resolveKnowledgeNodeIdForSave;
   window.filterByKnowledgeNode = filterByKnowledgeNode;
+  window.handleKnowledgeNodeClick = handleKnowledgeNodeClick;
+  window.handleKnowledgeNodeDoubleClick = handleKnowledgeNodeDoubleClick;
   window.selectKnowledgeNodeFromSidebar = selectKnowledgeNodeFromSidebar;
 })();

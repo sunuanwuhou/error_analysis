@@ -760,8 +760,31 @@ function setCurrentKnowledgeNode(nodeId, opts) {
 function filterByKnowledgeNode(nodeId) {
   setCurrentKnowledgeNode(nodeId, { switchTab: true });
 }
+let knowledgeNodeClickTimer = null;
+function clearKnowledgeNodeClickTimer() {
+  if (!knowledgeNodeClickTimer) return;
+  clearTimeout(knowledgeNodeClickTimer);
+  knowledgeNodeClickTimer = null;
+}
+function handleKnowledgeNodeClick(nodeId, event) {
+  if (event) event.stopPropagation();
+  clearKnowledgeNodeClickTimer();
+  knowledgeNodeClickTimer = setTimeout(() => {
+    knowledgeNodeClickTimer = null;
+    selectKnowledgeNodeFromSidebar(nodeId);
+  }, 170);
+}
+function handleKnowledgeNodeDoubleClick(nodeId, event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  clearKnowledgeNodeClickTimer();
+  toggleKnowledgeExpanded(nodeId);
+}
 function selectKnowledgeNodeFromSidebar(nodeId) {
-  setCurrentKnowledgeNode(nodeId, { switchTab: true });
+  // Single click only selects node and opens note view; no implicit expand/collapse.
+  setCurrentKnowledgeNode(nodeId, { switchTab: true, expandPath: false });
 }
 function selectKnowledgeLeaf(nodeId) {
   if (!nodeId) return;

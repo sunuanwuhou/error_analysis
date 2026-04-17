@@ -44,9 +44,9 @@ function renderSidebarKnowledgeTreeV2(nodes, depth) {
       ${depth > 0 ? `<button class="note-action-btn" title="移动" onclick="event.stopPropagation();moveKnowledgeNode('${node.id}')">⇄</button>` : ''}
       <button class="note-action-btn" title="删除" onclick="event.stopPropagation();deleteKnowledgeNode('${node.id}')">✕</button>
     </span>`;
-    let html = `<div class="${cls} knowledge-tree-node ${active ? 'active is-active' : ''} ${hasChildren ? 'is-branch' : ''}" style="${extraStyle}" data-knowledge-node-id="${node.id}" draggable="true" ondragstart="startKnowledgeNodeDrag('${node.id}', event)" ondragend="endKnowledgeNodeDrag()" ondragover="allowKnowledgeDrop(event, '${node.id}')" ondragleave="leaveKnowledgeDrop(event)" ondrop="handleKnowledgeDrop('${node.id}', event)" onclick="selectKnowledgeNodeFromSidebar('${node.id}')">
+    let html = `<div class="${cls} knowledge-tree-node ${active ? 'active is-active' : ''} ${hasChildren ? 'is-branch' : ''}" style="${extraStyle}" data-knowledge-node-id="${node.id}" draggable="true" ondragstart="startKnowledgeNodeDrag('${node.id}', event)" ondragend="endKnowledgeNodeDrag()" ondragover="allowKnowledgeDrop(event, '${node.id}')" ondragleave="leaveKnowledgeDrop(event)" ondrop="handleKnowledgeDrop('${node.id}', event)" onclick="handleKnowledgeNodeClick('${node.id}', event)" ondblclick="handleKnowledgeNodeDoubleClick('${node.id}', event)">
       <span class="knowledge-tree-row">
-        <button type="button" class="knowledge-tree-toggle${hasChildren ? '' : ' placeholder'}" onclick="toggleKnowledgeExpanded('${node.id}', event)" aria-label="${hasChildren ? '切换展开' : '无下级'}">${marker}</button>
+        <button type="button" class="knowledge-tree-toggle${hasChildren ? '' : ' placeholder'}" onclick="event.stopPropagation();" ondblclick="handleKnowledgeNodeDoubleClick('${node.id}', event)" aria-label="${hasChildren ? '双击展开或收起' : '无下级'}">${marker}</button>
         <span class="knowledge-tree-title">${escapeHtml(node.title)}</span>
       </span>
       <span style="display:flex;align-items:center;gap:6px;flex-shrink:0">

@@ -12,9 +12,10 @@
       var expanded = hasChildren && ((typeof hasKnowledgeTreeSearch === "function" && hasKnowledgeTreeSearch()) || isKnowledgeExpanded(node));
       var marker = hasChildren ? (expanded ? "▾" : "▸") : "·";
       var countClass = count > 0 ? "knowledge-tree-count" : "knowledge-tree-count is-empty";
-      var html = "<div class=\"" + cls + " knowledge-tree-node " + (active ? "active is-active" : "") + " " + (matched ? "is-search-match" : "") + " " + (hasChildren ? "is-branch" : "") + "\" style=\"" + extraStyle + "\" data-knowledge-node-id=\"" + node.id + "\" draggable=\"true\" ondragstart=\"startKnowledgeNodeDrag('" + node.id + "', event)\" ondragend=\"endKnowledgeNodeDrag()\" ondragover=\"allowKnowledgeDrop(event, '" + node.id + "')\" ondragleave=\"leaveKnowledgeDrop(event)\" ondrop=\"handleKnowledgeDrop('" + node.id + "', event)\" onclick=\"selectKnowledgeNodeFromSidebar('" + node.id + "')\">" +
+      var html = "<div class=\"" + cls + " knowledge-tree-node " + (active ? "active is-active" : "") + " " + (matched ? "is-search-match" : "") + " " + (hasChildren ? "is-branch" : "") + "\" style=\"" + extraStyle + "\" data-knowledge-node-id=\"" + node.id + "\" draggable=\"true\" ondragstart=\"startKnowledgeNodeDrag('" + node.id + "', event)\" ondragend=\"endKnowledgeNodeDrag()\" ondragover=\"allowKnowledgeDrop(event, '" + node.id + "')\" ondragleave=\"leaveKnowledgeDrop(event)\" ondrop=\"handleKnowledgeDrop('" + node.id + "', event)\" onclick=\"handleKnowledgeNodeClick('" + node.id + "', event)\" ondblclick=\"handleKnowledgeNodeDoubleClick('" + node.id + "', event)\">" +
         "<span class=\"knowledge-tree-row\">" +
-          "<button type=\"button\" class=\"knowledge-tree-toggle" + (hasChildren ? "" : " placeholder") + "\" onclick=\"toggleKnowledgeExpanded('" + node.id + "', event)\" aria-label=\"" + (hasChildren ? "切换展开" : "无下级") + "\">" + marker + "</button>" +
+          "<button type=\"button\" class=\"knowledge-tree-toggle" + (hasChildren ? "" : " placeholder") + "\" onclick=\"event.stopPropagation();\" ondblclick=\"handleKnowledgeNodeDoubleClick('" + node.id + "', event)\" aria-label=\"" + (hasChildren ? "双击展开或收起" : "无下级") + "\">" + marker + "</button>" +
+          "<span class=\"knowledge-tree-drag-hint\" title=\"拖拽排序\">⋮⋮</span>" +
           "<span class=\"knowledge-tree-title\">" + escapeHtml(node.title) + "</span>" +
         "</span>" +
         "<span class=\"" + countClass + "\">" + count + "</span>" +

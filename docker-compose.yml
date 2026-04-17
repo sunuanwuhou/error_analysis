@@ -59,6 +59,7 @@ services:
     container_name: xingce_v3_tunnel
     depends_on:
       - app
+      - auth-gateway
     command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
     environment:
       TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
@@ -68,6 +69,14 @@ services:
     restart: unless-stopped
     profiles:
       - tunnel
+
+  auth-gateway:
+    image: alpine/socat:1.8.0.3
+    container_name: xingce_v3_auth_gateway
+    command: tcp-listen:8081,fork,reuseaddr tcp-connect:app:8000
+    depends_on:
+      - app
+    restart: unless-stopped
 
 volumes:
   postgres_data:

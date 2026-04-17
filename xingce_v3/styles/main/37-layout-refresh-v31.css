@@ -206,6 +206,7 @@ body.errors-top-collapsed #tabContentErrors .expand-btns{
 .knowledge-tree-node{
   margin:2px 6px;
   border-radius:12px;
+  position:relative;
   transition:background .15s ease, box-shadow .15s ease;
 }
 .knowledge-tree-node:hover{background:#faf7f2}

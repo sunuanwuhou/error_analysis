@@ -15,7 +15,11 @@ function isLikelyMobileLikeDevice() {
 function shouldDeferFullDataLoadOnStartup() {
   const summary = startupSummaryCache || {};
   const bytes = Number(summary.errorsBytes || 0);
-  return isLikelyMobileLikeDevice() && bytes >= 2 * 1024 * 1024;
+  const totalErrors = Number(summary.totalErrors || 0);
+  // On large datasets, eager JSON parse blocks the main thread during refresh.
+  // Always defer full-load and enter with lightweight summary first.
+  if (bytes >= 1024 * 1024 || totalErrors >= 1200) return true;
+  return isLikelyMobileLikeDevice() && bytes >= 512 * 1024;
 }
 async function loadStartupSummaryCacheFromDb() {
   try {
@@ -139,11 +143,15 @@ async function ensureFullWorkspaceDataLoaded() {
 }
 function scheduleDeferredFullWorkspaceLoad() {
   if (fullDataLoaded || fullDataLoading) return;
-  const run = () => { ensureFullWorkspaceDataLoaded(); };
+  const run = () => {
+    // Keep refresh smooth: only hydrate full workspace when user enters workspace.
+    if (typeof appView !== 'undefined' && appView !== 'workspace') return;
+    ensureFullWorkspaceDataLoaded();
+  };
   if (typeof window.requestIdleCallback === 'function') {
-    window.requestIdleCallback(run, { timeout: 2500 });
+    window.requestIdleCallback(run, { timeout: 5000 });
   } else {
-    setTimeout(run, 1200);
+    setTimeout(run, 3000);
   }
 }
 function reportLocalStorageFailure(error) {

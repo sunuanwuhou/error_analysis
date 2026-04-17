@@ -314,7 +314,7 @@ async function ensurePracticeWorkbenchLoaded(force) {
     _practiceWorkbenchState.error = err?.message || '工作台加载失败';
   } finally {
     _practiceWorkbenchState.loading = false;
-    if (typeof renderHomeDashboard === 'function') renderHomeDashboard();
+    if (typeof renderHomeDashboard === 'function' && appView === 'home') renderHomeDashboard();
   }
 }
 
@@ -326,6 +326,7 @@ function invalidatePracticeWorkbench() {
 }
 
 function renderHomeDashboard() {
+  if (typeof appView !== 'undefined' && appView !== 'home') return;
   const mount = document.getElementById('homeDashboardContent');
   if (!mount) return;
   if (!_practiceWorkbenchState.loaded && !_practiceWorkbenchState.loading) {

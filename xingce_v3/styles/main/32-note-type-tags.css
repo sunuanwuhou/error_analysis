@@ -37,6 +37,23 @@
 .knowledge-move-empty{padding:20px 12px;color:#999;font-size:12px;text-align:center}
 .knowledge-node-dialog-subtitle{font-size:12px;color:#666;line-height:1.7;margin-bottom:12px}
 .knowledge-tree-row{display:flex;align-items:center;gap:8px;min-width:0;flex:1}
+.knowledge-tree-drag-hint{
+  font-size:11px;
+  color:#b6a694;
+  letter-spacing:1px;
+  opacity:.55;
+  transition:opacity .15s ease,color .15s ease;
+  user-select:none;
+  cursor:grab;
+}
+.knowledge-tree-node:hover .knowledge-tree-drag-hint,
+.knowledge-tree-node.is-active .knowledge-tree-drag-hint{
+  opacity:.95;
+  color:#c1783d;
+}
+.knowledge-tree-node.knowledge-dragging .knowledge-tree-drag-hint{
+  cursor:grabbing;
+}
 .knowledge-tree-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
 .knowledge-tree-toggle{width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;border:none;background:transparent;color:#999;border-radius:4px;cursor:pointer;flex-shrink:0}
 .knowledge-tree-toggle:hover{background:#f5f5f5;color:#555}
