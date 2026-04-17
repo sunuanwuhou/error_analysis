@@ -1284,21 +1284,60 @@ function openKnowledgeForError(errorId) {
 function jumpToErrorInList(errorId) {
   const targetId = normalizeErrorId(errorId);
   const errorItem = findErrorById(targetId);
-  if (!errorItem) return;
-  openKnowledgeForError(targetId);
-  setTimeout(() => {
-    const selectors = [
-      `[data-error-id="${targetId}"]`,
-      `#card-${targetId}`
-    ];
+  if (!errorItem) {
+    showToast('未找到对应错题', 'warning');
+    return;
+  }
+  const openWorkspaceAndLocate = () => {
+    if (typeof switchAppView === 'function') switchAppView('workspace');
+    if (errorItem.noteNodeId) {
+      setCurrentKnowledgeNode(errorItem.noteNodeId, { switchTab: true });
+    } else if (typeof switchTab === 'function') {
+      switchTab('notes');
+    }
+    if (typeof renderAll === 'function') renderAll();
+    if (typeof renderNotesPanelRight === 'function') renderNotesPanelRight();
+    if (typeof renderNotesByType === 'function') renderNotesByType();
+    attemptLocate();
+  };
+  const selectors = [
+    `[data-error-id="${targetId}"]`,
+    `#card-${targetId}`,
+    `.notes-panel-right [data-error-id="${targetId}"]`,
+    `#noteErrorList [data-error-id="${targetId}"]`
+  ];
+  let attempts = 0;
+  const maxAttempts = 14;
+  const attemptLocate = () => {
+    attempts += 1;
     for (const selector of selectors) {
       const el = document.querySelector(selector);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        break;
+        if (typeof openEditModal === 'function') {
+          setTimeout(() => openEditModal(targetId), 80);
+        }
+        return;
       }
     }
-  }, 120);
+    if (attempts < maxAttempts) {
+      setTimeout(attemptLocate, 140);
+      return;
+    }
+    if (typeof openEditModal === 'function') {
+      openEditModal(targetId);
+      showToast('已定位到题目编辑面板', 'success');
+    } else {
+      showToast('未找到对应题卡，请稍后重试', 'warning');
+    }
+  };
+  if (typeof hasFullWorkspaceDataLoaded === 'function'
+      && typeof ensureFullWorkspaceDataLoaded === 'function'
+      && !hasFullWorkspaceDataLoaded()) {
+    ensureFullWorkspaceDataLoaded().finally(() => setTimeout(openWorkspaceAndLocate, 60));
+    return;
+  }
+  setTimeout(openWorkspaceAndLocate, 60);
 }
 function updateKnowledgeWorkspaceChrome(currentNode, linkedCount) {
   const titleEl = document.querySelector('.notes-header h2');
@@ -1308,6 +1347,7 @@ function updateKnowledgeWorkspaceChrome(currentNode, linkedCount) {
   if (actionWrap) {
     actionWrap.innerHTML = `
       <button class="btn btn-secondary" onclick="openGlobalSearchModal()">全局搜索</button>
+      <button class="btn btn-secondary" onclick="openImportModalForCurrentKnowledge()">导入错题</button>
       <button class="btn btn-secondary" onclick="setKnowledgeRelatedMode('all');renderNotesPanelRight()">关联错题</button>
       <button class="btn btn-secondary" onclick="addKnowledgeLeafUnderSelected()">+ 新建知识点</button>
       ${currentNode ? `<button class="btn btn-secondary" onclick="renameKnowledgeNode('${currentNode.id}')">重命名</button>` : ''}

@@ -874,15 +874,6 @@ function renderRelatedErrorMeta(label, value) {
   if (!text) return '';
   return `<div class="related-error-meta"><strong>${escapeHtml(label)}</strong>${escapeHtml(text)}</div>`;
 }
-function updateKnowledgeWorkspaceChrome(currentNode) {
-  const titleEl = document.querySelector('.notes-header h2');
-  if (titleEl) titleEl.textContent = currentNode ? currentNode.title : 'Study Notes';
-  const actionWrap = document.querySelector('.notes-header > div:last-child');
-  if (actionWrap && actionWrap.innerHTML.indexOf('Global Search') === -1) {
-    actionWrap.innerHTML = `<button class="btn btn-secondary" onclick="openGlobalSearchModal()">Global Search</button>` + actionWrap.innerHTML;
-  }
-}
-
 function setKnowledgeRelatedMode(mode) {
   knowledgeRelatedMode = mode === 'direct' ? 'direct' : 'all';
   renderKnowledgeNotesViewV2();

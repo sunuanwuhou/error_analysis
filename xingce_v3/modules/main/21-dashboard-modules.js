@@ -5,6 +5,17 @@ let _dashTrendDays = 7;
 let _practiceInsightsState = { loading: false, loaded: false, error: '', data: null };
 let _practiceWorkbenchState = { loading: false, loaded: false, error: '', data: null };
 let _recommendedNotesReturnEnabled = false;
+let _homeDashboardRenderQueued = false;
+let _practiceWorkbenchRetryAt = 0;
+
+function scheduleHomeDashboardRender() {
+  if (_homeDashboardRenderQueued) return;
+  _homeDashboardRenderQueued = true;
+  requestAnimationFrame(() => {
+    _homeDashboardRenderQueued = false;
+    scheduleHomeDashboardRender();
+  });
+}
 
 function getNoteReviewRecord(nodeId) {
   return (noteReviewTracking && noteReviewTracking[nodeId]) || {};
@@ -284,14 +295,22 @@ async function ensurePracticeInsightsLoaded(force) {
 async function ensurePracticeWorkbenchLoaded(force) {
   if (_practiceWorkbenchState.loading) return;
   if (_practiceWorkbenchState.loaded && !force) return;
+  if (!force && _practiceWorkbenchRetryAt && Date.now() < _practiceWorkbenchRetryAt) return;
+  if (typeof fetchJsonWithAuth !== 'function') {
+    _practiceWorkbenchState.error = 'API helper unavailable';
+    _practiceWorkbenchRetryAt = Date.now() + 15000;
+    return;
+  }
   _practiceWorkbenchState.loading = true;
   _practiceWorkbenchState.error = '';
   try {
     const data = await fetchJsonWithAuth('/api/practice/workbench?limit=6');
     _practiceWorkbenchState.data = data || null;
     _practiceWorkbenchState.loaded = !!(data && data.ok !== false);
+    _practiceWorkbenchRetryAt = 0;
   } catch (err) {
     console.warn('practice workbench load failed:', err);
+    _practiceWorkbenchRetryAt = Date.now() + 15000;
     _practiceWorkbenchState.error = err?.message || '工作台加载失败';
   } finally {
     _practiceWorkbenchState.loading = false;
@@ -310,7 +329,7 @@ function renderHomeDashboard() {
   const mount = document.getElementById('homeDashboardContent');
   if (!mount) return;
   if (!_practiceWorkbenchState.loaded && !_practiceWorkbenchState.loading) {
-    ensurePracticeWorkbenchLoaded();
+    ensurePracticeWorkbenchLoaded(false);
   }
 
   const hasFullData = typeof hasFullWorkspaceDataLoaded === 'function' ? hasFullWorkspaceDataLoaded() : true;

@@ -19,8 +19,16 @@ function syncMobileSidebarState() {
 async function refreshRuntimeBadge() {
   const badge = document.getElementById('runtimeBadge');
   if (!badge) return;
+  const controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  const timer = setTimeout(() => {
+    try { controller && controller.abort(); } catch (e) {}
+  }, 1200);
   try {
-    const res = await fetch('/api/runtime-info', { credentials: 'same-origin', cache: 'no-store' });
+    const res = await fetch('/api/runtime-info', {
+      credentials: 'same-origin',
+      cache: 'no-store',
+      signal: controller ? controller.signal : undefined
+    });
     if (!res.ok) throw new Error('runtime-info failed');
     const data = await res.json();
     const mode = String(data.mode || 'unknown');
@@ -33,7 +41,24 @@ async function refreshRuntimeBadge() {
     badge.dataset.mode = 'unknown';
     badge.textContent = 'Runtime: unknown';
     badge.title = 'Failed to load runtime info';
+  } finally {
+    clearTimeout(timer);
   }
+}
+
+function scheduleStartupNoteSync() {
+  const run = () => {
+    try {
+      if (typeof syncNotesWithErrors === 'function') syncNotesWithErrors();
+    } catch (error) {
+      console.warn('startup note sync failed', error);
+    }
+  };
+  if (typeof window.requestIdleCallback === 'function') {
+    window.requestIdleCallback(run, { timeout: 1500 });
+    return;
+  }
+  setTimeout(run, 300);
 }
 
 function scheduleWorkspaceWarmup() {
@@ -66,7 +91,6 @@ function scheduleWorkspaceWarmup() {
     ? shouldDeferFullDataLoadOnStartup()
     : false;
   await loadData({ deferErrors: deferErrorsOnStartup });
-  await refreshCloudSession();
   ensureKnowledgeState({ persist: true });
   if (typeof hasFullWorkspaceDataLoaded !== 'function' || hasFullWorkspaceDataLoaded()) {
     const allTypes = [...new Set(errors.map(e => e.type))];
@@ -76,9 +100,8 @@ function scheduleWorkspaceWarmup() {
       if (e.subSubtype) expMainSub2.add('s2:' + (e.type || '') + '::' + ((e.subtype) || '未分类') + '::' + e.subSubtype);
     });
     saveExpMain();
-    syncNotesWithErrors();
+    scheduleStartupNoteSync();
   }
-  await refreshRuntimeBadge();
   initUiChromePrefs();
   syncMobileSidebarState();
   window.addEventListener('resize', syncMobileSidebarState);
@@ -89,6 +112,8 @@ function scheduleWorkspaceWarmup() {
   if (typeof ensureCloudFullRestoreMenuButton === 'function') ensureCloudFullRestoreMenuButton();
   if (typeof syncAppViewChrome === 'function') syncAppViewChrome();
   if (typeof renderHomeDashboard === 'function') renderHomeDashboard();
+  refreshRuntimeBadge().catch(() => {});
+  refreshCloudSession().catch(() => {});
   if (deferErrorsOnStartup && typeof scheduleDeferredFullWorkspaceLoad === 'function') {
     scheduleDeferredFullWorkspaceLoad();
   }

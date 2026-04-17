@@ -49,3 +49,38 @@ function findErrorById(id) {
 function isMobileViewport() {
   return window.matchMedia('(max-width: 768px)').matches;
 }
+
+async function fetchJsonWithAuth(url, options) {
+  const opts = Object.assign({ credentials: 'include' }, options || {});
+  const headers = Object.assign({}, opts.headers || {});
+  const isFormData = typeof FormData !== 'undefined' && opts.body instanceof FormData;
+  const isPlainObjectBody = opts.body && typeof opts.body === 'object' && !isFormData && !(opts.body instanceof Blob) && !(opts.body instanceof ArrayBuffer);
+  if (isPlainObjectBody) {
+    opts.body = JSON.stringify(opts.body);
+    if (!headers['Content-Type'] && !headers['content-type']) {
+      headers['Content-Type'] = 'application/json';
+    }
+  }
+  opts.headers = headers;
+  const res = await fetch(url, opts);
+  const text = await res.text();
+  let data = {};
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      data = { ok: false, message: text };
+    }
+  }
+  if (!res.ok) {
+    const err = new Error((data && (data.detail || data.error || data.message)) || `HTTP ${res.status}`);
+    err.status = res.status;
+    err.payload = data;
+    throw err;
+  }
+  return data;
+}
+
+if (typeof window !== 'undefined') {
+  window.fetchJsonWithAuth = fetchJsonWithAuth;
+}
