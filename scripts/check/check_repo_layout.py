@@ -8,6 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 ALLOWED_DOCS_ROOT_FILES = {"README.md", "INDEX.md"}
+DOC_SUBDIRS = ("active", "ops", "roadmap", "archive")
 LEGACY_ALLOWED_NEW_PREFIXES = (
     "xingce_v3/modules/main/workspace/",
     "xingce_v3/modules/main/modal/",
@@ -87,6 +88,13 @@ def main() -> int:
                 "docs root contains unmanaged files (move to docs/active, docs/ops, docs/roadmap, or docs/archive):\n  - "
                 + "\n  - ".join(unexpected_docs_root)
             )
+        missing_doc_subdirs = [name for name in DOC_SUBDIRS if not (docs_root / name).is_dir()]
+        if missing_doc_subdirs:
+            errors.append("docs subdirectories missing:\n  - " + "\n  - ".join(missing_doc_subdirs))
+        for name in ("active", "ops", "roadmap"):
+            readme = docs_root / name / "README.md"
+            if not readme.exists():
+                errors.append(f"docs/{name}/README.md is missing")
 
     if args.changed:
         added_files = _list_added_files(args.changed)

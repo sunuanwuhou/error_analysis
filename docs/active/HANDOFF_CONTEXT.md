@@ -64,12 +64,22 @@ Based on the current repository scan:
 3. the workspace store normalizes standard error-entry fields such as question, answer, my answer, analysis, rootReason, errorReason, source info, and images
 4. export and transfer UI exists
 5. the legacy bundle still contains process-image editor and process-image preview related logic
+6. legacy frontend split is now consistently delivered as `home/workspace/modal/bootstrap` bundles with manifest tracking
+7. docs are normalized under `docs/active`, `docs/ops`, `docs/roadmap`, and `docs/archive`
 
 ### Confirmed mismatch or unfinished alignment
 
 1. the modern typed data model does not yet expose process image or canvas as a first-class normalized field
 2. the structured error analysis target is only partially represented in the modern schema
 3. repo docs previously reflected many historical directions but did not pin the current user priority strongly enough
+4. AppState takeover of high-frequency global chains is intentionally postponed in the current patch line
+
+## Build governance baseline (2026-04-18)
+
+To prevent split regression, release build now includes:
+
+1. duplicate function-name warnings (scoped to `modules/main/` split line)
+2. split bundle size threshold warnings (`home/workspace/modal/bootstrap`)
 
 ## Product direction for ongoing work
 

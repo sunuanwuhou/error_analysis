@@ -95,9 +95,9 @@ function buildNotesByTypeSubset(errorList) {
 function buildKnowledgeSubset(nodeIds) {
   const includeIds = new Set((nodeIds || []).filter(Boolean));
   if (!includeIds.size) return { knowledgeTree: null, knowledgeNotes: {} };
-  function walk(nodes) {
+  function walkKnowledgeSubsetNodes(nodes) {
     return (nodes || []).reduce((acc, node) => {
-      const children = walk(node.children || []);
+      const children = walkKnowledgeSubsetNodes(node.children || []);
       if (!includeIds.has(node.id) && !children.length) return acc;
       acc.push({
         ...cloneJson(node),
@@ -106,7 +106,7 @@ function buildKnowledgeSubset(nodeIds) {
       return acc;
     }, []);
   }
-  const tree = walk(getKnowledgeRootNodes());
+  const tree = walkKnowledgeSubsetNodes(getKnowledgeRootNodes());
   const notes = {};
   includeIds.forEach(id => {
     const node = getKnowledgeNodeById(id);

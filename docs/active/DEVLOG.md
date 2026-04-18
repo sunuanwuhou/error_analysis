@@ -56,3 +56,48 @@ Write the real project context into the repository so future work can continue f
 2. extend structured error analysis fields beyond rootReason and errorReason
 3. clean the repo-level escaped filename debt in `knowledge_sources/` and `converter/output/` before attempting a full-source release archive again
 4. verify export payload includes the richer fields after schema expansion
+
+## 2026-04-18 - legacy split hardening and doc layout normalization
+
+### Goal
+
+Continue the legacy split line without introducing AppState migration in this patch, and add build-time guardrails to prevent split regression.
+
+### Added
+
+1. `scripts/release/legacy_assets_config.py` now includes split governance config:
+   - `VIEW_BUNDLE_SIZE_WARNINGS`
+   - `DUPLICATE_FUNCTION_NAME_ALLOWLIST`
+   - `DUPLICATE_FUNCTION_SCAN_PREFIXES`
+2. docs structure normalization:
+   - `docs/INDEX.md`
+   - `docs/active/README.md`
+   - `docs/ops/README.md`
+   - `docs/roadmap/README.md`
+
+### Updated
+
+1. `scripts/release/build_legacy_assets.py`
+   - added duplicate function-name warning scanner
+   - added split bundle size threshold warnings
+2. split assignment in `scripts/release/legacy_assets_config.py`
+   - moved quiz-heavy and modal-interaction modules out of `home` into `modal`
+3. continued tree/module split files under:
+   - `xingce_v3/modules/main/workspace/`
+   - `xingce_v3/modules/main/modal/`
+   - `xingce_v3/modules/main/knowledge/`
+4. repository layout checker and doc links to match the new `docs/{active,ops,roadmap,archive}` structure
+
+### Result snapshot
+
+1. `legacy-app.home.bundle.js`: `263595 B` (`6109` lines)
+2. `legacy-app.workspace.bundle.js`: `150363 B` (`3748` lines)
+3. `legacy-app.modal.bundle.js`: `209709 B` (`4591` lines)
+4. `legacy-app.bootstrap.bundle.js`: `7799 B` (`215` lines)
+
+### Self-test summary
+
+1. `python3 -m py_compile scripts/release/build_legacy_assets.py scripts/release/legacy_assets_config.py`
+2. `python3 scripts/release/build_legacy_assets.py`
+3. `python3 scripts/check_legacy_entry.py`
+4. `python3 scripts/check_repo_layout.py`
