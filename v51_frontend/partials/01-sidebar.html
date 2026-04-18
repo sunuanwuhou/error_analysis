@@ -15,6 +15,7 @@
 <button class="btn btn-secondary" data-onclick="toggleMoreMenu(event)">更多</button>
 <div class="more-menu-panel" id="moreMenuPanel">
 <button class="btn btn-secondary" data-onclick="closeMoreMenu();openQuickImportModal()">导入错题</button>
+<button class="btn btn-secondary" data-onclick="closeMoreMenu();startRandomNoteReview()">随机笔记</button>
 <button class="btn btn-secondary" data-onclick="closeMoreMenu();openExportModal()">导出</button>
 <button class="btn btn-secondary" data-onclick="closeMoreMenu();saveCloudFullBackupFromMore()">从本地到云端全量</button>
 <button class="btn btn-secondary" data-onclick="closeMoreMenu();loadCloudFullBackupFromMore()">全量从云端同步（覆盖本地）</button>
@@ -58,6 +59,9 @@
 <button class="quiz-btn" data-onclick="startFullPractice()" id="fullPracticeBtn" style="margin-top:6px;background:linear-gradient(135deg,#3498db,#2471a3)">
 <span>全量练习</span>
 <span class="badge" id="fullPracticeBadge">0</span>
+</button>
+<button class="quiz-btn" data-onclick="startRandomNoteReview()" id="randomNoteBtn" style="margin-top:6px;background:linear-gradient(135deg,#16a34a,#15803d)">
+<span>随机笔记</span>
 </button>
 <div class="today-progress">
 <div class="prog-label"><span>今日进度</span><span id="progText">0/0</span></div>
