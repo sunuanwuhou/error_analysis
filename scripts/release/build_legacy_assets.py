@@ -62,7 +62,13 @@ def file_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def build_manifest(css_bundle_path: Path, js_bundle_path: Path, view_bundle_paths: dict[str, Path]) -> dict[str, object]:
+def build_manifest(
+    css_bundle_path: Path,
+    js_bundle_path: Path,
+    view_bundle_paths: dict[str, Path],
+    partials_bundle_path: Path,
+    deferred_partials_bundle_path: Path,
+) -> dict[str, object]:
     manifest = {
         'built_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
         'css_bundle': {
@@ -74,6 +80,16 @@ def build_manifest(css_bundle_path: Path, js_bundle_path: Path, view_bundle_path
             'path': str(js_bundle_path.relative_to(ROOT)),
             'sha256': file_sha256(js_bundle_path),
             'sources': JS_SOURCES,
+        },
+        'v51_partials': {
+            'core': {
+                'path': str(partials_bundle_path.relative_to(ROOT)),
+                'sha256': file_sha256(partials_bundle_path),
+            },
+            'deferred': {
+                'path': str(deferred_partials_bundle_path.relative_to(ROOT)),
+                'sha256': file_sha256(deferred_partials_bundle_path),
+            },
         },
     }
     manifest['js_view_bundles'] = {
@@ -314,7 +330,20 @@ def main() -> None:
         view_bundle_paths[name].write_text(bundle_contents(source_list, '/*'), encoding='utf-8')
     partials_bundle_path.write_text(build_partials_bundle(CORE_PARTIALS), encoding='utf-8')
     deferred_partials_bundle_path.write_text(build_partials_bundle(deferred_partials), encoding='utf-8')
-    manifest_path.write_text(json.dumps(build_manifest(css_bundle_path, js_bundle_path, view_bundle_paths), ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    manifest_path.write_text(
+        json.dumps(
+            build_manifest(
+                css_bundle_path,
+                js_bundle_path,
+                view_bundle_paths,
+                partials_bundle_path,
+                deferred_partials_bundle_path,
+            ),
+            ensure_ascii=False,
+            indent=2,
+        ) + '\n',
+        encoding='utf-8',
+    )
 
     duplicate_warnings = report_duplicate_function_warnings()
     size_warnings = report_split_bundle_size_warnings(view_bundle_paths)

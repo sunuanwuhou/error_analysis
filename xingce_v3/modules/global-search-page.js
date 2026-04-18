@@ -214,6 +214,17 @@ function buildImagePills(item) {
   return pills;
 }
 
+function formatUpdatedAtLabel(value) {
+  if (!value) return '';
+  const d = new Date(String(value));
+  if (Number.isNaN(d.getTime())) return String(value);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${mm}-${dd} ${hh}:${min}`;
+}
+
 function renderChips(containerId, options, currentValue, type) {
   const container = document.getElementById(containerId);
   if (!container) return;
@@ -261,6 +272,7 @@ function renderResultGroup(title, items, terms) {
   if (!items.length) return '';
   const cards = items.map(item => {
     const imagePills = buildImagePills(item).map(label => `<span class="pill image">${escapeHtml(label)}</span>`).join('');
+    const updatedAtLabel = formatUpdatedAtLabel(item.updatedAt);
     const snippetText = item.kind === 'question'
       ? (item.analysis || item.options || item.question)
       : item.content;
@@ -269,6 +281,7 @@ function renderResultGroup(title, items, terms) {
         <div class="result-meta">
           <span class="pill kind-${escapeHtml(item.kind)}">${item.kind === 'question' ? '题目' : '笔记'}</span>
           ${imagePills}
+          ${updatedAtLabel ? `<span class="pill">更新 ${escapeHtml(updatedAtLabel)}</span>` : ''}
           ${item.kind === 'note' ? `<span class="pill">关联 ${Number(item.linkedCount || 0)} 题</span>` : ''}
         </div>
         <div class="result-title">${item.kind === 'question' ? highlightText(item.question || `题目 #${item.id}`, terms) : highlightText(item.title || '未命名笔记', terms)}</div>

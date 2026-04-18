@@ -505,7 +505,6 @@ const RANDOM_NOTE_RECENT_VIEW_DOWN_WEIGHT = 0.2;
 const RANDOM_NOTE_RECENT_VIEW_DAYS = 1;
 let randomNoteReviewQueue = [];
 let randomNoteReviewIndex = -1;
-let randomNoteReviewSessionSeen = new Set();
 
 function _toValidDate(value) {
   const d = new Date(String(value || ''));
@@ -644,6 +643,7 @@ function _markRandomNoteViewed(nodeId) {
 function _openRandomNoteInWorkspace(nodeId) {
   if (!nodeId) return;
   closeModal('randomNoteReviewModal');
+  if (typeof noteEditing !== 'undefined') noteEditing = false;
   if (typeof switchAppView === 'function') switchAppView('workspace');
   let attempts = 0;
   const locate = () => {
@@ -791,10 +791,7 @@ function renderRandomNoteReview() {
     return;
   }
   const item = randomNoteReviewQueue[randomNoteReviewIndex];
-  if (!randomNoteReviewSessionSeen.has(item.nodeId)) {
-    randomNoteReviewSessionSeen.add(item.nodeId);
-    _markRandomNoteViewed(item.nodeId);
-  }
+  _markRandomNoteViewed(item.nodeId);
   const liveNode = (typeof getKnowledgeNodeById === 'function') ? getKnowledgeNodeById(item.nodeId) : null;
   const liveTracking = (noteReviewTracking && noteReviewTracking[item.nodeId]) || {};
   const liveUpdatedAt = String((liveNode && liveNode.updatedAt) || item.updatedAt || '');
@@ -803,9 +800,19 @@ function renderRandomNoteReview() {
   const liveViewGapDays = _daysSince(liveLastViewedAt, null);
   const pathTitles = (typeof getKnowledgePathTitles === 'function') ? getKnowledgePathTitles(item.nodeId) : [item.title];
   const pathText = Array.isArray(pathTitles) ? pathTitles.join(' > ') : String(item.title || '');
-  const contentHtml = (typeof renderMd === 'function')
-    ? renderMd(item.contentMd, { anchorPrefix: `rnd-note-${escapeAttrStr(item.nodeId)}` })
+  const noteAnchorPrefix = (typeof getKnowledgeNoteAnchorPrefix === 'function')
+    ? getKnowledgeNoteAnchorPrefix(item.nodeId)
+    : `rnd-note-${escapeAttrStr(item.nodeId)}`;
+  const noteHeadings = (typeof extractMdHeadings === 'function') ? extractMdHeadings(item.contentMd) : [];
+  const noteTocHtml = (typeof renderFloatingHeadingPanel === 'function')
+    ? renderFloatingHeadingPanel(noteHeadings, noteAnchorPrefix)
+    : '';
+  const notePreviewHtml = (typeof renderMd === 'function')
+    ? renderMd(item.contentMd, { anchorPrefix: noteAnchorPrefix })
     : `<pre style="white-space:pre-wrap;line-height:1.8">${escapeHtml(item.contentMd)}</pre>`;
+  const contentHtml = (typeof renderNotePreviewLayout === 'function')
+    ? renderNotePreviewLayout(notePreviewHtml, noteTocHtml)
+    : notePreviewHtml;
   const editGapText = Number.isFinite(liveEditGapDays) ? _formatGapDays(liveEditGapDays) : '未知';
   const viewGapText = liveLastViewedAt
     ? (Number.isFinite(liveViewGapDays) ? _formatGapDays(liveViewGapDays) : '未知')
@@ -825,7 +832,7 @@ function renderRandomNoteReview() {
       <h3 style="margin-bottom:6px">${escapeHtml(item.title)}</h3>
       <div style="font-size:12px;color:#888;line-height:1.7">${escapeHtml(pathText)}</div>
     </div>
-    <div style="border:1px solid #e5e7eb;border-radius:12px;background:#fff;max-height:48vh;overflow:auto;padding:14px;line-height:1.9;font-size:14px">
+    <div class="note-preview-scroll notes-content" style="border:1px solid #e5e7eb;border-radius:12px;background:#fff;max-height:48vh;overflow:auto;padding:14px;line-height:1.9;font-size:14px">
       ${contentHtml}
     </div>
     <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
@@ -846,7 +853,6 @@ function startRandomNoteReview() {
   }
   randomNoteReviewQueue = queue;
   randomNoteReviewIndex = 0;
-  randomNoteReviewSessionSeen = new Set();
   ensureRandomNoteReviewModal();
   openModal('randomNoteReviewModal');
   renderRandomNoteReview();
@@ -873,7 +879,6 @@ function randomNoteReviewShuffle() {
   }
   randomNoteReviewQueue = nextQueue;
   randomNoteReviewIndex = 0;
-  randomNoteReviewSessionSeen = new Set();
   renderRandomNoteReview();
 }
 

@@ -23,8 +23,15 @@ async function loadLegacyManifest() {
 }
 
 async function injectPartials() {
-  await loadLegacyManifest();
-  const html = await loadText(withVersion('/v51-static/partials.bundle.html'));
+  const manifest = await loadLegacyManifest();
+  const partialsVersion = String(
+    manifest?.v51_partials?.core?.sha256
+    || manifest?.v51_partials?.deferred?.sha256
+    || legacyAssetVersion
+    || manifest?.built_at
+    || Date.now()
+  );
+  const html = await loadText(withVersion('/v51-static/partials.bundle.html', partialsVersion));
   const mount = document.createElement('div');
   mount.id = 'v53ShellMount';
   mount.innerHTML = html;
@@ -68,8 +75,15 @@ function ensureRandomNoteEntryPresence() {
 async function ensureDeferredPartialsLoaded() {
   if (deferredPartialsPromise) return deferredPartialsPromise;
   deferredPartialsPromise = (async () => {
-    await loadLegacyManifest();
-    const html = await loadText(withVersion('/v51-static/deferred-partials.bundle.html'));
+    const manifest = await loadLegacyManifest();
+    const partialsVersion = String(
+      manifest?.v51_partials?.deferred?.sha256
+      || manifest?.v51_partials?.core?.sha256
+      || legacyAssetVersion
+      || manifest?.built_at
+      || Date.now()
+    );
+    const html = await loadText(withVersion('/v51-static/deferred-partials.bundle.html', partialsVersion));
     const mount = document.createElement('div');
     mount.innerHTML = html;
     while (mount.firstChild) {
