@@ -89,6 +89,7 @@ def build_manifest(css_bundle_path: Path, js_bundle_path: Path, view_bundle_path
 
 _FUNC_DECL_RE = re.compile(r'^\s*function\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(', re.MULTILINE)
 _FUNC_EXPR_RE = re.compile(r'^\s*(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*function\b', re.MULTILINE)
+_AWAIT_TOKEN_RE = re.compile(r'\bawait\b')
 
 
 def collect_duplicate_function_names(js_sources: list[str]) -> dict[str, set[str]]:
@@ -165,6 +166,131 @@ def report_duplicate_function_warnings() -> list[str]:
     return lines
 
 
+def _scan_top_level_await_positions(path: Path) -> list[tuple[int, str]]:
+    text = path.read_text(encoding='utf-8')
+    positions: list[tuple[int, str]] = []
+    brace_depth = 0
+    in_block_comment = False
+    in_single_quote = False
+    in_double_quote = False
+    in_template = False
+    escape = False
+    cleaned_line_chars: list[str] = []
+    line_no = 1
+    line_text = ''
+    i = 0
+    n = len(text)
+
+    while i < n:
+        ch = text[i]
+        nxt = text[i + 1] if i + 1 < n else ''
+        line_text += ch
+
+        if ch == '\n':
+            cleaned_line = ''.join(cleaned_line_chars)
+            if brace_depth == 0 and _AWAIT_TOKEN_RE.search(cleaned_line):
+                positions.append((line_no, line_text.rstrip('\n')))
+            cleaned_line_chars = []
+            line_text = ''
+            line_no += 1
+            i += 1
+            continue
+
+        if in_block_comment:
+            if ch == '*' and nxt == '/':
+                in_block_comment = False
+                i += 2
+                line_text += nxt
+                continue
+            i += 1
+            continue
+
+        if in_single_quote:
+            if escape:
+                escape = False
+            elif ch == '\\':
+                escape = True
+            elif ch == "'":
+                in_single_quote = False
+            i += 1
+            continue
+
+        if in_double_quote:
+            if escape:
+                escape = False
+            elif ch == '\\':
+                escape = True
+            elif ch == '"':
+                in_double_quote = False
+            i += 1
+            continue
+
+        if in_template:
+            if escape:
+                escape = False
+            elif ch == '\\':
+                escape = True
+            elif ch == '`':
+                in_template = False
+            i += 1
+            continue
+
+        if ch == '/' and nxt == '/':
+            # line comment: skip to newline
+            while i < n and text[i] != '\n':
+                line_text += text[i]
+                i += 1
+            continue
+
+        if ch == '/' and nxt == '*':
+            in_block_comment = True
+            i += 2
+            line_text += nxt
+            continue
+
+        if ch == "'":
+            in_single_quote = True
+            i += 1
+            continue
+        if ch == '"':
+            in_double_quote = True
+            i += 1
+            continue
+        if ch == '`':
+            in_template = True
+            i += 1
+            continue
+
+        if ch == '{':
+            brace_depth += 1
+        elif ch == '}':
+            brace_depth = max(0, brace_depth - 1)
+
+        cleaned_line_chars.append(ch)
+        i += 1
+
+    if cleaned_line_chars:
+        cleaned_line = ''.join(cleaned_line_chars)
+        if brace_depth == 0 and _AWAIT_TOKEN_RE.search(cleaned_line):
+            positions.append((line_no, line_text))
+    return positions
+
+
+def check_top_level_await(js_sources: list[str]) -> list[str]:
+    issues: list[str] = []
+    for rel in js_sources:
+        if not rel.endswith('.js'):
+            continue
+        source_path = XINGCE / rel
+        if not source_path.exists():
+            continue
+        positions = _scan_top_level_await_positions(source_path)
+        for line_no, raw_line in positions:
+            snippet = raw_line.strip()
+            issues.append(f'{rel}:{line_no}: top-level await detected: {snippet}')
+    return issues
+
+
 def main() -> None:
     css_bundle_path = XINGCE / 'styles' / 'legacy-app.bundle.css'
     js_bundle_path = XINGCE / 'modules' / 'legacy-app.bundle.js'
@@ -177,6 +303,10 @@ def main() -> None:
     deferred_partials_bundle_path = V51_FRONTEND / 'deferred-partials.bundle.html'
     partials_manifest = load_v51_partials_manifest()
     deferred_partials = [name for name in partials_manifest if name not in CORE_PARTIALS]
+    top_level_await_issues = check_top_level_await(JS_SOURCES)
+    if top_level_await_issues:
+        issue_lines = '\n  - '.join(top_level_await_issues)
+        raise RuntimeError(f'top-level await is forbidden in legacy bundles:\n  - {issue_lines}')
 
     css_bundle_path.write_text(bundle_contents(CSS_SOURCES, '/*'), encoding='utf-8')
     js_bundle_path.write_text(bundle_contents(JS_SOURCES, '/*'), encoding='utf-8')

@@ -73,6 +73,51 @@ function getTargetDurationSeconds(errorItem){
   return 0;
 }
 
+function renderCardPracticeMetaChips(errorItem, summary){
+  const practiceSummary = summary || getPracticeSummaryForError(errorItem);
+  let practiceSummaryMeta = renderPracticeSummaryMeta(practiceSummary);
+  const wrongCount = getErrorWrongCount(errorItem, practiceSummary);
+  const recentDurationSec = getRecentDurationSeconds(errorItem, practiceSummary);
+  const targetDurationSec = getTargetDurationSeconds(errorItem);
+  if(!practiceSummaryMeta && wrongCount > 0) practiceSummaryMeta = `Wrong x${wrongCount}`;
+  const chips = [];
+  chips.push(`<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#fff1f2;color:#be123c;border:1px solid #fecdd3">错 ${wrongCount} 次</span>`);
+  if (recentDurationSec > 0) {
+    chips.push(`<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0">最近用时 ${escapeHtml(formatDurationSecondsLabel(recentDurationSec) || `${Math.round(recentDurationSec)}秒`)}</span>`);
+  }
+  if (targetDurationSec > 0) {
+    chips.push(`<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe">预计用时 ${escapeHtml(formatDurationSecondsLabel(targetDurationSec) || `${Math.round(targetDurationSec)}秒`)}</span>`);
+  }
+  if (practiceSummaryMeta) {
+    chips.push(`<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#ecfeff;color:#155e75;border:1px solid #a5f3fc">${escapeHtml(practiceSummaryMeta)}</span>`);
+  }
+  return chips.join('');
+}
+
+function refreshRenderedPracticeSummaryUi(errorIds){
+  const ids = Array.from(new Set((errorIds || []).map(id => normalizeErrorId(id)).filter(Boolean)));
+  if(!ids.length) return 0;
+  let touched = 0;
+  ids.forEach(id => {
+    const errorItem = findErrorById(id);
+    if (!errorItem) return;
+    const card = document.getElementById(`card-${id}`);
+    if (!card) return;
+    const practiceMetaHost = card.querySelector('.card-practice-meta');
+    if (practiceMetaHost) {
+      practiceMetaHost.innerHTML = renderCardPracticeMetaChips(errorItem);
+      touched += 1;
+    }
+    const lowerPanel = card.querySelector('.card-lower-panel');
+    if (lowerPanel && revealed.has(id)) {
+      lowerPanel.innerHTML = buildCardLowerPanelHtml(errorItem, searchKw);
+      lowerPanel.dataset.hydrated = 'true';
+      touched += 1;
+    }
+  });
+  return touched;
+}
+
 function renderPracticeSummaryBlock(summary){
   const metaLine = renderPracticeSummaryMeta(summary);
   if(!metaLine) return '';
@@ -92,6 +137,18 @@ function renderPracticeSummaryBlock(summary){
   </div>`;
 }
 
+const practiceSummaryPendingIds = new Set();
+let practiceSummaryBatchTimer = 0;
+
+function flushPracticeSummaryBatchLoad(){
+  practiceSummaryBatchTimer = 0;
+  if (practiceAttemptSummaryLoading) return;
+  const ids = Array.from(practiceSummaryPendingIds);
+  practiceSummaryPendingIds.clear();
+  if (!ids.length) return;
+  fetchPracticeAttemptSummariesForErrors(ids);
+}
+
 async function fetchPracticeAttemptSummariesForErrors(errorIds){
   const ids = Array.from(new Set((errorIds || []).map(id => normalizeErrorId(id)).filter(Boolean)));
   if(!ids.length || typeof fetchJsonWithAuth !== 'function') return;
@@ -102,19 +159,28 @@ async function fetchPracticeAttemptSummariesForErrors(errorIds){
   try{
     const data = await fetchJsonWithAuth(`/api/practice/attempts/summary?error_ids=${encodeURIComponent(requestKey)}`);
     const next = (data && data.items && typeof data.items === 'object') ? data.items : {};
-    let changed = false;
+    const changedIds = [];
     ids.forEach(id => {
       const prevRaw = Object.prototype.hasOwnProperty.call(practiceAttemptSummaryByErrorId, id) ? practiceAttemptSummaryByErrorId[id] : null;
       const nextRaw = Object.prototype.hasOwnProperty.call(next, id) ? next[id] : null;
-      if(JSON.stringify(prevRaw) !== JSON.stringify(nextRaw)) changed = true;
+      if(JSON.stringify(prevRaw) !== JSON.stringify(nextRaw)) changedIds.push(id);
       if(nextRaw) practiceAttemptSummaryByErrorId[id] = nextRaw;
       else practiceAttemptSummaryByErrorId[id] = null;
     });
-    if(changed && typeof renderAll === 'function') renderAll();
+    if(changedIds.length){
+      const patched = refreshRenderedPracticeSummaryUi(changedIds);
+      if (!patched) {
+        if (typeof requestWorkspaceRender === 'function') requestWorkspaceRender({ sidebar:false });
+        else if (typeof renderAll === 'function') renderAll();
+      }
+    }
   }catch(err){
     console.warn('load practice attempt summaries failed', err);
   }finally{
     if(practiceAttemptSummaryRequestKey === requestKey) practiceAttemptSummaryLoading = false;
+    if (!practiceAttemptSummaryLoading && practiceSummaryPendingIds.size > 0 && !practiceSummaryBatchTimer) {
+      practiceSummaryBatchTimer = setTimeout(flushPracticeSummaryBatchLoad, 40);
+    }
   }
 }
 
@@ -123,13 +189,18 @@ function queueVisiblePracticeSummaryLoad(list){
   if(!ids.length) return;
   const missing = ids.filter(id => !Object.prototype.hasOwnProperty.call(practiceAttemptSummaryByErrorId, id));
   if(!missing.length) return;
-  fetchPracticeAttemptSummariesForErrors(ids);
+  missing.forEach(id => practiceSummaryPendingIds.add(id));
+  if (practiceSummaryBatchTimer) return;
+  practiceSummaryBatchTimer = setTimeout(flushPracticeSummaryBatchLoad, 80);
 }
 
 function invalidatePracticeAttemptSummaries(errorIds){
   const ids = Array.from(new Set((errorIds || []).map(id => normalizeErrorId(id)).filter(Boolean)));
   if(!ids.length) return;
-  ids.forEach(id => { delete practiceAttemptSummaryByErrorId[id]; });
+  ids.forEach(id => {
+    delete practiceAttemptSummaryByErrorId[id];
+    practiceSummaryPendingIds.delete(id);
+  });
   practiceAttemptSummaryRequestKey = '';
 }
 
@@ -282,11 +353,6 @@ function renderCard(e){
   const idLit = idArg(e.id);
   const noteNodeLit = noteNodeArg(e.noteNodeId || '');
   const practiceSummary = getPracticeSummaryForError(e);
-  let practiceSummaryMeta = renderPracticeSummaryMeta(practiceSummary);
-  const wrongCount = getErrorWrongCount(e, practiceSummary);
-  const recentDurationSec = getRecentDurationSeconds(e, practiceSummary);
-  const targetDurationSec = getTargetDurationSeconds(e);
-  if(!practiceSummaryMeta && wrongCount > 0) practiceSummaryMeta = `Wrong x${wrongCount}`;
   const statusLabel = getErrorStatusLabel(e.status);
   const problemTypeLabel = problemTypeLabelMap[e.problemType] || 'Observe';
   const knowledgePathText = typeof getErrorKnowledgePathText === 'function'
@@ -309,10 +375,7 @@ function renderCard(e){
       ${starHtml}
       ${e.problemType && e.problemType !== 'unknown' ? `<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe">${escapeHtml(problemTypeLabel)}</span>` : ''}
       <span style="font-size:11px;padding:1px 7px;border-radius:8px;background:${stageMeta.bg};color:${stageMeta.color};border:1px solid ${stageMeta.border}">Stage ${escapeHtml(stageMeta.shortLabel)}</span>
-      <span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#fff1f2;color:#be123c;border:1px solid #fecdd3">错 ${wrongCount} 次</span>
-      ${recentDurationSec>0?`<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0">最近用时 ${escapeHtml(formatDurationSecondsLabel(recentDurationSec) || `${Math.round(recentDurationSec)}秒`)}</span>`:''}
-      ${targetDurationSec>0?`<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe">预计用时 ${escapeHtml(formatDurationSecondsLabel(targetDurationSec) || `${Math.round(targetDurationSec)}秒`)}</span>`:''}
-      ${practiceSummaryMeta?`<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#ecfeff;color:#155e75;border:1px solid #a5f3fc">${escapeHtml(practiceSummaryMeta)}</span>`:''}
+      <span class="card-practice-meta">${renderCardPracticeMetaChips(e, practiceSummary)}</span>
       <span class="card-drag-handle" title="drag to change node" draggable="true" ondragstart='startErrorDrag(${idLit}, event)' ondragend="endErrorDrag()" onclick="event.preventDefault();event.stopPropagation()">⋮⋯ Move</span>
     </div>
     <div class="card-question-surface">
@@ -362,7 +425,8 @@ function revealCard(id){
     if (e) highlightNoteChapter(e.type, e.subtype, e.subSubtype);
   }
   saveReveal();
-  renderAll();
+  if (typeof requestWorkspaceRender === 'function') requestWorkspaceRender({ sidebar:false });
+  else renderAll();
 }
 
 function collapseCard(id){
@@ -371,6 +435,7 @@ function collapseCard(id){
   if(ta) saveCardNote(targetId,ta.value);
   revealed.delete(targetId);
   saveReveal();
-  renderAll();
+  if (typeof requestWorkspaceRender === 'function') requestWorkspaceRender({ sidebar:false });
+  else renderAll();
 }
 

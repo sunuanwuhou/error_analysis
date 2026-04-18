@@ -14,7 +14,6 @@ INLINE_HANDLER_ATTRS = {'onclick', 'oninput', 'onchange', 'onkeydown', 'onsubmit
 SUPPORTED_DECLARATIVE_EVENTS = {'data-onclick', 'data-oninput', 'data-onchange', 'data-onkeydown'}
 REQUIRED_JS_BUNDLES = [
     '/assets/modules/legacy-app.home.bundle.js',
-    '/assets/modules/legacy-app.workspace.bundle.js',
     '/assets/modules/legacy-app.bootstrap.bundle.js',
 ]
 

@@ -40,6 +40,24 @@ function syncAppViewChrome() {
   if (sidebarWorkspaceBtn) sidebarWorkspaceBtn.classList.toggle('active', appView === 'workspace');
 }
 
+function isWorkspaceRuntimeReady() {
+  return typeof renderAll === 'function'
+    && typeof renderNotesByType === 'function'
+    && typeof renderSidebar === 'function';
+}
+
+function ensureWorkspaceRuntimeReady() {
+  if (isWorkspaceRuntimeReady()) return Promise.resolve(true);
+  const loader = (typeof window !== 'undefined') ? window.ensureLegacyWorkspaceBundleLoaded : null;
+  if (typeof loader !== 'function') return Promise.resolve(false);
+  return loader()
+    .then(() => isWorkspaceRuntimeReady())
+    .catch((error) => {
+      console.warn('workspace bundle load failed', error);
+      return false;
+    });
+}
+
 function switchAppView(nextView, opts) {
   appView = nextView === 'workspace' ? 'workspace' : 'home';
   syncAppViewChrome();
@@ -47,7 +65,10 @@ function switchAppView(nextView, opts) {
     if (typeof renderHomeDashboard === 'function') renderHomeDashboard();
     return;
   }
-  switchTab('notes');
+  ensureWorkspaceRuntimeReady().then((ready) => {
+    if (!ready) return;
+    switchTab('notes');
+  });
 }
 
 function openWorkspaceView(tabName) {
@@ -98,6 +119,22 @@ function switchTab(tabName) {
   const activeTab = 'notes';
   if (appView !== 'workspace') {
     appView = 'workspace';
+  }
+  if (!isWorkspaceRuntimeReady()) {
+    const target = document.getElementById('tabContentNotes');
+    if (target) {
+      target.innerHTML = '<div style="padding:24px;color:#64748b;font-size:13px;line-height:1.8">Loading workspace bundle. This usually takes only a moment.</div>';
+      target.classList.add('active');
+    }
+    syncAppViewChrome();
+    ensureWorkspaceRuntimeReady().then((ready) => {
+      if (!ready) {
+        if (typeof showToast === 'function') showToast('工作区加载失败，请刷新后重试', 'error');
+        return;
+      }
+      switchTab(activeTab);
+    });
+    return;
   }
   if (typeof hasFullWorkspaceDataLoaded === 'function'
       && typeof ensureFullWorkspaceDataLoaded === 'function'

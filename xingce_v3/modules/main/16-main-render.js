@@ -6,6 +6,50 @@ const ERROR_RENDER_STEP = 60;
 let errorRenderLimit = INITIAL_ERROR_RENDER_LIMIT;
 let errorRenderKey = '';
 let errorListAutoPagerObserver = null;
+let workspaceRenderRafId = 0;
+let workspaceRenderUsesTimeout = false;
+let workspaceRenderPending = { sidebar: false, notes: false };
+
+function flushWorkspaceRenderQueue(){
+  workspaceRenderRafId = 0;
+  workspaceRenderUsesTimeout = false;
+  const pending = workspaceRenderPending;
+  workspaceRenderPending = { sidebar: false, notes: false };
+  if (pending.sidebar && typeof renderSidebar === 'function') renderSidebar();
+  renderAll();
+  if (pending.notes && typeof renderNotesByType === 'function') renderNotesByType();
+}
+
+function requestWorkspaceRender(opts){
+  const options = opts || {};
+  const withSidebar = options.sidebar !== false;
+  const withNotes = options.notes === true;
+  const immediate = options.immediate === true;
+  workspaceRenderPending.sidebar = workspaceRenderPending.sidebar || withSidebar;
+  workspaceRenderPending.notes = workspaceRenderPending.notes || withNotes;
+  if (immediate) {
+    if (workspaceRenderRafId) {
+      try {
+        if (workspaceRenderUsesTimeout) clearTimeout(workspaceRenderRafId);
+        else if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(workspaceRenderRafId);
+      } catch (e) {}
+      workspaceRenderRafId = 0;
+      workspaceRenderUsesTimeout = false;
+    }
+    flushWorkspaceRenderQueue();
+    return;
+  }
+  if (workspaceRenderRafId) return;
+  if (typeof requestAnimationFrame === 'function') {
+    workspaceRenderRafId = requestAnimationFrame(flushWorkspaceRenderQueue);
+    workspaceRenderUsesTimeout = false;
+    return;
+  }
+  workspaceRenderRafId = setTimeout(flushWorkspaceRenderQueue, 16);
+  workspaceRenderUsesTimeout = true;
+}
+
+window.requestWorkspaceRender = requestWorkspaceRender;
 
 function getErrorRenderStateKey(list){
   return JSON.stringify({

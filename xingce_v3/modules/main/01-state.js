@@ -207,6 +207,10 @@ function refreshWorkspaceAfterErrorMutation(options){
   if(cfg.reveal && typeof saveReveal === 'function') saveReveal();
   if(cfg.syncNotes && typeof syncNotesWithErrors === 'function') syncNotesWithErrors();
   if(cfg.saveKnowledge && typeof saveKnowledgeState === 'function') saveKnowledgeState();
+  if (typeof requestWorkspaceRender === 'function') {
+    requestWorkspaceRender({ sidebar: true, notes: !!cfg.renderNotes });
+    return;
+  }
   if(typeof renderSidebar === 'function') renderSidebar();
   if(typeof renderAll === 'function') renderAll();
   if(cfg.renderNotes && typeof renderNotesByType === 'function') renderNotesByType();

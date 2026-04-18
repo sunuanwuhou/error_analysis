@@ -81,8 +81,11 @@ function scheduleWorkspaceWarmup() {
 }
 
 const LEGACY_MODAL_BUNDLE_SRC = '/assets/modules/legacy-app.modal.bundle.js';
+const LEGACY_WORKSPACE_BUNDLE_SRC = '/assets/modules/legacy-app.workspace.bundle.js';
 let legacyModalBundlePromise = null;
 let legacyModalBundleLoaded = false;
+let legacyWorkspaceBundlePromise = null;
+let legacyWorkspaceBundleLoaded = false;
 
 function hasLoadedScript(src) {
   return Boolean(document.querySelector(`script[src="${src}"]`));
@@ -116,8 +119,25 @@ function ensureLegacyModalBundleLoaded() {
   return legacyModalBundlePromise;
 }
 
+function ensureLegacyWorkspaceBundleLoaded() {
+  if (legacyWorkspaceBundleLoaded || hasLoadedScript(LEGACY_WORKSPACE_BUNDLE_SRC)) {
+    legacyWorkspaceBundleLoaded = true;
+    return Promise.resolve();
+  }
+  if (legacyWorkspaceBundlePromise) return legacyWorkspaceBundlePromise;
+  legacyWorkspaceBundlePromise = loadScriptBySrc(LEGACY_WORKSPACE_BUNDLE_SRC)
+    .then(() => {
+      legacyWorkspaceBundleLoaded = true;
+    })
+    .finally(() => {
+      legacyWorkspaceBundlePromise = null;
+    });
+  return legacyWorkspaceBundlePromise;
+}
+
 if (typeof window !== 'undefined') {
   window.ensureLegacyModalBundleLoaded = ensureLegacyModalBundleLoaded;
+  window.ensureLegacyWorkspaceBundleLoaded = ensureLegacyWorkspaceBundleLoaded;
   window.__resolveDeclarativeHandler = async function resolveDeclarativeHandler(payload) {
     const error = payload && payload.error;
     const isReferenceError = Boolean(
@@ -127,6 +147,21 @@ if (typeof window !== 'undefined') {
       )
     );
     if (!isReferenceError) return false;
+    const message = String((error && error.message) || '');
+    const missingNameMatch = message.match(/^([A-Za-z_$][A-Za-z0-9_$]*) is not defined$/);
+    const missingName = missingNameMatch ? missingNameMatch[1] : '';
+    const workspaceLikelyNames = new Set([
+      'renderAll',
+      'renderNotesByType',
+      'renderSidebar',
+      'openWorkspaceView',
+      'switchTab',
+      'openEditModal'
+    ]);
+    if (!legacyWorkspaceBundleLoaded && workspaceLikelyNames.has(missingName)) {
+      await ensureLegacyWorkspaceBundleLoaded();
+      return true;
+    }
     if (legacyModalBundleLoaded) return false;
     await ensureLegacyModalBundleLoaded();
     return true;
