@@ -485,9 +485,9 @@ function openGlobalSearchQuestionPreview(errorId) {
     <div style="font-size:13px;line-height:1.8;color:#0f172a;margin-bottom:8px"><strong>答案：</strong>${escapeHtml(errorItem.answer || '-')}</div>
     ${errorItem.analysis ? `<div style="font-size:13px;line-height:1.9;color:#334155;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;white-space:pre-wrap">${renderAnalysis(errorItem.analysis)}</div>` : ''}
     <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px">
-      <button class="btn btn-secondary" type="button" onclick="closeGlobalSearchQuestionPreview();openEditModal(${idArg(errorItem.id)})">编辑这题</button>
-      <button class="btn btn-secondary" type="button" onclick="startSingleQuestionPracticeFromSearch(${idArg(errorItem.id)})">单题练习</button>
-      <button class="btn btn-primary" type="button" onclick="jumpToQuestionKnowledgeFromSearch(${idArg(errorItem.id)})">跳到知识点</button>
+      <button class="btn btn-secondary" type="button" onclick='closeGlobalSearchQuestionPreview();openEditModal(${idArg(errorItem.id)})'>编辑这题</button>
+      <button class="btn btn-secondary" type="button" onclick='startSingleQuestionPracticeFromSearch(${idArg(errorItem.id)})'>单题练习</button>
+      <button class="btn btn-primary" type="button" onclick='jumpToQuestionKnowledgeFromSearch(${idArg(errorItem.id)})'>跳到知识点</button>
     </div>
   `;
   mask.classList.add('open');

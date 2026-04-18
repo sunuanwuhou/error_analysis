@@ -1,8 +1,8 @@
 {
-  "built_at": "2026-04-18T07:45:24Z",
+  "built_at": "2026-04-18T07:59:16Z",
   "css_bundle": {
     "path": "xingce_v3/styles/legacy-app.bundle.css",
-    "sha256": "ffd104f8c81c6ed6bbf23e475d2c98f0374dea42ec84b9475e87f59051d0a9b6",
+    "sha256": "dac6f83a80f8cb107303709c58914f2e37f8225250ddab04dd95500da1d54882",
     "sources": [
       "styles/main/00-base-reset.css",
       "styles/main/01-sidebar.css",
@@ -48,7 +48,7 @@
   },
   "js_bundle": {
     "path": "xingce_v3/modules/legacy-app.bundle.js",
-    "sha256": "12747639d174f3a314b4c2b9f80a0b81436e8a15bb4f4571251e484262f63853",
+    "sha256": "22bfbf00736295a639f023e5f0d9fdb6dfe62e49e619569eb60ef099d4cf465d",
     "sources": [
       "modules/main/00-event-dispatcher.js",
       "modules/main/01-state.js",
@@ -130,7 +130,7 @@
   "js_view_bundles": {
     "home": {
       "path": "xingce_v3/modules/legacy-app.home.bundle.js",
-      "sha256": "b65e3d5639e616e8d179cd0b134730acd38cf9df3c4c5dce50fba2f0c0ee5e8b",
+      "sha256": "4c6d16f159ba722466c02657d3800dc074cb398816324f13fd12a58130ee46d8",
       "sources": [
         "modules/main/00-event-dispatcher.js",
         "modules/main/01-state.js",
@@ -156,7 +156,7 @@
     },
     "workspace": {
       "path": "xingce_v3/modules/legacy-app.workspace.bundle.js",
-      "sha256": "b2315fceaeb863235d3e60ac18cee0a249d7b7f7f67849452ddd9e07e54005b1",
+      "sha256": "d9eb659c7873108db4c31c4cba924d5684298c5fc57f94cc1c7e68de2d09bbdc",
       "sources": [
         "modules/main/10-notes-panel.js",
         "modules/main/11-typed-note-tree.js",
@@ -183,7 +183,7 @@
     },
     "modal": {
       "path": "xingce_v3/modules/legacy-app.modal.bundle.js",
-      "sha256": "eca675a9ca8efcdd50911bf88dbab9ccbdd19623720f73f0d3e0dc3cc2d3f64f",
+      "sha256": "fbaf2c93cfeedb3d810214910b2b7a38a6a8684547ff4cc2d262d1c6d698fd7a",
       "sources": [
         "modules/main/06-ai-workbench.js",
         "modules/main/07-image-processing.js",
@@ -212,7 +212,7 @@
     },
     "bootstrap": {
       "path": "xingce_v3/modules/legacy-app.bootstrap.bundle.js",
-      "sha256": "28f38a6f38fc47e4af0fadf11d48b1b5d945877cdaf2a594d9c30627d203441b",
+      "sha256": "7f419f76b3ed2a9291eab2cc7c6cccaf433d6588d9630f78b5061a4e11bd31ae",
       "sources": [
         "modules/main/99-bootstrap.js"
       ]

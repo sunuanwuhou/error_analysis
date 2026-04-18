@@ -1,14 +1,25 @@
 // ============================================================
 // Knowledge tree state
 // ============================================================
-const KEY_DIR_TREE = 'xc_dir_tree';
-const FIXED_TYPES = ["???????", "????", "????", "????", "????", "??"];
-const FIXED_KNOWLEDGE_ROOTS = ["???????", "????", "????", "????", "????"];
-const DEFAULT_DIR_TREE = {
-  "???????": { "????": ["????", "????"] },
-  "????": { "????": [] },
-  "??": {},
-};
+var KEY_DIR_TREE = typeof KEY_DIR_TREE === 'string' ? KEY_DIR_TREE : 'xc_dir_tree';
+var FIXED_TYPES = Array.isArray(FIXED_TYPES) && FIXED_TYPES.length
+  ? FIXED_TYPES
+  : ['言语理解与表达', '判断推理', '数量关系', '资料分析', '常识判断', '其他'];
+var FIXED_KNOWLEDGE_ROOTS = Array.isArray(FIXED_KNOWLEDGE_ROOTS) && FIXED_KNOWLEDGE_ROOTS.length
+  ? FIXED_KNOWLEDGE_ROOTS
+  : ['言语理解与表达', '判断推理', '数量关系', '资料分析', '常识判断'];
+var DEFAULT_DIR_TREE = (DEFAULT_DIR_TREE && typeof DEFAULT_DIR_TREE === 'object')
+  ? DEFAULT_DIR_TREE
+  : {
+      言语理解与表达: { 未分类: [] },
+      判断推理: { 未分类: [] },
+      数量关系: { 未分类: [] },
+      资料分析: { 未分类: [] },
+      常识判断: { 未分类: [] },
+      其他: { 未分类: [] },
+    };
+
+const BAD_KNOWLEDGE_TITLE_RE = /^(?:\?{2,}|未分类\?|未细分\?|知识点\?)$/;
 
 let _dirSelType = '';
 let _dirSelSub = '';
@@ -31,8 +42,22 @@ function newKnowledgeNodeId() {
 }
 
 function normalizeKnowledgeTitle(value, fallback) {
-  const text = (value || '').trim();
-  return text || fallback;
+  const normalizedFallback = String(fallback || '').trim() || '未分类';
+  const raw = String(value || '')
+    .replace(/\u0000/g, '')
+    .replace(/\uFFFD/g, '')
+    .trim();
+  if (!raw) return normalizedFallback;
+
+  let text = raw
+    .replace(/^[“”"'‘’`]+/, '')
+    .replace(/[“”"'‘’`]+$/, '')
+    .trim();
+  if (!text) text = raw;
+
+  if (/^\?+$/.test(text)) return normalizedFallback;
+  if (BAD_KNOWLEDGE_TITLE_RE.test(text)) return normalizedFallback;
+  return text;
 }
 
 function createKnowledgeNode(title, level, isLeaf) {
@@ -60,12 +85,7 @@ function ensureFixedKnowledgeRoots() {
   const desiredTitles = [...FIXED_KNOWLEDGE_ROOTS, '未分类'];
   const orderMap = new Map(desiredTitles.map((title, index) => [title, index]));
   let changed = false;
-  desiredTitles.forEach(title => {
-    if (!roots.some(node => String(node.title || '') === title)) {
-      roots.push(createKnowledgeNode(title, 1, false));
-      changed = true;
-    }
-  });
+  // 一级节点允许手动删除：这里只做排序，不再强制补回缺失根节点。
   const sortedRoots = roots.slice().sort((a, b) => {
     const left = orderMap.has(String(a.title || '')) ? orderMap.get(String(a.title || '')) : desiredTitles.length + 100;
     const right = orderMap.has(String(b.title || '')) ? orderMap.get(String(b.title || '')) : desiredTitles.length + 100;

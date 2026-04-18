@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // Knowledge tree actions
 // ============================================================
 
@@ -32,7 +32,7 @@ function dirAddItem(level) {
     saveDirTree();
     renderDirCols();
   } else {
-    if (!_dirSelSub) { showToast("????????", 'warning'); return; }
+    if (!_dirSelSub) { showToast("请先选择二级分类", 'warning'); return; }
     const v = document.getElementById('dirAddSub2').value.trim();
     if (!v) return;
     if (!_dirTree[_dirSelType][_dirSelSub]) _dirTree[_dirSelType][_dirSelSub] = [];
@@ -44,7 +44,7 @@ function dirAddItem(level) {
 }
 
 function dirDelSub(s) {
-  if (!confirm("???????" + s + "???????????")) return;
+  if (!confirm("确定删除二级分类「" + s + "」以及其下三级分类吗？")) return;
   delete _dirTree[_dirSelType][s];
   if (_dirSelSub === s) _dirSelSub = '';
   saveDirTree();
@@ -61,7 +61,7 @@ function dirDelSub2(s2) {
 }
 
 function resetDirTree() {
-  if (!confirm("???????????????????")) return;
+  if (!confirm("确定重置分类目录吗？这会清空你手动维护的分类层级。")) return;
   _dirTree = JSON.parse(JSON.stringify(DEFAULT_DIR_TREE));
   saveDirTree();
   renderDirCols();
@@ -88,3 +88,4 @@ function onSubtypeInput() {
   updateSub2Options();
   refreshKnowledgePicker();
 }
+

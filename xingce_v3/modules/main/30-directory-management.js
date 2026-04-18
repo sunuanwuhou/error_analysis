@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // Directory management
 // ============================================================
 function walkKnowledgeNodes(nodes, visitor, trail) {
@@ -184,7 +184,8 @@ function collapseDuplicateKnowledgeWrappers(nodes) {
 function normalizeKnowledgeNodes(nodes, level) {
   (nodes || []).forEach(node => {
     if (!node.id) node.id = newKnowledgeNodeId();
-    node.title = normalizeKnowledgeTitle(node.title, `知识点${node.id.slice(-4)}`);
+    const fallbackTitle = level === 1 ? '未分类' : `知识点${node.id.slice(-4)}`;
+    node.title = normalizeKnowledgeTitle(node.title, fallbackTitle);
     node.level = level;
     if (!Array.isArray(node.children)) node.children = [];
     const legacy = getLegacyKnowledgeNoteSnapshot(node.id);
@@ -411,6 +412,7 @@ function ensureKnowledgeState(opts) {
   if (collapseDuplicateKnowledgeWrappers(getKnowledgeRootNodes())) changed = true;
   if (pruneKnowledgeGhostNodes(getKnowledgeRootNodes(), getKnowledgeDirectErrorCountMap())) changed = true;
   normalizeKnowledgeNodes(getKnowledgeRootNodes(), 1);
+  if (mergeDuplicateKnowledgeSiblings(getKnowledgeRootNodes())) changed = true;
   ensureKnowledgeExpandedDefaults();
   errors.forEach(item => {
     if (ensureKnowledgeBindingForError(item)) changed = true;
@@ -463,3 +465,4 @@ function toggleKnowledgeExpanded(nodeId, event) {
   saveKnowledgeExpanded();
   renderSidebar();
 }
+

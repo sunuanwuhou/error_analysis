@@ -16,6 +16,25 @@ const KEY_KNOWLEDGE_EXPANDED = 'xc_knowledge_expanded';
 const KEY_NOTE_REVIEW_TRACKING = 'xc_note_review_tracking';
 const KEY_STARTUP_SUMMARY = 'xc_startup_summary';
 
+// 跨分包常量兜底：home/bootstrap 可能先于 knowledge 模块加载。
+var KEY_DIR_TREE = typeof KEY_DIR_TREE === 'string' ? KEY_DIR_TREE : 'xc_dir_tree';
+var FIXED_TYPES = Array.isArray(FIXED_TYPES) && FIXED_TYPES.length
+  ? FIXED_TYPES
+  : ['言语理解与表达', '判断推理', '数量关系', '资料分析', '常识判断', '其他'];
+var FIXED_KNOWLEDGE_ROOTS = Array.isArray(FIXED_KNOWLEDGE_ROOTS) && FIXED_KNOWLEDGE_ROOTS.length
+  ? FIXED_KNOWLEDGE_ROOTS
+  : ['言语理解与表达', '判断推理', '数量关系', '资料分析', '常识判断'];
+var DEFAULT_DIR_TREE = (DEFAULT_DIR_TREE && typeof DEFAULT_DIR_TREE === 'object')
+  ? DEFAULT_DIR_TREE
+  : {
+      言语理解与表达: { 未分类: [] },
+      判断推理: { 未分类: [] },
+      数量关系: { 未分类: [] },
+      资料分析: { 未分类: [] },
+      常识判断: { 未分类: [] },
+      其他: { 未分类: [] },
+    };
+
 // 默认题型识别规则（按优先级排序）
 const DEFAULT_TYPE_RULES = [
   {keywords:['图形推理','图推','下列图形'],type:'判断推理',subtype:'图形推理'},
