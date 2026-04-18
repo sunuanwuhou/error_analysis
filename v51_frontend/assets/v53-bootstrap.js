@@ -30,6 +30,39 @@ async function injectPartials() {
   mount.innerHTML = html;
   const nextChildren = Array.from(mount.childNodes);
   document.body.replaceChildren(...nextChildren);
+  ensureRandomNoteEntryPresence();
+}
+
+function ensureRandomNoteEntryPresence() {
+  const quizBlock = document.querySelector('.quiz-block');
+  if (quizBlock && !document.getElementById('randomNoteBtn')) {
+    const fullPracticeBtn = document.getElementById('fullPracticeBtn');
+    const randomBtn = document.createElement('button');
+    randomBtn.className = 'quiz-btn';
+    randomBtn.id = 'randomNoteBtn';
+    randomBtn.style.marginTop = '6px';
+    randomBtn.style.background = 'linear-gradient(135deg,#16a34a,#15803d)';
+    randomBtn.setAttribute('data-onclick', 'startRandomNoteReview()');
+    randomBtn.innerHTML = '<span>随机笔记</span>';
+    if (fullPracticeBtn && fullPracticeBtn.parentNode === quizBlock) {
+      fullPracticeBtn.insertAdjacentElement('afterend', randomBtn);
+    } else {
+      quizBlock.appendChild(randomBtn);
+    }
+  }
+  const moreMenu = document.getElementById('moreMenuPanel');
+  if (moreMenu && !moreMenu.querySelector('[data-onclick*="startRandomNoteReview"]')) {
+    const importBtn = moreMenu.querySelector('[data-onclick*="openQuickImportModal"]');
+    const moreRandomBtn = document.createElement('button');
+    moreRandomBtn.className = 'btn btn-secondary';
+    moreRandomBtn.setAttribute('data-onclick', 'closeMoreMenu();startRandomNoteReview()');
+    moreRandomBtn.textContent = '随机笔记';
+    if (importBtn && importBtn.nextSibling) {
+      importBtn.insertAdjacentElement('afterend', moreRandomBtn);
+    } else {
+      moreMenu.appendChild(moreRandomBtn);
+    }
+  }
 }
 
 async function ensureDeferredPartialsLoaded() {
