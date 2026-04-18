@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from fastapi import APIRouter, Cookie, HTTPException, Query, Request
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
 
 from app.core import require_user
 from app.runtime import infer_request_origin
@@ -25,6 +25,7 @@ from app.services.backup_service import (
     download_chunk_part,
     create_local_backup_response,
     delete_local_backup_response,
+    export_local_backup_archive,
     get_backup_response,
     init_chunk_download,
     init_chunk_upload,
@@ -219,3 +220,21 @@ def delete_local_backup(
 ) -> dict[str, Any]:
     user_id = _user_id_from_session(xingce_session)
     return delete_local_backup_response(user_id, backup_id)
+
+
+@router.get("/api/local-backups/{backup_id}/download")
+def download_local_backup(
+    backup_id: str,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> Response:
+    user_id = _user_id_from_session(xingce_session)
+    try:
+        archive_path, meta = export_local_backup_archive(user_id, backup_id)
+    except BackupSnapshotNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=exc.detail) from exc
+    filename = f"{str(meta.get('id') or backup_id)}.tar.gz"
+    return FileResponse(
+        path=archive_path,
+        media_type="application/gzip",
+        filename=filename,
+    )

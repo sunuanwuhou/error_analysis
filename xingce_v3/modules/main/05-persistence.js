@@ -444,7 +444,6 @@ saveNotesByType = function() {
 saveKnowledgeState = function() {
   mergeDuplicateKnowledgeSiblings(getKnowledgeRootNodes());
   collapseDuplicateKnowledgeWrappers(getKnowledgeRootNodes());
-  pruneKnowledgeGhostNodes(getKnowledgeRootNodes(), getKnowledgeDirectErrorCountMap());
   syncKnowledgeNotesFromTree();
   const changed = syncWorkspaceOpsFromSnapshot();
   queuePersist(KEY_KNOWLEDGE_TREE, knowledgeTree);

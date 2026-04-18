@@ -260,6 +260,21 @@ def _load_snapshot_bundle(user_id: str, backup_id: str) -> tuple[Path, dict[str,
     return backup_dir, snapshot, image_rows, meta
 
 
+def export_local_backup_archive(user_id: str, backup_id: str) -> tuple[Path, dict[str, Any]]:
+    backup_dir, _, _, meta = _load_snapshot_bundle(user_id, backup_id)
+    archive_path = backup_dir.with_suffix(".tar.gz")
+    backup_mtime = backup_dir.stat().st_mtime
+    archive_mtime = archive_path.stat().st_mtime if archive_path.exists() else 0
+    if not archive_path.exists() or archive_mtime < backup_mtime:
+        base_archive = backup_dir.parent / backup_dir.name
+        if archive_path.exists():
+            archive_path.unlink(missing_ok=True)
+        tmp_archive = Path(shutil.make_archive(str(base_archive), "gztar", root_dir=backup_dir.parent, base_dir=backup_dir.name))
+        if tmp_archive != archive_path:
+            tmp_archive.replace(archive_path)
+    return archive_path, meta
+
+
 def _restore_user_images(user_id: str, backup_dir: Path) -> int:
     target_dir = IMAGES_DIR / user_id
     source_dir = backup_dir / "images"
@@ -731,6 +746,7 @@ def restore_local_backup_response(
         "currentOrigin": current_origin,
         "restoredImageFiles": restored_image_files,
         "summary": meta.get("summary") or build_backup_summary(snapshot),
+        "backup": snapshot,
         "safetyBackup": safety_item,
         "items": list_local_backup_items(user_id),
     }

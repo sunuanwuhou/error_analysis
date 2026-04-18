@@ -113,6 +113,7 @@ function mergeDuplicateKnowledgeSiblings(nodes) {
   return changed;
 }
 function pruneKnowledgeGhostNodes(nodes, directCountMap) {
+  return false;
   let changed = false;
   const list = Array.isArray(nodes) ? nodes : [];
   const next = [];
@@ -557,7 +558,6 @@ function ensureKnowledgeState(opts) {
   if (cleanupForcedKnowledgeNodeByPath(['判断推理', '逻辑判断'])) changed = true;
   if (mergeDuplicateKnowledgeSiblings(getKnowledgeRootNodes())) changed = true;
   if (collapseDuplicateKnowledgeWrappers(getKnowledgeRootNodes())) changed = true;
-  if (pruneKnowledgeGhostNodes(getKnowledgeRootNodes(), getKnowledgeDirectErrorCountMap())) changed = true;
   normalizeKnowledgeNodes(getKnowledgeRootNodes(), 1);
   if (mergeDuplicateKnowledgeSiblings(getKnowledgeRootNodes())) changed = true;
   ensureKnowledgeExpandedDefaults();

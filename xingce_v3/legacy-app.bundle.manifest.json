@@ -1,8 +1,8 @@
 {
-  "built_at": "2026-04-18T11:01:59Z",
+  "built_at": "2026-04-18T16:38:15Z",
   "css_bundle": {
     "path": "xingce_v3/styles/legacy-app.bundle.css",
-    "sha256": "c20ea0161d8e68b733b8356335c86650ca0289e3ab74a13dafb653bade2e9f07",
+    "sha256": "0ab6ea367de8f8c8fe242db4ab6b627e3b0b1756223e11826d41ed1c16e2058d",
     "sources": [
       "styles/main/00-base-reset.css",
       "styles/main/01-sidebar.css",
@@ -48,7 +48,7 @@
   },
   "js_bundle": {
     "path": "xingce_v3/modules/legacy-app.bundle.js",
-    "sha256": "090d753322504dfa43ac11e8abcd84e4b444ef56a13ddd5264b0b765990b97e6",
+    "sha256": "3b996c28c171864dc88ab3cd45d79a8d3da64a80b6b2ceb49d84969dd0f64071",
     "sources": [
       "modules/main/00-event-dispatcher.js",
       "modules/main/01-state.js",
@@ -59,6 +59,7 @@
       "modules/main/persistence/05a-note-sync-and-history.js",
       "modules/main/persistence/05b-cloud-bootstrap-and-schedule.js",
       "modules/main/persistence/05c-cloud-restore-origin-utils.js",
+      "modules/main/persistence/05d-local-backup-ui.js",
       "modules/main/06-ai-workbench.js",
       "modules/main/07-image-processing.js",
       "modules/main/08-initial-data.js",
@@ -118,17 +119,17 @@
   "v51_partials": {
     "core": {
       "path": "v51_frontend/partials.bundle.html",
-      "sha256": "40884ea62395f7c9f8dbc3eb23ed468cd4b6bb6ce1e058fd98f80edf7e06e9c7"
+      "sha256": "7fef0d4dba989cef9e8a6a020ede436637f2aa3771188af5ed9ed3c43322a4f2"
     },
     "deferred": {
       "path": "v51_frontend/deferred-partials.bundle.html",
-      "sha256": "2266dcd63d37df939ba19fe8d2677ce56e9227a27f55b89f4dd3eda692cb19be"
+      "sha256": "78e9783f968f912e862ae618123fc05e9b95614588dece02f95682f10d0b961c"
     }
   },
   "js_view_bundles": {
     "home": {
       "path": "xingce_v3/modules/legacy-app.home.bundle.js",
-      "sha256": "9055755a5f43ac247104be73d0a365fd5df45a9baf1ec445b0770148515a5b41",
+      "sha256": "b913d85a5701b47a4850645f2dabc3d006d876ef7b51102969393557f0ef9cb4",
       "sources": [
         "modules/main/00-event-dispatcher.js",
         "modules/main/01-state.js",
@@ -139,6 +140,7 @@
         "modules/main/persistence/05a-note-sync-and-history.js",
         "modules/main/persistence/05b-cloud-bootstrap-and-schedule.js",
         "modules/main/persistence/05c-cloud-restore-origin-utils.js",
+        "modules/main/persistence/05d-local-backup-ui.js",
         "modules/main/08-initial-data.js",
         "modules/main/09-markdown.js",
         "modules/main/12-review-engine.js",
@@ -152,7 +154,7 @@
     },
     "workspace": {
       "path": "xingce_v3/modules/legacy-app.workspace.bundle.js",
-      "sha256": "b88eef49237d590b13d04bd4f78d1568ba79f13077d01318584ecda17a95e70c",
+      "sha256": "56e0987100141c7780bfaf865241fc39559f4bffb581743ebb592143fd2071a4",
       "sources": [
         "modules/main/10-notes-panel.js",
         "modules/main/11-typed-note-tree.js",
@@ -179,7 +181,7 @@
     },
     "modal": {
       "path": "xingce_v3/modules/legacy-app.modal.bundle.js",
-      "sha256": "ac4f9c30b9de35ef7b89b8180046c39a9d05aad496695281d688e02f98e8008c",
+      "sha256": "3d530d4e14ae740add832196a76da1d7c486ae4a40c0f29c48f072be1692fc7f",
       "sources": [
         "modules/main/06-ai-workbench.js",
         "modules/main/07-image-processing.js",
@@ -208,7 +210,7 @@
     },
     "bootstrap": {
       "path": "xingce_v3/modules/legacy-app.bootstrap.bundle.js",
-      "sha256": "e16c2aba47dad09edfa5dd0732c8520358bfac60f0dba0acedd83e4454866da8",
+      "sha256": "0d40aadbe1ce1a0b47c7831425e5b007e282fad72c623d5d43ac0e0fd8f0e478",
       "sources": [
         "modules/main/99-bootstrap.js"
       ]
