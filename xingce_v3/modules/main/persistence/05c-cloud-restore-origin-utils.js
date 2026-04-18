@@ -127,16 +127,19 @@ function getOriginDisplayTime(item) {
 function mergeCurrentOriginStatus() {
   const key = getCloudOriginKey();
   const statuses = Array.isArray(cloudOriginStatuses) ? cloudOriginStatuses.slice() : [];
-  if (!statuses.some(item => item.origin === key)) {
-    statuses.push({
+  let current = statuses.find(item => item && item.origin === key) || null;
+  if (!current) {
+    current = {
       origin: key,
       originLabel: key,
       status: cloudSyncState,
       updatedAt: cloudSyncUpdatedAt || new Date().toISOString(),
       payloadBytes: 0
-    });
+    };
+    statuses.push(current);
   }
   cloudOriginStatuses = statuses;
+  return current;
 }
 
 function updateCloudOriginStatuses(items) {
