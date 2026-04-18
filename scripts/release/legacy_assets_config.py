@@ -113,8 +113,6 @@ JS_SOURCES = [
     'modules/main/workspace/36d-notes-tree-status.js',
     'modules/main/modal/36b-entry-ai-and-save.js',
     'modules/main/99-bootstrap.js',
-    'modules/knowledge-state.js',
-    'modules/knowledge-workbench.js',
     'modules/knowledge-workspace.js',
     'modules/knowledge-node-modal.js',
     'modules/data-management.js',
@@ -140,8 +138,6 @@ JS_VIEW_SPLIT_SOURCES = {
         'modules/main/22-history.js',
         'modules/main/24-type-detection.js',
         'modules/main/36-tab-coordination.js',
-        'modules/knowledge-state.js',
-        'modules/knowledge-workbench.js',
     ],
     'workspace': [
         'modules/main/10-notes-panel.js',

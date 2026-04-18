@@ -33,6 +33,14 @@ const DB = (() => {
       req.onerror = e => rej(e.target.error);
     });
   }
+  async function remove(key) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const req = db.transaction(STORE, 'readwrite').objectStore(STORE).delete(key);
+      req.onsuccess = () => res();
+      req.onerror = e => rej(e.target.error);
+    });
+  }
   // 首次运行时将 localStorage 数据迁移到 IndexedDB
   async function migrateFromLocalStorage(keys) {
     const done = await get('__idb_migrated__');
@@ -44,5 +52,5 @@ const DB = (() => {
     await set('__idb_migrated__', '1');
     console.log('[IndexedDB] localStorage 数据迁移完成');
   }
-  return { get, set, migrateFromLocalStorage };
+  return { get, set, remove, migrateFromLocalStorage };
 })();

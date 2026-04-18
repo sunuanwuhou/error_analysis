@@ -1025,9 +1025,21 @@ async function loadCloudFullBackupFromMore() {
     window.location.replace('/login');
     return;
   }
+  if (cloudBusy || incrementalSyncBusy) {
+    showCloudWarning('当前已有云同步任务在执行，请稍等完成后再试');
+    return;
+  }
   const ok = confirm('将从云端全量同步并覆盖当前本地数据。继续吗？');
   if (!ok) return;
+  setCloudSyncState('saving', '正在从云端全量覆盖本地，请稍候', '');
   await loadCloudBackup({ silent: false, askBeforeRestore: false, forceOverwriteLocal: true });
+  if (cloudSyncState === 'synced') {
+    renderSidebar();
+    renderAll();
+    renderNotesByType();
+    if (typeof renderNotesPanelRight === 'function') renderNotesPanelRight();
+    showCloudInfo('云端全量覆盖已完成，当前页面已刷新为云端数据');
+  }
 }
 async function saveCloudIncremental(opts) {
   opts = opts || {};

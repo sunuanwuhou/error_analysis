@@ -63,6 +63,8 @@ def _adapt_sql(sql: str) -> str:
         text,
         flags=re.IGNORECASE,
     )
+    # Support SQLite-style named placeholders while preserving PostgreSQL casts like "::text".
+    text = re.sub(r"(?<!:):([A-Za-z_][A-Za-z0-9_]*)", r"%(\1)s", text)
     text = text.replace("?", "%s")
     if had_insert_or_ignore and "ON CONFLICT" not in text.upper():
         stripped = text.rstrip()

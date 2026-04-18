@@ -201,6 +201,59 @@
     return errors.filter(function (item) { return nodeIds.includes(item.noteNodeId); }).length;
   }
 
+  function removeKnowledgeNoteEntry(nodeId) {
+    if (!nodeId || !knowledgeNotes || typeof knowledgeNotes !== "object") return;
+    delete knowledgeNotes[nodeId];
+  }
+
+  function getKnowledgeNodeByPathTitles(pathTitles) {
+    var titles = (pathTitles || []).map(function (item) { return String(item || "").trim(); }).filter(Boolean);
+    if (!titles.length) return null;
+    var siblings = getKnowledgeRootNodes();
+    var node = null;
+    for (var i = 0; i < titles.length; i += 1) {
+      var title = titles[i];
+      node = (siblings || []).find(function (item) {
+        return String((item && item.title) || "").trim() === title;
+      }) || null;
+      if (!node) return null;
+      siblings = node.children || [];
+    }
+    return node;
+  }
+
+  function cleanupForcedKnowledgeNodeByPath(pathTitles) {
+    var targetNode = getKnowledgeNodeByPathTitles(pathTitles);
+    if (!targetNode) return false;
+    var parent = findKnowledgeParent(targetNode.id);
+    if (!parent || !Array.isArray(parent.children)) return false;
+
+    var siblings = parent.children;
+    var idx = siblings.findIndex(function (item) { return item && item.id === targetNode.id; });
+    if (idx < 0) return false;
+
+    var fallbackTargetId = parent.id || "";
+    errors.forEach(function (item) {
+      if (String((item && item.noteNodeId) || "") !== String(targetNode.id || "")) return;
+      item.noteNodeId = fallbackTargetId;
+      item.updatedAt = new Date().toISOString();
+    });
+
+    siblings.splice(idx, 1);
+    parent.isLeaf = siblings.length === 0;
+    removeKnowledgeNoteEntry(targetNode.id);
+    if (knowledgeExpanded && typeof knowledgeExpanded.delete === "function") {
+      knowledgeExpanded.delete(targetNode.id);
+    }
+    if (selectedKnowledgeNodeId === targetNode.id) {
+      selectedKnowledgeNodeId = parent.id || null;
+    }
+    if (knowledgeNodeFilter === targetNode.id) {
+      knowledgeNodeFilter = parent.id || null;
+    }
+    return true;
+  }
+
   function getKnowledgeAssignableNodesForPath(type, subtype, subSubtype) {
     var path = getKnowledgePathConfig(type, subtype, subSubtype);
     var root = getKnowledgeRootNodes().find(function (node) { return node.title === path.rootTitle; });
@@ -263,8 +316,8 @@
     getKnowledgeRootNodes();
     knowledgeNotes = knowledgeNotes && typeof knowledgeNotes === "object" ? knowledgeNotes : {};
     normalizeKnowledgeNodes(getKnowledgeRootNodes(), 1);
+    var changed = cleanupForcedKnowledgeNodeByPath(["判断推理", "逻辑判断"]);
     ensureKnowledgeExpandedDefaults();
-    var changed = false;
     errors.forEach(function (item) {
       if (ensureKnowledgeBindingForError(item)) changed = true;
     });

@@ -153,6 +153,155 @@ function pruneKnowledgeGhostNodes(nodes, directCountMap) {
   }
   return changed;
 }
+
+function normalizeKnowledgeRootTitleForCleanup(title) {
+  return String(title || '')
+    .replace(/\uFEFF/g, '')
+    .replace(/\u200B/g, '')
+    .replace(/\u00A0/g, '')
+    .replace(/[()（）【】\[\]·•,，.:：;；!?！？]/g, '')
+    .replace(/\s+/g, '')
+    .trim();
+}
+function resolveLegacyKnowledgeRootAlias(title) {
+  const aliases = new Map([
+    ['片段阅读', '言语理解与表达'],
+    ['数字推理', '数量关系'],
+    ['逻辑判断', '判断推理'],
+    ['物理', '常识判断']
+  ]);
+  return aliases.get(normalizeKnowledgeRootTitleForCleanup(title)) || '';
+}
+function isPlaceholderKnowledgeRootTitle(title) {
+  const normalized = normalizeKnowledgeRootTitleForCleanup(title);
+  return normalized === '未细分' || normalized === '未分类';
+}
+function normalizeLegacyKnowledgePathConfig(type, subtype, subSubtype) {
+  let rootTitle = normalizeKnowledgeTitle(type, '未分类');
+  let subTitle = normalizeKnowledgeTitle(subtype, '未分类');
+  let sub2Title = normalizeKnowledgeTitle(subSubtype, '未细分');
+
+  const rootAlias = resolveLegacyKnowledgeRootAlias(rootTitle);
+  if (rootAlias) {
+    rootTitle = rootAlias;
+    if (!String(subtype || '').trim() || isPlaceholderKnowledgeRootTitle(subTitle)) {
+      subTitle = normalizeKnowledgeTitle(type, '未分类');
+    }
+  }
+
+  if (isPlaceholderKnowledgeRootTitle(rootTitle) || !FIXED_TYPES.includes(rootTitle)) {
+    const subAlias = resolveLegacyKnowledgeRootAlias(subTitle);
+    if (subAlias) {
+      rootTitle = subAlias;
+    }
+  }
+
+  if ((isPlaceholderKnowledgeRootTitle(rootTitle) || rootTitle === '其他') && isPlaceholderKnowledgeRootTitle(subTitle)) {
+    const sub2Alias = resolveLegacyKnowledgeRootAlias(sub2Title);
+    if (sub2Alias) {
+      rootTitle = sub2Alias;
+      subTitle = normalizeKnowledgeTitle(subSubtype, '未分类');
+    }
+  }
+
+  if (isPlaceholderKnowledgeRootTitle(rootTitle)) {
+    rootTitle = '其他';
+  }
+
+  return { rootTitle, subTitle, sub2Title };
+}
+function cleanupNoisyRootNodes() {
+  const roots = getKnowledgeRootNodes();
+  if (!Array.isArray(roots) || !roots.length) return false;
+  const remap = new Map([
+    ['片段阅读', '言语理解与表达'],
+    ['数字推理', '数量关系'],
+    ['逻辑判断', '判断推理'],
+    ['物理', '常识判断'],
+    ['未细分', '其他'],
+    ['未分类', '其他']
+  ]);
+  let changed = false;
+
+  const getCanonicalNodeByTitle = title => {
+    const normalized = normalizeKnowledgeRootTitleForCleanup(title);
+    return roots.find(node => normalizeKnowledgeRootTitleForCleanup(node && node.title) === normalized) || null;
+  };
+  const isNoisyRoot = (title, noisyTitle) => {
+    const text = normalizeKnowledgeRootTitleForCleanup(title);
+    const target = normalizeKnowledgeRootTitleForCleanup(noisyTitle);
+    return !!text && (text === target || text.includes(target));
+  };
+
+  remap.forEach((targetTitle, noisyTitle) => {
+    const sourceIdx = roots.findIndex(node => isNoisyRoot(node && node.title, noisyTitle));
+    if (sourceIdx < 0) return;
+    const source = roots[sourceIdx];
+    const target = getCanonicalNodeByTitle(targetTitle);
+    const targetId = target ? String(target.id || '') : '';
+    const sourceId = String(source && source.id || '');
+
+    (errors || []).forEach(item => {
+      if (String((item && item.noteNodeId) || '') === sourceId) {
+        item.noteNodeId = targetId || '';
+        item.updatedAt = new Date().toISOString();
+      }
+    });
+
+    if (target && Array.isArray(source.children) && source.children.length) {
+      target.children = (target.children || []).concat(source.children);
+      target.isLeaf = false;
+    } else if (Array.isArray(source.children) && source.children.length) {
+      const insertAt = Math.max(0, sourceIdx + 1);
+      roots.splice(insertAt, 0, ...source.children);
+    }
+
+    roots.splice(sourceIdx, 1);
+    removeKnowledgeNoteEntry(sourceId);
+    knowledgeExpanded.delete(sourceId);
+    if (selectedKnowledgeNodeId === sourceId) selectedKnowledgeNodeId = targetId || null;
+    if (knowledgeNodeFilter === sourceId) knowledgeNodeFilter = targetId || null;
+    changed = true;
+  });
+
+  return changed;
+}
+
+function cleanupForcedKnowledgeNodeByPath(pathTitles) {
+  const titles = (pathTitles || []).map(item => String(item || '').trim()).filter(Boolean);
+  if (!titles.length) return false;
+  const targetNode = getKnowledgeNodeByPathTitles(titles);
+  if (!targetNode) return false;
+  const parent = findKnowledgeParent(targetNode.id);
+  if (!parent || !Array.isArray(parent.children)) return false;
+
+  const siblings = parent.children;
+  const idx = siblings.findIndex(item => item && item.id === targetNode.id);
+  if (idx < 0) return false;
+
+  const promotedChildren = unwrapPromotedKnowledgeChildren(targetNode.children || [], targetNode.title);
+  const fallbackTargetId = parent.id || promotedChildren[0]?.id || siblings[idx - 1]?.id || siblings[idx + 1]?.id || '';
+
+  (errors || []).forEach(item => {
+    if (String((item && item.noteNodeId) || '') !== String(targetNode.id || '')) return;
+    item.noteNodeId = fallbackTargetId || '';
+    item.updatedAt = new Date().toISOString();
+  });
+
+  siblings.splice(idx, 1, ...promotedChildren);
+  parent.isLeaf = siblings.length === 0;
+  removeKnowledgeNoteEntry(targetNode.id);
+  knowledgeExpanded.delete(targetNode.id);
+
+  if (selectedKnowledgeNodeId === targetNode.id) {
+    selectedKnowledgeNodeId = fallbackTargetId || promotedChildren[0]?.id || parent.id || null;
+  }
+  if (knowledgeNodeFilter === targetNode.id) {
+    knowledgeNodeFilter = parent.id || null;
+  }
+  return true;
+}
+
 function collapseDuplicateKnowledgeWrappers(nodes) {
   let changed = false;
   const list = Array.isArray(nodes) ? nodes : [];
@@ -200,11 +349,7 @@ function normalizeKnowledgeNodes(nodes, level) {
   });
 }
 function getKnowledgePathConfig(type, subtype, subSubtype) {
-  return {
-    rootTitle: normalizeKnowledgeTitle(type, '未分类'),
-    subTitle: normalizeKnowledgeTitle(subtype, '未分类'),
-    sub2Title: normalizeKnowledgeTitle(subSubtype, '未细分')
-  };
+  return normalizeLegacyKnowledgePathConfig(type, subtype, subSubtype);
 }
 function ensureKnowledgePathByTitles(pathTitles) {
   const titles = (pathTitles || []).map(item => String(item || '').trim()).filter(Boolean);
@@ -408,6 +553,8 @@ function ensureKnowledgeState(opts) {
   getKnowledgeRootNodes();
   knowledgeNotes = knowledgeNotes && typeof knowledgeNotes === 'object' ? knowledgeNotes : {};
   let changed = ensureFixedKnowledgeRoots();
+  if (cleanupNoisyRootNodes()) changed = true;
+  if (cleanupForcedKnowledgeNodeByPath(['判断推理', '逻辑判断'])) changed = true;
   if (mergeDuplicateKnowledgeSiblings(getKnowledgeRootNodes())) changed = true;
   if (collapseDuplicateKnowledgeWrappers(getKnowledgeRootNodes())) changed = true;
   if (pruneKnowledgeGhostNodes(getKnowledgeRootNodes(), getKnowledgeDirectErrorCountMap())) changed = true;

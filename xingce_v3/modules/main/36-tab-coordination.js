@@ -159,9 +159,16 @@ function switchTab(tabName) {
   if (tabNotes) tabNotes.classList.toggle('active', true);
   if (tabContentErrors) tabContentErrors.classList.toggle('active', false);
   if (tabContentNotes) tabContentNotes.classList.toggle('active', true);
+  if (tabContentErrors) {
+    tabContentErrors.style.display = 'none';
+    tabContentErrors.setAttribute('aria-hidden', 'true');
+  }
+  if (tabContentNotes) {
+    tabContentNotes.style.display = 'block';
+    tabContentNotes.setAttribute('aria-hidden', 'false');
+  }
 
   renderSidebar();
-  renderAll();
   renderNotesByType();
 }
 
