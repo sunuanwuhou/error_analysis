@@ -57,6 +57,22 @@ function getErrorWrongCount(errorItem, summary){
   return Math.max.apply(null, values);
 }
 
+function getRecentDurationSeconds(errorItem, summary){
+  const summarySeconds = Number(summary && summary.lastDuration);
+  if(Number.isFinite(summarySeconds) && summarySeconds > 0) return summarySeconds;
+  const actualSeconds = Number(errorItem && errorItem.actualDurationSec);
+  if(Number.isFinite(actualSeconds) && actualSeconds > 0) return actualSeconds;
+  const legacySeconds = Number(errorItem && errorItem.lastDuration);
+  if(Number.isFinite(legacySeconds) && legacySeconds > 0) return legacySeconds;
+  return 0;
+}
+
+function getTargetDurationSeconds(errorItem){
+  const targetSeconds = Number(errorItem && errorItem.targetDurationSec);
+  if(Number.isFinite(targetSeconds) && targetSeconds > 0) return targetSeconds;
+  return 0;
+}
+
 function renderPracticeSummaryBlock(summary){
   const metaLine = renderPracticeSummaryMeta(summary);
   if(!metaLine) return '';
@@ -268,6 +284,8 @@ function renderCard(e){
   const practiceSummary = getPracticeSummaryForError(e);
   let practiceSummaryMeta = renderPracticeSummaryMeta(practiceSummary);
   const wrongCount = getErrorWrongCount(e, practiceSummary);
+  const recentDurationSec = getRecentDurationSeconds(e, practiceSummary);
+  const targetDurationSec = getTargetDurationSeconds(e);
   if(!practiceSummaryMeta && wrongCount > 0) practiceSummaryMeta = `Wrong x${wrongCount}`;
   const statusLabel = getErrorStatusLabel(e.status);
   const problemTypeLabel = problemTypeLabelMap[e.problemType] || 'Observe';
@@ -285,7 +303,6 @@ function renderCard(e){
   return `<div class="error-card" id="card-${e.id}" ${isRev?`onmouseleave='collapseCard(${idLit})'`:''}>
     ${cbHtml}
     <div class="card-top">
-      <span class="card-num">#${e.id}</span>
       <span class="status-tag ${normalizeErrorStatusValue(e.status)}">${escapeHtml(statusLabel)}</span>
       ${e.subSubtype?`<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#f0f5ff;color:#4e8ef7">${escapeHtml(e.subSubtype)}</span>`:''}
       ${knowledgePathText?`<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#f8fafc;color:#475569;border:1px solid #e2e8f0;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(knowledgePathText)}">${escapeHtml(knowledgePathText)}</span>`:''}
@@ -293,6 +310,8 @@ function renderCard(e){
       ${e.problemType && e.problemType !== 'unknown' ? `<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe">${escapeHtml(problemTypeLabel)}</span>` : ''}
       <span style="font-size:11px;padding:1px 7px;border-radius:8px;background:${stageMeta.bg};color:${stageMeta.color};border:1px solid ${stageMeta.border}">Stage ${escapeHtml(stageMeta.shortLabel)}</span>
       <span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#fff1f2;color:#be123c;border:1px solid #fecdd3">错 ${wrongCount} 次</span>
+      ${recentDurationSec>0?`<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0">最近用时 ${escapeHtml(formatDurationSecondsLabel(recentDurationSec) || `${Math.round(recentDurationSec)}秒`)}</span>`:''}
+      ${targetDurationSec>0?`<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe">预计用时 ${escapeHtml(formatDurationSecondsLabel(targetDurationSec) || `${Math.round(targetDurationSec)}秒`)}</span>`:''}
       ${practiceSummaryMeta?`<span style="font-size:11px;padding:1px 7px;border-radius:8px;background:#ecfeff;color:#155e75;border:1px solid #a5f3fc">${escapeHtml(practiceSummaryMeta)}</span>`:''}
       <span class="card-drag-handle" title="drag to change node" draggable="true" ondragstart='startErrorDrag(${idLit}, event)' ondragend="endErrorDrag()" onclick="event.preventDefault();event.stopPropagation()">⋮⋯ Move</span>
     </div>

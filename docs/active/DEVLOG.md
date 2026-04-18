@@ -179,3 +179,36 @@ Continue structural split for large legacy files without AppState migration.
 
 1. modal size threshold warning is cleared (`194477 B < 220000 B`)
 2. source-line warnings now actively report monolith hotspots for next split steps
+
+## 2026-04-18 - pre-feature final optimization pass
+
+### Added
+
+1. `xingce_v3/modules/main/workspace/36d-notes-tree-status.js`
+2. `xingce_v3/modules/main/persistence/05c-cloud-restore-origin-utils.js`
+
+### Updated
+
+1. `xingce_v3/modules/main/13-quiz-flow.js`
+   - removed old legacy quiz render/review function set
+   - keep single active assignment chain to fenbi mode handlers
+2. `xingce_v3/modules/main/36-tab-coordination.js`
+   - extracted notes tree status rendering to `36d`
+3. `xingce_v3/modules/main/05-persistence.js`
+   - extracted cloud restore/origin utility block to `05c`
+4. `scripts/release/legacy_assets_config.py`
+   - registered `36d` and `05c` split modules
+
+### New size snapshot
+
+1. `legacy-app.home.bundle.js`: `231782 B` (`5453` lines)
+2. `legacy-app.workspace.bundle.js`: `170005 B` (`4192` lines)
+3. `legacy-app.modal.bundle.js`: `184692 B` (`4188` lines)
+4. `legacy-app.bootstrap.bundle.js`: `7799 B` (`215` lines)
+5. `legacy-app.bundle.js`: `594053 B` (`14042` lines)
+
+### Monolith line reduction snapshot
+
+1. `modules/main/13-quiz-flow.js`: `727 -> 559`
+2. `modules/main/36-tab-coordination.js`: `706 -> 636`
+3. `modules/main/05-persistence.js`: `1969 -> 1742`
