@@ -614,6 +614,7 @@ body.app-view-workspace #workspaceView #tabContentNotes #notesContent.knowledge-
 .home-shell-sub{font-size:14px;line-height:1.8;color:#64748b;max-width:720px}
 .home-shell-actions{display:flex;gap:10px;flex-wrap:wrap}
 .home-dashboard-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:16px}
+.home-dashboard-grid.is-single{grid-template-columns:1fr}
 .home-dashboard-card{padding:18px;border:1px solid #e8edf5;border-radius:18px;background:#fff;box-shadow:0 10px 24px rgba(15,23,42,.04)}
 .home-dashboard-card h3{margin:0 0 12px;font-size:16px;color:#0f172a}
 .home-metric-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
