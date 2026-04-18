@@ -73,6 +73,7 @@ The minimum persistent doc set is:
 4. `docs/active/DEVLOG.md`
 5. `docs/active/RELEASE_CHECKLIST.md`
 6. `docs/active/SELF_TEST_REPORT.md`
+7. `docs/active/MODULE_BOUNDARIES.md`
 
 ## Frontend cache-bust rule
 

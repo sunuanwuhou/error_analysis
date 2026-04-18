@@ -13,6 +13,7 @@ LEGACY_ALLOWED_NEW_PREFIXES = (
     "xingce_v3/modules/main/workspace/",
     "xingce_v3/modules/main/modal/",
     "xingce_v3/modules/main/knowledge/",
+    "xingce_v3/modules/main/persistence/",
 )
 RUNTIME_TRACKED_PATTERNS = [
     "data/**",
@@ -108,7 +109,7 @@ def main() -> int:
             errors.append(
                 "new files were added under legacy frontend paths:\n  - "
                 + "\n  - ".join(legacy_added)
-                + "\nadd new product files under frontend/src instead; legacy add-only exception: modules/main/{workspace,modal,knowledge}/"
+                + "\nadd new product files under frontend/src instead; legacy add-only exception: modules/main/{workspace,modal,knowledge,persistence}/"
             )
 
     if errors:

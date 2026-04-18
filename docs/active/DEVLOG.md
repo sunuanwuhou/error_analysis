@@ -101,3 +101,81 @@ Continue the legacy split line without introducing AppState migration in this pa
 2. `python3 scripts/release/build_legacy_assets.py`
 3. `python3 scripts/check_legacy_entry.py`
 4. `python3 scripts/check_repo_layout.py`
+
+## 2026-04-18 - split continuation (workspace/modal/persistence)
+
+### Goal
+
+Continue structural split for large legacy files without AppState migration.
+
+### Added
+
+1. `xingce_v3/modules/main/workspace/36a-workspace-data-actions.js`
+2. `xingce_v3/modules/main/modal/36b-entry-ai-and-save.js`
+3. `xingce_v3/modules/main/persistence/05a-note-sync-and-history.js`
+4. `xingce_v3/modules/main/modal/13a-quiz-canvas-feedback.js`
+
+### Updated
+
+1. `xingce_v3/modules/main/36-tab-coordination.js`
+   - extracted scoped clear/delete/add and entry AI/save logic
+2. `xingce_v3/modules/main/05-persistence.js`
+   - extracted note-sync/history tail block
+3. `xingce_v3/modules/main/13-quiz-flow.js`
+   - extracted quiz canvas/feedback helper block
+4. `scripts/release/legacy_assets_config.py`
+   - updated split source mapping for new modules
+
+### Bundle snapshot after this split
+
+1. `legacy-app.home.bundle.js`: `240611 B` (`5582` lines)
+2. `legacy-app.workspace.bundle.js`: `157116 B` (`3942` lines)
+3. `legacy-app.modal.bundle.js`: `223740 B` (`5102` lines)
+4. `legacy-app.bootstrap.bundle.js`: `7799 B` (`215` lines)
+
+### Current guardrail signal
+
+1. split build warning remains on modal threshold (`223740 B > 220000 B`)
+2. this is intentional as warning-only (not blocking), and marks the next optimization target
+
+## 2026-04-18 - all-line continuation patch (split + governance)
+
+### Added
+
+1. `xingce_v3/modules/main/workspace/36c-notes-view-helpers.js`
+2. `xingce_v3/modules/main/persistence/05b-cloud-bootstrap-and-schedule.js`
+3. `docs/active/MODULE_BOUNDARIES.md`
+
+### Updated
+
+1. `xingce_v3/modules/main/13-quiz-flow.js`
+   - removed historical override chains
+   - retained a single workflow override line for `note/direct/speed`
+2. `xingce_v3/modules/main/36-tab-coordination.js`
+   - extracted note-view helper block into `36c`
+3. `xingce_v3/modules/main/05-persistence.js`
+   - extracted cloud bootstrap/schedule policy block into `05b`
+4. `scripts/release/build_legacy_assets.py`
+   - added split bundle line threshold warning
+   - added source file line threshold warning
+5. `scripts/release/legacy_assets_config.py`
+   - split mapping updates (`05b`, `36c`, modal/home rebalance)
+   - added `VIEW_BUNDLE_LINE_WARNINGS` and `SOURCE_FILE_LINE_WARNING`
+6. `scripts/check/check_repo_layout.py`
+   - allowed legacy add-only prefix `modules/main/persistence/`
+7. docs index/rules updated:
+   - `docs/INDEX.md`
+   - `docs/active/PROJECT_RULES.md`
+
+### Bundle snapshot
+
+1. `legacy-app.home.bundle.js`: `235935 B` (`5539` lines)
+2. `legacy-app.workspace.bundle.js`: `166261 B` (`4116` lines)
+3. `legacy-app.modal.bundle.js`: `194477 B` (`4356` lines)
+4. `legacy-app.bootstrap.bundle.js`: `7799 B` (`215` lines)
+5. `legacy-app.bundle.js`: `604247 B` (`14220` lines)
+
+### Guardrail result
+
+1. modal size threshold warning is cleared (`194477 B < 220000 B`)
+2. source-line warnings now actively report monolith hotspots for next split steps

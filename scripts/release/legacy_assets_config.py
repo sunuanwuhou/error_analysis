@@ -59,6 +59,8 @@ JS_SOURCES = [
     'modules/main/03-storage-usage.js',
     'modules/main/04-utils.js',
     'modules/main/05-persistence.js',
+    'modules/main/persistence/05a-note-sync-and-history.js',
+    'modules/main/persistence/05b-cloud-bootstrap-and-schedule.js',
     'modules/main/06-ai-workbench.js',
     'modules/main/07-image-processing.js',
     'modules/main/08-initial-data.js',
@@ -67,6 +69,7 @@ JS_SOURCES = [
     'modules/main/11-typed-note-tree.js',
     'modules/main/12-review-engine.js',
     'modules/main/13-quiz-flow.js',
+    'modules/main/modal/13a-quiz-canvas-feedback.js',
     'modules/main/14-sidebar-render.js',
     'modules/main/15-filters.js',
     'modules/main/16-main-render.js',
@@ -104,6 +107,9 @@ JS_SOURCES = [
     'modules/main/33-bulk-actions.js',
     'modules/main/34-modal-controls.js',
     'modules/main/36-tab-coordination.js',
+    'modules/main/workspace/36a-workspace-data-actions.js',
+    'modules/main/workspace/36c-notes-view-helpers.js',
+    'modules/main/modal/36b-entry-ai-and-save.js',
     'modules/main/99-bootstrap.js',
     'modules/knowledge-state.js',
     'modules/knowledge-workbench.js',
@@ -120,6 +126,8 @@ JS_VIEW_SPLIT_SOURCES = {
         'modules/main/03-storage-usage.js',
         'modules/main/04-utils.js',
         'modules/main/05-persistence.js',
+        'modules/main/persistence/05a-note-sync-and-history.js',
+        'modules/main/persistence/05b-cloud-bootstrap-and-schedule.js',
         'modules/main/08-initial-data.js',
         'modules/main/09-markdown.js',
         'modules/main/12-review-engine.js',
@@ -127,6 +135,7 @@ JS_VIEW_SPLIT_SOURCES = {
         'modules/main/15-filters.js',
         'modules/main/21-dashboard-modules.js',
         'modules/main/22-history.js',
+        'modules/main/24-type-detection.js',
         'modules/main/36-tab-coordination.js',
         'modules/knowledge-state.js',
         'modules/knowledge-workbench.js',
@@ -148,6 +157,8 @@ JS_VIEW_SPLIT_SOURCES = {
         'modules/main/knowledge/30f-knowledge-tree-binding.js',
         'modules/main/knowledge/30g-knowledge-tree-dnd.js',
         'modules/main/30-directory-management.js',
+        'modules/main/workspace/36a-workspace-data-actions.js',
+        'modules/main/workspace/36c-notes-view-helpers.js',
         'modules/knowledge-workspace.js',
         'modules/data-management.js',
     ],
@@ -163,16 +174,17 @@ JS_VIEW_SPLIT_SOURCES = {
         'modules/main/modal/19e-entry-flow-ui.js',
         'modules/main/20-claude-helper.js',
         'modules/main/23-md-toolbar.js',
-        'modules/main/24-type-detection.js',
         'modules/main/25-quick-print.js',
         'modules/main/26-export-upgrade.js',
         'modules/main/28-vocabulary-bank.js',
         'modules/main/29-quiz-shortcuts.js',
         'modules/main/13-quiz-flow.js',
+        'modules/main/modal/13a-quiz-canvas-feedback.js',
         'modules/main/31-inline-quiz.js',
         'modules/main/32-difficulty-rating.js',
         'modules/main/33-bulk-actions.js',
         'modules/main/34-modal-controls.js',
+        'modules/main/modal/36b-entry-ai-and-save.js',
         'modules/knowledge-node-modal.js',
     ],
     'bootstrap': [
@@ -188,6 +200,13 @@ VIEW_BUNDLE_SIZE_WARNINGS = {
     'bootstrap': 10_000,
 }
 
+VIEW_BUNDLE_LINE_WARNINGS = {
+    'home': 7000,
+    'workspace': 4500,
+    'modal': 5000,
+    'bootstrap': 300,
+}
+
 # 约束治理：重复函数名扫描白名单
 DUPLICATE_FUNCTION_NAME_ALLOWLIST = {
 }
@@ -196,3 +215,5 @@ DUPLICATE_FUNCTION_NAME_ALLOWLIST = {
 DUPLICATE_FUNCTION_SCAN_PREFIXES = (
     'modules/main/',
 )
+
+SOURCE_FILE_LINE_WARNING = 500

@@ -1,0 +1,52 @@
+{
+  "xc_version": 2,
+  "exportTime": "2026-04-18T10:15:31",
+  "errors": [
+    {
+      "id": 1,
+      "addDate": "2026-04-18",
+      "type": "判断推理",
+      "subtype": "未分类",
+      "subSubtype": "",
+      "question": "粉笔题号: 3_1_bb254（当前请求未返回题干正文）",
+      "options": "",
+      "answer": "",
+      "myAnswer": "",
+      "rootReason": "",
+      "errorReason": "",
+      "analysis": "当前接口链未返回题干与官方解析正文；已保留题号、作答与统计信息。建议在浏览器内通过油猴抓取真实题干与解析字段。",
+      "status": "focus",
+      "difficulty": 0,
+      "imgData": null,
+      "analysisImgData": null,
+      "srcYear": "",
+      "srcProvince": "",
+      "srcOrigin": "fenbi::api-sample::1_1_3l4gahr",
+      "quiz": null,
+      "meta": {
+        "fenbiQuestionKey": "3_1_bb254",
+        "fenbiQuestionId": 11896996,
+        "fenbiScoreRate": 0.0,
+        "fenbiCorrectRatio": 48.538283062645014,
+        "fenbiMostWrongChoice": "2",
+        "fenbiStatus": -1
+      }
+    }
+  ],
+  "revealed": [],
+  "expTypes": [],
+  "expMain": [],
+  "expMainSub": [],
+  "expMainSub2": [],
+  "notesByType": {},
+  "noteImages": {},
+  "typeRules": null,
+  "dirTree": null,
+  "globalNote": "Imported from fenbi API sample; content fields pending full-solution endpoint.",
+  "knowledgeTree": null,
+  "knowledgeNotes": {},
+  "knowledgeExpanded": [],
+  "todayDate": "",
+  "todayDone": 0,
+  "history": []
+}

@@ -21,8 +21,10 @@ CSS_SOURCES = _CONFIG_MODULE.CSS_SOURCES
 JS_SOURCES = _CONFIG_MODULE.JS_SOURCES
 JS_VIEW_SPLIT_SOURCES = _CONFIG_MODULE.JS_VIEW_SPLIT_SOURCES
 VIEW_BUNDLE_SIZE_WARNINGS = getattr(_CONFIG_MODULE, 'VIEW_BUNDLE_SIZE_WARNINGS', {})
+VIEW_BUNDLE_LINE_WARNINGS = getattr(_CONFIG_MODULE, 'VIEW_BUNDLE_LINE_WARNINGS', {})
 DUPLICATE_FUNCTION_NAME_ALLOWLIST = set(getattr(_CONFIG_MODULE, 'DUPLICATE_FUNCTION_NAME_ALLOWLIST', set()))
 DUPLICATE_FUNCTION_SCAN_PREFIXES = tuple(getattr(_CONFIG_MODULE, 'DUPLICATE_FUNCTION_SCAN_PREFIXES', ('modules/main/',)))
+SOURCE_FILE_LINE_WARNING = int(getattr(_CONFIG_MODULE, 'SOURCE_FILE_LINE_WARNING', 0) or 0)
 
 
 def load_v51_partials_manifest() -> list[str]:
@@ -122,6 +124,38 @@ def report_split_bundle_size_warnings(view_bundle_paths: dict[str, Path]) -> lis
     return warnings
 
 
+def report_split_bundle_line_warnings(view_bundle_paths: dict[str, Path]) -> list[str]:
+    warnings: list[str] = []
+    for view_name, threshold in VIEW_BUNDLE_LINE_WARNINGS.items():
+        bundle_path = view_bundle_paths.get(view_name)
+        if not bundle_path or not bundle_path.exists():
+            continue
+        line_count = sum(1 for _ in bundle_path.open(encoding='utf-8'))
+        if line_count > int(threshold):
+            warnings.append(
+                f'[{view_name}] {line_count} lines > warn threshold {int(threshold)} lines'
+            )
+    return warnings
+
+
+def report_source_file_line_warnings(js_sources: list[str]) -> list[str]:
+    if SOURCE_FILE_LINE_WARNING <= 0:
+        return []
+    warnings: list[str] = []
+    for rel in js_sources:
+        if not rel.endswith('.js'):
+            continue
+        source_path = XINGCE / rel
+        if not source_path.exists():
+            continue
+        line_count = sum(1 for _ in source_path.open(encoding='utf-8'))
+        if line_count > SOURCE_FILE_LINE_WARNING:
+            warnings.append(
+                f'[{rel}] {line_count} lines > warn threshold {SOURCE_FILE_LINE_WARNING} lines'
+            )
+    return warnings
+
+
 def report_duplicate_function_warnings() -> list[str]:
     duplicates = collect_duplicate_function_names(JS_SOURCES)
     lines: list[str] = []
@@ -154,6 +188,8 @@ def main() -> None:
 
     duplicate_warnings = report_duplicate_function_warnings()
     size_warnings = report_split_bundle_size_warnings(view_bundle_paths)
+    line_warnings = report_split_bundle_line_warnings(view_bundle_paths)
+    source_file_line_warnings = report_source_file_line_warnings(JS_SOURCES)
 
     print(f'Wrote {css_bundle_path.relative_to(ROOT)}')
     print(f'Wrote {js_bundle_path.relative_to(ROOT)}')
@@ -169,6 +205,14 @@ def main() -> None:
     if size_warnings:
         print('WARN split bundle size threshold exceeded:')
         for line in size_warnings:
+            print(f'  - {line}')
+    if line_warnings:
+        print('WARN split bundle line threshold exceeded:')
+        for line in line_warnings:
+            print(f'  - {line}')
+    if source_file_line_warnings:
+        print('WARN source file line threshold exceeded:')
+        for line in source_file_line_warnings:
             print(f'  - {line}')
 
 
