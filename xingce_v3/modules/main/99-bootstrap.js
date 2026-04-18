@@ -80,6 +80,59 @@ function scheduleWorkspaceWarmup() {
   setTimeout(run, 900);
 }
 
+const LEGACY_MODAL_BUNDLE_SRC = '/assets/modules/legacy-app.modal.bundle.js';
+let legacyModalBundlePromise = null;
+let legacyModalBundleLoaded = false;
+
+function hasLoadedScript(src) {
+  return Boolean(document.querySelector(`script[src="${src}"]`));
+}
+
+function loadScriptBySrc(src) {
+  if (hasLoadedScript(src)) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = src;
+    script.async = false;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error(`script load failed: ${src}`));
+    document.head.appendChild(script);
+  });
+}
+
+function ensureLegacyModalBundleLoaded() {
+  if (legacyModalBundleLoaded || hasLoadedScript(LEGACY_MODAL_BUNDLE_SRC)) {
+    legacyModalBundleLoaded = true;
+    return Promise.resolve();
+  }
+  if (legacyModalBundlePromise) return legacyModalBundlePromise;
+  legacyModalBundlePromise = loadScriptBySrc(LEGACY_MODAL_BUNDLE_SRC)
+    .then(() => {
+      legacyModalBundleLoaded = true;
+    })
+    .finally(() => {
+      legacyModalBundlePromise = null;
+    });
+  return legacyModalBundlePromise;
+}
+
+if (typeof window !== 'undefined') {
+  window.ensureLegacyModalBundleLoaded = ensureLegacyModalBundleLoaded;
+  window.__resolveDeclarativeHandler = async function resolveDeclarativeHandler(payload) {
+    const error = payload && payload.error;
+    const isReferenceError = Boolean(
+      error && (
+        error.name === 'ReferenceError' ||
+        /is not defined/i.test(String(error.message || ''))
+      )
+    );
+    if (!isReferenceError) return false;
+    if (legacyModalBundleLoaded) return false;
+    await ensureLegacyModalBundleLoaded();
+    return true;
+  };
+}
+
 (async () => {
   const ALL_KEYS = [
     KEY_ERRORS, KEY_REVEALED, KEY_EXP_TYPES, KEY_EXP_MAIN, KEY_EXP_SUB2,

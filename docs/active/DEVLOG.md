@@ -9,11 +9,11 @@ Write the real project context into the repository so future work can continue f
 ### Added
 
 1. `docs/README.md`
-2. `docs/PROJECT_RULES.md`
-3. `docs/CURRENT_SCOPE.md`
-4. `docs/HANDOFF_CONTEXT.md`
-5. `docs/RELEASE_CHECKLIST.md`
-6. `docs/SELF_TEST_REPORT.md`
+2. `docs/active/PROJECT_RULES.md`
+3. `docs/active/CURRENT_SCOPE.md`
+4. `docs/active/HANDOFF_CONTEXT.md`
+5. `docs/active/RELEASE_CHECKLIST.md`
+6. `docs/active/SELF_TEST_REPORT.md`
 
 ### Updated
 

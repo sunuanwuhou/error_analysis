@@ -67,12 +67,12 @@ All important information must be written into repository docs and shipped with 
 
 The minimum persistent doc set is:
 
-1. `docs/PROJECT_RULES.md`
-2. `docs/CURRENT_SCOPE.md`
-3. `docs/HANDOFF_CONTEXT.md`
-4. `docs/DEVLOG.md`
-5. `docs/RELEASE_CHECKLIST.md`
-6. `docs/SELF_TEST_REPORT.md`
+1. `docs/active/PROJECT_RULES.md`
+2. `docs/active/CURRENT_SCOPE.md`
+3. `docs/active/HANDOFF_CONTEXT.md`
+4. `docs/active/DEVLOG.md`
+5. `docs/active/RELEASE_CHECKLIST.md`
+6. `docs/active/SELF_TEST_REPORT.md`
 
 ## Frontend cache-bust rule
 

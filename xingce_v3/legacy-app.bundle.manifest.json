@@ -1,8 +1,8 @@
 {
-  "built_at": "2026-04-17T15:03:02Z",
+  "built_at": "2026-04-18T01:17:16Z",
   "css_bundle": {
     "path": "xingce_v3/styles/legacy-app.bundle.css",
-    "sha256": "8a044f74907520e7817c6f729468aeac73b23cfd911a86ffd391195a7f6ea009",
+    "sha256": "06ef7b37387717616f8b0486f1297a040faddb6c3caf636efe7748ed31fae2a7",
     "sources": [
       "styles/main/00-base-reset.css",
       "styles/main/01-sidebar.css",
@@ -48,7 +48,7 @@
   },
   "js_bundle": {
     "path": "xingce_v3/modules/legacy-app.bundle.js",
-    "sha256": "fafab2da75ee65ed8273ba7eaa1aedabd3ef18fafc7d0a2098f4e969130bc16a",
+    "sha256": "3375974a87dd313add7faf6d73cba9a2fd79625380e96f70450ce4d60a1db625",
     "sources": [
       "modules/main/00-event-dispatcher.js",
       "modules/main/01-state.js",
@@ -67,9 +67,12 @@
       "modules/main/14-sidebar-render.js",
       "modules/main/15-filters.js",
       "modules/main/16-main-render.js",
+      "modules/main/workspace/16a-workspace-actions.js",
       "modules/main/17-error-card-render.js",
+      "modules/main/workspace/17a-error-card-actions.js",
       "modules/main/18-crud-modal.js",
       "modules/main/19-import-export.js",
+      "modules/main/modal/19a-import-export-core.js",
       "modules/main/20-claude-helper.js",
       "modules/main/21-dashboard-modules.js",
       "modules/main/22-history.js",
@@ -80,6 +83,9 @@
       "modules/main/27-backup-restore.js",
       "modules/main/28-vocabulary-bank.js",
       "modules/main/29-quiz-shortcuts.js",
+      "modules/main/knowledge/30a-knowledge-tree-state.js",
+      "modules/main/knowledge/30b-knowledge-tree-render.js",
+      "modules/main/knowledge/30c-knowledge-tree-actions.js",
       "modules/main/30-directory-management.js",
       "modules/main/31-inline-quiz.js",
       "modules/main/32-difficulty-rating.js",
@@ -97,7 +103,7 @@
   "js_view_bundles": {
     "home": {
       "path": "xingce_v3/modules/legacy-app.home.bundle.js",
-      "sha256": "2256fa69a0bce140c0d00701e7006601d9be8d45fc48bb94145edd77f4e0cc40",
+      "sha256": "47966e2521fa6aa25e352f0fcd84437d61412fc7df43f297a229bd2ad943d3b1",
       "sources": [
         "modules/main/00-event-dispatcher.js",
         "modules/main/01-state.js",
@@ -122,13 +128,18 @@
     },
     "workspace": {
       "path": "xingce_v3/modules/legacy-app.workspace.bundle.js",
-      "sha256": "813d3308d30eb0bc5bcca2b560b69685eec4a608839d89f312117fd8e7aef5a7",
+      "sha256": "ff65c022481a15af001b0b883276ca8a8f170f11ab1ac92988583ca3a0465d25",
       "sources": [
         "modules/main/10-notes-panel.js",
         "modules/main/11-typed-note-tree.js",
         "modules/main/16-main-render.js",
+        "modules/main/workspace/16a-workspace-actions.js",
         "modules/main/17-error-card-render.js",
+        "modules/main/workspace/17a-error-card-actions.js",
         "modules/main/27-backup-restore.js",
+        "modules/main/knowledge/30a-knowledge-tree-state.js",
+        "modules/main/knowledge/30b-knowledge-tree-render.js",
+        "modules/main/knowledge/30c-knowledge-tree-actions.js",
         "modules/main/30-directory-management.js",
         "modules/knowledge-workspace.js",
         "modules/data-management.js"
@@ -136,12 +147,13 @@
     },
     "modal": {
       "path": "xingce_v3/modules/legacy-app.modal.bundle.js",
-      "sha256": "dd9bba0f45ecc7ce3baf594f7a9f17a9c744888f561d2711a6b9c2a02f70954f",
+      "sha256": "a288276dd674edb90f09a8ef31e38cd947de93179ee25c915d7d822dcfcc0961",
       "sources": [
         "modules/main/06-ai-workbench.js",
         "modules/main/07-image-processing.js",
         "modules/main/18-crud-modal.js",
         "modules/main/19-import-export.js",
+        "modules/main/modal/19a-import-export-core.js",
         "modules/main/20-claude-helper.js",
         "modules/main/23-md-toolbar.js",
         "modules/main/25-quick-print.js",
@@ -156,7 +168,7 @@
     },
     "bootstrap": {
       "path": "xingce_v3/modules/legacy-app.bootstrap.bundle.js",
-      "sha256": "0718ab6e785e28992aff220494137ad050b8dc44713c6b82a6af887252d93929",
+      "sha256": "0ee45258bbd588c64cecba1d407917c632eb227737fe61fc00ba6e213d17d5c3",
       "sources": [
         "modules/main/99-bootstrap.js"
       ]

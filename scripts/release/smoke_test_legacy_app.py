@@ -138,7 +138,9 @@ def main() -> None:
         status, legacy_html = request_text(opener, f'{base_url}/legacy')
         assert status == 200
         assert '/assets/styles/legacy-app.bundle.css' in legacy_html
-        assert '/assets/modules/legacy-app.bundle.js' in legacy_html
+        assert '/assets/modules/legacy-app.home.bundle.js' in legacy_html
+        assert '/assets/modules/legacy-app.workspace.bundle.js' in legacy_html
+        assert '/assets/modules/legacy-app.bootstrap.bundle.js' in legacy_html
         assert not re.search(r'(?<!data-)onclick=', legacy_html)
         assert not re.search(r'(?<!data-)oninput=', legacy_html)
         assert not re.search(r'(?<!data-)onchange=', legacy_html)
@@ -147,7 +149,10 @@ def main() -> None:
 
         for asset_url in [
             '/assets/styles/legacy-app.bundle.css',
-            '/assets/modules/legacy-app.bundle.js',
+            '/assets/modules/legacy-app.home.bundle.js',
+            '/assets/modules/legacy-app.workspace.bundle.js',
+            '/assets/modules/legacy-app.bootstrap.bundle.js',
+            '/assets/modules/legacy-app.modal.bundle.js',
             '/assets/modules/mathjax-config.js',
         ]:
             status, _ = request_text(opener, urljoin(base_url, asset_url))

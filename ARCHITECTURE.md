@@ -14,7 +14,7 @@ This repository keeps one active product path and a small set of legacy/runtime 
 | `v51_frontend/` | Legacy | Older frontend implementation/reference. | Bug fixes and migration references only. No new product modules. |
 | `converter/src/`, `converter/tools/` | Tooling | Source conversion scripts and helper tools. | Keep generated output outside source history. |
 | `converter/output/` | Generated | Conversion results, previews, samples, and local artifacts. | Do not add new generated files to Git. |
-| `docs/` | Active documentation | Current project rules, scope, release gate, handoff, and runbook docs. | Keep only active operating docs at root; move historical/phase docs into `docs/archive/`. |
+| `docs/` | Active documentation | Current project rules, scope, release gate, handoff, runbook, and roadmap docs. | Keep docs grouped by `docs/active/`, `docs/ops/`, `docs/roadmap/`, `docs/archive/`; update `docs/INDEX.md` after major doc changes. |
 | `docs/archive/` | Historical documentation | Phase plans, completed rollout notes, old optimization writeups, and frozen delivery records. | Read-only by default; append only when archiving closed milestones. |
 | `scripts/check/`, `scripts/release/`, `scripts/migration/` | Script domains | Quality checks, release packaging helpers, and migration utilities grouped by responsibility. | Keep compatibility wrappers under `scripts/*.py`; new scripts should land in a domain folder first. |
 | `data/`, `runtime/`, `cloudflared/` | Local runtime | Local databases, runtime state, and tunnel files. | Ignored; do not commit runtime state. |

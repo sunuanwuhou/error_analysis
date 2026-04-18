@@ -34,16 +34,12 @@ function renderSidebarKnowledgeTree(nodes, depth) {
     const cls = depth === 0 ? 'nav-type-header' : depth === 1 ? 'nav-subtype' : 'nav-sub2';
     const extraStyle = depth > 2 ? `padding-left:${60 + ((depth - 2) * 18)}px` : '';
     const marker = displayNode.isLeaf ? '•' : '▸';
-    const actions = `<span class="knowledge-node-actions">
-        <button class="note-action-btn" title="重命名" onclick="event.stopPropagation();renameKnowledgeNode('${displayNode.id}')">✎</button>
-        ${depth > 0 ? `<button class="note-action-btn" title="移动" onclick="event.stopPropagation();moveKnowledgeNode('${displayNode.id}')">⇄</button>` : ''}
-      </span>`;
     let html = `<div class="${cls} ${active ? 'active' : ''}" style="${extraStyle}" onclick="selectKnowledgeNodeFromSidebar('${displayNode.id}')">
       <span style="display:flex;align-items:center;gap:6px;min-width:0;flex:1">
         <span class="nav-arrow" style="transform:none;color:${displayNode.isLeaf ? '#d0d0d0' : '#bbb'}">${marker}</span>
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(displayNode.title)}</span>
       </span>
-      <span class="nav-count">${count}</span>${actions}</div>`;
+      <span class="nav-count">${count}</span></div>`;
     if (!displayNode.isLeaf && displayNode.children && displayNode.children.length) {
       html += renderSidebarKnowledgeTree(displayNode.children, depth + 1);
     }
@@ -68,7 +64,7 @@ function renderSidebarKnowledgeTreeV2(nodes, depth, renderBudget) {
     const cls = depth === 0 ? 'nav-item nav-type-header' : depth === 1 ? 'nav-item nav-subtype' : 'nav-item nav-sub2';
     const extraStyle = depth > 2 ? `padding-left:${60 + ((depth - 2) * 18)}px` : '';
     const hasChildren = !!(node.children && node.children.length);
-    const expanded = hasChildren && (depth === 0 || (typeof hasKnowledgeTreeSearch === 'function' && hasKnowledgeTreeSearch()) || isKnowledgeExpanded(node));
+    const expanded = hasChildren && ((typeof hasKnowledgeTreeSearch === 'function' && hasKnowledgeTreeSearch()) || isKnowledgeExpanded(node));
     const marker = hasChildren ? (expanded ? '▾' : '▸') : '•';
     const countClass = count > 0 ? 'knowledge-tree-count' : 'knowledge-tree-count is-empty';
     let html = `<div class="${cls} knowledge-tree-node ${active ? 'active is-active' : ''} ${matched ? 'is-search-match' : ''} ${hasChildren ? 'is-branch' : ''}" style="${extraStyle}" data-knowledge-node-id="${node.id}" draggable="true" ondragstart="startKnowledgeNodeDrag('${node.id}', event)" ondragend="endKnowledgeNodeDrag()" ondragover="allowKnowledgeDrop(event, '${node.id}')" ondragleave="leaveKnowledgeDrop(event)" ondrop="handleKnowledgeDrop('${node.id}', event)" onclick="handleKnowledgeNodeClick('${node.id}', event)" ondblclick="handleKnowledgeNodeDoubleClick('${node.id}', event)">

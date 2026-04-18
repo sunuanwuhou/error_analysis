@@ -855,14 +855,6 @@ function toCloudTimeMs(value) {
   const ms = new Date(normalizeCloudIso(value)).getTime();
   return Number.isNaN(ms) ? 0 : ms;
 }
-function escapeHtml(value) {
-  return String(value || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
 function getOriginDisplayTime(item) {
   if (!item) return '';
   return item.lastLocalChangeAt || item.lastSavedAt || item.lastLoadedAt || item.lastBackupUpdatedAt || item.updatedAt || '';

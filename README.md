@@ -4,12 +4,12 @@
 
 Before changing code or shipping a new build, read these docs in order:
 
-1. `docs/PROJECT_RULES.md`
-2. `docs/CURRENT_SCOPE.md`
-3. `docs/HANDOFF_CONTEXT.md`
-4. `docs/DEVLOG.md`
-5. `docs/RELEASE_CHECKLIST.md`
-6. `docs/SELF_TEST_REPORT.md`
+1. `docs/active/PROJECT_RULES.md`
+2. `docs/active/CURRENT_SCOPE.md`
+3. `docs/active/HANDOFF_CONTEXT.md`
+4. `docs/active/DEVLOG.md`
+5. `docs/active/RELEASE_CHECKLIST.md`
+6. `docs/active/SELF_TEST_REPORT.md`
 
 These files are now the repository source of truth for project goals, current phase, delivery rules, handoff context, and what was actually tested.
 
@@ -177,9 +177,10 @@ powershell -ExecutionPolicy Bypass -File .\scripts\wsl.ps1 -Action up
 
 ## Documentation Map
 
-- [current roadmap](E:\IdeaProject\git\xingce_v3_lab\docs\roadmap.md)
-- [ops notes](E:\IdeaProject\git\xingce_v3_lab\docs\ops-notes.md)
-- [Codex inbox](E:\IdeaProject\git\xingce_v3_lab\docs\codex-inbox.md)
-- [v3.1 integration plan (archive)](E:\IdeaProject\git\xingce_v3_lab\docs\archive\v3.1-integration-plan.md)
-- [v3.1 rollout notes (archive)](E:\IdeaProject\git\xingce_v3_lab\docs\archive\v3.1-rollout-notes-2026-03-26.md)
-- [shenlun workbench plan (archive)](E:\IdeaProject\git\xingce_v3_lab\docs\archive\shenlun-workbench-plan.md)
+- [docs index](docs/INDEX.md)
+- [current roadmap](docs/roadmap/roadmap.md)
+- [ops notes](docs/ops/ops-notes.md)
+- [Codex inbox](docs/ops/codex-inbox.md)
+- [v3.1 integration plan (archive)](docs/archive/v3.1-integration-plan.md)
+- [v3.1 rollout notes (archive)](docs/archive/v3.1-rollout-notes-2026-03-26.md)
+- [shenlun workbench plan (archive)](docs/archive/shenlun-workbench-plan.md)

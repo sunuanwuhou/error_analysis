@@ -12,6 +12,11 @@ LEGACY_HTML = ROOT / 'xingce_v3' / 'xingce_v3.html'
 BUNDLE_MANIFEST = ROOT / 'xingce_v3' / 'legacy-app.bundle.manifest.json'
 INLINE_HANDLER_ATTRS = {'onclick', 'oninput', 'onchange', 'onkeydown', 'onsubmit'}
 SUPPORTED_DECLARATIVE_EVENTS = {'data-onclick', 'data-oninput', 'data-onchange', 'data-onkeydown'}
+REQUIRED_JS_BUNDLES = [
+    '/assets/modules/legacy-app.home.bundle.js',
+    '/assets/modules/legacy-app.workspace.bundle.js',
+    '/assets/modules/legacy-app.bootstrap.bundle.js',
+]
 
 
 @dataclass
@@ -101,8 +106,9 @@ def main() -> None:
         raise CheckError('Mobile sidebar controls are missing from legacy entry.')
     if '/assets/styles/legacy-app.bundle.css' not in html_text:
         raise CheckError('Legacy CSS bundle reference is missing.')
-    if '/assets/modules/legacy-app.bundle.js' not in html_text:
-        raise CheckError('Legacy JS bundle reference is missing.')
+    for bundle_path in REQUIRED_JS_BUNDLES:
+        if bundle_path not in html_text:
+            raise CheckError(f'Legacy JS split bundle reference is missing: {bundle_path}')
 
     if not BUNDLE_MANIFEST.exists():
         raise CheckError(f'Bundle manifest missing: {BUNDLE_MANIFEST}')
