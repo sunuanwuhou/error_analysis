@@ -570,6 +570,7 @@ window.buildPortableBackupPayload = buildPortableBackupPayload;
 window.shouldDeferFullDataLoadOnStartup = shouldDeferFullDataLoadOnStartup;
 window.ensureFullWorkspaceDataLoaded = ensureFullWorkspaceDataLoaded;
 window.scheduleDeferredFullWorkspaceLoad = scheduleDeferredFullWorkspaceLoad;
+async function fetchCloudBackupDataSingle(opts) {
   opts = opts || {};
   const res = await fetch(opts.metaOnly ? '/api/backup?meta=1' : '/api/backup', { credentials: 'include' });
   const data = await res.json().catch(() => ({}));
