@@ -521,22 +521,27 @@
   }
 
   function renderWorkspaceHeader(currentNode, pathText, directCount, linkedCount, errorCount, mode) {
+    var titleText = String((currentNode && currentNode.title) || "");
+    var pathValue = String(pathText || "");
+    var showPath = pathValue && pathValue !== titleText;
+    var pathHtml = showPath
+      ? "<div class=\"knowledge-workspace-shell-path\">" + escapeHtml(pathValue) + "</div>"
+      : "";
     var backToRecommended = window.__recommendedNotesReturnEnabled
       ? "<button class=\"btn btn-sm btn-secondary\" onclick=\"returnToRecommendedNotes()\">返回推荐列表</button>"
       : "";
-    var moreActions = "<details class=\"knowledge-workspace-more\">" +
-      "<summary>更多</summary>" +
-      "<div class=\"knowledge-workspace-more-menu\">" +
-        "<button class=\"btn btn-sm btn-secondary\" onclick=\"openExternalKnowledgeNoteEditor('" + currentNode.id + "')\">" + TEXT.standaloneEdit + "</button>" +
-        "<button class=\"btn btn-sm btn-secondary\" onclick=\"renameKnowledgeNode('" + currentNode.id + "')\">" + TEXT.rename + "</button>" +
-        (findKnowledgeParent(currentNode.id) ? "<button class=\"btn btn-sm btn-secondary\" onclick=\"moveKnowledgeNode('" + currentNode.id + "')\">" + TEXT.move + "</button>" : "") +
-        "<button class=\"btn btn-sm btn-secondary\" onclick=\"selectedKnowledgeNodeId='" + currentNode.id + "';addKnowledgeLeafUnderSelected()\">" + TEXT.createChild + "</button>" +
-      "</div>" +
-    "</details>";
+    var nodeActions = "<div class=\"knowledge-workspace-node-actions\">" +
+      "<button class=\"btn btn-sm btn-secondary\" onclick=\"openExternalKnowledgeNoteEditor('" + currentNode.id + "')\">" + TEXT.standaloneEdit + "</button>" +
+      "<button class=\"btn btn-sm btn-secondary\" onclick=\"renameKnowledgeNode('" + currentNode.id + "')\">" + TEXT.rename + "</button>" +
+      (findKnowledgeParent(currentNode.id) ? "<button class=\"btn btn-sm btn-secondary\" onclick=\"moveKnowledgeNode('" + currentNode.id + "')\">" + TEXT.move + "</button>" : "") +
+      "<button class=\"btn btn-sm btn-secondary\" onclick=\"selectedKnowledgeNodeId='" + currentNode.id + "';addKnowledgeLeafUnderSelected()\">" + TEXT.createChild + "</button>" +
+      "<button class=\"btn btn-sm btn-secondary\" onclick=\"openAddModalForCurrentKnowledge()\">" + TEXT.createQuestion + "</button>" +
+    "</div>";
     return "<div class=\"knowledge-workspace-shell-header\">" +
       "<div class=\"knowledge-workspace-shell-meta\">" +
-        "<div class=\"knowledge-workspace-shell-title\">" + escapeHtml(currentNode.title) + "</div>" +
-        "<div class=\"knowledge-workspace-shell-path\">" + escapeHtml(pathText) + "</div>" +
+        "<div class=\"knowledge-workspace-shell-title\">" + escapeHtml(titleText) + "</div>" +
+        pathHtml +
+        nodeActions +
       "</div>" +
       "<div class=\"knowledge-workspace-shell-actions\">" +
         "<div class=\"knowledge-workspace-mode-switch\">" +
@@ -551,8 +556,6 @@
           : "") +
         "<span class=\"knowledge-workspace-count\">" + errorCount + TEXT.countSuffix + "</span>" +
         backToRecommended +
-        "<button class=\"btn btn-sm btn-secondary\" onclick=\"openAddModalForCurrentKnowledge()\">" + TEXT.createQuestion + "</button>" +
-        moreActions +
       "</div>" +
       "<div class=\"knowledge-workspace-shell-stats\">" +
         "<span class=\"knowledge-workspace-stat\">" + TEXT.directCount + directCount + "</span>" +
@@ -641,6 +644,47 @@
     requestAnimationFrame(function () {
       syncActiveNoteToc(preview);
       renderMathInElement(preview);
+    });
+  }
+
+  function syncKnowledgeNoteScrollFrames() {
+    var content = document.getElementById("notesContent");
+    if (!content || !content.classList.contains("knowledge-workspace-note-mode")) return;
+    var header = content.querySelector(".knowledge-workspace-shell-header");
+    var listHead = content.querySelector(".knowledge-workspace-list-head");
+    var contentRect = content.getBoundingClientRect();
+    var headerHeight = header ? header.getBoundingClientRect().height : 0;
+    var listHeadHeight = listHead ? listHead.getBoundingClientRect().height : 0;
+    var available = Math.max(360, Math.floor(contentRect.height - headerHeight - listHeadHeight - 28));
+    var px = available + "px";
+    [
+      ".knowledge-workspace-note-wrap--directory",
+      ".knowledge-directory-layout",
+      ".knowledge-directory-list",
+      ".knowledge-directory-preview-wrap",
+      ".knowledge-directory-preview",
+      ".knowledge-inline-preview",
+      ".note-preview-layout",
+      ".note-preview-layout-no-toc",
+      ".note-preview-toc",
+      ".note-preview-toc .note-toc-floating",
+      ".note-preview-article-scroll"
+    ].forEach(function (selector) {
+      Array.prototype.forEach.call(content.querySelectorAll(selector), function (el) {
+        el.style.height = px;
+        el.style.maxHeight = px;
+        el.style.minHeight = "0";
+      });
+    });
+    [
+      ".knowledge-directory-list",
+      ".note-preview-toc .note-toc-floating",
+      ".note-preview-article-scroll"
+    ].forEach(function (selector) {
+      Array.prototype.forEach.call(content.querySelectorAll(selector), function (el) {
+        el.style.overflowY = "scroll";
+        el.style.overflowX = "hidden";
+      });
     });
   }
 
@@ -758,7 +802,7 @@
     content.classList.toggle("knowledge-workspace-note-mode", mode === "note");
 
     content.innerHTML = "<div class=\"knowledge-workspace-shell\">" +
-      renderWorkspaceHeader(currentNode, pathText, directCount, linkedCount, relatedErrors.length, mode) +
+      renderWorkspaceHeader(currentNode, pathText, directCount, linkedCount, linkedCount, mode) +
       bodyHtml +
     "</div>";
 
@@ -790,6 +834,13 @@
 
     if (mode === "note" && noteViewMode === "current" && noteEditing) {
       bindKnowledgeEditorShortcuts(content);
+    }
+    if (mode === "note") {
+      requestAnimationFrame(function () {
+        syncKnowledgeNoteScrollFrames();
+        setTimeout(syncKnowledgeNoteScrollFrames, 120);
+        setTimeout(syncKnowledgeNoteScrollFrames, 360);
+      });
     }
   }
 

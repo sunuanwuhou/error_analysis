@@ -1611,9 +1611,18 @@ function applyOps(ops) {
   if (knowledgeChanged && knowledgeRecordMap) {
     knowledgeTree = buildKnowledgeTreeFromSyncRecords([...knowledgeRecordMap.values()]);
     syncKnowledgeNotesFromTree();
+    if (typeof knowledgeNoteRenderCache !== 'undefined' && knowledgeNoteRenderCache && typeof knowledgeNoteRenderCache.clear === 'function') {
+      knowledgeNoteRenderCache.clear();
+    }
+    if (typeof resetKnowledgeTreeRenderWindow === 'function') {
+      resetKnowledgeTreeRenderWindow();
+    }
     const allNodes = collectKnowledgeNodes();
     if ((!selectedKnowledgeNodeId || !getKnowledgeNodeById(selectedKnowledgeNodeId)) && allNodes.length > 0) {
       selectedKnowledgeNodeId = allNodes[0].id;
+    }
+    if (knowledgeNodeFilter && !getKnowledgeNodeById(knowledgeNodeFilter)) {
+      knowledgeNodeFilter = '';
     }
   }
   if (errorChanged || notesChanged || noteImagesChanged || knowledgeChanged || settingsChanged) {
@@ -1633,9 +1642,16 @@ function applyOps(ops) {
       if (notesChanged || noteImagesChanged) saveNotesByType();
       if (knowledgeChanged) saveKnowledgeState();
       syncNotesWithErrors();
-      renderSidebar();
-      renderAll();
-      renderNotesByType();
+      if (typeof requestWorkspaceRender === 'function') {
+        requestWorkspaceRender({ sidebar: true, notes: true, immediate: true });
+      } else {
+        renderSidebar();
+        renderAll();
+        renderNotesByType();
+      }
+      if (knowledgeChanged && typeof renderNotesPanelRight === 'function') {
+        renderNotesPanelRight();
+      }
     });
   }
 }

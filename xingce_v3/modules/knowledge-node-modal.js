@@ -333,20 +333,19 @@
     }
     var directErrors = errors.filter(function (item) { return item.noteNodeId === node.id; });
     var childCount = (node.children || []).length;
+    if (childCount || directErrors.length) {
+      showToast("不能直接删除「" + node.title + "」：还有 " + childCount + " 个下级、" + directErrors.length + " 道直属题目。请先移动或清理后再删。", "warning");
+      return;
+    }
     var noteFlag = (node.contentMd || "").trim() ? "\n- 当前节点有笔记内容" : "";
-    var childFlag = childCount ? ("\n- 当前节点有 " + childCount + " 个下级，删除后会自动上提到父节点") : "";
-    var errorFlag = directErrors.length ? ("\n- 当前节点直属挂了 " + directErrors.length + " 道错题，删除后会自动移动到父节点") : "";
-    var ok = confirm("确认删除知识点「" + node.title + "」吗？" + noteFlag + childFlag + errorFlag + "\n\n此操作不可撤销。");
+    var ok = confirm("确认删除知识点「" + node.title + "」吗？" + noteFlag + "\n\n此操作不可撤销。");
     if (!ok) return;
 
     var siblings = parent.children || [];
     var idx = siblings.findIndex(function (item) { return item.id === node.id; });
     if (idx < 0) return;
 
-    directErrors.forEach(function (item) {
-      syncErrorKnowledgeBindingToNode(item, parent);
-    });
-    siblings.splice.apply(siblings, [idx, 1].concat(node.children || []));
+    siblings.splice(idx, 1);
     parent.isLeaf = siblings.length === 0;
     delete knowledgeNotes[node.id];
     knowledgeExpanded.delete(node.id);

@@ -275,10 +275,15 @@ function deleteKnowledgeNode(nodeId) {
     return currentNodeId === node.id;
   });
   const childCount = (node.children || []).length;
+  if (childCount || directErrors.length) {
+    showToast(
+      `不能直接删除「${node.title}」：还有 ${childCount} 个下级、${directErrors.length} 道直属题目。请先移动或清理后再删。`,
+      'warning'
+    );
+    return;
+  }
   const noteFlag = (node.contentMd || '').trim() ? '\n- 当前节点有笔记内容' : '';
-  const childFlag = childCount ? `\n- 当前节点有 ${childCount} 个下级，删除后会自动提升到当前层级` : '';
-  const errorFlag = directErrors.length ? `\n- 当前节点直属挂了 ${directErrors.length} 道错题，删除后会自动改挂到其他知识点或未归属` : '';
-  const ok = confirm(`确认删除知识点「${node.title}」吗？${noteFlag}${childFlag}${errorFlag}\n\n此操作不可撤销。`);
+  const ok = confirm(`确认删除知识点「${node.title}」吗？${noteFlag}\n\n此操作不可撤销。`);
   if (!ok) return;
   if (isRootNode) {
     const secondOk = confirm(`你正在删除一级知识点「${node.title}」。\n\n这会影响整组知识树结构和挂载错题，请再次确认。`);
@@ -286,19 +291,10 @@ function deleteKnowledgeNode(nodeId) {
   }
   const idx = siblings.findIndex(item => item.id === node.id);
   if (idx < 0) return;
-  const promotedChildren = unwrapPromotedKnowledgeChildren(node.children || [], node.title);
   const fallbackTargetId = parent
     ? parent.id
-    : (promotedChildren[0]?.id || siblings[idx - 1]?.id || siblings[idx + 1]?.id || '');
-  directErrors.forEach(item => {
-    if (typeof rebindErrorToKnowledgeNodeId === 'function') {
-      rebindErrorToKnowledgeNodeId(item, fallbackTargetId || '');
-      return;
-    }
-    item.noteNodeId = fallbackTargetId || '';
-    item.updatedAt = new Date().toISOString();
-  });
-  siblings.splice(idx, 1, ...promotedChildren);
+    : (siblings[idx - 1]?.id || siblings[idx + 1]?.id || '');
+  siblings.splice(idx, 1);
   if (parent) {
     parent.isLeaf = siblings.length === 0;
   }
@@ -307,7 +303,7 @@ function deleteKnowledgeNode(nodeId) {
   saveKnowledgeExpanded();
   if (knowledgeNodeFilter === node.id) knowledgeNodeFilter = null;
   if (selectedKnowledgeNodeId === node.id) {
-    selectedKnowledgeNodeId = fallbackTargetId || promotedChildren[0]?.id || siblings[0]?.id || null;
+    selectedKnowledgeNodeId = fallbackTargetId || siblings[0]?.id || null;
   }
   saveData();
   saveKnowledgeState();

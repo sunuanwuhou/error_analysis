@@ -18,6 +18,25 @@ function syncErrorKnowledgeBindingToNode(errorItem, targetNode) {
   return true;
 }
 
+function refreshKnowledgeTreeAfterErrorBindingChange(opts) {
+  const options = opts || {};
+  knowledgeErrorCountCacheVersion += 1;
+  knowledgeErrorCountCache = { version: -1, direct: new Map(), aggregate: new Map() };
+  if (typeof resetKnowledgeTreeRenderWindow === 'function') {
+    resetKnowledgeTreeRenderWindow();
+  }
+  if (options.focusNodeId) {
+    setCurrentKnowledgeNode(options.focusNodeId, { switchTab: false });
+  } else if (typeof requestWorkspaceRender === 'function') {
+    requestWorkspaceRender({ sidebar: true, notes: true, immediate: true });
+  } else {
+    renderSidebar();
+    renderAll();
+    renderNotesByType();
+  }
+  if (typeof renderNotesPanelRight === 'function') renderNotesPanelRight();
+}
+
 function assignErrorToKnowledgeNode(errorId, targetNodeId, opts) {
   const errorItem = errors.find(item => item.id === errorId);
   const targetNode = getKnowledgeNodeById(targetNodeId);
@@ -27,18 +46,7 @@ function assignErrorToKnowledgeNode(errorId, targetNodeId, opts) {
   recordErrorUpsert(errorItem);
   saveData();
   saveKnowledgeState();
-  if (opts && opts.focusNode) {
-    setCurrentKnowledgeNode(targetNode.id, { switchTab: false });
-  } else {
-    if (typeof requestWorkspaceRender === 'function') {
-      requestWorkspaceRender({ sidebar: true, notes: true, immediate: true });
-    } else {
-      renderSidebar();
-      renderAll();
-      renderNotesByType();
-    }
-    if (typeof renderNotesPanelRight === 'function') renderNotesPanelRight();
-  }
+  refreshKnowledgeTreeAfterErrorBindingChange({ focusNodeId: (opts && opts.focusNode) ? targetNode.id : '' });
   if (!opts || !opts.silent) {
     if (previousNodeId && knowledgeNodeFilter === previousNodeId && previousNodeId !== targetNode.id) {
       showToast(`已改挂载到：${collapseKnowledgePathTitles(getKnowledgePathTitles(targetNode.id)).join(' > ')}，该题已移出原知识点视图。`, 'success');
@@ -184,14 +192,7 @@ function applyKnowledgeMove() {
   batchSelected.clear();
   saveData();
   saveKnowledgeState();
-  if (typeof requestWorkspaceRender === 'function') {
-    requestWorkspaceRender({ sidebar: true, notes: true, immediate: true });
-  } else {
-    renderSidebar();
-    renderAll();
-    renderNotesByType();
-  }
-  if (typeof renderNotesPanelRight === 'function') renderNotesPanelRight();
+  refreshKnowledgeTreeAfterErrorBindingChange({ focusNodeId: targetNode.id });
   updateBatchBar();
   showToast(`已批量改挂载 ${matched.length} 题`, 'success');
 }
