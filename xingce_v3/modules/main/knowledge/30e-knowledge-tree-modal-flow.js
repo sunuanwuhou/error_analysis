@@ -20,6 +20,24 @@ function createKnowledgeLeafFromModal() {
   });
 }
 
+function rerenderKnowledgeWorkspace(opts) {
+  const options = opts || {};
+  if (typeof requestWorkspaceRender === 'function') {
+    requestWorkspaceRender({
+      sidebar: options.sidebar !== false,
+      notes: options.notes === true,
+      immediate: options.immediate === true
+    });
+  } else {
+    if (options.sidebar !== false && typeof renderSidebar === 'function') renderSidebar();
+    if (typeof renderAll === 'function') renderAll();
+    if (options.notes === true && typeof renderNotesByType === 'function') renderNotesByType();
+  }
+  if (options.rightPanel === true && typeof renderNotesPanelRight === 'function') {
+    renderNotesPanelRight();
+  }
+}
+
 function addKnowledgeLeafUnderSelected() {
   ensureKnowledgeState();
   const current = getKnowledgeNodeById(selectedKnowledgeNodeId);
@@ -119,8 +137,7 @@ function submitKnowledgeNodeModal() {
     saveKnowledgeState();
     closeKnowledgeNodeModal();
     showToast('节点已重命名', 'success');
-    renderSidebar();
-    renderNotesByType();
+    rerenderKnowledgeWorkspace({ sidebar: true, notes: true, rightPanel: true, immediate: true });
     return;
   }
   if (state.mode === 'move') {
@@ -260,8 +277,6 @@ function deleteKnowledgeNode(nodeId) {
   }
   saveData();
   saveKnowledgeState();
-  renderSidebar();
-  renderAll();
-  renderNotesByType();
+  rerenderKnowledgeWorkspace({ sidebar: true, notes: true, rightPanel: true, immediate: true });
   showToast(`已删除知识点：${node.title}`, 'success');
 }

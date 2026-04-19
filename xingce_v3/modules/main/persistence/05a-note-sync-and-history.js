@@ -52,8 +52,6 @@ function filterByNoteTitle(type, subtype, subSubtype) {
         typeFilter = {level:'type', value: type};
     }
     switchTab('notes');
-    renderSidebar();
-    renderAll();
 }
 
 // 新增：同步题目类型名称修改

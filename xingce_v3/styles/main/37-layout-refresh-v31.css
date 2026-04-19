@@ -95,10 +95,18 @@ body{
   flex-direction:column;
   overflow:hidden;
   min-height:0;
+  height:100%;
 }
 #notesContent.knowledge-notes-active > *{
   flex:1;
   min-height:0;
+}
+#tabContentNotes,
+#tabContentNotes .notes-area{
+  min-height:0;
+}
+#tabContentNotes .notes-area{
+  height:100%;
 }
 #notesContent.knowledge-notes-active .knowledge-workspace-shell{
   display:flex;

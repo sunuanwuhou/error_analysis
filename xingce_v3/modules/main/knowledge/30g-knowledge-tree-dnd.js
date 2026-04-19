@@ -15,9 +15,14 @@ function assignErrorToKnowledgeNode(errorId, targetNodeId, opts) {
   if (opts && opts.focusNode) {
     setCurrentKnowledgeNode(targetNode.id, { switchTab: false });
   } else {
-    renderSidebar();
-    renderAll();
-    renderNotesByType();
+    if (typeof requestWorkspaceRender === 'function') {
+      requestWorkspaceRender({ sidebar: true, notes: true, immediate: true });
+    } else {
+      renderSidebar();
+      renderAll();
+      renderNotesByType();
+    }
+    if (typeof renderNotesPanelRight === 'function') renderNotesPanelRight();
   }
   if (!opts || !opts.silent) {
     if (previousNodeId && knowledgeNodeFilter === previousNodeId && previousNodeId !== targetNode.id) {
@@ -164,9 +169,14 @@ function applyKnowledgeMove() {
   batchSelected.clear();
   saveData();
   saveKnowledgeState();
-  renderSidebar();
-  renderAll();
-  renderNotesByType();
+  if (typeof requestWorkspaceRender === 'function') {
+    requestWorkspaceRender({ sidebar: true, notes: true, immediate: true });
+  } else {
+    renderSidebar();
+    renderAll();
+    renderNotesByType();
+  }
+  if (typeof renderNotesPanelRight === 'function') renderNotesPanelRight();
   updateBatchBar();
   showToast(`已批量改挂载 ${matched.length} 题`, 'success');
 }

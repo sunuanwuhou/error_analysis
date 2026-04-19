@@ -130,7 +130,7 @@ function updateKnowledgeWorkspaceChrome(currentNode, linkedCount) {
     rightActions.innerHTML = `
       <button class="btn btn-sm ${knowledgeRelatedMode === 'direct' ? 'btn-primary' : 'btn-secondary'}" onclick="setKnowledgeRelatedMode('direct')" title="只看直接挂在当前节点的错题">直属</button>
       <button class="btn btn-sm ${knowledgeRelatedMode === 'all' ? 'btn-primary' : 'btn-secondary'}" onclick="setKnowledgeRelatedMode('all')" title="查看当前节点及下级节点的错题">含下级</button>
-      <button class="btn btn-sm btn-secondary" onclick="knowledgeNodeFilter=null;renderSidebar();renderAll();renderNotesPanelRight()" title="清除节点筛选">全部</button>
+      <button class="btn btn-sm btn-secondary" onclick="clearKnowledgeNodeFilterView()" title="清除节点筛选">全部</button>
       ${currentNode ? `<button class="btn btn-sm btn-secondary" onclick="switchTab('notes')" title="查看当前知识点笔记">笔记</button>` : ''}
     `;
   }

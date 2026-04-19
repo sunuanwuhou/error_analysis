@@ -164,7 +164,11 @@ function switchTab(tabName) {
     tabContentErrors.setAttribute('aria-hidden', 'true');
   }
   if (tabContentNotes) {
-    tabContentNotes.style.display = 'block';
+    tabContentNotes.style.display = 'flex';
+    tabContentNotes.style.flexDirection = 'column';
+    tabContentNotes.style.flex = '1';
+    tabContentNotes.style.minHeight = '0';
+    tabContentNotes.style.overflow = 'hidden';
     tabContentNotes.setAttribute('aria-hidden', 'false');
   }
 

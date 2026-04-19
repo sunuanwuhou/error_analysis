@@ -339,9 +339,13 @@
     if (options.switchTab !== false) {
       switchTab("notes");
     } else {
-      renderSidebar();
-      renderAll();
-      renderNotesByType();
+      if (typeof requestWorkspaceRender === "function") {
+        requestWorkspaceRender({ sidebar: true, notes: true, immediate: true });
+      } else {
+        renderSidebar();
+        renderAll();
+        renderNotesByType();
+      }
     }
   }
 
@@ -350,6 +354,18 @@
     saveNoteTypeContent();
     notesViewMode = "knowledge";
     setCurrentKnowledgeNode(nodeId, { switchTab: false, mode: DEFAULT_MODE });
+  }
+
+  function clearKnowledgeNodeFilterView() {
+    knowledgeNodeFilter = null;
+    if (typeof requestWorkspaceRender === "function") {
+      requestWorkspaceRender({ sidebar: true, notes: true, immediate: true });
+    } else {
+      renderSidebar();
+      renderAll();
+      renderNotesByType();
+    }
+    if (typeof renderNotesPanelRight === "function") renderNotesPanelRight();
   }
 
   function selectNoteType(type) {
@@ -429,10 +445,20 @@
       } catch (e) {
         console.warn("[knowledge-workspace] jumpToErrorInList workspace switch failed", e);
       }
-      if (typeof renderAll === "function") renderAll();
-      if (typeof renderNotesByType === "function") renderNotesByType();
+      if (typeof requestWorkspaceRender === "function") {
+        requestWorkspaceRender({ sidebar: false, notes: true, immediate: true });
+      } else {
+        if (typeof renderAll === "function") renderAll();
+        if (typeof renderNotesByType === "function") renderNotesByType();
+      }
       if (typeof renderNotesPanelRight === "function") renderNotesPanelRight();
-      attemptLocate();
+      if (typeof requestAnimationFrame === "function") {
+        requestAnimationFrame(function () {
+          requestAnimationFrame(attemptLocate);
+        });
+      } else {
+        setTimeout(attemptLocate, 32);
+      }
     }
 
     if (typeof hasFullWorkspaceDataLoaded === "function"
@@ -561,24 +587,20 @@
     listWrap.style.flex = "1";
     listWrap.style.minHeight = "0";
     listWrap.style.overflow = "hidden";
+    listWrap.style.height = "";
+    listWrap.style.maxHeight = "";
 
-    var wrapHeight = listWrap.clientHeight || 0;
-    if (wrapHeight < 120) {
-      var shellHeight = shell.clientHeight || 0;
-      var shellHeaderHeight = shellHeader ? shellHeader.offsetHeight : 0;
-      wrapHeight = Math.max(220, shellHeight - shellHeaderHeight - 8);
-      listWrap.style.height = wrapHeight + "px";
-      listWrap.style.maxHeight = wrapHeight + "px";
-    } else {
-      listWrap.style.height = "";
-      listWrap.style.maxHeight = "";
+    if (shellHeader) {
+      shellHeader.style.flexShrink = "0";
+    }
+    if (listHead) {
+      listHead.style.flexShrink = "0";
     }
 
-    var occupied = listHead ? listHead.offsetHeight : 0;
-    var availableHeight = Math.max(200, wrapHeight - occupied - 8);
-    list.style.minHeight = "200px";
-    list.style.height = availableHeight + "px";
-    list.style.maxHeight = availableHeight + "px";
+    list.style.flex = "1";
+    list.style.minHeight = "0";
+    list.style.height = "";
+    list.style.maxHeight = "";
     list.style.overflowY = "auto";
     list.style.overflowX = "hidden";
     list.style.touchAction = "pan-y";
@@ -742,6 +764,12 @@
 
     syncNotePreviewViewportHeight();
 
+    if (mode === "note") {
+      if (typeof bindNotePreviewScrollTracking === "function") {
+        bindNotePreviewScrollTracking(content);
+      }
+    }
+
     if (mode === "note" && noteViewMode === "current") {
       if (noteEditing) {
         syncEmbeddedNoteViewers(currentNode, getCurrentNoteMarkdown());
@@ -827,6 +855,7 @@
   window.getCurrentKnowledgeNode = getCurrentKnowledgeNode;
   window.setCurrentKnowledgeNode = setCurrentKnowledgeNode;
   window.selectKnowledgeLeaf = selectKnowledgeLeaf;
+  window.clearKnowledgeNodeFilterView = clearKnowledgeNodeFilterView;
   window.selectNoteType = selectNoteType;
   window.openKnowledgeForError = openKnowledgeForError;
   window.jumpToErrorInList = function (errorId) {

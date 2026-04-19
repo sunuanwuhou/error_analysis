@@ -69,9 +69,13 @@ function setCurrentKnowledgeNode(nodeId, opts) {
   if (options.switchTab !== false) {
     switchTab('notes');
   } else {
-    renderSidebar();
-    renderAll();
-    renderNotesByType();
+    if (typeof requestWorkspaceRender === 'function') {
+      requestWorkspaceRender({ sidebar: true, notes: true, immediate: true });
+    } else {
+      renderSidebar();
+      renderAll();
+      renderNotesByType();
+    }
   }
 }
 
@@ -117,6 +121,18 @@ function selectKnowledgeBranch(nodeId, event) {
   setCurrentKnowledgeNode(nodeId, { switchTab: false, expandPath: false });
 }
 
+function clearKnowledgeNodeFilterView() {
+  knowledgeNodeFilter = null;
+  if (typeof requestWorkspaceRender === 'function') {
+    requestWorkspaceRender({ sidebar: true, notes: true, immediate: true });
+  } else {
+    renderSidebar();
+    renderAll();
+    renderNotesByType();
+  }
+  if (typeof renderNotesPanelRight === 'function') renderNotesPanelRight();
+}
+
 function openKnowledgeForError(errorId) {
   const errorItem = findErrorById(errorId);
   if (!errorItem || !errorItem.noteNodeId) {
@@ -152,10 +168,18 @@ function jumpToErrorInList(errorId) {
     } catch (e) {
       console.warn('[jumpToErrorInList] switch workspace failed', e);
     }
-    if (typeof renderAll === 'function') renderAll();
+    if (typeof requestWorkspaceRender === 'function') {
+      requestWorkspaceRender({ sidebar: false, notes: true, immediate: true });
+    } else {
+      if (typeof renderAll === 'function') renderAll();
+      if (typeof renderNotesByType === 'function') renderNotesByType();
+    }
     if (typeof renderNotesPanelRight === 'function') renderNotesPanelRight();
-    if (typeof renderNotesByType === 'function') renderNotesByType();
-    attemptLocate();
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => requestAnimationFrame(attemptLocate));
+    } else {
+      setTimeout(attemptLocate, 32);
+    }
   };
   const selectors = [
     `[data-error-id="${targetId}"]`,
