@@ -147,8 +147,16 @@ function importFromClaude(){
   if(!Array.isArray(data)){showToast('应为数组格式 [...]', 'error');return;}
   const normalized = normalizeImportedErrorsForCurrentKnowledge(data, 'claude_bank');
   const{added,updated}=mergeImport(normalized, 'claude_bank');
-  saveData();document.getElementById('claudeResult').value='';
-  closeModal('claudeModal');renderSidebar();renderAll();
+  saveData();
+  saveKnowledgeState();
+  document.getElementById('claudeResult').value='';
+  closeModal('claudeModal');
+  if (typeof refreshWorkspaceAfterKnowledgeDataChange === 'function') {
+    refreshWorkspaceAfterKnowledgeDataChange({ sidebar: true, notes: true, rightPanel: true });
+  } else {
+    if (typeof invalidateKnowledgeTreeRenderState === 'function') invalidateKnowledgeTreeRenderState();
+    renderSidebar();renderAll();
+  }
   openClaudeBankModal();
   showToast(`Claude 题库导入完成：新增 ${added} 题，更新 ${updated} 题`, 'success');
 }
@@ -298,10 +306,16 @@ function convertClaudeBankToError(id) {
   item.addDate = item.addDate || today();
   recordErrorUpsert(item);
   saveData();
-  syncNotesWithErrors();
-  renderSidebar();
-  renderAll();
-  renderNotesByType();
+  saveKnowledgeState();
+  if (typeof refreshWorkspaceAfterKnowledgeDataChange === 'function') {
+    refreshWorkspaceAfterKnowledgeDataChange({ sidebar: true, notes: true, rightPanel: true });
+  } else {
+    if (typeof invalidateKnowledgeTreeRenderState === 'function') invalidateKnowledgeTreeRenderState();
+    syncNotesWithErrors();
+    renderSidebar();
+    renderAll();
+    renderNotesByType();
+  }
   renderClaudeBankModal();
   showToast('已转为错题', 'success');
 }

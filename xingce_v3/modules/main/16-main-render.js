@@ -51,6 +51,46 @@ function requestWorkspaceRender(opts){
 
 window.requestWorkspaceRender = requestWorkspaceRender;
 
+function invalidateKnowledgeTreeRenderState(){
+  if (typeof knowledgeErrorCountCacheVersion !== 'undefined') {
+    knowledgeErrorCountCacheVersion += 1;
+  }
+  if (typeof knowledgeErrorCountCache !== 'undefined') {
+    knowledgeErrorCountCache = { version: -1, direct: new Map(), aggregate: new Map() };
+  }
+  if (typeof knowledgeNoteRenderCache !== 'undefined' && knowledgeNoteRenderCache && typeof knowledgeNoteRenderCache.clear === 'function') {
+    knowledgeNoteRenderCache.clear();
+  }
+  if (typeof resetKnowledgeTreeRenderWindow === 'function') {
+    resetKnowledgeTreeRenderWindow();
+  }
+}
+
+function refreshWorkspaceAfterKnowledgeDataChange(opts){
+  const options = opts || {};
+  invalidateKnowledgeTreeRenderState();
+  if (options.syncNotes !== false && typeof syncNotesWithErrors === 'function') {
+    syncNotesWithErrors();
+  }
+  if (typeof requestWorkspaceRender === 'function') {
+    requestWorkspaceRender({
+      sidebar: options.sidebar !== false,
+      notes: options.notes !== false,
+      immediate: true
+    });
+  } else {
+    if (options.sidebar !== false && typeof renderSidebar === 'function') renderSidebar();
+    if (typeof renderAll === 'function') renderAll();
+    if (options.notes !== false && typeof renderNotesByType === 'function') renderNotesByType();
+  }
+  if (options.rightPanel !== false && typeof renderNotesPanelRight === 'function') {
+    renderNotesPanelRight();
+  }
+}
+
+window.invalidateKnowledgeTreeRenderState = invalidateKnowledgeTreeRenderState;
+window.refreshWorkspaceAfterKnowledgeDataChange = refreshWorkspaceAfterKnowledgeDataChange;
+
 function getErrorRenderStateKey(list){
   return JSON.stringify({
     size: Array.isArray(list) ? list.length : 0,

@@ -126,8 +126,15 @@ function _applyFullBackup(data, mode, opts) {
 
   closeModal('importModal');
   saveReveal();
-  renderSidebar();
-  renderAll();
+  if (typeof refreshWorkspaceAfterKnowledgeDataChange === 'function') {
+    refreshWorkspaceAfterKnowledgeDataChange({ sidebar: true, notes: true, rightPanel: true });
+  } else {
+    if (typeof invalidateKnowledgeTreeRenderState === 'function') invalidateKnowledgeTreeRenderState();
+    renderSidebar();
+    renderAll();
+    if (typeof renderNotesByType === 'function') renderNotesByType();
+    if (typeof renderNotesPanelRight === 'function') renderNotesPanelRight();
+  }
 
   const errCount = errors.length;
   const noteCount = Object.keys(notesByType || {}).length;
@@ -215,8 +222,15 @@ function _applyFullBackup(data, mode, opts) {
 
   closeModal('importModal');
   saveReveal();
-  renderSidebar();
-  renderAll();
+  if (typeof refreshWorkspaceAfterKnowledgeDataChange === 'function') {
+    refreshWorkspaceAfterKnowledgeDataChange({ sidebar: true, notes: true, rightPanel: true });
+  } else {
+    if (typeof invalidateKnowledgeTreeRenderState === 'function') invalidateKnowledgeTreeRenderState();
+    renderSidebar();
+    renderAll();
+    if (typeof renderNotesByType === 'function') renderNotesByType();
+    if (typeof renderNotesPanelRight === 'function') renderNotesPanelRight();
+  }
 
   const errCount = errors.length;
   const noteCount = Object.keys(notesByType || {}).length;
@@ -299,8 +313,15 @@ async function _applyCloudBackupStaged(data, updatedAt, opts) {
 
   closeModal('importModal');
   saveReveal();
-  renderSidebar();
-  renderAll();
+  if (typeof refreshWorkspaceAfterKnowledgeDataChange === 'function') {
+    refreshWorkspaceAfterKnowledgeDataChange({ sidebar: true, notes: true, rightPanel: true });
+  } else {
+    if (typeof invalidateKnowledgeTreeRenderState === 'function') invalidateKnowledgeTreeRenderState();
+    renderSidebar();
+    renderAll();
+    if (typeof renderNotesByType === 'function') renderNotesByType();
+    if (typeof renderNotesPanelRight === 'function') renderNotesPanelRight();
+  }
   if (!opts.skipCompletionAlert) {
     const errCount = errors.length;
     const noteCount = Object.keys(notesByType || {}).length;

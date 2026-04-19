@@ -73,7 +73,7 @@ function openQuickAddModal() {
 }
 
 function openImportModalForCurrentKnowledge() {
-  importKnowledgeNodeId = null;
+  importKnowledgeNodeId = selectedKnowledgeNodeId || null;
   document.getElementById('importText').value = '';
   selectImportMode('merge');
   openModal('importModal');

@@ -49,6 +49,10 @@ function extractImportedKnowledgePathTitles(item) {
 }
 
 function getImportedErrorTargetNodeId(item, context) {
+  if (context?.node?.id && getKnowledgeNodeById(context.node.id)) {
+    ensureKnowledgeNoteRecord(context.node);
+    return context.node.id;
+  }
   const contextFallback = [context?.type || '其他', context?.subtype || '未分类', context?.subSubtype || '未细分'];
   const importedPathTitles = getEntryKnowledgePathTitlesForImport(item, {
     allowLegacyPathText: true,
@@ -81,13 +85,21 @@ function getKnowledgeContextForEntry(nodeId) {
   };
 }
 
+function getKnowledgeContextPathTitlesForImport(context) {
+  if (!context?.node?.id) return [];
+  return collapseKnowledgePathTitles(getKnowledgePathTitles(context.node.id));
+}
+
 function normalizeImportedErrorsForCurrentKnowledge(list, defaultKind) {
   const context = importKnowledgeNodeId ? getKnowledgeContextForEntry(importKnowledgeNodeId) : null;
+  const contextPathTitles = getKnowledgeContextPathTitlesForImport(context);
   return (list || []).map(item => {
-    const normalizedPathTitles = getEntryKnowledgePathTitlesForImport(item, {
-      allowLegacyPathText: true,
-      fallbackTitles: [context?.type || '其他', context?.subtype || '未分类', context?.subSubtype || '未细分']
-    });
+    const normalizedPathTitles = contextPathTitles.length
+      ? contextPathTitles
+      : getEntryKnowledgePathTitlesForImport(item, {
+        allowLegacyPathText: true,
+        fallbackTitles: [context?.type || '其他', context?.subtype || '未分类', context?.subSubtype || '未细分']
+      });
     const normalizedType = normalizedPathTitles[0] || context?.type || '其他';
     const normalizedSubtype = normalizedPathTitles[1] || context?.subtype || '未分类';
     const normalizedSubSubtype = normalizedPathTitles[normalizedPathTitles.length - 1] || context?.subSubtype || '未细分';

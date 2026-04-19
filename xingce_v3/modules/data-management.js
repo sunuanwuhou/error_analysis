@@ -1,5 +1,13 @@
 (function () {
   function rerenderAfterDataChange() {
+    if (typeof refreshWorkspaceAfterKnowledgeDataChange === "function") {
+      refreshWorkspaceAfterKnowledgeDataChange({ sidebar: true, notes: true, rightPanel: true });
+      return;
+    }
+    if (typeof knowledgeErrorCountCacheVersion !== "undefined") knowledgeErrorCountCacheVersion += 1;
+    if (typeof knowledgeErrorCountCache !== "undefined") knowledgeErrorCountCache = { version: -1, direct: new Map(), aggregate: new Map() };
+    if (typeof knowledgeNoteRenderCache !== "undefined" && knowledgeNoteRenderCache && typeof knowledgeNoteRenderCache.clear === "function") knowledgeNoteRenderCache.clear();
+    if (typeof resetKnowledgeTreeRenderWindow === "function") resetKnowledgeTreeRenderWindow();
     renderSidebar();
     renderAll();
     renderNotesByType();

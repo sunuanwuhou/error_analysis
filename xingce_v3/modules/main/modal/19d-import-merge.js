@@ -60,6 +60,25 @@ function mergeImport(data, defaultKind, opts) {
   return { added, updated };
 }
 
+function refreshAfterImportApply() {
+  ensureKnowledgeState({ persist: false });
+  saveData();
+  saveKnowledgeState();
+  if (typeof refreshWorkspaceAfterKnowledgeDataChange === 'function') {
+    refreshWorkspaceAfterKnowledgeDataChange({ sidebar: true, notes: true, rightPanel: true });
+    return;
+  }
+  if (typeof knowledgeErrorCountCacheVersion !== 'undefined') knowledgeErrorCountCacheVersion += 1;
+  if (typeof knowledgeErrorCountCache !== 'undefined') knowledgeErrorCountCache = { version: -1, direct: new Map(), aggregate: new Map() };
+  if (typeof knowledgeNoteRenderCache !== 'undefined' && knowledgeNoteRenderCache && typeof knowledgeNoteRenderCache.clear === 'function') knowledgeNoteRenderCache.clear();
+  if (typeof resetKnowledgeTreeRenderWindow === 'function') resetKnowledgeTreeRenderWindow();
+  syncNotesWithErrors();
+  renderSidebar();
+  renderAll();
+  renderNotesByType();
+  if (typeof renderNotesPanelRight === 'function') renderNotesPanelRight();
+}
+
 function doImport() {
   const raw = document.getElementById('importText').value.trim();
   if (!raw) { showToast('请先粘贴 JSON 内容', 'warning'); return; }
@@ -87,21 +106,14 @@ function doImport() {
       lastPracticedAt: e.lastPracticedAt || null,
       ...e
     }));
-    ensureKnowledgeState({ persist: false });
-    saveData();
     closeModal('importModal');
-    renderSidebar();
-    renderAll();
+    refreshAfterImportApply();
     showToast(`已替换，共 ${errors.length} 条`, 'success');
   } else {
     const { added, updated } = mergeImport(data, 'error');
-    ensureKnowledgeState({ persist: false });
-    saveData();
     closeModal('importModal');
-    renderSidebar();
-    renderAll();
+    refreshAfterImportApply();
     showToast(`导入完成：更新 ${updated} 条，新增 ${added} 条`, 'success');
   }
   importKnowledgeNodeId = null;
-  syncNotesWithErrors();
 }

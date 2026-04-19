@@ -317,10 +317,15 @@ async function restoreLocalBackupById(backupId) {
         skipCompletionAlert: true
       }
     );
-    renderSidebar();
-    renderAll();
-    renderNotesByType();
-    if (typeof renderNotesPanelRight === 'function') renderNotesPanelRight();
+    if (typeof refreshWorkspaceAfterKnowledgeDataChange === 'function') {
+      refreshWorkspaceAfterKnowledgeDataChange({ sidebar: true, notes: true, rightPanel: true });
+    } else {
+      if (typeof invalidateKnowledgeTreeRenderState === 'function') invalidateKnowledgeTreeRenderState();
+      renderSidebar();
+      renderAll();
+      renderNotesByType();
+      if (typeof renderNotesPanelRight === 'function') renderNotesPanelRight();
+    }
     await refreshLocalBackups();
     setLocalBackupStatus(`恢复成功：已切回备份 ${id}，本地数据已刷新。`, 'success');
     showToast('本地备份恢复成功，本地数据已刷新', 'success');

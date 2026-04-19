@@ -1033,10 +1033,15 @@ async function loadCloudFullBackupFromMore() {
   setCloudSyncState('saving', '正在从云端全量覆盖本地，请稍候', '');
   await loadCloudBackup({ silent: false, askBeforeRestore: false, forceOverwriteLocal: true });
   if (cloudSyncState === 'synced') {
-    renderSidebar();
-    renderAll();
-    renderNotesByType();
-    if (typeof renderNotesPanelRight === 'function') renderNotesPanelRight();
+    if (typeof refreshWorkspaceAfterKnowledgeDataChange === 'function') {
+      refreshWorkspaceAfterKnowledgeDataChange({ sidebar: true, notes: true, rightPanel: true });
+    } else {
+      if (typeof invalidateKnowledgeTreeRenderState === 'function') invalidateKnowledgeTreeRenderState();
+      renderSidebar();
+      renderAll();
+      renderNotesByType();
+      if (typeof renderNotesPanelRight === 'function') renderNotesPanelRight();
+    }
     showCloudInfo('云端全量覆盖已完成，当前页面已刷新为云端数据');
   }
 }
