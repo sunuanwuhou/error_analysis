@@ -72,8 +72,7 @@ function doImport() {
   data = normalizeImportedErrorsForCurrentKnowledge(data, 'error');
   const unresolvedCount = data.filter(item => !String(item.noteNodeId || '').trim()).length;
   if (unresolvedCount) {
-    showToast(`有 ${unresolvedCount} 条导入题目缺少可用挂载路径，请补全 type / subtype / subSubtype 后再导入`, 'warning');
-    return;
+    showToast(`有 ${unresolvedCount} 条导入题目暂未挂到知识点，已保留，稍后可批量清理补挂`, 'warning');
   }
   if (importMode === 'replace') {
     if (!confirm(`清空现有 ${errors.length} 条，替换为 ${data.length} 条？`)) return;
@@ -88,6 +87,7 @@ function doImport() {
       lastPracticedAt: e.lastPracticedAt || null,
       ...e
     }));
+    ensureKnowledgeState({ persist: false });
     saveData();
     closeModal('importModal');
     renderSidebar();
@@ -95,6 +95,7 @@ function doImport() {
     showToast(`已替换，共 ${errors.length} 条`, 'success');
   } else {
     const { added, updated } = mergeImport(data, 'error');
+    ensureKnowledgeState({ persist: false });
     saveData();
     closeModal('importModal');
     renderSidebar();

@@ -747,6 +747,9 @@
       ? (noteViewMode === "directory" ? renderDirectoryMode(currentNode) : renderNoteMode(currentNode, noteContent))
       : renderListMode(currentNode, relatedErrors);
 
+    content.classList.toggle("knowledge-workspace-list-mode", mode === "list");
+    content.classList.toggle("knowledge-workspace-note-mode", mode === "note");
+
     content.innerHTML = "<div class=\"knowledge-workspace-shell\">" +
       renderWorkspaceHeader(currentNode, pathText, directCount, linkedCount, relatedErrors.length, mode) +
       bodyHtml +

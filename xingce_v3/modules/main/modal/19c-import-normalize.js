@@ -10,20 +10,51 @@ function getKnowledgeContextDepth(context) {
   return 0;
 }
 
+function normalizeKnowledgePathTitlesForImport(pathTitles, fallbackTitles) {
+  if (typeof normalizeKnowledgePathTitles === 'function') {
+    return normalizeKnowledgePathTitles(pathTitles, { fallbackTitles: fallbackTitles || [] });
+  }
+  const seed = Array.isArray(pathTitles) ? pathTitles : [];
+  const fallback = Array.isArray(fallbackTitles) ? fallbackTitles : [];
+  const cleaned = seed.map(part => String(part || '').trim()).filter(Boolean).slice(0, 5);
+  if (cleaned.length) return cleaned;
+  return fallback.map(part => String(part || '').trim()).filter(Boolean).slice(0, 5);
+}
+
+function getEntryKnowledgePathTitlesForImport(item, opts) {
+  if (typeof getEntryKnowledgePathTitles === 'function') {
+    return getEntryKnowledgePathTitles(item, opts || {});
+  }
+  const options = opts || {};
+  const record = item && typeof item === 'object' ? item : {};
+  const fromType = normalizeKnowledgePathTitlesForImport(
+    [record.type, record.subtype, record.subSubtype, record.level4, record.level5],
+    []
+  );
+  if (fromType.length) return fromType;
+  const fromTitles = record.knowledgePathTitles;
+  if (Array.isArray(fromTitles)) {
+    const normalizedTitles = normalizeKnowledgePathTitlesForImport(fromTitles, options.fallbackTitles || []);
+    if (normalizedTitles.length) return normalizedTitles;
+  }
+  const text = String(record.knowledgePath || record.knowledgeNodePath || record.notePath || '').trim();
+  if (text) {
+    return normalizeKnowledgePathTitlesForImport(text.split(/>|\/|→/), options.fallbackTitles || []);
+  }
+  return normalizeKnowledgePathTitlesForImport([], options.fallbackTitles || []);
+}
+
 function extractImportedKnowledgePathTitles(item) {
-  const rawPath = item?.knowledgePath || item?.notePath || item?.knowledgeNodePath || item?.knowledgePathTitles || null;
-  if (Array.isArray(rawPath)) {
-    return rawPath.map(part => String(part || '').trim()).filter(Boolean);
-  }
-  if (typeof rawPath === 'string') {
-    return rawPath.split(/>|\/|→/).map(part => String(part || '').trim()).filter(Boolean);
-  }
-  return [];
+  return getEntryKnowledgePathTitlesForImport(item, { allowLegacyPathText: true });
 }
 
 function getImportedErrorTargetNodeId(item, context) {
-  const importedPathTitles = extractImportedKnowledgePathTitles(item);
-  if (importedPathTitles.length >= 3) {
+  const contextFallback = [context?.type || '其他', context?.subtype || '未分类', context?.subSubtype || '未细分'];
+  const importedPathTitles = getEntryKnowledgePathTitlesForImport(item, {
+    allowLegacyPathText: true,
+    fallbackTitles: contextFallback
+  });
+  if (importedPathTitles.length) {
     const importedNode = ensureKnowledgePathByTitles(importedPathTitles);
     if (importedNode) {
       ensureKnowledgeNoteRecord(importedNode);
@@ -31,22 +62,10 @@ function getImportedErrorTargetNodeId(item, context) {
     }
   }
   if (item?.noteNodeId && getKnowledgeNodeById(item.noteNodeId)) {
-    if (!item?.type && !item?.subtype && !item?.subSubtype) return item.noteNodeId;
-    if (doesKnowledgeNodeMatchEntryPath(item.noteNodeId, item.type || '', item.subtype || '', item.subSubtype || '')) {
+    if (!importedPathTitles.length) return item.noteNodeId;
+    if (doesKnowledgeNodeMatchPathTitles(item.noteNodeId, importedPathTitles)) {
       return item.noteNodeId;
     }
-  }
-  const explicitType = String(item?.type || '').trim();
-  const explicitSubtype = String(item?.subtype || '').trim();
-  const explicitSubSubtype = String(item?.subSubtype || '').trim();
-  if (explicitType || explicitSubtype || explicitSubSubtype) {
-    const branch = ensureKnowledgeBranchPath(
-      explicitType || context?.type || '其他',
-      explicitSubtype || context?.subtype || '未分类',
-      explicitSubSubtype || context?.subSubtype || ''
-    );
-    ensureKnowledgeNoteRecord(branch.sub2);
-    return branch.sub2.id;
   }
   return '';
 }
@@ -65,15 +84,23 @@ function getKnowledgeContextForEntry(nodeId) {
 function normalizeImportedErrorsForCurrentKnowledge(list, defaultKind) {
   const context = importKnowledgeNodeId ? getKnowledgeContextForEntry(importKnowledgeNodeId) : null;
   return (list || []).map(item => {
-    const normalizedType = item.type || context?.type || '其他';
-    const normalizedSubtype = item.subtype || context?.subtype || '未分类';
-    const normalizedSubSubtype = item.subSubtype || context?.subSubtype || '';
+    const normalizedPathTitles = getEntryKnowledgePathTitlesForImport(item, {
+      allowLegacyPathText: true,
+      fallbackTitles: [context?.type || '其他', context?.subtype || '未分类', context?.subSubtype || '未细分']
+    });
+    const normalizedType = normalizedPathTitles[0] || context?.type || '其他';
+    const normalizedSubtype = normalizedPathTitles[1] || context?.subtype || '未分类';
+    const normalizedSubSubtype = normalizedPathTitles[normalizedPathTitles.length - 1] || context?.subSubtype || '未细分';
     return {
       ...normalizeEntryRecord(item, defaultKind || 'error'),
       id: item.id ? normalizeErrorId(item.id) : newId(),
       type: normalizedType,
       subtype: normalizedSubtype,
       subSubtype: normalizedSubSubtype,
+      knowledgePathTitles: normalizedPathTitles,
+      knowledgePath: normalizedPathTitles.join(' > '),
+      knowledgeNodePath: normalizedPathTitles.join(' > '),
+      notePath: normalizedPathTitles.join(' > '),
       noteNodeId: getImportedErrorTargetNodeId({
         ...item,
         type: normalizedType,

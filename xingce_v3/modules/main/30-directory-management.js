@@ -352,8 +352,63 @@ function normalizeKnowledgeNodes(nodes, level) {
 function getKnowledgePathConfig(type, subtype, subSubtype) {
   return normalizeLegacyKnowledgePathConfig(type, subtype, subSubtype);
 }
+function splitKnowledgePathText(rawPath) {
+  return String(rawPath || '')
+    .split(/>|\/|→/)
+    .map(part => String(part || '').trim())
+    .filter(Boolean);
+}
+function normalizeKnowledgePathTitles(pathTitles, opts) {
+  const options = opts || {};
+  const maxDepth = Number(options.maxDepth || 5);
+  const fallbackTitles = Array.isArray(options.fallbackTitles) ? options.fallbackTitles : [];
+  const seed = Array.isArray(pathTitles) ? pathTitles : [];
+  const normalized = collapseKnowledgePathTitles(
+    seed
+      .map(item => String(item || '').trim())
+      .filter(Boolean)
+  ).slice(0, Math.max(1, maxDepth));
+  if (normalized.length) return normalized;
+  return collapseKnowledgePathTitles(
+    fallbackTitles
+      .map(item => String(item || '').trim())
+      .filter(Boolean)
+  ).slice(0, Math.max(1, maxDepth));
+}
+function getEntryTypePathTitles(item) {
+  const record = item && typeof item === 'object' ? item : {};
+  return normalizeKnowledgePathTitles([
+    record.type,
+    record.subtype,
+    record.subSubtype,
+    record.level4 || record.fourthLevel || record.levelFour || record.topic4,
+    record.level5 || record.fifthLevel || record.levelFive || record.topic5
+  ]);
+}
+function getEntryKnowledgePathTitles(item, opts) {
+  const record = item && typeof item === 'object' ? item : {};
+  const options = opts || {};
+  const fromType = getEntryTypePathTitles(record);
+  if (fromType.length) return fromType;
+  const titles = record.knowledgePathTitles;
+  if (Array.isArray(titles) || typeof titles === 'string') {
+    const fromTitles = normalizeKnowledgePathTitles(
+      Array.isArray(titles) ? titles : splitKnowledgePathText(titles),
+      { fallbackTitles: options.fallbackTitles || [] }
+    );
+    if (fromTitles.length) return fromTitles;
+  }
+  const legacyText = record.knowledgePath || record.knowledgeNodePath || record.notePath || '';
+  if (options.allowLegacyPathText !== false && String(legacyText || '').trim()) {
+    const fromLegacyText = normalizeKnowledgePathTitles(splitKnowledgePathText(legacyText), {
+      fallbackTitles: options.fallbackTitles || []
+    });
+    if (fromLegacyText.length) return fromLegacyText;
+  }
+  return normalizeKnowledgePathTitles([], { fallbackTitles: options.fallbackTitles || [] });
+}
 function ensureKnowledgePathByTitles(pathTitles) {
-  const titles = (pathTitles || []).map(item => String(item || '').trim()).filter(Boolean);
+  const titles = normalizeKnowledgePathTitles(pathTitles);
   if (!titles.length) return null;
   let siblings = getKnowledgeRootNodes();
   let node = null;
@@ -478,7 +533,7 @@ function getKnowledgeAssignableNodesForPath(type, subtype, subSubtype) {
   return list;
 }
 function getKnowledgeNodeByPathTitles(pathTitles) {
-  const titles = (pathTitles || []).map(item => String(item || '').trim()).filter(Boolean);
+  const titles = normalizeKnowledgePathTitles(pathTitles);
   if (!titles.length) return null;
   let siblings = getKnowledgeRootNodes();
   let node = null;
@@ -509,14 +564,18 @@ function getKnowledgePathTitles(nodeId) {
   return walk(getKnowledgeRootNodes(), []) || [];
 }
 function collapseKnowledgePathTitles(titles) {
-  return (titles || []).filter((title, idx, arr) => idx === 0 || title !== arr[idx - 1]);
+  return (titles || [])
+    .map(title => String(title || '').trim())
+    .filter((title, idx, arr) => title && (idx === 0 || title !== arr[idx - 1]));
 }
 function getEntryPathTitlesFromForm() {
   const level1 = document.getElementById('editType')?.value || '';
   const level2 = document.getElementById('editSubtype')?.value.trim() || '';
   const level3 = document.getElementById('editSubSubtype')?.value.trim() || '';
   const level4 = document.getElementById('editLevel4')?.value.trim() || '';
-  return [level1, level2, level3, level4].filter(Boolean);
+  return normalizeKnowledgePathTitles([level1, level2, level3, level4], {
+    fallbackTitles: [level1 || '其他', level2 || '未分类', level3 || '未细分']
+  });
 }
 function getEntryClassificationTripleFromForm() {
   const titles = getEntryPathTitlesFromForm();
@@ -536,7 +595,7 @@ function getKnowledgeNodePathTriple(nodeId) {
 }
 function doesKnowledgeNodeMatchPathTitles(nodeId, pathTitles) {
   const actual = collapseKnowledgePathTitles(getKnowledgePathTitles(nodeId));
-  const target = collapseKnowledgePathTitles((pathTitles || []).map(item => String(item || '').trim()).filter(Boolean));
+  const target = normalizeKnowledgePathTitles(pathTitles);
   if (actual.length !== target.length) return false;
   return actual.every((title, index) => title === target[index]);
 }
@@ -562,7 +621,10 @@ function ensureKnowledgeState(opts) {
   if (mergeDuplicateKnowledgeSiblings(getKnowledgeRootNodes())) changed = true;
   ensureKnowledgeExpandedDefaults();
   errors.forEach(item => {
-    if (ensureKnowledgeBindingForError(item)) changed = true;
+    const before = String((item && item.noteNodeId) || '');
+    ensureKnowledgeBindingForError(item);
+    const after = String((item && item.noteNodeId) || '');
+    if (before !== after) changed = true;
   });
   const allNodes = collectKnowledgeNodes();
   if ((!selectedKnowledgeNodeId || !getKnowledgeNodeById(selectedKnowledgeNodeId)) && allNodes.length > 0) {

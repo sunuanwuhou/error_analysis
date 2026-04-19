@@ -21,7 +21,8 @@ function encodeInlineValue(value) {
 function scrollToRenderedAnchor(anchorId, opts) {
   const target = document.getElementById(anchorId);
   if (!target) return false;
-  const scroller = target.closest('.note-preview-article-scroll') || target.closest('.note-preview-scroll');
+  const candidate = target.closest('.note-preview-article-scroll') || target.closest('.note-preview-scroll');
+  const scroller = candidate && candidate.scrollHeight > candidate.clientHeight + 4 ? candidate : null;
   if (scroller) {
     const top = target.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop - 12;
     scroller.scrollTo({ top: top < 0 ? 0 : top, behavior: (opts && opts.behavior) || 'smooth' });
@@ -64,7 +65,10 @@ function syncActiveNoteToc(previewEl) {
 }
 function bindNotePreviewScrollTracking(contentEl) {
   if (!contentEl) return;
-  const preview = contentEl.querySelector('#noteSplitPreview .note-preview-article-scroll') || contentEl.querySelector('#noteSplitPreview');
+  const innerPreview = contentEl.querySelector('#noteSplitPreview .note-preview-article-scroll') || contentEl.querySelector('#noteSplitPreview');
+  const preview = innerPreview && innerPreview.scrollHeight > innerPreview.clientHeight + 4
+    ? innerPreview
+    : (document.getElementById('notesContent') || innerPreview);
   if (!preview || preview.dataset.tocBound === '1') return;
   preview.dataset.tocBound = '1';
   preview.addEventListener('scroll', function() {

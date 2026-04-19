@@ -91,24 +91,70 @@ body{
   padding:0 24px 24px;
 }
 #notesContent.knowledge-notes-active{
+  min-height:0;
+}
+#notesContent.knowledge-notes-active.knowledge-workspace-list-mode{
   display:flex;
   flex-direction:column;
   overflow:hidden;
-  min-height:0;
   height:100%;
 }
-#notesContent.knowledge-notes-active > *{
+#notesContent.knowledge-notes-active.knowledge-workspace-list-mode > *{
   flex:1;
   min-height:0;
+}
+#notesContent.knowledge-notes-active.knowledge-workspace-note-mode{
+  display:block;
+  overflow:auto;
+}
+#notesContent.knowledge-notes-active.knowledge-workspace-note-mode > *{
+  height:auto;
+  min-height:0;
+}
+#notesContent.knowledge-notes-active.knowledge-workspace-note-mode .knowledge-workspace-shell{
+  display:block;
+  height:auto;
+  min-height:0;
+}
+#notesContent.knowledge-notes-active.knowledge-workspace-note-mode .knowledge-workspace-note-wrap{
+  display:block;
+  height:auto;
+  min-height:0;
+}
+#notesContent.knowledge-notes-active.knowledge-workspace-note-mode .note-preview-scroll,
+#notesContent.knowledge-notes-active.knowledge-workspace-note-mode .note-preview-frame-scroll,
+#notesContent.knowledge-notes-active.knowledge-workspace-note-mode .knowledge-directory-preview{
+  display:block;
+  height:auto;
+  min-height:0;
+  overflow:visible;
+}
+#notesContent.knowledge-notes-active.knowledge-workspace-note-mode .knowledge-inline-preview,
+#notesContent.knowledge-notes-active.knowledge-workspace-note-mode .note-preview-layout,
+#notesContent.knowledge-notes-active.knowledge-workspace-note-mode .note-preview-layout-no-toc,
+#notesContent.knowledge-notes-active.knowledge-workspace-note-mode .note-preview-article-scroll{
+  display:block;
+  height:auto;
+  min-height:0;
+  max-height:none;
+  overflow:visible;
 }
 #tabContentNotes,
 #tabContentNotes .notes-area{
   min-height:0;
 }
 #tabContentNotes .notes-area{
+  display:flex;
+  flex-direction:column;
+  flex:1;
   height:100%;
+  overflow:hidden;
 }
-#notesContent.knowledge-notes-active .knowledge-workspace-shell{
+#tabContentNotes .notes-content{
+  flex:1;
+  min-height:0;
+}
+#notesContent.knowledge-notes-active.knowledge-workspace-list-mode .knowledge-workspace-shell{
   display:flex;
   flex-direction:column;
   min-height:0;
