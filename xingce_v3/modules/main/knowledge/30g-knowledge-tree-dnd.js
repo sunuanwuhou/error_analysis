@@ -2,13 +2,28 @@
 // Knowledge tree dnd and move actions
 // ============================================================
 
+function syncErrorKnowledgeBindingToNode(errorItem, targetNode) {
+  if (!errorItem || !targetNode || !targetNode.id) return false;
+  const stableTitles = collapseKnowledgePathTitles(getKnowledgePathTitles(targetNode.id));
+  const stablePath = stableTitles.join(' > ');
+  errorItem.noteNodeId = targetNode.id;
+  errorItem.knowledgePathTitles = stableTitles.slice();
+  errorItem.knowledgePath = stablePath;
+  errorItem.knowledgeNodePath = stablePath;
+  errorItem.notePath = stablePath;
+  errorItem.type = stableTitles[0] || '';
+  errorItem.subtype = stableTitles[1] || '';
+  errorItem.subSubtype = stableTitles[stableTitles.length - 1] || '';
+  errorItem.updatedAt = new Date().toISOString();
+  return true;
+}
+
 function assignErrorToKnowledgeNode(errorId, targetNodeId, opts) {
   const errorItem = errors.find(item => item.id === errorId);
   const targetNode = getKnowledgeNodeById(targetNodeId);
   if (!errorItem || !targetNode) return false;
   const previousNodeId = errorItem.noteNodeId || null;
-  errorItem.noteNodeId = targetNode.id;
-  errorItem.updatedAt = new Date().toISOString();
+  syncErrorKnowledgeBindingToNode(errorItem, targetNode);
   recordErrorUpsert(errorItem);
   saveData();
   saveKnowledgeState();
@@ -162,7 +177,7 @@ function applyKnowledgeMove() {
   }
   const now = new Date().toISOString();
   matched.forEach(errorItem => {
-    errorItem.noteNodeId = targetNode.id;
+    syncErrorKnowledgeBindingToNode(errorItem, targetNode);
     errorItem.updatedAt = now;
     recordErrorUpsert(errorItem);
   });

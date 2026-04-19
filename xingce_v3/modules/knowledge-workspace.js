@@ -243,7 +243,10 @@
     if (!currentNode) return [];
     var nodeIds = getKnowledgeDescendantNodeIds(currentNode);
     return getFiltered().filter(function (item) {
-      return nodeIds.includes(item.noteNodeId);
+      var nodeId = typeof resolveErrorKnowledgeNodeId === "function"
+        ? resolveErrorKnowledgeNodeId(item)
+        : String(item.noteNodeId || "");
+      return nodeIds.includes(nodeId);
     });
   }
 
@@ -623,7 +626,7 @@
   function renderInlineNotePreview(currentNode, noteContent) {
     var markdown = String(noteContent || "");
     if (!markdown.trim()) {
-      return "<div class=\"knowledge-workspace-empty\">" + TEXT.emptyNote + "</div>";
+      return "<div class=\"knowledge-workspace-empty\">" + TEXT.noNotes + "</div>";
     }
     var anchorPrefix = getKnowledgeNoteAnchorPrefix(currentNode && currentNode.id);
     var headings = extractMdHeadings(markdown);
@@ -739,7 +742,11 @@
       setWorkspaceMode("note");
     }
 
-    if (!isTopLevelKnowledgeNode(currentNode) && getNoteViewMode() !== "current") {
+    if (isTopLevelKnowledgeNode(currentNode)) {
+      if (window.knowledgeNoteViewMode !== "directory" && window.knowledgeNoteViewMode !== "current") {
+        setNoteViewMode("directory");
+      }
+    } else if (getNoteViewMode() !== "current") {
       setNoteViewMode("current");
     }
     var noteViewMode = isTopLevelKnowledgeNode(currentNode) ? getNoteViewMode() : "current";

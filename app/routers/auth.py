@@ -16,7 +16,6 @@ from fastapi import APIRouter, Cookie, File, HTTPException, Query, Request, Resp
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 
 from app.config import (
-    HTML_PATH,
     IMAGES_DIR,
     LOGIN_HTML_PATH,
     RUNTIME_MODE,

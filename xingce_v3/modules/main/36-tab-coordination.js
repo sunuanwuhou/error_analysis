@@ -567,6 +567,48 @@ function renderNotesByType() {
   renderKnowledgeNotesViewV2();
 }
 
+function filterNoteErrorList() {
+  const searchInput = document.getElementById('noteSearchInput');
+  const searchTerm = searchInput ? searchInput.value.trim().toLowerCase() : '';
+  const list = document.getElementById('noteErrorList');
+  if (!list) return;
+
+  const filteredErrors = getErrorEntries().filter(e => {
+    const pathText = typeof getErrorKnowledgePathText === 'function' ? getErrorKnowledgePathText(e) : '';
+    const text = `${pathText} ${e.type || ''} ${e.subtype || ''} ${e.subSubtype || ''} ${e.question || ''}`.toLowerCase();
+    return text.includes(searchTerm);
+  });
+
+  list.innerHTML = filteredErrors.map(e => `
+    <div class="error-card" id="card-${escapeHtml(String(e.id || ''))}" data-error-id="${escapeHtml(String(e.id || ''))}" onclick="highlightNoteChapter('${escapeHtml(String((typeof resolveErrorKnowledgeNodeId === 'function' ? resolveErrorKnowledgeNodeId(e) : (e.noteNodeId || '')) || ''))}')">
+      <div class="card-question">${escapeHtml(e.question)}</div>
+      <div class="card-options">${escapeHtml(e.options)}</div>
+      <div class="card-actions">
+        <span class="badge">路径: ${escapeHtml(typeof getErrorKnowledgePathText === 'function' ? getErrorKnowledgePathText(e) : '')}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function highlightNoteChapter(type, subtype, subSubtype) {
+  document.querySelectorAll('.note-panel-item-header').forEach(el => el.classList.remove('note-chapter-highlight'));
+  let nodeId = '';
+  if (type && !subtype && !subSubtype && typeof getKnowledgeNodeById === 'function' && getKnowledgeNodeById(type)) {
+    nodeId = type;
+  } else if (type || subtype || subSubtype) {
+    const titles = [type || '', subtype || '', subSubtype || ''].filter(Boolean);
+    if (titles.length && typeof getKnowledgeNodeByPathTitles === 'function') {
+      const node = getKnowledgeNodeByPathTitles(titles);
+      nodeId = node && node.id ? node.id : '';
+    }
+  }
+  if (!nodeId) return;
+  const target = document.querySelector(`[data-knowledge-node-id="${nodeId}"] .note-panel-item-header`);
+  if (!target) return;
+  target.classList.add('note-chapter-highlight');
+  target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
 // Update the note preview panel in real time.
 // Show or hide the Markdown table picker.
 function toggleTablePicker() {

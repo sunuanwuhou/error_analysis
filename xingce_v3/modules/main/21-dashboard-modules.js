@@ -113,7 +113,9 @@ function ensureRecommendedNotesModal() {
 function buildRecommendedNoteGroups(items) {
   const groups = new Map();
   (items || []).forEach(item => {
-    const nodeId = String(item.noteNodeId || '').trim();
+    const nodeId = typeof resolveErrorKnowledgeNodeId === 'function'
+      ? String(resolveErrorKnowledgeNodeId(item) || '').trim()
+      : String(item.noteNodeId || '').trim();
     if (!nodeId || typeof getKnowledgeNodeById !== 'function') return;
     const node = getKnowledgeNodeById(nodeId);
     if (!node) return;
@@ -138,7 +140,9 @@ function buildRecommendedNoteGroups(items) {
 
 function buildMissingNoteItems(items) {
   return (items || []).filter(item => {
-    const nodeId = String(item.noteNodeId || '').trim();
+    const nodeId = typeof resolveErrorKnowledgeNodeId === 'function'
+      ? String(resolveErrorKnowledgeNodeId(item) || '').trim()
+      : String(item.noteNodeId || '').trim();
     if (!nodeId) return true;
     if (typeof getKnowledgeNodeById !== 'function') return false;
     const node = getKnowledgeNodeById(nodeId);

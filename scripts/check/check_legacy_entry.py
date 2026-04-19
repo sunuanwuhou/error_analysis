@@ -9,12 +9,18 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 LEGACY_HTML = ROOT / 'xingce_v3' / 'xingce_v3.html'
+ACTIVE_SHELL_HTML = ROOT / 'v51_frontend' / 'index.html'
 BUNDLE_MANIFEST = ROOT / 'xingce_v3' / 'legacy-app.bundle.manifest.json'
 INLINE_HANDLER_ATTRS = {'onclick', 'oninput', 'onchange', 'onkeydown', 'onsubmit'}
 SUPPORTED_DECLARATIVE_EVENTS = {'data-onclick', 'data-oninput', 'data-onchange', 'data-onkeydown'}
 REQUIRED_JS_BUNDLES = [
     '/assets/modules/legacy-app.home.bundle.js',
     '/assets/modules/legacy-app.bootstrap.bundle.js',
+]
+REQUIRED_ACTIVE_SHELL_ASSETS = [
+    '/assets/styles/legacy-app.bundle.css',
+    '/v51-static/assets/v53-shell.css',
+    '/v51-static/assets/v53-bootstrap.js',
 ]
 
 
@@ -24,6 +30,12 @@ class LegacyHtmlReport:
     script_srcs: list[str]
     declarative_attrs: list[str]
     inline_handlers: list[tuple[str, str]]
+
+
+@dataclass
+class ShellReport:
+    link_hrefs: list[str]
+    script_srcs: list[str]
 
 
 class LegacyHtmlParser(HTMLParser):
@@ -68,6 +80,15 @@ def parse_legacy_html(path: Path) -> LegacyHtmlReport:
     )
 
 
+def parse_shell_html(path: Path) -> ShellReport:
+    parser = LegacyHtmlParser()
+    parser.feed(path.read_text(encoding='utf-8'))
+    return ShellReport(
+        link_hrefs=parser.link_hrefs,
+        script_srcs=parser.script_srcs,
+    )
+
+
 def assert_path_exists(asset_url: str) -> Path:
     if not asset_url.startswith('/assets/'):
         raise CheckError(f'Unexpected asset URL: {asset_url}')
@@ -84,8 +105,11 @@ def main() -> None:
 
     if not LEGACY_HTML.exists():
         raise CheckError(f'Legacy entry not found: {LEGACY_HTML}')
+    if not ACTIVE_SHELL_HTML.exists():
+        raise CheckError(f'Active shell entry not found: {ACTIVE_SHELL_HTML}')
 
     report = parse_legacy_html(LEGACY_HTML)
+    shell_report = parse_shell_html(ACTIVE_SHELL_HTML)
     unsupported = sorted(set(report.declarative_attrs) - SUPPORTED_DECLARATIVE_EVENTS)
     if unsupported:
         raise CheckError(f'Unsupported declarative attrs found: {unsupported}')
@@ -108,6 +132,12 @@ def main() -> None:
     for bundle_path in REQUIRED_JS_BUNDLES:
         if bundle_path not in html_text:
             raise CheckError(f'Legacy JS split bundle reference is missing: {bundle_path}')
+    active_shell_text = ACTIVE_SHELL_HTML.read_text(encoding='utf-8')
+    for asset_path in REQUIRED_ACTIVE_SHELL_ASSETS:
+        if asset_path not in active_shell_text:
+            raise CheckError(f'Active shell asset reference is missing: {asset_path}')
+    if '/assets/legacy-app.bundle.manifest.json' not in (ROOT / 'v51_frontend' / 'assets' / 'v53-bootstrap.js').read_text(encoding='utf-8'):
+        raise CheckError('Active shell bootstrap no longer reads the legacy manifest.')
 
     if not BUNDLE_MANIFEST.exists():
         raise CheckError(f'Bundle manifest missing: {BUNDLE_MANIFEST}')
@@ -124,13 +154,26 @@ def main() -> None:
         raise CheckError('Bundle manifest CSS sha256 is stale.')
     if bundle_manifest.get('js_bundle', {}).get('sha256') != file_sha256(ROOT / js_rel):
         raise CheckError('Bundle manifest JS sha256 is stale.')
+    for view_name in ('home', 'workspace', 'modal', 'bootstrap'):
+        bundle_info = bundle_manifest.get('js_view_bundles', {}).get(view_name, {})
+        bundle_rel = bundle_info.get('path')
+        if not bundle_rel:
+            raise CheckError(f'Manifest split bundle path missing: {view_name}')
+        bundle_path = ROOT / bundle_rel
+        if not bundle_path.exists():
+            raise CheckError(f'Manifest split bundle file missing: {bundle_path}')
+        if bundle_info.get('sha256') != file_sha256(bundle_path):
+            raise CheckError(f'Manifest split bundle sha256 is stale: {view_name}')
 
     manifest = {
         'legacy_html': str(LEGACY_HTML.relative_to(ROOT)),
+        'active_shell_html': str(ACTIVE_SHELL_HTML.relative_to(ROOT)),
         'legacy_html_sha256': file_sha256(LEGACY_HTML),
+        'active_shell_html_sha256': file_sha256(ACTIVE_SHELL_HTML),
         'asset_files': [str(path.relative_to(ROOT)) for path in asset_paths],
         'asset_sha256': {str(path.relative_to(ROOT)): file_sha256(path) for path in asset_paths},
         'declarative_attr_counts': {name: report.declarative_attrs.count(name) for name in sorted(set(report.declarative_attrs))},
+        'active_shell_assets': sorted(set(shell_report.link_hrefs + shell_report.script_srcs)),
     }
 
     if args.json:

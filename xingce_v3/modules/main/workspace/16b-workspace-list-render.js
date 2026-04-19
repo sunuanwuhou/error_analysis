@@ -2,74 +2,110 @@
 // Workspace list render helpers
 // ============================================================
 
-function renderGroupedErrorListHtml(visibleList) {
-  const typeMap = {};
-  (visibleList || []).forEach(e => {
-    if (!typeMap[e.type]) typeMap[e.type] = {};
-    const s = e.subtype || '未分类';
-    if (!typeMap[e.type][s]) typeMap[e.type][s] = [];
-    typeMap[e.type][s].push(e);
-  });
-
-  let html = '';
-  Object.entries(typeMap).forEach(([type, subs]) => {
-    const open = expMain.has(type);
-    const total = Object.values(subs).reduce((s, a) => s + a.length, 0);
-    html += `<div class="type-group">
-      <div class="type-header" onclick="toggleMain('${escapeHtml(type)}')">
-        <div class="type-title">
-          <span class="type-arrow ${open ? 'open' : ''}">▶</span>
-          ${escapeHtml(type)}<span class="type-badge">${total}</span>
-        </div>
-      </div>`;
-    if (open) {
-      Object.entries(subs).forEach(([sub, cards]) => {
-        const sk = 'sub:' + type + '::' + sub;
-        const sopen = expMainSub.has(sk);
-        const sub2Map = {};
-        cards.forEach(item => {
-          const s2 = item.subSubtype || '';
-          if (!sub2Map[s2]) sub2Map[s2] = [];
-          sub2Map[s2].push(item);
-        });
-        const hasSub2 = Object.keys(sub2Map).some(k => k !== '');
-        html += `<div class="subtype-group">
-          <div class="subtype-header" onclick="toggleMainSub('${escapeHtml(type)}','${escapeHtml(sub)}')">
-            <div class="subtype-title">
-              <span class="subtype-arrow ${sopen ? 'open' : ''}">▶</span>
-              ${escapeHtml(sub)}
-              <span style="font-size:11px;color:#aaa;background:#f0f0f0;padding:1px 6px;border-radius:8px">${cards.length}</span>
-            </div>
-          </div>`;
-        if (sopen) {
-          if (hasSub2) {
-            (sub2Map[''] || []).forEach(item => { html += renderCard(item); });
-            Object.entries(sub2Map).forEach(([s2, s2cards]) => {
-              if (!s2) return;
-              const s2k = 's2:' + type + '::' + sub + '::' + s2;
-              const s2open = expMainSub2.has(s2k);
-              html += `<div class="sub2-group">
-                <div class="sub2-header" onclick="toggleMainSub2('${escapeHtml(type)}','${escapeHtml(sub)}','${escapeHtml(s2)}')">
-                  <div class="sub2-title">
-                    <span class="sub2-arrow ${s2open ? 'open' : ''}">▶</span>
-                    ${escapeHtml(s2)}
-                    <span style="font-size:10px;color:#bbb;background:#f5f5f5;padding:0 5px;border-radius:5px">${s2cards.length}</span>
-                  </div>
-                </div>`;
-              if (s2open) s2cards.forEach(item => { html += renderCard(item); });
-              html += '</div>';
-            });
-          } else {
-            cards.forEach(item => { html += renderCard(item); });
-          }
-        }
-        html += '</div>';
-      });
-    }
-    html += '</div>';
-  });
-  return html;
+function getKnowledgeGroupStateSet() {
+  if (typeof window === 'undefined') return new Set();
+  if (!(window.expKnowledgePathGroups instanceof Set)) {
+    window.expKnowledgePathGroups = new Set();
+  }
+  return window.expKnowledgePathGroups;
 }
+
+function toggleKnowledgePathGroup(groupKey) {
+  const key = String(groupKey || '').trim();
+  if (!key) return;
+  const set = getKnowledgeGroupStateSet();
+  if (set.has(key)) set.delete(key);
+  else set.add(key);
+  if (typeof requestWorkspaceRender === 'function') requestWorkspaceRender({ sidebar: false });
+  else renderAll();
+}
+
+function getErrorPathTitlesForGrouping(errorItem) {
+  if (typeof getErrorKnowledgePathTitles === 'function') {
+    const titles = getErrorKnowledgePathTitles(errorItem);
+    if (Array.isArray(titles) && titles.length) return titles;
+  }
+  return [errorItem?.type || '其他', errorItem?.subtype || '未分类', errorItem?.subSubtype || '未细分'].filter(Boolean);
+}
+
+function buildKnowledgePathGroupTree(list) {
+  const root = [];
+  (list || []).forEach(item => {
+    const titles = getErrorPathTitlesForGrouping(item);
+    let bucket = root;
+    let parentKey = '';
+    titles.forEach((title, index) => {
+      const groupKey = parentKey ? `${parentKey} > ${title}` : String(title || '');
+      let group = bucket.find(node => node.title === title);
+      if (!group) {
+        group = { title, key: groupKey, level: index, children: [], items: [] };
+        bucket.push(group);
+      }
+      parentKey = groupKey;
+      bucket = group.children;
+    });
+    if (!titles.length) {
+      let fallback = root.find(node => node.title === '未归类');
+      if (!fallback) {
+        fallback = { title: '未归类', key: '未归类', level: 0, children: [], items: [] };
+        root.push(fallback);
+      }
+      fallback.items.push(item);
+      return;
+    }
+    let leaf = root;
+    let current = null;
+    titles.forEach(title => {
+      current = leaf.find(node => node.title === title);
+      leaf = current.children;
+    });
+    if (current) current.items.push(item);
+  });
+  return root;
+}
+
+function countKnowledgePathGroupItems(group) {
+  if (!group) return 0;
+  return (group.items || []).length + (group.children || []).reduce((sum, child) => sum + countKnowledgePathGroupItems(child), 0);
+}
+
+function renderKnowledgePathGroupNodes(nodes) {
+  const set = getKnowledgeGroupStateSet();
+  return (nodes || []).map(group => {
+    const total = countKnowledgePathGroupItems(group);
+    const isOpen = group.level >= 3 || set.has(group.key) || group.level === 0;
+    const cls = group.level === 0
+      ? 'type'
+      : group.level === 1
+        ? 'subtype'
+        : 'sub2';
+    const arrowCls = cls === 'type' ? 'type-arrow' : cls === 'subtype' ? 'subtype-arrow' : 'sub2-arrow';
+    const titleCls = cls === 'type' ? 'type-title' : cls === 'subtype' ? 'subtype-title' : 'sub2-title';
+    const wrapCls = cls === 'type' ? 'type-group' : cls === 'subtype' ? 'subtype-group' : 'sub2-group';
+    const headCls = cls === 'type' ? 'type-header' : cls === 'subtype' ? 'subtype-header' : 'sub2-header';
+    const badge = group.level <= 1
+      ? `<span style="font-size:11px;color:#aaa;background:#f0f0f0;padding:1px 6px;border-radius:8px">${total}</span>`
+      : `<span style="font-size:10px;color:#bbb;background:#f5f5f5;padding:0 5px;border-radius:5px">${total}</span>`;
+    const cardsHtml = (group.items || []).map(item => renderCard(item)).join('');
+    const childrenHtml = renderKnowledgePathGroupNodes(group.children || []);
+    return `<div class="${wrapCls}">
+      <div class="${headCls}" onclick="toggleKnowledgePathGroup('${escapeHtml(group.key)}')">
+        <div class="${titleCls}">
+          <span class="${arrowCls} ${isOpen ? 'open' : ''}">▶</span>
+          ${escapeHtml(group.title)}
+          ${badge}
+        </div>
+      </div>
+      ${isOpen ? `${cardsHtml}${childrenHtml}` : ''}
+    </div>`;
+  }).join('');
+}
+
+function renderGroupedErrorListHtml(visibleList) {
+  return renderKnowledgePathGroupNodes(buildKnowledgePathGroupTree(visibleList));
+}
+
+window.toggleKnowledgePathGroup = toggleKnowledgePathGroup;
 
 function renderProgressiveLoadHint(list, visibleList) {
   if (!Array.isArray(list) || !Array.isArray(visibleList) || list.length <= visibleList.length) return '';

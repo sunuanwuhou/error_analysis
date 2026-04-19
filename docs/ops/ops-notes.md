@@ -12,6 +12,9 @@ Legacy entry policy:
 
 - `/legacy` is soft-deprecated and now always redirects to `/`
 - active web entry is `/` only
+- authenticated `/` currently serves `v51_frontend/index.html`, not `xingce_v3/xingce_v3.html`
+- the shell then loads `v51_frontend/assets/v53-bootstrap.js`, which reads `/assets/legacy-app.bundle.manifest.json`
+- the manifest normally points to split bundles: `legacy-app.home.bundle.js`, `legacy-app.workspace.bundle.js`, `legacy-app.modal.bundle.js`, and `legacy-app.bootstrap.bundle.js`
 
 Do not assume `localhost`, `127.0.0.1`, Docker port mappings, and the public domain share one browser-local state.
 Do not assume `8080` and `8000` are interchangeable. Under the current rule, `8080` is the default Docker entry.
@@ -69,7 +72,7 @@ When running with Docker, changes under these paths require rebuilding the app c
 Command:
 
 ```bash
-docker compose up --build -d app
+powershell -ExecutionPolicy Bypass -File .\scripts\wsl.ps1 -Action up -Service app
 ```
 
 Preferred habit:
@@ -88,12 +91,13 @@ Required rule:
 2. do not stop at local diff, static inspection, or local build output
 3. deploy the runtime that actually serves the URL the user is looking at
 4. for the current default runtime, that usually means:
-   `docker compose up --build -d app`
+   `powershell -ExecutionPolicy Bypass -File .\scripts\wsl.ps1 -Action up -Service app`
 5. only report the change as done after the rebuilt runtime is up and the target page or endpoint responds normally
 
 Practical reminder:
 
-- if the active page is still served by `xingce_v3/xingce_v3.html`, changing `frontend/` alone does not count as delivery
+- if the user is on `/`, the shell still depends on `v51_frontend` plus `/assets` from `xingce_v3`
+- changing only one side of that chain does not count as delivery
 - if the user is looking at the Docker-served app, rebuild the container before asking them to verify
 
 ## Cloudflare Rule
@@ -122,7 +126,7 @@ Recommended verification sequence after meaningful backend or frontend changes:
 
 1. `python -m py_compile app/main.py`
 2. `python .\scripts\verify_v31_smoke.py`
-3. `docker compose up --build -d app`
+3. `powershell -ExecutionPolicy Bypass -File .\scripts\wsl.ps1 -Action up -Service app`
 4. verify local `http://127.0.0.1:8000`
 5. verify public `https://erroranaly.qzz.io/login`
 
@@ -141,6 +145,7 @@ Practical note from this rollout:
 
 - checking the served HTML was faster and more reliable than debating whether the source edit had already landed
 - the user-facing local page can stay visually stale even after source edits until both Docker rebuild and browser refresh happen
+- for the current shell, checking `/assets/legacy-app.bundle.manifest.json` and the actually served split bundle is often the fastest truth source
 
 ## 2026-04-12 Note Scroll Triage Rule (Must Follow)
 
@@ -166,13 +171,16 @@ Acceptance check:
 
 ## Legacy Bundle Refresh Rule
 
-When debugging the active legacy frontend (`v51_frontend` + `legacy-app.bundle.js`), use this fixed sequence after restart or hotfix:
+When debugging the active shell (`v51_frontend/index.html` + `v53-bootstrap.js` + manifest-driven split bundles), use this fixed sequence after restart or hotfix:
 
 1. update `xingce_v3/legacy-app.bundle.manifest.json` -> `built_at` to current UTC time
-2. sync both files to runtime:
-   - `xingce_v3/modules/legacy-app.bundle.js`
+2. sync updated bundles plus manifest to runtime:
+   - `xingce_v3/modules/legacy-app.home.bundle.js`
+   - `xingce_v3/modules/legacy-app.workspace.bundle.js`
+   - `xingce_v3/modules/legacy-app.modal.bundle.js`
+   - `xingce_v3/modules/legacy-app.bootstrap.bundle.js`
    - `xingce_v3/legacy-app.bundle.manifest.json`
-3. restart app runtime (`docker restart xingce_v3_app` for Docker path)
+3. restart app runtime through WSL
 4. verify `/assets/legacy-app.bundle.manifest.json` returns the new `built_at`
 5. hard refresh browser (`Ctrl + F5`) before judging whether fix is live
 
@@ -187,18 +195,18 @@ Problem we hit:
 
 Fixed rule:
 
-1. for legacy stable-name assets (`/assets/modules/legacy-app.bundle.js`, `partials.bundle.html`), do not use long immutable cache headers
+1. for stable-name assets (`/assets/modules/legacy-app.workspace.bundle.js`, `/assets/modules/legacy-app.modal.bundle.js`, `partials.bundle.html`, and manifest-driven peers), do not use long immutable cache headers
 2. keep `Cache-Control` as `no-store, no-cache, must-revalidate, max-age=0, s-maxage=0`
 3. after deploy, verify domain returns fresh asset content before asking user to retest
 
 Mandatory verification commands:
 
 ```powershell
-# local should contain new marker/function
-Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8080/assets/modules/legacy-app.bundle.js
+# local should contain new marker/function in the actually served split bundle
+Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8080/assets/modules/legacy-app.workspace.bundle.js
 
 # domain must not be stale
-Invoke-WebRequest -UseBasicParsing "https://erroranaly.qzz.io/assets/modules/legacy-app.bundle.js?ts=$(Get-Random)"
+Invoke-WebRequest -UseBasicParsing "https://erroranaly.qzz.io/assets/modules/legacy-app.workspace.bundle.js?ts=$(Get-Random)"
 ```
 
 Acceptance criteria:
@@ -256,8 +264,8 @@ Do not manually rewrite these copies as product content. Product-facing structur
 
 ## 2026-03-26 Frontend Safety Notes
 
-- The main page still ships as one large inline script inside `xingce_v3.html`.
-- A single malformed regex or template string can break the whole workbench at load time.
+- The user-facing shell is no longer a single direct `xingce_v3.html` entry for logged-in `/`.
+- Runtime confusion now usually comes from multiple surviving asset paths, not from one inline script only.
 - Practical rule after meaningful frontend edits:
   1. extract inline script and run `node --check`
   2. rebuild Docker

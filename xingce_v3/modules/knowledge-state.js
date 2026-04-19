@@ -316,7 +316,7 @@
     getKnowledgeRootNodes();
     knowledgeNotes = knowledgeNotes && typeof knowledgeNotes === "object" ? knowledgeNotes : {};
     normalizeKnowledgeNodes(getKnowledgeRootNodes(), 1);
-    var changed = cleanupForcedKnowledgeNodeByPath(["判断推理", "逻辑判断"]);
+    var changed = false;
     ensureKnowledgeExpandedDefaults();
     errors.forEach(function (item) {
       if (ensureKnowledgeBindingForError(item)) changed = true;

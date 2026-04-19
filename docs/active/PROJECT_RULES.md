@@ -24,6 +24,7 @@ Priority order:
 3. do not push the testing burden back to the user
 4. each delivery should include updated project docs
 5. every release should clearly state what is done, what is missing, and what was actually tested
+6. for this docker runtime, any code change must be treated as not-live until the app container has been rebuilt and the served result has been re-verified
 
 ## Product rules
 
@@ -77,16 +78,48 @@ The minimum persistent doc set is:
 
 ## Frontend cache-bust rule
 
-When the active runtime is the legacy entry (`v51_frontend` + `legacy-app.bundle.js`), runtime restart alone is not enough to prove frontend changes are live.
+When the active runtime is the current shell (`v51_frontend/index.html` -> `v53-bootstrap.js` -> `legacy-app.bundle.manifest.json` -> split legacy bundles), runtime restart alone is not enough to prove frontend changes are live.
 
-Required rule after any user-visible change in `xingce_v3/modules/legacy-app.bundle.js`:
+Required rule after any user-visible change in the served legacy assets under `xingce_v3/modules/` or `xingce_v3/styles/`:
 
 1. bump `xingce_v3/legacy-app.bundle.manifest.json` field `built_at`
-2. deploy updated bundle + manifest to the runtime that serves the target URL
+2. deploy updated split bundles and manifest to the runtime that serves the target URL
 3. verify the served manifest `built_at` is the new value
 4. then ask for browser hard refresh (`Ctrl + F5`) and continue verification
 
 This rule exists to prevent stale-bundle misdiagnosis during restart/debug cycles.
+
+## Container deployment verification rule
+
+This project serves app code and static assets from the app container image.
+For many changes, editing repository files alone does not update the live runtime.
+
+Mandatory rule after backend or frontend code changes:
+
+1. rebuild/redeploy the app container through WSL:
+   - `powershell -ExecutionPolicy Bypass -File .\scripts\wsl.ps1 -Action up -Service app`
+2. do not assume browser refresh, hard refresh, or incognito mode can bypass an old container image
+3. verify the live service output directly after deploy
+4. for frontend issues, prefer verifying the actual served asset content from:
+   - `http://127.0.0.1:8080/assets/...`
+5. only after container rebuild + served-asset verification may the change be described as deployed
+
+This rule exists because `/assets` is served from files inside the running container image, not from the local working tree alone.
+
+## Runtime entry contract
+
+Current active authenticated entry:
+
+1. `/` returns `v51_frontend/index.html`
+2. `v51_frontend/assets/v53-bootstrap.js` loads `xingce_v3/legacy-app.bundle.manifest.json`
+3. the manifest points the browser to `legacy-app.home/workspace/modal/bootstrap.bundle.js`
+
+Working rules:
+
+1. do not assume `xingce_v3/xingce_v3.html` is the active root page for logged-in users
+2. do not patch only the monolithic `legacy-app.bundle.js` and assume the live shell will use it
+3. before frontend debugging, confirm which served bundle the active page actually loads
+4. if a legacy fallback path still exists, document it explicitly instead of treating it as the main runtime
 
 ## Note scroll contract (2026-04-12)
 

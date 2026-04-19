@@ -8,10 +8,19 @@ function resolveCurrentErrorScope() {
     const nodeIds = node ? getKnowledgeDescendantNodeIds(node) : [knowledgeNodeFilter];
     return {
       label: node ? `Knowledge "${node.title}"` : 'Current knowledge scope',
-      predicate: e => nodeIds.includes(e.noteNodeId)
+      predicate: e => nodeIds.includes(typeof resolveErrorKnowledgeNodeId === 'function' ? resolveErrorKnowledgeNodeId(e) : String(e.noteNodeId || ''))
     };
   }
   if (typeFilter) {
+    const scope = typeof resolveTypeFilterNodeScope === 'function'
+      ? resolveTypeFilterNodeScope(typeFilter)
+      : null;
+    if (scope && scope.node) {
+      return {
+        label: `Knowledge "${scope.node.title}"`,
+        predicate: e => scope.ids.includes(typeof resolveErrorKnowledgeNodeId === 'function' ? resolveErrorKnowledgeNodeId(e) : String(e.noteNodeId || ''))
+      };
+    }
     if (typeFilter.level === 'type') {
       return {
         label: `Type "${typeFilter.value}"`,
@@ -34,7 +43,7 @@ function resolveCurrentErrorScope() {
     const nodeIds = node ? getKnowledgeDescendantNodeIds(node) : [selectedKnowledgeNodeId];
     return {
       label: node ? `Knowledge "${node.title}"` : 'Current knowledge scope',
-      predicate: e => nodeIds.includes(e.noteNodeId)
+      predicate: e => nodeIds.includes(typeof resolveErrorKnowledgeNodeId === 'function' ? resolveErrorKnowledgeNodeId(e) : String(e.noteNodeId || ''))
     };
   }
   if (statusFilter !== 'all' || reasonFilter || searchKw || dateFrom || dateTo) {
@@ -120,55 +129,40 @@ function deleteError(id){
   recordErrorDelete(targetId);
   refreshWorkspaceAfterErrorMutation({ save:true, reveal:true });
 
-  // If a type no longer has questions, allow removing its note bucket too.
-  const typeCount = getErrorEntries().filter(e => e.type === error.type).length;
-  if (typeCount === 0 && notesByType[error.type]) {
-    if (confirm(`"${error.type}" has no remaining questions. Delete its note bucket too?`)) {
-      delete notesByType[error.type];
-      saveNotesByType();
-    }
-  }
-
   refreshWorkspaceAfterErrorMutation({ save:false, syncNotes:true, renderNotes:true });
   showToast(`Question #${targetId} deleted`, 'success');
 }
 
 // Add a new error and keep related note structures ready.
 function addError(data) {
+  const record = {id: newId(), addDate: today(), ...data};
+  if (typeof ensureKnowledgeBindingForError === 'function') {
+    ensureKnowledgeBindingForError(record);
+  }
   // 1. Add the error.
-  errors.push({id: newId(), addDate: today(), ...data});
+  errors.push(record);
 
   // 2. Sync note structure.
   syncNotesWithErrors();
 
   // 3. Create note chapter if needed.
-  ensureNoteChapterExists(data.type, data.subtype, data.subSubtype);
+  ensureNoteChapterExists(record.type, record.subtype, record.subSubtype, record.noteNodeId, record.knowledgePathTitles);
 
   // 4. Re-render.
   refreshWorkspaceAfterErrorMutation({ save:true, syncNotes:true, renderNotes:true });
 }
 
-// Ensure a note chapter exists.
-function ensureNoteChapterExists(type, subtype, subSubtype) {
-  const key = `${type}::${subtype || 'Uncategorized'}::${subSubtype || 'Uncategorized'}`;
-
-  // Check whether it already exists.
-  let node = getNoteNodeByKey(notesByType, key, 0);
-  if (node) {
-    return;
-  }
-
-  // Create a new note chapter.
-  const newNode = {
-    title: `${type} ${subtype || ''} ${subSubtype || ''}`.trim(),
-    content: `## ${type} ${subtype || ''} ${subSubtype || ''}`.trim(),
-    children: {},
-    updatedAt: today()
-  };
-
-  // Insert into note structure.
-  setNoteNodeByKey(notesByType, key, 0, newNode);
-  saveNotesByType();
+// Ensure a knowledge note exists for the real tree node instead of the legacy notesByType bucket.
+function ensureNoteChapterExists(type, subtype, subSubtype, noteNodeId, knowledgePathTitles) {
+  const titles = Array.isArray(knowledgePathTitles) && knowledgePathTitles.length
+    ? knowledgePathTitles.filter(Boolean)
+    : [type || '', subtype || '', subSubtype || ''].filter(Boolean);
+  const node = noteNodeId
+    ? getKnowledgeNodeById(noteNodeId)
+    : (titles.length && typeof ensureKnowledgePathByTitles === 'function' ? ensureKnowledgePathByTitles(titles) : null);
+  if (!node) return null;
+  if (typeof ensureKnowledgeNoteRecord === 'function') ensureKnowledgeNoteRecord(node);
+  return node;
 }
 
 // Set a note node by key path.

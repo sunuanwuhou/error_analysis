@@ -124,6 +124,28 @@ function onSearch(){
   else renderAll();
 }
 function clearFilter(){ taskFilter='all';statusFilter='all';typeFilter=null;reasonFilter=null;knowledgeNodeFilter=null;searchKw='';dateFrom='';dateTo='';document.getElementById('searchInput').value='';document.getElementById('dateFrom').value='';document.getElementById('dateTo').value='';updateSearchClear();if (typeof requestWorkspaceRender === 'function') requestWorkspaceRender({ sidebar:true }); else { renderSidebar();renderAll(); } }
+function getTypeFilterPathTitles(filter){
+  if(!filter) return [];
+  if(Array.isArray(filter.pathTitles) && filter.pathTitles.length) return filter.pathTitles.filter(Boolean);
+  if(filter.level==='sub2') return [filter.type || '', filter.subtype || '', filter.value || ''].filter(Boolean);
+  if(filter.level==='subtype') return [filter.type || '', filter.value || ''].filter(Boolean);
+  if(filter.level==='type') return [filter.value || ''].filter(Boolean);
+  return [];
+}
+function resolveTypeFilterNodeScope(filter){
+  const titles = getTypeFilterPathTitles(filter);
+  if(!titles.length || typeof getKnowledgeNodeByPathTitles !== 'function') return null;
+  const node = getKnowledgeNodeByPathTitles(titles);
+  if(!node) return null;
+  const ids = typeof getKnowledgeDescendantNodeIds === 'function'
+    ? getKnowledgeDescendantNodeIds(node)
+    : [node.id];
+  return {
+    node,
+    ids: (ids || []).map(id => String(id || '')).filter(Boolean),
+    titles
+  };
+}
 function getFiltered(){
   return getErrorEntries().filter(e=>{
     if(!matchTaskFilter(e, taskFilter)) return false;
@@ -131,17 +153,29 @@ function getFiltered(){
     if(knowledgeNodeFilter){
       const currentNode = getKnowledgeNodeById(knowledgeNodeFilter);
       const nodeIds = currentNode ? getKnowledgeDescendantNodeIds(currentNode) : [knowledgeNodeFilter];
-      if(!nodeIds.includes(e.noteNodeId)) return false;
+      const resolvedNodeId = typeof resolveErrorKnowledgeNodeId === 'function'
+        ? resolveErrorKnowledgeNodeId(e)
+        : String(e.noteNodeId || '');
+      if(!nodeIds.includes(resolvedNodeId)) return false;
     }
     if(typeFilter){
-      if(typeFilter.level==='type'&&e.type!==typeFilter.value)return false;
-      if(typeFilter.level==='subtype'&&(e.type!==typeFilter.type||e.subtype!==typeFilter.value))return false;
-      if(typeFilter.level==='sub2'&&(e.type!==typeFilter.type||e.subtype!==typeFilter.subtype||e.subSubtype!==typeFilter.value))return false;
+      const scope = resolveTypeFilterNodeScope(typeFilter);
+      if(scope){
+        const resolvedNodeId = typeof resolveErrorKnowledgeNodeId === 'function'
+          ? resolveErrorKnowledgeNodeId(e)
+          : String(e.noteNodeId || '');
+        if(!scope.ids.includes(resolvedNodeId)) return false;
+      }else{
+        if(typeFilter.level==='type'&&e.type!==typeFilter.value)return false;
+        if(typeFilter.level==='subtype'&&(e.type!==typeFilter.type||e.subtype!==typeFilter.value))return false;
+        if(typeFilter.level==='sub2'&&(e.type!==typeFilter.type||e.subtype!==typeFilter.subtype||e.subSubtype!==typeFilter.value))return false;
+      }
     }
     if(reasonFilter && (e.rootReason||e.errorReason||'').trim() !== reasonFilter) return false;
     if(searchKw){
       const terms=searchKw.toLowerCase().split(/\s+/).filter(Boolean);
-      const text=(e.question+' '+(e.options||'')+' '+(e.analysis||'')+' '+e.type+' '+(e.subtype||'')+' '+(e.subSubtype||'')+' '+(e.errorReason||'')+' '+(e.rootReason||'')+' '+(e.srcYear||'')+' '+(e.srcProvince||'')+' '+(e.srcOrigin||'')).toLowerCase();
+      const knowledgePath = typeof getErrorKnowledgePathText === 'function' ? getErrorKnowledgePathText(e) : '';
+      const text=(e.question+' '+(e.options||'')+' '+(e.analysis||'')+' '+knowledgePath+' '+e.type+' '+(e.subtype||'')+' '+(e.subSubtype||'')+' '+(e.errorReason||'')+' '+(e.rootReason||'')+' '+(e.srcYear||'')+' '+(e.srcProvince||'')+' '+(e.srcOrigin||'')).toLowerCase();
       // 多关键词 AND 子串匹配：空格分隔多个词，每个词都必须出现在题目中
       if(!terms.every(t=>text.includes(t)))return false;
     }
@@ -153,3 +187,5 @@ function getFiltered(){
 
 window.getTaskFilterLabel = getTaskFilterLabel;
 window.matchTaskFilter = matchTaskFilter;
+window.getTypeFilterPathTitles = getTypeFilterPathTitles;
+window.resolveTypeFilterNodeScope = resolveTypeFilterNodeScope;

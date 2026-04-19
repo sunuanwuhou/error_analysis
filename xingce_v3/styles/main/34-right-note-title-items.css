@@ -31,6 +31,10 @@
 .note-math-block mjx-container{max-width:100%;overflow-x:auto;overflow-y:hidden}
 .note-math-inline mjx-container{max-width:100%}
 @media (max-width: 980px){
+  .note-preview-layout{grid-template-columns:minmax(160px,210px) minmax(0,1fr);gap:16px}
+  .note-preview-toc .note-toc-floating{padding:10px 12px}
+}
+@media (max-width: 760px){
   .notes-area{padding-right:0}
   .notes-panel-right{display:none!important}
   .global-note-toc-dock{display:none!important}

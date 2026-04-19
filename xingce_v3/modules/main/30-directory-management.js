@@ -33,12 +33,42 @@ function removeKnowledgeNoteEntry(nodeId) {
   if (!nodeId || !knowledgeNotes || typeof knowledgeNotes !== 'object') return;
   delete knowledgeNotes[nodeId];
 }
+function rebindErrorToKnowledgeNodeId(errorItem, targetNodeId) {
+  if (!errorItem) return false;
+  const nextNodeId = String(targetNodeId || '').trim();
+  if (!nextNodeId) {
+    errorItem.noteNodeId = '';
+    errorItem.knowledgePathTitles = [];
+    errorItem.knowledgePath = '';
+    errorItem.knowledgeNodePath = '';
+    errorItem.notePath = '';
+    errorItem.updatedAt = new Date().toISOString();
+    return true;
+  }
+  const targetNode = typeof getKnowledgeNodeById === 'function' ? getKnowledgeNodeById(nextNodeId) : null;
+  if (!targetNode) {
+    errorItem.noteNodeId = nextNodeId;
+    errorItem.updatedAt = new Date().toISOString();
+    return true;
+  }
+  const stableTitles = collapseKnowledgePathTitles(getKnowledgePathTitles(targetNode.id));
+  const stablePath = stableTitles.join(' > ');
+  errorItem.noteNodeId = targetNode.id;
+  errorItem.knowledgePathTitles = stableTitles.slice();
+  errorItem.knowledgePath = stablePath;
+  errorItem.knowledgeNodePath = stablePath;
+  errorItem.notePath = stablePath;
+  errorItem.type = stableTitles[0] || errorItem.type || '';
+  errorItem.subtype = stableTitles[1] || errorItem.subtype || '';
+  errorItem.subSubtype = stableTitles[stableTitles.length - 1] || errorItem.subSubtype || '';
+  errorItem.updatedAt = new Date().toISOString();
+  return true;
+}
 function migrateKnowledgeNodeReference(oldId, newId) {
   if (!oldId || !newId || oldId === newId) return;
   errors.forEach(item => {
     if (item.noteNodeId === oldId) {
-      item.noteNodeId = newId;
-      item.updatedAt = new Date().toISOString();
+      rebindErrorToKnowledgeNodeId(item, newId);
     }
   });
   if (selectedKnowledgeNodeId === oldId) selectedKnowledgeNodeId = newId;
@@ -224,6 +254,17 @@ function cleanupNoisyRootNodes() {
   ]);
   let changed = false;
 
+  const moveRootIntoCanonicalBranch = (source, targetRootTitle, branchTitle) => {
+    if (!source) return false;
+    const sourceId = String(source.id || '');
+    const branch = ensureKnowledgePathByTitles([targetRootTitle, branchTitle]);
+    if (!branch) return false;
+    mergeKnowledgeNodeIntoTarget(branch, source);
+    branch.level = 2;
+    branch.isLeaf = (branch.children || []).length === 0;
+    return true;
+  };
+
   const getCanonicalNodeByTitle = title => {
     const normalized = normalizeKnowledgeRootTitleForCleanup(title);
     return roots.find(node => normalizeKnowledgeRootTitleForCleanup(node && node.title) === normalized) || null;
@@ -238,14 +279,23 @@ function cleanupNoisyRootNodes() {
     const sourceIdx = roots.findIndex(node => isNoisyRoot(node && node.title, noisyTitle));
     if (sourceIdx < 0) return;
     const source = roots[sourceIdx];
+    const sourceId = String(source && source.id || '');
+    const shouldNestUnderTarget = noisyTitle !== '未细分' && noisyTitle !== '未分类' && targetTitle !== '其他';
+
+    if (shouldNestUnderTarget && moveRootIntoCanonicalBranch(source, targetTitle, noisyTitle)) {
+      roots.splice(sourceIdx, 1);
+      removeKnowledgeNoteEntry(sourceId);
+      knowledgeExpanded.delete(sourceId);
+      changed = true;
+      return;
+    }
+
     const target = getCanonicalNodeByTitle(targetTitle);
     const targetId = target ? String(target.id || '') : '';
-    const sourceId = String(source && source.id || '');
 
     (errors || []).forEach(item => {
       if (String((item && item.noteNodeId) || '') === sourceId) {
-        item.noteNodeId = targetId || '';
-        item.updatedAt = new Date().toISOString();
+        rebindErrorToKnowledgeNodeId(item, targetId || '');
       }
     });
 
@@ -285,8 +335,7 @@ function cleanupForcedKnowledgeNodeByPath(pathTitles) {
 
   (errors || []).forEach(item => {
     if (String((item && item.noteNodeId) || '') !== String(targetNode.id || '')) return;
-    item.noteNodeId = fallbackTargetId || '';
-    item.updatedAt = new Date().toISOString();
+    rebindErrorToKnowledgeNodeId(item, fallbackTargetId || '');
   });
 
   siblings.splice(idx, 1, ...promotedChildren);
@@ -478,6 +527,25 @@ function collectKnowledgeNodes(nodes, bucket) {
   });
   return acc;
 }
+function detachKnowledgeNodeById(nodeId, nodes) {
+  const targetId = String(nodeId || '').trim();
+  if (!targetId) return null;
+  const list = Array.isArray(nodes) ? nodes : getKnowledgeRootNodes();
+  for (let idx = 0; idx < list.length; idx += 1) {
+    const node = list[idx];
+    if (!node) continue;
+    if (String(node.id || '') === targetId) {
+      list.splice(idx, 1);
+      return node;
+    }
+    const found = detachKnowledgeNodeById(targetId, node.children || []);
+    if (found) {
+      node.isLeaf = !(Array.isArray(node.children) && node.children.length);
+      return found;
+    }
+  }
+  return null;
+}
 function getKnowledgeDescendantNodeIds(node) {
   if (!node) return [];
   let ids = [node.id];
@@ -492,7 +560,9 @@ function getKnowledgeErrorCountMaps() {
   }
   const direct = new Map();
   getErrorEntries().forEach(item => {
-    const nodeId = String(item && item.noteNodeId || '');
+    const nodeId = typeof resolveErrorKnowledgeNodeId === 'function'
+      ? String(resolveErrorKnowledgeNodeId(item) || '')
+      : String(item && item.noteNodeId || '');
     if (!nodeId) return;
     direct.set(nodeId, (direct.get(nodeId) || 0) + 1);
   });
@@ -614,18 +684,21 @@ function ensureKnowledgeState(opts) {
   knowledgeNotes = knowledgeNotes && typeof knowledgeNotes === 'object' ? knowledgeNotes : {};
   let changed = ensureFixedKnowledgeRoots();
   if (cleanupNoisyRootNodes()) changed = true;
-  if (cleanupForcedKnowledgeNodeByPath(['判断推理', '逻辑判断'])) changed = true;
   if (mergeDuplicateKnowledgeSiblings(getKnowledgeRootNodes())) changed = true;
   if (collapseDuplicateKnowledgeWrappers(getKnowledgeRootNodes())) changed = true;
   normalizeKnowledgeNodes(getKnowledgeRootNodes(), 1);
   if (mergeDuplicateKnowledgeSiblings(getKnowledgeRootNodes())) changed = true;
   ensureKnowledgeExpandedDefaults();
-  errors.forEach(item => {
-    const before = String((item && item.noteNodeId) || '');
-    ensureKnowledgeBindingForError(item);
-    const after = String((item && item.noteNodeId) || '');
-    if (before !== after) changed = true;
-  });
+  if (typeof resyncAllErrorKnowledgeBindings === 'function') {
+    if (resyncAllErrorKnowledgeBindings() > 0) changed = true;
+  } else {
+    errors.forEach(item => {
+      const before = String((item && item.noteNodeId) || '');
+      ensureKnowledgeBindingForError(item);
+      const after = String((item && item.noteNodeId) || '');
+      if (before !== after) changed = true;
+    });
+  }
   const allNodes = collectKnowledgeNodes();
   if ((!selectedKnowledgeNodeId || !getKnowledgeNodeById(selectedKnowledgeNodeId)) && allNodes.length > 0) {
     selectedKnowledgeNodeId = allNodes[0].id;

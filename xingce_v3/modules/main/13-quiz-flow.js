@@ -709,7 +709,12 @@ function _collectErrorsForRandomNotePractice(nodeId) {
     }
   }
   return getErrorEntries().filter(e => {
-    if (!e || !idSet.has(String(e.noteNodeId || ''))) return false;
+    const nodeId = !e
+      ? ''
+      : (typeof resolveErrorKnowledgeNodeId === 'function'
+        ? resolveErrorKnowledgeNodeId(e)
+        : String(e.noteNodeId || ''));
+    if (!nodeId || !idSet.has(String(nodeId || ''))) return false;
     if (typeof isEffectivelyMastered === 'function' && isEffectivelyMastered(e)) return false;
     return true;
   });

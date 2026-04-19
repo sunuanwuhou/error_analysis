@@ -384,7 +384,7 @@ function renderCard(e){
       ${processImageTag}
       ${opts ? `<div class="card-options">${opts}</div>` : ''}
     </div>
-    ${isRev ? `<div class="card-lower-panel" data-error-id="${escapeHtml(normalizedId)}"><div class="card-detail-skeleton">Loading details...</div></div>` : ''}
+    ${isRev ? `<div class="card-lower-panel" data-error-id="${escapeHtml(normalizedId)}" data-hydrated="true">${buildCardLowerPanelHtml(e, searchKw)}</div>` : ''}
     <button class="card-reveal-btn" onclick='revealCard(${idLit})' style="${isRev?'color:#bbb;border-color:#eee;font-size:11px;margin-top:6px':''}">${isRev ? 'Collapse' : 'View details'}</button>
     ${inlineQuizHtml}
     <div class="card-actions card-actions-soft">
@@ -422,7 +422,19 @@ function revealCard(id){
   else {
     revealed.add(targetId);
     const e = findErrorById(targetId);
-    if (e) highlightNoteChapter(e.type, e.subtype, e.subSubtype);
+    if (e) {
+      const nodeId = typeof resolveErrorKnowledgeNodeId === 'function'
+        ? resolveErrorKnowledgeNodeId(e)
+        : String(e.noteNodeId || '').trim();
+      if (nodeId) {
+        const target = document.querySelector(`[data-knowledge-node-id="${nodeId}"] .note-panel-item-header`);
+        if (target) {
+          document.querySelectorAll('.note-panel-item-header').forEach(el => el.classList.remove('note-chapter-highlight'));
+          target.classList.add('note-chapter-highlight');
+          target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }
+    }
   }
   saveReveal();
   if (typeof requestWorkspaceRender === 'function') requestWorkspaceRender({ sidebar:false });
@@ -438,4 +450,7 @@ function collapseCard(id){
   if (typeof requestWorkspaceRender === 'function') requestWorkspaceRender({ sidebar:false });
   else renderAll();
 }
+
+window.revealCard = revealCard;
+window.collapseCard = collapseCard;
 

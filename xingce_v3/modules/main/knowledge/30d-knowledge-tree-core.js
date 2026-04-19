@@ -51,7 +51,12 @@ function shouldAutoUnwrapKnowledgeNode(node, expectedTitle) {
   if (!node || node.title !== expectedTitle) return false;
   if (!Array.isArray(node.children) || !node.children.length) return false;
   const hasOwnContent = !!String(node.contentMd || '').trim();
-  const hasOwnDirectErrors = errors.some(item => item.noteNodeId === node.id);
+  const hasOwnDirectErrors = errors.some(item => {
+    const nodeId = typeof resolveErrorKnowledgeNodeId === 'function'
+      ? resolveErrorKnowledgeNodeId(item)
+      : String(item && item.noteNodeId || '');
+    return nodeId === node.id;
+  });
   return !hasOwnContent && !hasOwnDirectErrors;
 }
 

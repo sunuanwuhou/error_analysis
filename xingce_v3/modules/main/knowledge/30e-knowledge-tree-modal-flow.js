@@ -196,21 +196,46 @@ function moveKnowledgeNodeToTarget(nodeId, targetId, opts) {
     return false;
   }
   target.children = target.children || [];
-  if (target.children.some(item => item.id !== node.id && item.title === node.title)) {
-    showToast('目标节点下已存在同名节点', 'error');
-    return false;
-  }
   const oldList = oldParent.children || [];
   const idx = oldList.findIndex(item => item.id === node.id);
   if (idx < 0) return false;
-  oldList.splice(idx, 1);
-  target.children.push(node);
-  oldParent.isLeaf = oldList.length === 0;
+  const movedNodeIds = typeof getKnowledgeDescendantNodeIds === 'function'
+    ? getKnowledgeDescendantNodeIds(node).map(id => String(id || ''))
+    : [String(node.id || '')];
+  const detachedNode = typeof detachKnowledgeNodeById === 'function'
+    ? detachKnowledgeNodeById(node.id)
+    : null;
+  const movingNode = detachedNode || node;
+  oldParent.isLeaf = !(Array.isArray(oldParent.children) && oldParent.children.length);
+  const duplicateTarget = target.children.find(item => item.id !== node.id && item.title === node.title);
+  if (duplicateTarget) {
+    const descendantIds = movedNodeIds.filter(id => id && id !== String(node.id || ''));
+    mergeKnowledgeNodeIntoTarget(duplicateTarget, movingNode);
+    oldParent.isLeaf = !(Array.isArray(oldParent.children) && oldParent.children.length);
+    duplicateTarget.isLeaf = (duplicateTarget.children || []).length === 0;
+    knowledgeExpanded.delete(movingNode.id);
+    removeKnowledgeNoteEntry(movingNode.id);
+    expandKnowledgePath(duplicateTarget.id);
+    if (typeof syncMovedKnowledgeNodeErrors === 'function' && descendantIds.length) {
+      syncMovedKnowledgeNodeErrors(descendantIds);
+    }
+    saveData();
+    saveKnowledgeState();
+    if (!opts || !opts.silent) showToast(`目标位置已有同名节点，已自动合并到：${collapseKnowledgePathTitles(getKnowledgePathTitles(duplicateTarget.id)).join(' > ')}`, 'success');
+    setCurrentKnowledgeNode(duplicateTarget.id, { switchTab: false });
+    return true;
+  }
+  target.children.push(movingNode);
+  oldParent.isLeaf = !(Array.isArray(oldParent.children) && oldParent.children.length);
   target.isLeaf = false;
   expandKnowledgePath(target.id);
+  if (typeof syncMovedKnowledgeNodeErrors === 'function') {
+    syncMovedKnowledgeNodeErrors(movedNodeIds);
+  }
+  saveData();
   saveKnowledgeState();
   if (!opts || !opts.silent) showToast(`节点已移动到：${collapseKnowledgePathTitles(getKnowledgePathTitles(target.id)).join(' > ')}`, 'success');
-  setCurrentKnowledgeNode(node.id, { switchTab: false });
+  setCurrentKnowledgeNode(movingNode.id, { switchTab: false });
   return true;
 }
 
@@ -243,7 +268,12 @@ function deleteKnowledgeNode(nodeId) {
   const isRootNode = !parent;
   const roots = getKnowledgeRootNodes();
   const siblings = parent ? (parent.children || []) : roots;
-  const directErrors = errors.filter(item => item.noteNodeId === node.id);
+  const directErrors = errors.filter(item => {
+    const currentNodeId = typeof resolveErrorKnowledgeNodeId === 'function'
+      ? resolveErrorKnowledgeNodeId(item)
+      : String(item && item.noteNodeId || '');
+    return currentNodeId === node.id;
+  });
   const childCount = (node.children || []).length;
   const noteFlag = (node.contentMd || '').trim() ? '\n- 当前节点有笔记内容' : '';
   const childFlag = childCount ? `\n- 当前节点有 ${childCount} 个下级，删除后会自动提升到当前层级` : '';
@@ -261,6 +291,10 @@ function deleteKnowledgeNode(nodeId) {
     ? parent.id
     : (promotedChildren[0]?.id || siblings[idx - 1]?.id || siblings[idx + 1]?.id || '');
   directErrors.forEach(item => {
+    if (typeof rebindErrorToKnowledgeNodeId === 'function') {
+      rebindErrorToKnowledgeNodeId(item, fallbackTargetId || '');
+      return;
+    }
     item.noteNodeId = fallbackTargetId || '';
     item.updatedAt = new Date().toISOString();
   });

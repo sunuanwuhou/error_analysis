@@ -2,8 +2,24 @@
 // Knowledge tree binding and navigation
 // ============================================================
 
+function resolveErrorKnowledgeNodeId(errorItem, opts) {
+  if (!errorItem) return '';
+  const options = opts || {};
+  const currentId = String(errorItem.noteNodeId || '').trim();
+  if (currentId && getKnowledgeNodeById(currentId)) return currentId;
+  const pathTitles = getEntryKnowledgePathTitles(errorItem, {
+    allowLegacyPathText: true,
+    fallbackTitles: [errorItem?.type || '其他', errorItem?.subtype || '未分类', errorItem?.subSubtype || '未细分']
+  });
+  if (!pathTitles.length) return '';
+  const node = options.ensure === true
+    ? ensureKnowledgePathByTitles(pathTitles)
+    : getKnowledgeNodeByPathTitles(pathTitles);
+  return node && node.id ? node.id : '';
+}
+
 function getErrorKnowledgePathTitles(errorItem) {
-  const nodeId = errorItem && errorItem.noteNodeId;
+  const nodeId = resolveErrorKnowledgeNodeId(errorItem);
   if (nodeId) {
     const titles = collapseKnowledgePathTitles(getKnowledgePathTitles(nodeId));
     if (titles.length) return titles;
@@ -19,26 +35,60 @@ function getErrorKnowledgePathText(errorItem) {
 }
 
 function getKnowledgeDisplayNode(node) {
-  return node;
+  if (!node) return null;
+  if (Number(node.level || 0) !== 1) return node;
+  const rootAlias = typeof resolveLegacyKnowledgeRootAlias === 'function'
+    ? resolveLegacyKnowledgeRootAlias(node.title)
+    : '';
+  if (!rootAlias || rootAlias === node.title) return node;
+  if (typeof ensureKnowledgePathByTitles !== 'function') return node;
+  return ensureKnowledgePathByTitles([rootAlias, String(node.title || '').trim()]) || node;
 }
 
 function resolveKnowledgeDisplayNodeId(nodeId) {
-  return nodeId;
+  const node = getKnowledgeNodeById(nodeId);
+  const displayNode = getKnowledgeDisplayNode(node);
+  return displayNode && displayNode.id ? displayNode.id : nodeId;
 }
 
 function getCurrentKnowledgeNode() {
   return selectedKnowledgeNodeId ? getKnowledgeNodeById(selectedKnowledgeNodeId) : null;
 }
 
+function syncErrorKnowledgeBindingToCurrentNode(errorItem, node) {
+  if (!errorItem || !node || !node.id) return false;
+  const stableTitles = collapseKnowledgePathTitles(getKnowledgePathTitles(node.id));
+  const stablePath = stableTitles.join(' > ');
+  errorItem.noteNodeId = node.id;
+  errorItem.knowledgePathTitles = stableTitles.slice();
+  errorItem.knowledgePath = stablePath;
+  errorItem.knowledgeNodePath = stablePath;
+  errorItem.notePath = stablePath;
+  errorItem.type = stableTitles[0] || '';
+  errorItem.subtype = stableTitles[1] || '';
+  errorItem.subSubtype = stableTitles[stableTitles.length - 1] || '';
+  errorItem.updatedAt = new Date().toISOString();
+  return true;
+}
+
+function syncMovedKnowledgeNodeErrors(nodeIds) {
+  const idSet = new Set((nodeIds || []).map(id => String(id || '')).filter(Boolean));
+  if (!idSet.size || !Array.isArray(errors)) return 0;
+  let changed = 0;
+  errors.forEach(errorItem => {
+    const nodeId = String((errorItem && errorItem.noteNodeId) || '');
+    if (!nodeId || !idSet.has(nodeId)) return;
+    const node = getKnowledgeNodeById(nodeId);
+    if (!node) return;
+    if (syncErrorKnowledgeBindingToCurrentNode(errorItem, node)) changed += 1;
+  });
+  return changed;
+}
+
 function ensureKnowledgeBindingForError(errorItem) {
   if (!errorItem) return '';
-  const expectedTitles = getEntryKnowledgePathTitles(errorItem, {
-    allowLegacyPathText: true,
-    fallbackTitles: [errorItem.type || '其他', errorItem.subtype || '未分类', errorItem.subSubtype || '未细分']
-  });
-  if (!expectedTitles.length) return '';
   const currentNode = errorItem.noteNodeId ? getKnowledgeNodeById(errorItem.noteNodeId) : null;
-  if (currentNode && doesKnowledgeNodeMatchPathTitles(currentNode.id, expectedTitles)) {
+  if (currentNode) {
     const stableTitles = collapseKnowledgePathTitles(getKnowledgePathTitles(currentNode.id));
     const stablePath = stableTitles.join(' > ');
     errorItem.knowledgePathTitles = stableTitles.slice();
@@ -50,6 +100,11 @@ function ensureKnowledgeBindingForError(errorItem) {
     errorItem.subSubtype = stableTitles[stableTitles.length - 1] || errorItem.subSubtype || '';
     return currentNode.id;
   }
+  const expectedTitles = getEntryKnowledgePathTitles(errorItem, {
+    allowLegacyPathText: true,
+    fallbackTitles: [errorItem.type || '其他', errorItem.subtype || '未分类', errorItem.subSubtype || '未细分']
+  });
+  if (!expectedTitles.length) return '';
   const node = ensureKnowledgePathByTitles(expectedTitles);
   if (!node) return '';
   ensureKnowledgeNoteRecord(node);
@@ -64,6 +119,24 @@ function ensureKnowledgeBindingForError(errorItem) {
   errorItem.subtype = stableTitles[1] || errorItem.subtype || '';
   errorItem.subSubtype = stableTitles[stableTitles.length - 1] || errorItem.subSubtype || '';
   return node.id;
+}
+
+function resyncAllErrorKnowledgeBindings() {
+  if (!Array.isArray(errors)) return 0;
+  let changed = 0;
+  errors.forEach(errorItem => {
+    if (!errorItem) return;
+    const beforeNodeId = String(errorItem.noteNodeId || '');
+    const beforePath = Array.isArray(errorItem.knowledgePathTitles)
+      ? errorItem.knowledgePathTitles.join(' > ')
+      : String(errorItem.knowledgePath || '');
+    const afterNodeId = ensureKnowledgeBindingForError(errorItem);
+    const afterPath = Array.isArray(errorItem.knowledgePathTitles)
+      ? errorItem.knowledgePathTitles.join(' > ')
+      : String(errorItem.knowledgePath || '');
+    if (String(afterNodeId || '') !== beforeNodeId || afterPath !== beforePath) changed += 1;
+  });
+  return changed;
 }
 
 function resolveKnowledgeNodeIdForSave(pathTitles) {
@@ -251,4 +324,6 @@ function jumpToErrorInList(errorId) {
 
 if (typeof window !== 'undefined') {
   window.__mainJumpToErrorInList = jumpToErrorInList;
+  window.syncMovedKnowledgeNodeErrors = syncMovedKnowledgeNodeErrors;
+  window.resolveErrorKnowledgeNodeId = resolveErrorKnowledgeNodeId;
 }

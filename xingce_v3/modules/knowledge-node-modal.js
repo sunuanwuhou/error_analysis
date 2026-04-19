@@ -1,6 +1,36 @@
 (function () {
   var knowledgeNodeDropHint = { nodeId: null, mode: "" };
 
+  function syncErrorKnowledgeBindingToNode(errorItem, targetNode) {
+    if (!errorItem || !targetNode || !targetNode.id) return false;
+    var stableTitles = collapseKnowledgePathTitles(getKnowledgePathTitles(targetNode.id));
+    var stablePath = stableTitles.join(" > ");
+    errorItem.noteNodeId = targetNode.id;
+    errorItem.knowledgePathTitles = stableTitles.slice();
+    errorItem.knowledgePath = stablePath;
+    errorItem.knowledgeNodePath = stablePath;
+    errorItem.notePath = stablePath;
+    errorItem.type = stableTitles[0] || "";
+    errorItem.subtype = stableTitles[1] || "";
+    errorItem.subSubtype = stableTitles[stableTitles.length - 1] || "";
+    errorItem.updatedAt = new Date().toISOString();
+    return true;
+  }
+
+  function syncMovedKnowledgeNodeErrors(nodeIds) {
+    var idSet = new Set((nodeIds || []).map(function (id) { return String(id || ""); }).filter(Boolean));
+    if (!idSet.size || !Array.isArray(errors)) return 0;
+    var changed = 0;
+    errors.forEach(function (errorItem) {
+      var nodeId = String((errorItem && errorItem.noteNodeId) || "");
+      if (!nodeId || !idSet.has(nodeId)) return;
+      var node = getKnowledgeNodeById(nodeId);
+      if (!node) return;
+      if (syncErrorKnowledgeBindingToNode(errorItem, node)) changed += 1;
+    });
+    return changed;
+  }
+
   function rerenderKnowledgeShell() {
     renderSidebar();
     renderAll();
@@ -169,26 +199,49 @@
     }
 
     target.children = target.children || [];
-    if (target.children.some(function (item) { return item.id !== node.id && item.title === node.title; })) {
-      showToast("目标节点下已存在同名节点", "error");
-      return false;
-    }
-
     var oldList = oldParent.children || [];
     var idx = oldList.findIndex(function (item) { return item.id === node.id; });
     if (idx < 0) return false;
+    var movedNodeIds = typeof getKnowledgeDescendantNodeIds === "function"
+      ? getKnowledgeDescendantNodeIds(node).map(function (id) { return String(id || ""); })
+      : [String(node.id || "")];
+    var detachedNode = typeof detachKnowledgeNodeById === "function"
+      ? detachKnowledgeNodeById(node.id)
+      : null;
+    var movingNode = detachedNode || node;
+    oldParent.isLeaf = !(Array.isArray(oldParent.children) && oldParent.children.length);
+    var duplicateTarget = target.children.find(function (item) { return item.id !== node.id && item.title === node.title; });
+    if (duplicateTarget) {
+      var descendantIds = movedNodeIds.filter(function (id) { return id && id !== String(node.id || ""); });
+      mergeKnowledgeNodeIntoTarget(duplicateTarget, movingNode);
+      oldParent.isLeaf = !(Array.isArray(oldParent.children) && oldParent.children.length);
+      duplicateTarget.isLeaf = (duplicateTarget.children || []).length === 0;
+      knowledgeExpanded.delete(movingNode.id);
+      removeKnowledgeNoteEntry(movingNode.id);
+      expandKnowledgePath(duplicateTarget.id);
+      syncMovedKnowledgeNodeErrors(descendantIds);
+      saveData();
+      saveKnowledgeState();
 
-    oldList.splice(idx, 1);
-    target.children.push(node);
-    oldParent.isLeaf = oldList.length === 0;
+      if (!opts || !opts.silent) {
+        showToast("目标位置已有同名节点，已自动合并到：" + collapseKnowledgePathTitles(getKnowledgePathTitles(duplicateTarget.id)).join(" > "), "success");
+      }
+      setCurrentKnowledgeNode(duplicateTarget.id, { switchTab: false });
+      return true;
+    }
+
+    target.children.push(movingNode);
+    oldParent.isLeaf = !(Array.isArray(oldParent.children) && oldParent.children.length);
     target.isLeaf = false;
     expandKnowledgePath(target.id);
+    syncMovedKnowledgeNodeErrors(movedNodeIds);
+    saveData();
     saveKnowledgeState();
 
     if (!opts || !opts.silent) {
       showToast("节点已移动到：" + collapseKnowledgePathTitles(getKnowledgePathTitles(target.id)).join(" > "), "success");
     }
-    setCurrentKnowledgeNode(node.id, { switchTab: false });
+    setCurrentKnowledgeNode(movingNode.id, { switchTab: false });
     return true;
   }
 
@@ -290,7 +343,9 @@
     var idx = siblings.findIndex(function (item) { return item.id === node.id; });
     if (idx < 0) return;
 
-    directErrors.forEach(function (item) { item.noteNodeId = parent.id; });
+    directErrors.forEach(function (item) {
+      syncErrorKnowledgeBindingToNode(item, parent);
+    });
     siblings.splice.apply(siblings, [idx, 1].concat(node.children || []));
     parent.isLeaf = siblings.length === 0;
     delete knowledgeNotes[node.id];
@@ -309,7 +364,7 @@
     if (!errorItem || !targetNode) return false;
 
     var previousNodeId = errorItem.noteNodeId || null;
-    errorItem.noteNodeId = targetNode.id;
+    syncErrorKnowledgeBindingToNode(errorItem, targetNode);
     saveData();
     saveKnowledgeState();
 
@@ -406,6 +461,10 @@
     var oldIdx = oldList.findIndex(function (item) { return item.id === node.id; });
     var targetIdx = newList.findIndex(function (item) { return item.id === target.id; });
     if (oldIdx < 0 || targetIdx < 0) return false;
+    var movedNodeIds = typeof getKnowledgeDescendantNodeIds === "function"
+      ? getKnowledgeDescendantNodeIds(node).map(function (id) { return String(id || ""); })
+      : [String(node.id || "")];
+    var pathChanged = oldParent !== newParent;
 
     var movedNode = oldList.splice(oldIdx, 1)[0];
     if (oldParent) oldParent.isLeaf = oldList.length === 0;
@@ -416,6 +475,10 @@
     if (newParent) newParent.isLeaf = false;
     movedNode.updatedAt = new Date().toISOString();
 
+    if (pathChanged) {
+      syncMovedKnowledgeNodeErrors(movedNodeIds);
+      saveData();
+    }
     saveKnowledgeState();
     expandKnowledgePath(target.id);
     setCurrentKnowledgeNode(movedNode.id, { switchTab: false });

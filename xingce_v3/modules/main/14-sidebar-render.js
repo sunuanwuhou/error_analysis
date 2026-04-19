@@ -51,6 +51,9 @@ function renderSidebarKnowledgeTreeV2(nodes, depth, renderBudget) {
   return (nodes || []).filter(node => {
     return typeof isKnowledgeNodeVisibleBySearch !== 'function' || isKnowledgeNodeVisibleBySearch(node);
   }).map(node => {
+    const displayNode = typeof getKnowledgeDisplayNode === 'function' ? getKnowledgeDisplayNode(node) : node;
+    if (!displayNode) return '';
+    if (displayNode.id !== node.id) return '';
     if (renderBudget && !renderBudget.done && renderBudget.used >= renderBudget.limit) {
       renderBudget.done = true;
       return '';
@@ -58,24 +61,24 @@ function renderSidebarKnowledgeTreeV2(nodes, depth, renderBudget) {
     if (renderBudget && !renderBudget.done) {
       renderBudget.used += 1;
     }
-    const active = selectedKnowledgeNodeId === node.id || knowledgeNodeFilter === node.id;
+    const active = selectedKnowledgeNodeId === displayNode.id || knowledgeNodeFilter === displayNode.id;
     const matched = typeof isKnowledgeNodeSearchMatch === 'function' && isKnowledgeNodeSearchMatch(node);
-    const count = countErrorsForKnowledgeNode(node.id, true);
+    const count = countErrorsForKnowledgeNode(displayNode.id, true);
     const cls = depth === 0 ? 'nav-item nav-type-header' : depth === 1 ? 'nav-item nav-subtype' : 'nav-item nav-sub2';
     const extraStyle = depth > 2 ? `padding-left:${60 + ((depth - 2) * 18)}px` : '';
-    const hasChildren = !!(node.children && node.children.length);
-    const expanded = hasChildren && ((typeof hasKnowledgeTreeSearch === 'function' && hasKnowledgeTreeSearch()) || isKnowledgeExpanded(node));
+    const hasChildren = !!(displayNode.children && displayNode.children.length);
+    const expanded = hasChildren && ((typeof hasKnowledgeTreeSearch === 'function' && hasKnowledgeTreeSearch()) || isKnowledgeExpanded(displayNode));
     const marker = hasChildren ? (expanded ? '▾' : '▸') : '•';
     const countClass = count > 0 ? 'knowledge-tree-count' : 'knowledge-tree-count is-empty';
-    let html = `<div class="${cls} knowledge-tree-node ${active ? 'active is-active' : ''} ${matched ? 'is-search-match' : ''} ${hasChildren ? 'is-branch' : ''}" style="${extraStyle}" data-knowledge-node-id="${node.id}" draggable="true" ondragstart="startKnowledgeNodeDrag('${node.id}', event)" ondragend="endKnowledgeNodeDrag()" ondragover="allowKnowledgeDrop(event, '${node.id}')" ondragleave="leaveKnowledgeDrop(event)" ondrop="handleKnowledgeDrop('${node.id}', event)" onclick="handleKnowledgeNodeClick('${node.id}', event)" ondblclick="handleKnowledgeNodeDoubleClick('${node.id}', event)">
+    let html = `<div class="${cls} knowledge-tree-node ${active ? 'active is-active' : ''} ${matched ? 'is-search-match' : ''} ${hasChildren ? 'is-branch' : ''}" style="${extraStyle}" data-knowledge-node-id="${displayNode.id}" draggable="true" ondragstart="startKnowledgeNodeDrag('${displayNode.id}', event)" ondragend="endKnowledgeNodeDrag()" ondragover="allowKnowledgeDrop(event, '${displayNode.id}')" ondragleave="leaveKnowledgeDrop(event)" ondrop="handleKnowledgeDrop('${displayNode.id}', event)" onclick="handleKnowledgeNodeClick('${displayNode.id}', event)" ondblclick="handleKnowledgeNodeDoubleClick('${displayNode.id}', event)">
       <span class="knowledge-tree-row">
-        <button type="button" class="knowledge-tree-toggle${hasChildren ? '' : ' placeholder'}" onclick="handleKnowledgeToggleClick('${node.id}', event)" aria-label="${hasChildren ? '展开或收起' : '无下级'}">${marker}</button>
+        <button type="button" class="knowledge-tree-toggle${hasChildren ? '' : ' placeholder'}" onclick="handleKnowledgeToggleClick('${displayNode.id}', event)" aria-label="${hasChildren ? '展开或收起' : '无下级'}">${marker}</button>
         <span class="knowledge-tree-drag-hint" title="拖拽排序">⋮⋮</span>
-        <span class="knowledge-tree-title">${escapeHtml(node.title)}</span>
+        <span class="knowledge-tree-title">${escapeHtml(displayNode.title)}</span>
       </span>
       <span style="display:flex;align-items:center;gap:6px;flex-shrink:0"><span class="${countClass}">${count}</span></span></div>`;
     if (hasChildren && expanded) {
-      html += `<div class="knowledge-tree-children">${renderSidebarKnowledgeTreeV2(node.children, depth + 1, renderBudget)}</div>`;
+      html += `<div class="knowledge-tree-children">${renderSidebarKnowledgeTreeV2(displayNode.children, depth + 1, renderBudget)}</div>`;
     }
     return html;
   }).join('');

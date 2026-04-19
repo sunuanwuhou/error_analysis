@@ -43,6 +43,14 @@ function syncNotesWithErrors() {
 
 // 新增：点击笔记标题筛选功能（同时切换到错题Tab）
 function filterByNoteTitle(type, subtype, subSubtype) {
+    const titles = [type || '', subtype || '', subSubtype || ''].filter(Boolean);
+    const node = titles.length && typeof getKnowledgeNodeByPathTitles === 'function'
+      ? getKnowledgeNodeByPathTitles(titles)
+      : null;
+    if (node && typeof setCurrentKnowledgeNode === 'function') {
+        setCurrentKnowledgeNode(node.id, { switchTab: true });
+        return;
+    }
     knowledgeNodeFilter = null;
     if (subSubtype && subSubtype !== '未分类') {
         typeFilter = {level:'sub2', type: type, subtype: subtype, value: subSubtype};
@@ -100,11 +108,19 @@ function getCurrentKnowledgeNodeSummary(){
   const node = selectedKnowledgeNodeId ? getKnowledgeNodeById(selectedKnowledgeNodeId) : null;
   if(!node) return null;
   const path = (getKnowledgePathTitles(node.id) || []).join(' > ');
+  const nodeIds = typeof getKnowledgeDescendantNodeIds === 'function'
+    ? getKnowledgeDescendantNodeIds(node)
+    : [node.id];
   return {
     id: node.id,
     title: node.title || '',
     path,
     contentMd: node.contentMd || '',
-    linkedErrors: getErrorEntries().filter(e => e.noteNodeId === node.id).slice(0, 20)
+    linkedErrors: getErrorEntries().filter(e => {
+      const nodeId = typeof resolveErrorKnowledgeNodeId === 'function'
+        ? resolveErrorKnowledgeNodeId(e)
+        : String(e.noteNodeId || '');
+      return nodeIds.includes(nodeId);
+    }).slice(0, 20)
   };
 }

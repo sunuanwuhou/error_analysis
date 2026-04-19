@@ -1,5 +1,42 @@
 # DEVLOG
 
+## 2026-04-19 - container-first deployment rule after live asset mismatch
+
+### Goal
+
+Fix a repeated debugging failure mode where local frontend edits were correct but the running docker app continued serving old static assets from the container image.
+
+### What happened
+
+1. note layout fixes were applied in local repo files
+2. browser refresh and incognito still showed old behavior
+3. live verification later proved `http://127.0.0.1:8080/assets/...` was still serving the old bundle from inside the running container
+4. only after rebuilding the `app` container did the served CSS/JS match the edited code
+
+### Rule captured from this incident
+
+1. in this project, code change is not equivalent to deployed change
+2. for user-visible frontend fixes, local file inspection is insufficient
+3. the app container must be rebuilt after code changes before claiming success
+4. deployment verification must check the actual served asset or runtime behavior, not just repository diffs
+
+### Required default deployment command
+
+1. `powershell -ExecutionPolicy Bypass -File .\scripts\wsl.ps1 -Action up -Service app`
+
+### Verification pattern to reuse
+
+1. rebuild container
+2. fetch live asset from `http://127.0.0.1:8080/assets/...`
+3. confirm expected CSS/JS marker exists in served content
+4. then verify page behavior
+
+### Docs updated
+
+1. `AGENTS.md`
+2. `docs/active/PROJECT_RULES.md`
+3. `docs/active/DEVLOG.md`
+
 ## 2026-04-02 - documentation consolidation patch
 
 ### Goal

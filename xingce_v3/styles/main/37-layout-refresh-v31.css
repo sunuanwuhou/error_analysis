@@ -160,6 +160,70 @@ body{
   min-height:0;
   height:100%;
 }
+@media (min-width: 981px){
+  #notesContent.knowledge-notes-active.knowledge-workspace-note-mode{
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    height:100%;
+  }
+  #notesContent.knowledge-notes-active.knowledge-workspace-note-mode > *{
+    flex:1;
+    min-height:0;
+    height:100%;
+  }
+  #notesContent.knowledge-notes-active.knowledge-workspace-note-mode .knowledge-workspace-shell{
+    display:flex;
+    flex-direction:column;
+    height:100%;
+    min-height:0;
+  }
+  #notesContent.knowledge-notes-active.knowledge-workspace-note-mode .knowledge-workspace-note-wrap{
+    display:flex;
+    flex:1;
+    flex-direction:column;
+    height:100%;
+    min-height:0;
+  }
+  #notesContent.knowledge-notes-active.knowledge-workspace-note-mode .note-preview-scroll,
+  #notesContent.knowledge-notes-active.knowledge-workspace-note-mode .note-preview-frame-scroll,
+  #notesContent.knowledge-notes-active.knowledge-workspace-note-mode .knowledge-directory-preview{
+    flex:1;
+    display:block;
+    height:100%;
+    min-height:0;
+    overflow:hidden;
+  }
+  #notesContent.knowledge-notes-active.knowledge-workspace-note-mode .knowledge-inline-preview{
+    display:flex;
+    height:100%;
+    min-height:0;
+  }
+  #notesContent.knowledge-notes-active.knowledge-workspace-note-mode .note-preview-layout{
+    display:grid;
+    height:100%;
+    min-height:0;
+    max-height:100%;
+    overflow:hidden;
+  }
+  #notesContent.knowledge-notes-active.knowledge-workspace-note-mode .note-preview-layout-no-toc{
+    display:block;
+    height:100%;
+    min-height:0;
+    overflow:hidden;
+  }
+  #notesContent.knowledge-notes-active.knowledge-workspace-note-mode .note-preview-article-scroll{
+    display:block;
+    height:100%;
+    min-height:0;
+    max-height:none;
+    overflow:auto;
+  }
+  #notesContent.knowledge-notes-active.knowledge-workspace-note-mode .knowledge-directory-layout{
+    height:100%;
+    min-height:0;
+  }
+}
 #notesContent > *{
   width:100%;
   max-width:none;
