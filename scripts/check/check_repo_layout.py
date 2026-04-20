@@ -9,6 +9,18 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 ALLOWED_DOCS_ROOT_FILES = {"README.md", "INDEX.md"}
 DOC_SUBDIRS = ("active", "ops", "roadmap", "archive")
+REQUIRED_ACTIVE_DOCS = (
+    "PROJECT_RULES.md",
+    "CURRENT_SCOPE.md",
+    "ROUTE_STATUS.md",
+    "ROUTE_CALL_MAP.md",
+    "CHANGE_PROTOCOL.md",
+    "HANDOFF_CONTEXT.md",
+    "DEVLOG.md",
+    "RELEASE_CHECKLIST.md",
+    "SELF_TEST_REPORT.md",
+    "MODULE_BOUNDARIES.md",
+)
 LEGACY_ALLOWED_NEW_PREFIXES = (
     "xingce_v3/modules/main/workspace/",
     "xingce_v3/modules/main/modal/",
@@ -23,6 +35,20 @@ RUNTIME_TRACKED_PATTERNS = [
     "**/*.pyc",
     "app/data.db",
 ]
+RUNTIME_AFFECTING_PREFIXES = (
+    "app/",
+    "frontend/",
+    "xingce_v3/",
+    "v51_frontend/",
+    "scripts/",
+)
+REQUIRED_DOC_TOUCH_FOR_RUNTIME_CHANGE = (
+    "docs/active/DEVLOG.md",
+    "docs/active/SELF_TEST_REPORT.md",
+    "docs/active/RELEASE_CHECKLIST.md",
+    "docs/active/ROUTE_STATUS.md",
+    "docs/active/ROUTE_CALL_MAP.md",
+)
 
 
 def _run_git(*args: str) -> str:
@@ -46,6 +72,13 @@ def _list_added_files(base_ref: str) -> list[str]:
         if len(parts) == 2:
             added.append(parts[1].strip())
     return added
+
+
+def _list_changed_files(base_ref: str) -> list[str]:
+    output = _run_git("diff", "--name-only", base_ref, "--").strip()
+    if not output:
+        return []
+    return [line.strip() for line in output.splitlines() if line.strip()]
 
 
 def _match_any(path: str, patterns: list[str]) -> bool:
@@ -96,9 +129,13 @@ def main() -> int:
             readme = docs_root / name / "README.md"
             if not readme.exists():
                 errors.append(f"docs/{name}/README.md is missing")
+        missing_active_docs = [name for name in REQUIRED_ACTIVE_DOCS if not (docs_root / "active" / name).exists()]
+        if missing_active_docs:
+            errors.append("required docs/active files missing:\n  - " + "\n  - ".join(missing_active_docs))
 
     if args.changed:
         added_files = _list_added_files(args.changed)
+        changed_files = _list_changed_files(args.changed)
         legacy_added = [
             path
             for path in added_files
@@ -110,6 +147,15 @@ def main() -> int:
                 "new files were added under legacy frontend paths:\n  - "
                 + "\n  - ".join(legacy_added)
                 + "\nadd new product files under frontend/src instead; legacy add-only exception: modules/main/{workspace,modal,knowledge,persistence}/"
+            )
+        runtime_changes = [path for path in changed_files if path.startswith(RUNTIME_AFFECTING_PREFIXES)]
+        touched_docs = set(path for path in changed_files if path.startswith("docs/active/"))
+        if runtime_changes and not touched_docs.intersection(REQUIRED_DOC_TOUCH_FOR_RUNTIME_CHANGE):
+            errors.append(
+                "runtime-affecting changes require docs update in at least one of:\n  - "
+                + "\n  - ".join(REQUIRED_DOC_TOUCH_FOR_RUNTIME_CHANGE)
+                + "\nchanged runtime files include:\n  - "
+                + "\n  - ".join(runtime_changes[:20])
             )
 
     if errors:

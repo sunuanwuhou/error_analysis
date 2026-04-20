@@ -10,6 +10,8 @@
 - [x] legacy assets were rebuilt
 - [x] legacy entry wiring check passed
 - [x] router layout check passed
+- [x] route status doc is aligned with current runtime (`docs/active/ROUTE_STATUS.md`)
+- [x] route call map doc is aligned with current frontend API usage (`docs/active/ROUTE_CALL_MAP.md`)
 - [x] Python compile checks passed
 - [x] smoke test passed
 - [x] domain asset freshness check passed (`/assets/modules/legacy-app.bundle.js` on `erroranaly.qzz.io`)

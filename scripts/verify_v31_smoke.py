@@ -13,7 +13,8 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from app.main import create_user_account, init_db
+from app.database import init_db
+from app.security import create_user_account
 
 
 BASE = "http://127.0.0.1:8000"
@@ -185,28 +186,6 @@ def main() -> int:
     )
     assert_true(status == 200 and data.get("ok") is True, "practice log failed")
     assert_true(isinstance(data.get("recent"), list) and data["recent"], "practice recent logs missing")
-
-    status, data = c1.req("/api/codex/threads", method="POST", data={"title": "验收线程"})
-    assert_true(status == 200 and data.get("ok") is True, "codex thread create failed")
-    thread_id = data["thread"]["id"]
-
-    status, data = c1.req(
-        f"/api/codex/threads/{thread_id}/messages",
-        method="POST",
-        data={
-            "content": "请根据当前知识点生成复习建议",
-            "context": {"selectedKnowledgeNode": {"title": "判断推理"}},
-        },
-    )
-    assert_true(status == 200 and data.get("ok") is True, "codex message create failed")
-    assert_true(data["message"]["status"] == "pending", "codex message status mismatch")
-
-    status, data = c1.req("/api/codex/threads")
-    assert_true(status == 200 and data.get("ok") is True and data.get("threads"), "codex threads list failed")
-
-    status, data = c1.req(f"/api/codex/threads/{thread_id}")
-    assert_true(status == 200 and data.get("ok") is True, "codex thread get failed")
-    assert_true(len(data.get("messages", [])) == 1, "codex thread messages mismatch")
 
     print(json.dumps({"ok": True, "username": username, "image_hash": img_hash}, ensure_ascii=False))
     return 0

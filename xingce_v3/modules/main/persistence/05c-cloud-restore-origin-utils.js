@@ -156,7 +156,7 @@ async function pushOriginStatus(update) {
       payloadBytes: Number(update && update.payloadBytes || 0),
       summary: update && update.summary ? update.summary : undefined
     };
-    await fetchJsonWithAuth('/api/cloud/origin-status', {
+    await fetchJsonWithAuth('/api/origin-status', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)

@@ -92,7 +92,8 @@ def parse_shell_html(path: Path) -> ShellReport:
 def assert_path_exists(asset_url: str) -> Path:
     if not asset_url.startswith('/assets/'):
         raise CheckError(f'Unexpected asset URL: {asset_url}')
-    asset_path = ROOT / 'xingce_v3' / asset_url.removeprefix('/assets/')
+    normalized_url = asset_url.split('?', 1)[0]
+    asset_path = ROOT / 'xingce_v3' / normalized_url.removeprefix('/assets/')
     if not asset_path.exists():
         raise CheckError(f'Missing asset for URL {asset_url}: {asset_path}')
     return asset_path

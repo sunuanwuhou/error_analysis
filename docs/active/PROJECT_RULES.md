@@ -26,6 +26,14 @@ Priority order:
 5. every release should clearly state what is done, what is missing, and what was actually tested
 6. for this docker runtime, any code change must be treated as not-live until the app container has been rebuilt and the served result has been re-verified
 
+## Commit hygiene rules
+
+1. one commit should focus on one intent only (feature, fix, refactor, docs, or build artifact refresh)
+2. avoid mixed commits that bundle frontend, backend, docs, and generated assets together without a clear reason
+3. generated legacy bundles (`xingce_v3/modules/legacy-app*.js`, `xingce_v3/styles/legacy-app.bundle.css`, manifest) should be committed in a dedicated `chore(build)` style commit whenever possible
+4. avoid catch-all commit messages such as "commit all pending changes" or "sync latest changes"
+5. if a behavior change requires a rebuild commit, submit code-change commit first, then the rebuild-assets commit
+
 ## Product rules
 
 1. new versions should inherit the old useful workflow instead of replacing it with a different product shape

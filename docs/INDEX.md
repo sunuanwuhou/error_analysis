@@ -12,6 +12,9 @@
 | --- | --- | --- | --- |
 | `docs/active/PROJECT_RULES.md` | active | core | 2026-04-18 |
 | `docs/active/CURRENT_SCOPE.md` | active | core | 2026-04-18 |
+| `docs/active/ROUTE_STATUS.md` | active | core | 2026-04-20 |
+| `docs/active/ROUTE_CALL_MAP.md` | active | core | 2026-04-20 |
+| `docs/active/CHANGE_PROTOCOL.md` | active | core | 2026-04-20 |
 | `docs/active/HANDOFF_CONTEXT.md` | active | core | 2026-04-18 |
 | `docs/active/DEVLOG.md` | active | core | 2026-04-18 |
 | `docs/active/RELEASE_CHECKLIST.md` | active | core | 2026-04-18 |

@@ -6,10 +6,13 @@ Before changing code or shipping a new build, read these docs in order:
 
 1. `docs/active/PROJECT_RULES.md`
 2. `docs/active/CURRENT_SCOPE.md`
-3. `docs/active/HANDOFF_CONTEXT.md`
-4. `docs/active/DEVLOG.md`
-5. `docs/active/RELEASE_CHECKLIST.md`
-6. `docs/active/SELF_TEST_REPORT.md`
+3. `docs/active/ROUTE_STATUS.md`
+4. `docs/active/ROUTE_CALL_MAP.md`
+5. `docs/active/CHANGE_PROTOCOL.md`
+6. `docs/active/HANDOFF_CONTEXT.md`
+7. `docs/active/DEVLOG.md`
+8. `docs/active/RELEASE_CHECKLIST.md`
+9. `docs/active/SELF_TEST_REPORT.md`
 
 These files are now the repository source of truth for project goals, current phase, delivery rules, handoff context, and what was actually tested.
 

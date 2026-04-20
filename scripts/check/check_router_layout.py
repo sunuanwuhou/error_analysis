@@ -28,10 +28,13 @@ EXPECTED_ROUTES: dict[tuple[str, str], str] = {
     ('POST', '/api/backup/chunk/init'): 'app.routers.backup.init_backup_chunk_upload',
     ('PUT', '/api/backup/chunk/{upload_id}/part'): 'app.routers.backup.put_backup_chunk_part',
     ('POST', '/api/backup/chunk/complete'): 'app.routers.backup.complete_backup_chunk_upload',
+    ('POST', '/api/backup/chunk/download/init'): 'app.routers.backup.init_backup_chunk_download',
+    ('GET', '/api/backup/chunk/download/{download_id}/part'): 'app.routers.backup.get_backup_chunk_download_part',
     ('POST', '/api/origin-status'): 'app.routers.backup.put_origin_status',
     ('GET', '/api/local-backups'): 'app.routers.backup.list_local_backups',
     ('POST', '/api/local-backups/create'): 'app.routers.backup.create_local_backup',
     ('POST', '/api/local-backups/restore'): 'app.routers.backup.restore_local_backup',
+    ('GET', '/api/local-backups/{backup_id}/download'): 'app.routers.backup.download_local_backup',
     ('DELETE', '/api/local-backups/{backup_id}'): 'app.routers.backup.delete_local_backup',
     ('POST', '/api/ai/analyze-entry'): 'app.routers.ai.analyze_entry',
     ('POST', '/api/ai/ocr-image'): 'app.routers.ai.ocr_image',
@@ -57,10 +60,6 @@ EXPECTED_ROUTES: dict[tuple[str, str], str] = {
     ('POST', '/api/ai/discover-patterns'): 'app.routers.ai.discover_patterns',
     ('POST', '/api/ai/suggest-restructure'): 'app.routers.ai.suggest_restructure',
     ('GET', '/api/knowledge/search'): 'app.routers.knowledge.knowledge_search',
-    ('GET', '/api/codex/threads'): 'app.routers.codex.list_codex_threads',
-    ('POST', '/api/codex/threads'): 'app.routers.codex.create_codex_thread',
-    ('GET', '/api/codex/threads/{thread_id}'): 'app.routers.codex.get_codex_thread',
-    ('POST', '/api/codex/threads/{thread_id}/messages'): 'app.routers.codex.create_codex_message',
 }
 
 METHOD_DECORATORS = {'get': 'GET', 'post': 'POST', 'put': 'PUT', 'delete': 'DELETE', 'patch': 'PATCH'}
