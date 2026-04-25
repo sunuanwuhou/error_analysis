@@ -76,3 +76,77 @@ function clearAllData() {
   renderSidebar();
   renderAll();
 }
+
+function getErrorCardMarkdown(errorItem) {
+  const item = errorItem && typeof errorItem === 'object' ? errorItem : {};
+  const question = String(item.question || '').trim();
+  const options = String(item.options || '')
+    .split(/\n|\|/)
+    .map(part => String(part || '').trim())
+    .filter(Boolean)
+    .join('\n');
+  const answer = String(item.answer || '').trim();
+  const analysis = String(item.correctModel || item.analysis || '').trim();
+  const scoreTip = String(item.nextAction || item.tip || '').trim();
+  const questionBlock = [question, options].filter(Boolean).join('\n\n');
+  const sections = [
+    '# 题目导出',
+    '',
+    '## 题目',
+    questionBlock || '未填写',
+    '',
+    '## 答案',
+    answer || '未填写',
+    '',
+    '## 解析',
+    analysis || '未填写',
+    '',
+    '## 提分',
+    scoreTip || '未填写'
+  ];
+  return sections.join('\n');
+}
+
+function fallbackCopyText(text) {
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', 'readonly');
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  textarea.style.pointerEvents = 'none';
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  let ok = false;
+  try {
+    ok = document.execCommand('copy');
+  } catch (e) {
+    ok = false;
+  }
+  document.body.removeChild(textarea);
+  return ok;
+}
+
+function copyErrorMarkdown(id) {
+  const errorItem = findErrorById(id);
+  if (!errorItem) {
+    showToast('未找到题目', 'warning');
+    return;
+  }
+  const text = getErrorCardMarkdown(errorItem);
+  const handleSuccess = () => showToast('该题 MD 已复制到剪贴板', 'success');
+  const handleFailure = () => {
+    const ok = fallbackCopyText(text);
+    if (ok) handleSuccess();
+    else showToast('复制失败，请稍后重试', 'error');
+  };
+  if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+    navigator.clipboard.writeText(text).then(handleSuccess).catch(handleFailure);
+    return;
+  }
+  handleFailure();
+}
+
+if (typeof window !== 'undefined') {
+  window.copyErrorMarkdown = copyErrorMarkdown;
+}

@@ -407,6 +407,7 @@ function renderCard(e){
         const c=cfg[ml]||cfg.not_mastered;
         return `<button class="btn btn-sm" style="color:${c.color};background:${c.bg};border:1px solid ${c.border}" onclick='cyclemastery(${idLit})' title="toggle mastery">● ${c.label}</button>`;
       })()}
+      <button class="btn btn-sm btn-secondary" onclick='copyErrorMarkdown(${idLit})'>复制MD</button>
       <button class="btn btn-sm btn-secondary" onclick='openEditModal(${idLit})'>Edit</button>
       <button class="btn btn-sm btn-secondary" style="color:#4e8ef7;border-color:#adc6ff" onclick='startInlineQuiz(${idLit})'>Quiz</button>
       <button class="del-btn del-btn-danger" onclick='deleteError(${idLit})'>Delete</button>
