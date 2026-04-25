@@ -4,6 +4,12 @@
 
 function getKnowledgeContextDepth(context) {
   if (!context) return 0;
+  if (context.node?.id && typeof getKnowledgePathTitles === 'function') {
+    return collapseKnowledgePathTitles(getKnowledgePathTitles(context.node.id)).length;
+  }
+  if (Array.isArray(context.knowledgePathTitles) && context.knowledgePathTitles.length) {
+    return context.knowledgePathTitles.filter(Boolean).length;
+  }
   if (context.subSubtype) return 3;
   if (context.subtype) return 2;
   if (context.type) return 1;
@@ -79,6 +85,7 @@ function getKnowledgeContextForEntry(nodeId) {
   const titles = node ? collapseKnowledgePathTitles(getKnowledgePathTitles(node.id)) : [];
   return {
     node,
+    knowledgePathTitles: titles.slice(),
     type: titles[0] || '',
     subtype: titles[1] || '',
     subSubtype: node && node.isLeaf ? (titles[titles.length - 1] || node.title || '') : (titles[titles.length - 1] || '')

@@ -5,6 +5,15 @@ function ensureEntryLevelFieldUi() {
   const typeEl = document.getElementById('editType');
   const subtypeEl = document.getElementById('editSubtype');
   const level3El = document.getElementById('editSubSubtype');
+  const ensureExtraLevelField = (fieldId, labelHtml, placeholder, anchorEl) => {
+    if (document.getElementById(fieldId) || !anchorEl) return;
+    const group = anchorEl.closest('.form-group');
+    if (!group || !group.parentNode) return;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'form-group';
+    wrapper.innerHTML = `<label>${labelHtml}</label><input data-oninput="refreshKnowledgePicker()" id="${fieldId}" placeholder="${placeholder}" type="text">`;
+    group.parentNode.insertBefore(wrapper, group.nextSibling);
+  };
   if (typeEl) {
     const label = typeEl.closest('.form-group')?.querySelector('label');
     if (label) label.textContent = '1级';
@@ -18,12 +27,10 @@ function ensureEntryLevelFieldUi() {
     const label = level3El.closest('.form-group')?.querySelector('label');
     if (label) label.innerHTML = '3级 <span style="font-size:11px;color:#aaa">（可选）</span>';
     level3El.placeholder = '请输入3级';
-    const group = level3El.closest('.form-group');
-    if (!document.getElementById('editLevel4') && group && group.parentNode) {
-      const wrapper = document.createElement('div');
-      wrapper.className = 'form-group';
-      wrapper.innerHTML = '<label>4级 <span style="font-size:11px;color:#aaa">（可选，最终叶子）</span></label><input data-oninput="refreshKnowledgePicker()" id="editLevel4" placeholder="请输入4级" type="text">';
-      group.parentNode.insertBefore(wrapper, group.nextSibling);
+    ensureExtraLevelField('editLevel4', '4级 <span style="font-size:11px;color:#aaa">（可选）</span>', '请输入4级', level3El);
+    const level4El = document.getElementById('editLevel4');
+    if (level4El) {
+      ensureExtraLevelField('editLevel5', '5级 <span style="font-size:11px;color:#aaa">（可选，最终叶子）</span>', '请输入5级', level4El);
     }
   }
 }
@@ -39,7 +46,7 @@ function openAddModal() {
   resetAIAnalyzeState();
   ensureEntryLevelFieldUi();
   document.getElementById('addModalTitle').textContent = '添加错题';
-  ['editSubtype', 'editSubSubtype', 'editLevel4', 'editQuestion', 'editOptions', 'editAnswer', 'editMyAnswer', 'editRootReason', 'editErrorReason', 'editAnalysis', 'editNextAction', 'editSrcOrigin'].forEach(id => {
+  ['editSubtype', 'editSubSubtype', 'editLevel4', 'editLevel5', 'editQuestion', 'editOptions', 'editAnswer', 'editMyAnswer', 'editRootReason', 'editErrorReason', 'editAnalysis', 'editNextAction', 'editSrcOrigin'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -85,6 +92,8 @@ function openEditModal(id) {
   document.getElementById('editSubSubtype').value = resolvedTitles[2] || '';
   const level4El = document.getElementById('editLevel4');
   if (level4El) level4El.value = resolvedTitles[3] || '';
+  const level5El = document.getElementById('editLevel5');
+  if (level5El) level5El.value = resolvedTitles[4] || '';
   document.getElementById('editQuestion').value = e.question || '';
   document.getElementById('editOptions').value = (e.options || '').replace(/\n/g, '|');
   document.getElementById('editAnswer').value = e.answer || '';

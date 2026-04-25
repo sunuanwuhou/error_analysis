@@ -645,7 +645,8 @@ function getEntryPathTitlesFromForm() {
   const level2 = document.getElementById('editSubtype')?.value.trim() || '';
   const level3 = document.getElementById('editSubSubtype')?.value.trim() || '';
   const level4 = document.getElementById('editLevel4')?.value.trim() || '';
-  return normalizeKnowledgePathTitles([level1, level2, level3, level4], {
+  const level5 = document.getElementById('editLevel5')?.value.trim() || '';
+  return normalizeKnowledgePathTitles([level1, level2, level3, level4, level5], {
     fallbackTitles: [level1 || '其他', level2 || '未分类', level3 || '未细分']
   });
 }

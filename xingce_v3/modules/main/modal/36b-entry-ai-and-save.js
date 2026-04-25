@@ -187,11 +187,12 @@ async function saveError(){
   const level2 = document.getElementById('editSubtype').value.trim();
   const level3 = document.getElementById('editSubSubtype').value.trim();
   const level4 = (document.getElementById('editLevel4')?.value || '').trim();
+  const level5 = (document.getElementById('editLevel5')?.value || '').trim();
   const pathTitles = (typeof normalizeKnowledgePathTitles === 'function')
-    ? normalizeKnowledgePathTitles([level1, level2, level3, level4], {
+    ? normalizeKnowledgePathTitles([level1, level2, level3, level4, level5], {
       fallbackTitles: [level1 || '其他', level2 || '未分类', level3 || '未细分']
     })
-    : [level1, level2, level3, level4].filter(Boolean);
+    : [level1, level2, level3, level4, level5].filter(Boolean);
   const type = pathTitles[0] || '';
   const subtype = pathTitles[1] || '';
   const subSubtype = pathTitles[pathTitles.length - 1] || '';

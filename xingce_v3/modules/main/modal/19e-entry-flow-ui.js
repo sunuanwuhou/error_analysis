@@ -55,10 +55,15 @@ function openAddModalForCurrentKnowledge() {
   const context = getKnowledgeContextForEntry(selectedKnowledgeNodeId);
   openAddModal();
   modalKnowledgeNodeId = null;
+  const pathTitles = Array.isArray(context.knowledgePathTitles) ? context.knowledgePathTitles : [];
   if (context.type) document.getElementById('editType').value = context.type;
   updateSubtypeOptions();
-  if (context.subtype) document.getElementById('editSubtype').value = context.subtype;
-  if (context.subSubtype) document.getElementById('editSubSubtype').value = context.subSubtype;
+  document.getElementById('editSubtype').value = pathTitles[1] || context.subtype || '';
+  document.getElementById('editSubSubtype').value = pathTitles[2] || '';
+  const level4El = document.getElementById('editLevel4');
+  if (level4El) level4El.value = pathTitles[3] || '';
+  const level5El = document.getElementById('editLevel5');
+  if (level5El) level5El.value = pathTitles[4] || '';
   refreshKnowledgePicker();
   updateEntryFlowBanner(getKnowledgeContextForEntry(null));
 }

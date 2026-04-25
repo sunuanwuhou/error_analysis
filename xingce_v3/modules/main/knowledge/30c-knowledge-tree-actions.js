@@ -81,6 +81,10 @@ function onTypeChange() {
   updateSubtypeOptions();
   document.getElementById('editSubtype').value = '';
   document.getElementById('editSubSubtype').value = '';
+  const level4El = document.getElementById('editLevel4');
+  if (level4El) level4El.value = '';
+  const level5El = document.getElementById('editLevel5');
+  if (level5El) level5El.value = '';
   refreshKnowledgePicker();
 }
 
