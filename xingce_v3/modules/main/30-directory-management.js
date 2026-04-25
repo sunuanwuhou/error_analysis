@@ -198,6 +198,7 @@ function resolveLegacyKnowledgeRootAlias(title) {
   const aliases = new Map([
     ['片段阅读', '言语理解与表达'],
     ['数字推理', '数量关系'],
+    ['数学运算', '数量关系'],
     ['逻辑判断', '判断推理'],
     ['物理', '常识判断']
   ]);
@@ -247,6 +248,7 @@ function cleanupNoisyRootNodes() {
   const remap = new Map([
     ['片段阅读', '言语理解与表达'],
     ['数字推理', '数量关系'],
+    ['数学运算', '数量关系'],
     ['逻辑判断', '判断推理'],
     ['物理', '常识判断'],
     ['未细分', '其他'],
