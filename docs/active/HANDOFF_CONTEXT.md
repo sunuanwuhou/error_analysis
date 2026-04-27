@@ -90,6 +90,58 @@ The safest direction is:
 3. move toward a unified modern schema without silently losing process image, structured error analysis, or review-chain data
 4. prefer system completeness over new shiny branches
 
+## Shenlun module direction snapshot (2026-04-27)
+
+Current Shenlun discussion has now fixed several important product truths:
+
+1. the Shenlun module should not be positioned as only a generic note library
+2. it should not be positioned as only a paper archive or spreadsheet replacement
+3. the safer current positioning is a Shenlun workbench centered on:
+   - raw material formatting
+   - answer comparison
+   - segment-level material review
+   - later note accumulation
+4. note storage and question work should remain connected
+5. import is not the current front-line requirement; review workflow clarity comes first
+
+The most important Shenlun-specific requirement currently fixed is:
+
+1. the user should not be required to write JSON directly
+2. the preferred flow is:
+   - user pastes raw question and material text
+   - system saves a raw record as soon as input begins
+   - system one-click formats them into segment practice blocks
+   - user fills `my extraction` and `final summary`
+   - system generates JSON for CC
+   - CC returns JSON
+   - system stores and renders the comparison in a dedicated result page
+3. full-answer comparison is too coarse
+4. the system should eventually support:
+   - material segment
+   - my extraction
+   - reference extraction
+   - issue tags
+   - review notes
+5. this is needed so the user can identify exactly which material segment caused the mistake and whether the final integration step is also weak
+
+Additional Shenlun storage rules fixed in discussion:
+
+1. saving should begin from the first input, not only after `generate JSON`
+2. question text plus material full text should be treated as the current deduplication key for the raw practice source record
+3. repeated work on the same source should prefer updating or versioning the same source record instead of creating duplicates
+
+Additional Shenlun review-page rule fixed in discussion:
+
+1. after CC returns, the system must provide a readable result page
+2. the result page should show both:
+   - final-summary comparison
+   - segment-by-segment comparison
+3. storing returned JSON alone is not enough for the intended review workflow
+
+Primary reference doc:
+
+1. `docs/active/SHENLUN_WORKBENCH_DIRECTION.md`
+
 ## Current documentation contract
 
 From this patch onward, the repo should preserve at least these truths:

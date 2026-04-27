@@ -20,6 +20,7 @@
 | `docs/active/RELEASE_CHECKLIST.md` | active | core | 2026-04-18 |
 | `docs/active/SELF_TEST_REPORT.md` | active | core | 2026-04-18 |
 | `docs/active/MODULE_BOUNDARIES.md` | active | core | 2026-04-18 |
+| `docs/active/SHENLUN_WORKBENCH_DIRECTION.md` | active | product | 2026-04-27 |
 
 ## Ops
 

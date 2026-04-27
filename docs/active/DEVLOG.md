@@ -1,5 +1,60 @@
 # DEVLOG
 
+## 2026-04-27 - Shenlun workbench direction fixed into repo docs
+
+### Goal
+
+Write the currently agreed Shenlun module direction into the repository before implementation continues.
+
+### Added
+
+1. `docs/active/SHENLUN_WORKBENCH_DIRECTION.md`
+
+### Updated
+
+1. `docs/INDEX.md`
+2. `docs/active/HANDOFF_CONTEXT.md`
+3. `docs/active/DEVLOG.md`
+
+### Product truths fixed by this doc patch
+
+1. the Shenlun module is not currently positioned as only a note library
+2. it is not positioned as only a paper archive or Excel replacement either
+3. the safer current positioning is a Shenlun workbench:
+   - raw material formatting
+   - answer comparison
+   - segment-level material review
+   - later note accumulation
+4. note storage and question work are two connected parts of one loop
+5. import is intentionally not the front-line requirement right now
+
+### Most important confirmed Shenlun requirement
+
+1. the user should not be required to produce JSON directly
+2. the preferred input path is:
+   - paste raw question and material
+   - save raw record immediately when input begins
+   - let the system one-click format them into segment template
+   - fill `my extraction` blocks and one `final summary` block
+   - let the system generate JSON for CC
+3. comparison cannot stop at whole-answer vs whole-answer
+4. review should eventually support:
+   - material segment
+   - my extraction
+   - reference extraction
+   - issue tags
+   - review notes
+   - final summary comparison
+5. this requirement exists so the user can identify exactly which segment caused extraction failure and whether the final integration step also failed
+6. raw Shenlun records should be saved from the first input and deduplicated by full question-plus-material content instead of waiting until JSON generation
+7. after CC returns, the module should render a dedicated result page instead of only storing the returned JSON
+
+### Why this matters
+
+1. it prevents future Shenlun implementation from drifting into a generic note product
+2. it preserves the current user priority inside the repo
+3. it gives later UI and schema work a fixed review-centered target
+
 ## 2026-04-19 - container-first deployment rule after live asset mismatch
 
 ### Goal

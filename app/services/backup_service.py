@@ -197,12 +197,15 @@ def list_local_backup_items(user_id: str) -> list[dict[str, Any]]:
     return items
 
 
-def _prune_old_auto_backups(user_id: str, keep: int = 14) -> None:
+def _prune_old_auto_backups(user_id: str, keep: int = 1) -> None:
     auto_items = [item for item in list_local_backup_items(user_id) if item.get("kind") == "auto"]
     for stale in auto_items[keep:]:
         backup_dir = _user_backup_root(user_id) / str(stale.get("id") or "")
         if backup_dir.exists():
             shutil.rmtree(backup_dir, ignore_errors=True)
+        archive_path = backup_dir.with_suffix(".tar.gz")
+        if archive_path.exists():
+            archive_path.unlink(missing_ok=True)
 
 
 def _create_local_backup_snapshot(
@@ -243,7 +246,7 @@ def _create_local_backup_snapshot(
     )
     _write_json(backup_dir / "meta.json", meta)
     if kind == "auto":
-        _prune_old_auto_backups(user_id, keep=14)
+        _prune_old_auto_backups(user_id, keep=1)
     meta["sizeBytes"] = _snapshot_directory_size(backup_dir)
     return meta, False
 

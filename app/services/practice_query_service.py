@@ -310,6 +310,45 @@ def read_attempt_behavior_map(
     return behavior_map
 
 
+def _collect_practiced_today_keys(
+    user_id: str,
+    errors: list[dict[str, Any]],
+    recent_logs: list[dict[str, Any]],
+    today_str: str,
+) -> tuple[set[str], set[str]]:
+    practiced_error_ids: set[str] = set()
+    practiced_question_ids: set[str] = set()
+
+    for log in recent_logs:
+        if str(log.get("date", ""))[:10] != today_str:
+            continue
+        for eid in (log.get("errorIds") or []):
+            value = str(eid or "").strip()
+            if value:
+                practiced_error_ids.add(value)
+
+    error_ids, question_ids = _collect_attempt_filter_ids(errors)
+    attempt_rows = _fetch_attempt_rows_by_keys(
+        user_id,
+        error_ids=error_ids,
+        question_ids=question_ids,
+        limit=max(len(errors) * 4, 200),
+        columns=("error_id", "question_id", "created_at", "updated_at"),
+    )
+    for row in attempt_rows:
+        last_time = str(row["updated_at"] or row["created_at"] or "")[:10]
+        if last_time != today_str:
+            continue
+        error_id = str(row["error_id"] or "").strip()
+        question_id = str(row["question_id"] or "").strip()
+        if error_id:
+            practiced_error_ids.add(error_id)
+        if question_id:
+            practiced_question_ids.add(question_id)
+
+    return practiced_error_ids, practiced_question_ids
+
+
 def build_practice_daily_response(user_id: str, limit: int = 12) -> dict[str, Any]:
     cache_key = _cache_key("daily", user_id, limit)
     cached = _cache_get(cache_key)
@@ -319,14 +358,17 @@ def build_practice_daily_response(user_id: str, limit: int = 12) -> dict[str, An
     errors = get_backup_errors(user_id)
     recent_logs = read_recent_practice_logs(user_id, 14)
     today_str = utcnow().date().isoformat()
-    practiced_today: set[str] = set()
-    for log in recent_logs:
-        if str(log.get("date", ""))[:10] == today_str:
-            for eid in (log.get("errorIds") or []):
-                practiced_today.add(str(eid))
-    filtered_errors = [e for e in errors if str(e.get("id", "")) not in practiced_today]
-    if len(filtered_errors) < max(3, limit // 2):
-        filtered_errors = errors
+    practiced_today_error_ids, practiced_today_question_ids = _collect_practiced_today_keys(
+        user_id,
+        errors,
+        recent_logs,
+        today_str,
+    )
+    filtered_errors = [
+        e for e in errors
+        if str(e.get("id", "")).strip() not in practiced_today_error_ids
+        and str((e.get("questionId") or e.get("id") or "")).strip() not in practiced_today_question_ids
+    ]
 
     error_ids, question_ids = _collect_attempt_filter_ids(filtered_errors)
     behavior_map = read_attempt_behavior_map(
@@ -342,7 +384,7 @@ def build_practice_daily_response(user_id: str, limit: int = 12) -> dict[str, An
         "ok": True,
         "items": queue,
         "recentLogs": recent_logs,
-        "practicedTodayCount": len(practiced_today),
+        "practicedTodayCount": len(practiced_today_error_ids | practiced_today_question_ids),
         "advice": insights.get("advice") or [],
         "reviewQueue": insights.get("reviewQueue") or [],
         "retrainQueue": insights.get("retrainQueue") or [],
