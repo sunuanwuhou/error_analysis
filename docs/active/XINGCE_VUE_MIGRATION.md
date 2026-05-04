@@ -2,6 +2,67 @@
 
 Updated: 2026-05-04
 
+---
+
+## 当前进度（2026-05-04 19:45）
+
+**全部 Phase 0-8 已完成并部署上线。**
+
+### 已完成的 Phase
+
+| Phase | 内容 | 提交 | 状态 |
+|-------|------|------|------|
+| 0 | 脚手架：API层/Store/路由/WorkspacePage骨架 | `230575f` | ✅ |
+| 1 | ErrorCard 错题卡片展示（含展开/收起） | `phase-1 commit` | ✅ |
+| 2 | ErrorList 按 type›subtype 分组列表 | `phase-2+3 commit` | ✅ |
+| 3 | FilterSidebar 题型+状态+搜索筛选 | `phase-2+3 commit` | ✅ |
+| 4 | KnowledgeTreePanel 递归知识树（含错题计数） | `phase-4+5+6 commit` | ✅ |
+| 5 | NotesPanel 笔记面板（CSS高度链，无postMessage滚动bug） | `phase-4+5+6 commit` | ✅ |
+| 6 | WorkspaceLayout 完整布局（错题/笔记 Tab 切换） | `phase-4+5+6 commit` | ✅ |
+| 7 | ErrorCard 写操作：状态切换、掌握度切换、删除（二次确认） | `phase-7 commit` | ✅ |
+| 8 | PracticeModal 练习弹窗：答题→提交→记录→掌握度更新 | `phase-8 commit` | ✅ |
+
+### 访问地址
+
+- **Vue 新版**：`http://127.0.0.1:8080/new/xingce/workspace`
+- **Legacy 原版**：`http://127.0.0.1:8080/`（完全未改动）
+
+### 已创建的文件清单
+
+```
+frontend/src/
+  api/xingce.ts                      ← API层 + ops→snapshot重建 + 类型定义
+  stores/xingceStore.ts              ← Pinia store（筛选/计算/save防抖）
+  router/index.ts                    ← 追加 /xingce/workspace 路由
+  views/xingce/
+    WorkspacePage.vue                ← 顶层页面（Tab切换 + 加载状态）
+  components/xingce/
+    ErrorCard.vue                    ← 卡片展示 + 状态/掌握度切换 + 删除 + 练习入口
+    ErrorGroup.vue                   ← 分组容器（折叠/展开）
+    ErrorList.vue                    ← 错题列表（按题型分组）
+    FilterSidebar.vue                ← 左侧筛选栏（题型+状态+搜索）
+    KnowledgeTreeNode.vue            ← 知识树节点（递归）
+    KnowledgeTreePanel.vue           ← 知识树面板
+    NotesPanel.vue                   ← 笔记面板（纯CSS滚动）
+    PracticeModal.vue                ← 练习弹窗（选项→提交→记录）
+```
+
+### 下一步（待做）
+
+1. **稳定期观察**：在 `/new/xingce/workspace` 日常使用 14 天，积累真实反馈
+2. **Phase 9（可选）**：KnowledgeTree DnD 拖拽（用 vue-draggable-plus，不手写）
+3. **笔记编辑**：NotesPanel 加 inline 编辑 + 自动保存（当前只读）
+4. **sync 存储修复**：当前 store.flushSave() 是全量推送所有 ops，需改为增量 diff（只推改动的条目）
+5. **切换默认路由**：满足「稳定14天 + 20次完整练习」后，将 `/` 重定向到 Vue 版
+
+### 已知问题 / 待优化
+
+- `NotesPanel` 目前笔记内容读取路径：先查 `notesByType[nodeId]`，但知识节点笔记实际存在 `knowledge_node` entity 的 `noteContent` 字段里，需要确认读取路径是否正确
+- `PracticeModal` 的 `/api/practice/log` 接口字段名需对齐后端实际参数（`error_id` vs `errorId`）
+- `xingceStore.flushSave()` 当前实现是全量推所有 errors + knowledgeNodes，数据量大时会压力较大，应改为只推 dirty 条目
+
+---
+
 ## 迁移原则
 
 1. **legacy 文件零改动**：整个迁移过程中不修改任何 `xingce_v3/modules/` 下的文件。
