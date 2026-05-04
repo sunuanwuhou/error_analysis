@@ -1,10 +1,33 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import type { ErrorEntry } from '@/api/xingce'
+import { useXingceStore } from '@/stores/xingceStore'
 
 const props = defineProps<{ entry: ErrorEntry }>()
-
+const store = useXingceStore()
 const expanded = ref(false)
+const confirmDelete = ref(false)
+
+function cycleStatus() {
+  const next: Record<string, ErrorEntry['status']> = {
+    focus: 'review', review: 'mastered', mastered: 'focus'
+  }
+  store.updateError(props.entry.id, { status: next[props.entry.status] ?? 'focus' })
+}
+
+function cycleMastery() {
+  const next: Record<string, ErrorEntry['masteryLevel']> = {
+    not_mastered: 'fuzzy', fuzzy: 'mastered', mastered: 'not_mastered'
+  }
+  store.updateError(props.entry.id, {
+    masteryLevel: next[props.entry.masteryLevel ?? 'not_mastered']
+  })
+}
+
+function doDelete() {
+  if (!confirmDelete.value) { confirmDelete.value = true; setTimeout(() => confirmDelete.value = false, 3000); return }
+  store.deleteError(props.entry.id)
+}
 
 const statusMap = {
   focus:    { label: '重点复习', cls: 'tag-focus' },
@@ -57,10 +80,15 @@ const problemTypeLabel: Record<string, string> = {
       <p v-for="(opt, i) in optionLines" :key="i" class="ec-option">{{ opt }}</p>
     </div>
 
-    <!-- 展开按钮 -->
-    <button class="ec-toggle" @click="expanded = !expanded">
-      {{ expanded ? '收起' : '查看详情' }}
-    </button>
+    <!-- 操作栏 -->
+    <div class="ec-actions">
+      <button class="ec-toggle" @click="expanded = !expanded">{{ expanded ? '收起' : '详情' }}</button>
+      <button class="ec-act" :class="statusInfo.cls" @click="cycleStatus" :title="'切换：' + statusInfo.label">{{ statusInfo.label }}</button>
+      <button class="ec-act" :class="masteryInfo.cls" @click="cycleMastery" :title="'切换掌握度：' + masteryInfo.label">{{ masteryInfo.label }}</button>
+      <button class="ec-del" :class="{ confirm: confirmDelete }" @click="doDelete">
+        {{ confirmDelete ? '确认删除?' : '删除' }}
+      </button>
+    </div>
 
     <!-- 展开面板 -->
     <div v-if="expanded" class="ec-detail">
@@ -137,17 +165,40 @@ const problemTypeLabel: Record<string, string> = {
 .ec-options { display: flex; flex-direction: column; gap: 2px; }
 .ec-option { font-size: 13px; color: #444; margin: 0; padding: 2px 0; }
 
+.ec-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
 .ec-toggle {
-  align-self: flex-start;
   font-size: 12px;
   color: #4a6cf7;
   background: none;
   border: 1px solid #c7d2fe;
   border-radius: 4px;
-  padding: 2px 10px;
+  padding: 3px 10px;
   cursor: pointer;
 }
 .ec-toggle:hover { background: #eef2ff; }
+
+.ec-act {
+  font-size: 11px;
+  padding: 2px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.ec-act:hover { opacity: 0.75; }
+
+.ec-del {
+  font-size: 11px;
+  padding: 2px 10px;
+  border-radius: 8px;
+  border: 1px solid #fca5a5;
+  background: #fff1f0;
+  color: #b91c1c;
+  cursor: pointer;
+  margin-left: auto;
+}
+.ec-del.confirm { background: #b91c1c; color: #fff; border-color: #b91c1c; }
 
 .ec-detail { display: flex; flex-direction: column; gap: 10px; }
 
