@@ -1,45 +1,47 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useXingceStore } from '@/stores/xingceStore'
+import ErrorCard from '@/components/xingce/ErrorCard.vue'
 
 const store = useXingceStore()
+const renderLimit = ref(60)
 
-onMounted(() => {
-  store.load()
-})
+const visibleErrors = computed(() => store.filteredErrors.slice(0, renderLimit.value))
+const hasMore = computed(() => store.filteredErrors.length > renderLimit.value)
+
+function loadMore() { renderLimit.value += 60 }
+
+onMounted(() => { store.load() })
 </script>
 
 <template>
   <div class="xc-workspace">
-    <!-- 顶部导航 -->
     <header class="xc-header">
       <span class="xc-logo">行测工作台</span>
+      <span class="xc-count">共 {{ store.errors.length }} 题</span>
       <span v-if="store.saving" class="xc-save-status saving">保存中…</span>
       <span v-else-if="store.lastSavedAt" class="xc-save-status saved">已保存</span>
     </header>
 
-    <!-- 加载中 -->
     <div v-if="store.loading" class="xc-loading">
       <div class="xc-spinner" />
       <p>加载数据中…</p>
     </div>
 
-    <!-- 加载失败 -->
     <div v-else-if="store.loadError" class="xc-error-state">
       <p class="xc-error-msg">{{ store.loadError }}</p>
       <button class="xc-btn" @click="store.load()">重试</button>
     </div>
 
-    <!-- 主体（Phase 1+ 组件将挂载在这里） -->
     <main v-else class="xc-main">
-      <!-- Phase 0 临时占位，后续各 Phase 替换 -->
-      <div class="xc-placeholder">
-        <div class="xc-stats">
-          <span class="xc-stat-item">错题总数：<strong>{{ store.errors.length }}</strong></span>
-          <span class="xc-stat-item">未掌握：<strong>{{ store.errors.filter(e => e.status === 'unmastered').length }}</strong></span>
-          <span class="xc-stat-item">知识节点：<strong>{{ store.knowledgeNodes.length }}</strong></span>
-        </div>
-        <p class="xc-hint">Phase 0 验证通过 — 数据加载正常，接下来将逐步渲染组件</p>
+      <div class="xc-list">
+        <ErrorCard v-for="entry in visibleErrors" :key="entry.id" :entry="entry" />
+        <div v-if="!visibleErrors.length" class="xc-empty">暂无错题</div>
+      </div>
+      <div v-if="hasMore" class="xc-more">
+        <button class="xc-btn" @click="loadMore">
+          加载更多（还有 {{ store.filteredErrors.length - renderLimit }} 题）
+        </button>
       </div>
     </main>
   </div>

@@ -47,7 +47,7 @@ export const useXingceStore = defineStore('xingce', () => {
   // ── 筛选状态 ────────────────────────────────────────────────────────────────
   const activeType = ref<string | null>(null)
   const activeNodeId = ref<string | null>(null)
-  const statusFilter = ref<'all' | 'unmastered' | 'learning' | 'mastered'>('all')
+  const statusFilter = ref<'all' | 'focus' | 'review' | 'mastered'>('all')
   const searchQuery = ref('')
 
   // ── 计算属性 ────────────────────────────────────────────────────────────────
@@ -82,6 +82,15 @@ export const useXingceStore = defineStore('xingce', () => {
       if (e.status !== 'mastered') {
         counts[e.type] = (counts[e.type] ?? 0) + 1
       }
+    }
+    return counts
+  })
+
+  /** 总数（含已掌握） */
+  const totalCountByType = computed(() => {
+    const counts: Record<string, number> = {}
+    for (const e of errors.value) {
+      counts[e.type] = (counts[e.type] ?? 0) + 1
     }
     return counts
   })
@@ -190,6 +199,7 @@ export const useXingceStore = defineStore('xingce', () => {
     knowledgeTree,
     filteredErrors,
     errorCountByType,
+    totalCountByType,
     errorCountByNode,
     // 动作
     load,

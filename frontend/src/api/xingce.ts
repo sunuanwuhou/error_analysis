@@ -6,18 +6,29 @@ export interface ErrorEntry {
   subtype: string
   subSubtype?: string
   question?: string
+  options?: string          // 选项文本，用 \n 或 | 分隔
   answer?: string
+  myAnswer?: string
   analysis?: string
+  analysisImgData?: string
   tip?: string
-  status: 'unmastered' | 'learning' | 'mastered'
-  masteryLevel?: number
+  nextAction?: string
+  note?: string
+  imgData?: string
+  status: 'focus' | 'review' | 'mastered'
+  masteryLevel?: 'not_mastered' | 'fuzzy' | 'mastered'
+  workflowStage?: string
   confidence?: number
-  problemType?: 'cognition' | 'execution' | 'speed'
+  problemType?: 'cognition' | 'execution' | 'mixed' | 'unknown'
+  nextActionType?: string
   rootReason?: string
   errorReason?: string
+  mistakeType?: string
   noteNodeId?: string
   actualDurationSec?: number
   targetDurationSec?: number
+  difficulty?: number
+  addDate?: string
   createdAt?: string
   updatedAt?: string
   [key: string]: unknown
