@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useXingceStore } from '@/stores/xingceStore'
 import FilterSidebar from '@/components/xingce/FilterSidebar.vue'
 import ErrorList from '@/components/xingce/ErrorList.vue'
+import KnowledgeTreePanel from '@/components/xingce/KnowledgeTreePanel.vue'
+import NotesPanel from '@/components/xingce/NotesPanel.vue'
 
 const store = useXingceStore()
+const tab = ref<'errors' | 'notes'>('errors')
 onMounted(() => { store.load() })
 </script>
 
@@ -12,28 +15,33 @@ onMounted(() => { store.load() })
   <div class="xc-workspace">
     <header class="xc-header">
       <span class="xc-logo">行测工作台</span>
-      <span class="xc-count">
-        {{ store.filteredErrors.length }} / {{ store.errors.length }} 题
-      </span>
+      <div class="xc-tabs">
+        <button class="xc-tab" :class="{ active: tab === 'errors' }" @click="tab = 'errors'">错题列表</button>
+        <button class="xc-tab" :class="{ active: tab === 'notes' }" @click="tab = 'notes'">学习笔记</button>
+      </div>
+      <span class="xc-count">{{ store.filteredErrors.length }} / {{ store.errors.length }} 题</span>
       <span v-if="store.saving" class="xc-save-status saving">保存中…</span>
       <span v-else-if="store.lastSavedAt" class="xc-save-status saved">已保存</span>
     </header>
 
     <div v-if="store.loading" class="xc-loading">
-      <div class="xc-spinner" />
-      <p>加载数据中…</p>
+      <div class="xc-spinner" /><p>加载数据中…</p>
     </div>
-
     <div v-else-if="store.loadError" class="xc-error-state">
       <p class="xc-error-msg">{{ store.loadError }}</p>
       <button class="xc-btn" @click="store.load()">重试</button>
     </div>
 
-    <div v-else class="xc-body">
+    <!-- 错题列表 Tab -->
+    <div v-else-if="tab === 'errors'" class="xc-body">
       <FilterSidebar />
-      <main class="xc-main">
-        <ErrorList :entries="store.filteredErrors" />
-      </main>
+      <main class="xc-main"><ErrorList :entries="store.filteredErrors" /></main>
+    </div>
+
+    <!-- 学习笔记 Tab -->
+    <div v-else class="xc-body">
+      <KnowledgeTreePanel />
+      <main class="xc-main xc-notes-main"><NotesPanel /></main>
     </div>
   </div>
 </template>
@@ -105,12 +113,29 @@ onMounted(() => { store.load() })
 }
 .xc-btn:hover { background: #3a5ce5; }
 
+.xc-tabs { display: flex; gap: 4px; }
+.xc-tab {
+  padding: 4px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: none;
+  font-size: 13px;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+.xc-tab:hover { background: #f1f5f9; }
+.xc-tab.active { background: #4a6cf7; color: #fff; border-color: #4a6cf7; }
+
+.xc-count { font-size: 13px; color: #888; margin-left: auto; }
+
 .xc-body {
   display: flex;
   flex: 1;
   overflow: hidden;
   padding: 16px;
   gap: 16px;
+  min-height: 0;
 }
 
 .xc-main {
@@ -119,8 +144,9 @@ onMounted(() => { store.load() })
   min-width: 0;
 }
 
-.xc-count {
-  font-size: 13px;
-  color: #888;
+.xc-notes-main {
+  display: flex;
+  gap: 12px;
+  overflow: hidden;
 }
 </style>
