@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import type { ErrorEntry } from '@/api/xingce'
+import { useXingceStore } from '@/stores/xingceStore'
 import ErrorGroup from './ErrorGroup.vue'
 
 const props = defineProps<{ entries: ErrorEntry[] }>()
+const store = useXingceStore()
 
 interface Group { key: string; entries: ErrorEntry[] }
 
@@ -14,11 +16,18 @@ const groups = computed<Group[]>(() => {
     if (!map.has(key)) map.set(key, [])
     map.get(key)!.push(e)
   }
-  return [...map.entries()].map(([key, entries]) => ({
-    key,
-    entries,
-  }))
+  return [...map.entries()].map(([key, entries]) => ({ key, entries }))
 })
+
+// 每当可见列表变化时，批量加载练习统计
+watch(
+  () => props.entries,
+  (list) => {
+    const ids = list.slice(0, 120).map(e => e.id)
+    store.queuePracticeSummaries(ids)
+  },
+  { immediate: true },
+)
 </script>
 
 <template>

@@ -59,6 +59,17 @@ const problemTypeLabel: Record<string, string> = {
   mixed:     '混合',
   unknown:   '待定',
 }
+
+const summary = computed(() => store.practiceSummaries[props.entry.id] ?? null)
+
+function fmtDuration(sec: number | undefined): string {
+  if (!sec || sec <= 0) return ''
+  const s = Math.round(sec)
+  if (s < 60) return `${s}秒`
+  const m = Math.floor(s / 60)
+  const r = s % 60
+  return r ? `${m}分${r}秒` : `${m}分钟`
+}
 </script>
 
 <template>
@@ -80,6 +91,20 @@ const problemTypeLabel: Record<string, string> = {
     <!-- 选项 -->
     <div v-if="optionLines.length" class="ec-options">
       <p v-for="(opt, i) in optionLines" :key="i" class="ec-option">{{ opt }}</p>
+    </div>
+
+    <!-- 练习统计 chips -->
+    <div v-if="summary" class="ec-practice-chips">
+      <span class="ec-pc pc-wrong">错 {{ summary.recentWrongCount ?? 0 }} 次</span>
+      <span v-if="fmtDuration(summary.lastDuration)" class="ec-pc pc-time">
+        最近用时 {{ fmtDuration(summary.lastDuration) }}
+      </span>
+      <span v-if="fmtDuration(entry.targetDurationSec)" class="ec-pc pc-target">
+        预计 {{ fmtDuration(entry.targetDurationSec) }}
+      </span>
+      <span v-if="summary.lastResult" class="ec-pc" :class="summary.lastResult === 'correct' ? 'pc-correct' : 'pc-wrong-light'">
+        {{ summary.lastResult === 'correct' ? '上次正确' : '上次错误' }}
+      </span>
     </div>
 
     <!-- 操作栏 -->
@@ -228,4 +253,17 @@ const problemTypeLabel: Record<string, string> = {
 }
 .ec-section p { font-size: 13px; color: #333; margin: 0; line-height: 1.6; }
 .ec-analysis  { white-space: pre-wrap; }
+
+.ec-practice-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.ec-pc {
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+}
+.pc-wrong       { background:#fff1f2; color:#be123c; border-color:#fecdd3; }
+.pc-wrong-light { background:#fff7f0; color:#c2410c; border-color:#fed7aa; }
+.pc-correct     { background:#f0fdf4; color:#16a34a; border-color:#bbf7d0; }
+.pc-time        { background:#ecfdf5; color:#065f46; border-color:#a7f3d0; }
+.pc-target      { background:#eef2ff; color:#3730a3; border-color:#c7d2fe; }
 </style>

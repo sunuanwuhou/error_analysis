@@ -46,11 +46,12 @@ export interface KnowledgeNode {
 }
 
 export interface AttemptSummary {
-  errorId: string
-  totalCount: number
-  correctCount: number
-  lastAttemptAt?: string
-  lastDurationSec?: number
+  recentWrongCount?: number
+  lastConfidence?: number
+  lastDuration?: number
+  avgDuration?: number
+  lastResult?: string
+  lastTime?: string
 }
 
 /** GET /api/sync 返回的原始 op 结构 */
@@ -173,11 +174,33 @@ export const xingceApi = {
     })
   },
 
-  /** 获取多条错题的练习摘要 */
-  getAttemptSummaries(errorIds: string[]): Promise<AttemptSummary[]> {
-    if (!errorIds.length) return Promise.resolve([])
-    const q = errorIds.map(id => `id=${encodeURIComponent(id)}`).join('&')
-    return request<AttemptSummary[]>(`/api/practice/attempts/summary?${q}`)
+  /** 获取多条错题的练习摘要，返回 { items: { [errorId]: AttemptSummary } } */
+  getAttemptSummaries(errorIds: string[]): Promise<{ items: Record<string, AttemptSummary> }> {
+    if (!errorIds.length) return Promise.resolve({ items: {} })
+    const q = `error_ids=${encodeURIComponent(errorIds.join(','))}`
+    return request<{ items: Record<string, AttemptSummary> }>(`/api/practice/attempts/summary?${q}`)
+  },
+
+  /** 获取练习工作台数据（badge 计数、队列） */
+  getWorkbench(limit = 6): Promise<{
+    ok: boolean
+    dailyQueue: unknown[]
+    reviewQueue: unknown[]
+    retrainQueue: unknown[]
+    practicedTodayCount?: number
+  }> {
+    return request(`/api/practice/workbench?limit=${limit}`)
+  },
+
+  /** 获取今日练习队列 */
+  getDaily(limit = 12): Promise<{
+    ok: boolean
+    items: unknown[]
+    practicedTodayCount: number
+    reviewQueue: unknown[]
+    retrainQueue: unknown[]
+  }> {
+    return request(`/api/practice/daily?limit=${limit}`)
   },
 
   /** 记录一次练习结果 */
