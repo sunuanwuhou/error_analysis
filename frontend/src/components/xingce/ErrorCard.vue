@@ -2,11 +2,13 @@
 import { ref, computed } from 'vue'
 import type { ErrorEntry } from '@/api/xingce'
 import { useXingceStore } from '@/stores/xingceStore'
+import PracticeModal from './PracticeModal.vue'
 
 const props = defineProps<{ entry: ErrorEntry }>()
 const store = useXingceStore()
 const expanded = ref(false)
 const confirmDelete = ref(false)
+const practicing = ref(false)
 
 function cycleStatus() {
   const next: Record<string, ErrorEntry['status']> = {
@@ -85,10 +87,13 @@ const problemTypeLabel: Record<string, string> = {
       <button class="ec-toggle" @click="expanded = !expanded">{{ expanded ? '收起' : '详情' }}</button>
       <button class="ec-act" :class="statusInfo.cls" @click="cycleStatus" :title="'切换：' + statusInfo.label">{{ statusInfo.label }}</button>
       <button class="ec-act" :class="masteryInfo.cls" @click="cycleMastery" :title="'切换掌握度：' + masteryInfo.label">{{ masteryInfo.label }}</button>
+      <button class="ec-act tag-sub" style="margin-left:auto" @click="practicing = true">练习</button>
       <button class="ec-del" :class="{ confirm: confirmDelete }" @click="doDelete">
-        {{ confirmDelete ? '确认删除?' : '删除' }}
+        {{ confirmDelete ? '确认?' : '删除' }}
       </button>
     </div>
+
+    <PracticeModal v-if="practicing" :entry="entry" @close="practicing = false" />
 
     <!-- 展开面板 -->
     <div v-if="expanded" class="ec-detail">
