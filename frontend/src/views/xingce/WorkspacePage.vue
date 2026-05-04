@@ -1,16 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { onMounted } from 'vue'
 import { useXingceStore } from '@/stores/xingceStore'
-import ErrorCard from '@/components/xingce/ErrorCard.vue'
+import FilterSidebar from '@/components/xingce/FilterSidebar.vue'
+import ErrorList from '@/components/xingce/ErrorList.vue'
 
 const store = useXingceStore()
-const renderLimit = ref(60)
-
-const visibleErrors = computed(() => store.filteredErrors.slice(0, renderLimit.value))
-const hasMore = computed(() => store.filteredErrors.length > renderLimit.value)
-
-function loadMore() { renderLimit.value += 60 }
-
 onMounted(() => { store.load() })
 </script>
 
@@ -18,7 +12,9 @@ onMounted(() => { store.load() })
   <div class="xc-workspace">
     <header class="xc-header">
       <span class="xc-logo">行测工作台</span>
-      <span class="xc-count">共 {{ store.errors.length }} 题</span>
+      <span class="xc-count">
+        {{ store.filteredErrors.length }} / {{ store.errors.length }} 题
+      </span>
       <span v-if="store.saving" class="xc-save-status saving">保存中…</span>
       <span v-else-if="store.lastSavedAt" class="xc-save-status saved">已保存</span>
     </header>
@@ -33,17 +29,12 @@ onMounted(() => { store.load() })
       <button class="xc-btn" @click="store.load()">重试</button>
     </div>
 
-    <main v-else class="xc-main">
-      <div class="xc-list">
-        <ErrorCard v-for="entry in visibleErrors" :key="entry.id" :entry="entry" />
-        <div v-if="!visibleErrors.length" class="xc-empty">暂无错题</div>
-      </div>
-      <div v-if="hasMore" class="xc-more">
-        <button class="xc-btn" @click="loadMore">
-          加载更多（还有 {{ store.filteredErrors.length - renderLimit }} 题）
-        </button>
-      </div>
-    </main>
+    <div v-else class="xc-body">
+      <FilterSidebar />
+      <main class="xc-main">
+        <ErrorList :entries="store.filteredErrors" />
+      </main>
+    </div>
   </div>
 </template>
 
@@ -114,39 +105,22 @@ onMounted(() => { store.load() })
 }
 .xc-btn:hover { background: #3a5ce5; }
 
+.xc-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  padding: 16px;
+  gap: 16px;
+}
+
 .xc-main {
   flex: 1;
-  padding: 24px;
+  overflow-y: auto;
+  min-width: 0;
 }
 
-.xc-placeholder {
-  background: #fff;
-  border-radius: 8px;
-  padding: 32px;
-  text-align: center;
-  border: 2px dashed #d9d9d9;
-}
-
-.xc-stats {
-  display: flex;
-  justify-content: center;
-  gap: 32px;
-  margin-bottom: 16px;
-}
-
-.xc-stat-item {
-  font-size: 14px;
-  color: #666;
-}
-.xc-stat-item strong {
-  font-size: 24px;
-  color: #4a6cf7;
-  margin-left: 4px;
-}
-
-.xc-hint {
+.xc-count {
   font-size: 13px;
-  color: #aaa;
-  margin: 0;
+  color: #888;
 }
 </style>
