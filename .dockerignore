@@ -3,6 +3,6 @@ __pycache__/
 data/
 converter/
 frontend/node_modules/
-frontend/dist/
+# frontend/dist/ is intentionally NOT ignored — it is pre-built by wsl.ps1 before docker build
 test-results/
 tmp-inline-check.js

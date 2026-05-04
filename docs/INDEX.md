@@ -1,5 +1,7 @@
 # Documentation Index
 
+This file is the source-of-truth navigation entry for `docs/`.
+
 ## Metadata Convention
 
 - `status`: `active` / `ops` / `roadmap` / `archived`
@@ -26,7 +28,9 @@
 
 | File | Status | Owner | Updated |
 | --- | --- | --- | --- |
-| `docs/ops/ops-notes.md` | ops | ops | 2026-04-18 |
+| `docs/ops/ops-notes.md` | ops | ops | 2026-05-04 |
+| `docs/ops/ops-runtime-rules.md` | ops | ops | 2026-05-04 |
+| `docs/ops/ops-incident-log.md` | ops | ops | 2026-05-04 |
 | `docs/ops/pending_execution.md` | ops | ops | 2026-04-18 |
 | `docs/ops/codex-inbox.md` | ops | ops | 2026-04-18 |
 

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Fenbi Export Current Question (Simple)
 // @namespace    xingce-local
-// @version      0.6.0
+// @version      0.7.0
 // @description  Export current Fenbi question as simple JSON with text, answers, duration and images
 // @match        *://fenbi.com/*
 // @match        *://www.fenbi.com/*
@@ -17,13 +17,34 @@
   const store = {
     questionMap: new Map(),
     lastExportAt: 0,
+    // Track the key that was last "navigated to" via URL change
+    urlTrackedKey: null,
     mountTimer: 0,
   };
 
+  // Matches strings like "3_1_bb254" or "12_5_abc123"
   const KEY_RE = /^\d+_\d+_[a-z0-9]+$/i;
   const BUTTON_ID = 'fenbi-export-fixed-btn';
 
-  console.log('[FenbiExport] userscript started:', location.href);
+  console.log('[FenbiExport] v0.7.0 started:', location.href);
+
+  // Expose debug handle so you can type window.__fb.dump() in console
+  window.__fb = {
+    dump() {
+      console.group('[FenbiExport] store dump');
+      console.log('questionMap size:', store.questionMap.size);
+      console.log('urlTrackedKey:', store.urlTrackedKey);
+      store.questionMap.forEach((v, k) => {
+        console.log(' key:', k, '| q:', (v.question || '').slice(0, 60), '| ans:', v.answer);
+      });
+      console.groupEnd();
+    },
+    map: store.questionMap,
+  };
+
+  // ---------------------------------------------------------------------------
+  // Text normalization helpers
+  // ---------------------------------------------------------------------------
 
   function textify(value) {
     if (value == null) return '';
@@ -59,14 +80,22 @@
     return null;
   }
 
+  // ---------------------------------------------------------------------------
+  // Question node detection — slightly relaxed from v0.6
+  // ---------------------------------------------------------------------------
+
   function looksLikeQuestionNode(node) {
     if (!node || typeof node !== 'object') return false;
     const maybeKey = getFirst(node, ['key', 'questionKey', 'questionId', 'quizId', 'id']);
-    const hasKey = typeof maybeKey === 'string' ? KEY_RE.test(maybeKey) : !!maybeKey;
+    if (maybeKey == null) return false;
+    // Accept numeric IDs too (not just string keys matching KEY_RE)
+    const hasKey = typeof maybeKey === 'string' ? KEY_RE.test(maybeKey) : (typeof maybeKey === 'number' && maybeKey > 0);
+    if (!hasKey) return false;
+
     const question = getFirst(node, ['stem', 'question', 'questionStem', 'content', 'material', 'title']);
     const answer = getFirst(node, ['answer', 'answers', 'correctAnswer', 'rightAnswer', 'standardAnswer']);
     const options = getFirst(node, ['options', 'optionList', 'choices']);
-    return hasKey && (!!textify(question) || !!textify(answer) || Array.isArray(options));
+    return !!textify(question) || !!textify(answer) || Array.isArray(options);
   }
 
   function normalizeOptions(raw) {
@@ -98,6 +127,11 @@
     return textify(raw).replace(/\s+/g, '');
   }
 
+  // ---------------------------------------------------------------------------
+  // Walk + ingest — now accepts ALL JSON (URL filter removed)
+  // The looksLikeQuestionNode check is the real gate
+  // ---------------------------------------------------------------------------
+
   function walk(node, visit) {
     if (node == null) return;
     if (Array.isArray(node)) {
@@ -117,7 +151,8 @@
     walk(root, (node) => {
       if (!looksLikeQuestionNode(node)) return;
 
-      const qKey = textify(getFirst(node, ['key', 'questionKey', 'questionId', 'quizId', 'id']));
+      const rawKey = getFirst(node, ['key', 'questionKey', 'questionId', 'quizId', 'id']);
+      const qKey = String(rawKey);
       if (!qKey) return;
 
       const normalized = {
@@ -141,13 +176,14 @@
     });
 
     if (matchedCount) {
-      console.log('[FenbiExport] captured nodes:', matchedCount, 'cached:', store.questionMap.size);
+      console.log('[FenbiExport] captured nodes:', matchedCount, '| total cached:', store.questionMap.size);
+      updateButtonLabel();
     }
   }
 
-  function shouldTrackUrl(url) {
-    return /\/(tiku|combine|question|exercise|solution)\//.test(url);
-  }
+  // ---------------------------------------------------------------------------
+  // Network hooks — capture ALL JSON responses (no URL allowlist)
+  // ---------------------------------------------------------------------------
 
   function hookFetch() {
     const rawFetch = window.fetch;
@@ -155,11 +191,10 @@
     window.fetch = async function (...args) {
       const res = await rawFetch.apply(this, args);
       try {
-        const url = (args[0] && args[0].url) || String(args[0] || '');
-        if (!shouldTrackUrl(url)) return res;
         const clone = res.clone();
         const contentType = clone.headers.get('content-type') || '';
         if (contentType.includes('application/json')) {
+          const url = (args[0] && args[0].url) || String(args[0] || '');
           clone.json().then((json) => ingest(json, url)).catch(() => {});
         }
       } catch (_) {}
@@ -179,10 +214,9 @@
     XMLHttpRequest.prototype.send = function (...args) {
       this.addEventListener('load', function () {
         try {
-          const url = String(this.__fbUrl || '');
-          if (!shouldTrackUrl(url)) return;
           const contentType = this.getResponseHeader('content-type') || '';
           if (contentType.includes('application/json') && this.responseText) {
+            const url = String(this.__fbUrl || '');
             ingest(JSON.parse(this.responseText), url);
           }
         } catch (_) {}
@@ -191,17 +225,42 @@
     };
   }
 
+  // ---------------------------------------------------------------------------
+  // Current key detection — URL-first, then most recent cached
+  // ---------------------------------------------------------------------------
+
   function getCurrentKey() {
-    const routeMatch = location.href.match(/solution\/(\d+_\d+_[a-z0-9]+)/i);
-    if (routeMatch && store.questionMap.has(routeMatch[1])) return routeMatch[1];
+    // 1. Try URL: /solution/3_1_bb254 pattern
+    const routeMatch = location.href.match(/[/#](\d+_\d+_[a-z0-9]+)/i);
+    if (routeMatch && store.questionMap.has(routeMatch[1])) {
+      return routeMatch[1];
+    }
 
-    const bodyText = document.body ? document.body.innerText : '';
-    const textMatch = bodyText.match(/\b\d+_\d+_[a-z0-9]+\b/i);
-    if (textMatch && store.questionMap.has(textMatch[0])) return textMatch[0];
+    // 2. Try URL params: ?questionId=xxx or ?id=xxx
+    try {
+      const params = new URLSearchParams(location.search);
+      for (const key of ['questionId', 'id', 'questionKey', 'key']) {
+        const val = params.get(key);
+        if (val && store.questionMap.has(val)) return val;
+      }
+    } catch (_) {}
 
+    // 3. If URL-tracked key is set and still valid, prefer it
+    if (store.urlTrackedKey && store.questionMap.has(store.urlTrackedKey)) {
+      return store.urlTrackedKey;
+    }
+
+    // 4. If exactly one question cached, use it
     const keys = Array.from(store.questionMap.keys());
-    return keys.length === 1 ? keys[0] : keys[0] || null;
+    if (keys.length === 1) return keys[0];
+
+    // 5. Multiple: return the most recently added (last key in insertion order)
+    return keys.length > 0 ? keys[keys.length - 1] : null;
   }
+
+  // ---------------------------------------------------------------------------
+  // DOM helpers — duration, my answer
+  // ---------------------------------------------------------------------------
 
   function parseDurationSeconds() {
     const text = document.body ? document.body.innerText : '';
@@ -209,46 +268,54 @@
     if (minSecMatch) return Number(minSecMatch[1]) * 60 + Number(minSecMatch[2]);
     const secMatch = text.match(/答题用时\s*(\d+)\s*秒/);
     if (secMatch) return Number(secMatch[1]);
+    const minOnlyMatch = text.match(/答题用时\s*(\d+)\s*分/);
+    if (minOnlyMatch) return Number(minOnlyMatch[1]) * 60;
     return 0;
   }
 
   function parseMyAnswer() {
     const bodyText = document.body ? document.body.innerText : '';
-    const explicit = bodyText.match(/我的答案[:：]?\s*([A-D]|正确|错误)/);
-    if (explicit) return explicit[1];
+    // Explicit label
+    const explicit = bodyText.match(/我的答案[:：]?\s*([A-D多个正确错误]+)/);
+    if (explicit) return explicit[1].replace(/\s/g, '');
 
+    // Scan option elements for selected state
     const optionNodes = Array.from(document.querySelectorAll('div, li, label, span, p')).filter((el) => {
       const text = (el.textContent || '').trim();
       return /^[A-D][.、\s]/.test(text) || /^正确$/.test(text) || /^错误$/.test(text);
     });
 
+    const selected = [];
     for (const el of optionNodes) {
       const text = (el.textContent || '').trim();
       const cls = String(el.className || '');
-      const selected = /selected|active|checked|choose|user-answer|my-answer|wrong|error|right|correct/i.test(cls);
-      const aria = `${el.getAttribute('aria-checked') || ''}${el.getAttribute('aria-selected') || ''}`;
-      if (selected || /true/i.test(aria)) {
+      const isSelected =
+        /selected|active|checked|choose|user-answer|my-answer|wrong|error|right|correct/i.test(cls) ||
+        el.getAttribute('aria-checked') === 'true' ||
+        el.getAttribute('aria-selected') === 'true';
+      if (isSelected) {
         const match = text.match(/^([A-D])/);
-        if (match) return match[1];
-        if (text === '正确' || text === '错误') return text;
+        if (match) selected.push(match[1]);
+        else if (text === '正确' || text === '错误') selected.push(text);
       }
     }
-
-    return '';
+    return selected.join('');
   }
 
+  // ---------------------------------------------------------------------------
+  // Image helpers
+  // ---------------------------------------------------------------------------
+
   function getQuestionImages() {
-    const containers = Array.from(document.querySelectorAll('img')).filter((img) => {
+    return Array.from(document.querySelectorAll('img')).filter((img) => {
       if (!(img instanceof HTMLImageElement)) return false;
       const src = img.currentSrc || img.src || '';
       if (!src) return false;
       const rect = img.getBoundingClientRect();
       if (rect.width < 30 || rect.height < 30) return false;
-      if (/avatar|logo|icon|thumb|badge/i.test(src)) return false;
+      if (/avatar|logo|icon|thumb|badge|btn|button/i.test(src)) return false;
       return true;
     });
-
-    return containers;
   }
 
   function blobToDataUrl(blob) {
@@ -266,6 +333,11 @@
       if (!src) return '';
       const res = await fetch(src, { credentials: 'include' });
       const blob = await res.blob();
+      // Skip oversized images — record URL only
+      if (blob.size > 300 * 1024) {
+        console.warn('[FenbiExport] image too large, recording URL only:', src);
+        return src;
+      }
       return await blobToDataUrl(blob);
     } catch (error) {
       console.warn('[FenbiExport] image fetch failed:', error);
@@ -284,20 +356,29 @@
     return data;
   }
 
+  // ---------------------------------------------------------------------------
+  // Export record builder
+  // ---------------------------------------------------------------------------
+
   function buildExportRecord(question, imageDataList) {
     return {
+      fenbiKey: question.key,          // question key from API (e.g. "3_1_bb254")
       question: question.question || '',
       options: question.options || '',
       myAnswer: parseMyAnswer(),
       answer: normalizeAnswer(question.answer),
       actualDurationSec: parseDurationSeconds(),
+      sourceUrl: question.sourceUrl || '',
       imgData: imageDataList.length === 1 ? imageDataList[0] : imageDataList,
     };
   }
 
+  // ---------------------------------------------------------------------------
+  // Download + clipboard
+  // ---------------------------------------------------------------------------
+
   function downloadJson(name, data) {
     const jsonText = JSON.stringify(data, null, 2);
-    JSON.parse(jsonText);
     const blob = new Blob([jsonText], { type: 'application/json;charset=utf-8' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -315,7 +396,6 @@
         return;
       }
     } catch (_) {}
-
     try {
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(text);
@@ -323,31 +403,72 @@
     } catch (_) {}
   }
 
+  // ---------------------------------------------------------------------------
+  // Main export action — with visible button feedback
+  // ---------------------------------------------------------------------------
+
   async function exportCurrent() {
     const now = Date.now();
     if (now - store.lastExportAt < 800) return;
     store.lastExportAt = now;
 
+    const btn = document.getElementById(BUTTON_ID);
+    const setStatus = (text, color) => {
+      if (!btn) return;
+      btn.textContent = text;
+      btn.style.borderColor = color;
+      btn.style.color = color;
+    };
+
     const key = getCurrentKey();
     if (!key) {
-      console.warn('[FenbiExport] current question key not found');
+      console.warn('[FenbiExport] no question key found. Cache size:', store.questionMap.size);
+      setStatus('未抓到题', '#f5222d');
+      setTimeout(() => updateButtonLabel(), 2500);
       return;
     }
 
     const question = store.questionMap.get(key);
     if (!question) {
-      console.warn('[FenbiExport] current question data not ready:', key);
+      console.warn('[FenbiExport] key found but no data:', key);
+      setStatus('数据缺失', '#f5222d');
+      setTimeout(() => updateButtonLabel(), 2500);
       return;
     }
 
-    const imageDataList = await collectImageData();
-    const data = [buildExportRecord(question, imageDataList)];
-    const fileName = `fenbi_${key}.json`;
-    const jsonText = JSON.stringify(data, null, 2);
-    await copyText(jsonText);
-    downloadJson(fileName, data);
-    console.log('[FenbiExport] exported:', fileName, data);
+    setStatus('导出中…', '#fa8c16');
+
+    try {
+      const imageDataList = await collectImageData();
+      const data = [buildExportRecord(question, imageDataList)];
+      const fileName = `fenbi_${key}.json`;
+      const jsonText = JSON.stringify(data, null, 2);
+      await copyText(jsonText);
+      downloadJson(fileName, data);
+      console.log('[FenbiExport] exported:', fileName, data);
+      setStatus('✓ 已导出', '#52c41a');
+      setTimeout(() => updateButtonLabel(), 2000);
+    } catch (err) {
+      console.error('[FenbiExport] export failed:', err);
+      setStatus('导出失败', '#f5222d');
+      setTimeout(() => updateButtonLabel(), 2500);
+    }
   }
+
+  // ---------------------------------------------------------------------------
+  // Button — shows cached count in label
+  // ---------------------------------------------------------------------------
+
+  function updateButtonLabel() {
+    const btn = document.getElementById(BUTTON_ID);
+    if (!btn) return;
+    const n = store.questionMap.size;
+    btn.textContent = n > 0 ? `导出JSON (${n})` : '导出JSON';
+    btn.style.borderColor = '#1677ff';
+    btn.style.color = '#1677ff';
+  }
+
+  let _btnDebounceTimer = 0;
 
   function ensureFixedButton() {
     if (!document.body) return;
@@ -356,12 +477,11 @@
       btn = document.createElement('button');
       btn.id = BUTTON_ID;
       btn.type = 'button';
-      btn.textContent = '导出JSON';
       btn.addEventListener('click', (event) => {
         event.preventDefault();
         event.stopPropagation();
         exportCurrent().catch((error) => {
-          console.error('[FenbiExport] export failed:', error);
+          console.error('[FenbiExport] export error:', error);
         });
       });
       document.body.appendChild(btn);
@@ -388,27 +508,31 @@
       lineHeight: '20px',
       boxShadow: '0 6px 18px rgba(22,119,255,0.28)',
     });
+
+    updateButtonLabel();
   }
 
-  function startButtonKeeper() {
-    const mount = () => {
-      ensureFixedButton();
-    };
+  // Debounced wrapper — MutationObserver fires very frequently; avoid thrashing
+  function debouncedEnsureButton() {
+    clearTimeout(_btnDebounceTimer);
+    _btnDebounceTimer = setTimeout(ensureFixedButton, 200);
+  }
 
+  // ---------------------------------------------------------------------------
+  // Button keepalive — DOM ready + MutationObserver + periodic check
+  // ---------------------------------------------------------------------------
+
+  function startButtonKeeper() {
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', mount, { once: true });
+      document.addEventListener('DOMContentLoaded', ensureFixedButton, { once: true });
     } else {
-      mount();
+      ensureFixedButton();
     }
 
-    const observer = new MutationObserver(() => {
-      ensureFixedButton();
-    });
-
+    const observer = new MutationObserver(debouncedEnsureButton);
     const startObserve = () => {
       if (!document.body) return;
       observer.observe(document.body, { childList: true, subtree: true });
-      ensureFixedButton();
     };
 
     if (document.readyState === 'loading') {
@@ -417,37 +541,57 @@
       startObserve();
     }
 
-    if (store.mountTimer) {
-      clearInterval(store.mountTimer);
-    }
-    store.mountTimer = window.setInterval(() => {
+    if (store.mountTimer) clearInterval(store.mountTimer);
+    store.mountTimer = window.setInterval(ensureFixedButton, 3000);
+  }
+
+  // ---------------------------------------------------------------------------
+  // SPA navigation — update urlTrackedKey when route changes
+  // ---------------------------------------------------------------------------
+
+  function onRouteChange() {
+    setTimeout(() => {
+      // Try to extract key from new URL
+      const m = location.href.match(/[/#](\d+_\d+_[a-z0-9]+)/i);
+      if (m) store.urlTrackedKey = m[1];
       ensureFixedButton();
-    }, 1500);
+    }, 300);
   }
 
   function hookSpaNavigation() {
-    const remount = () => setTimeout(ensureFixedButton, 300);
     const wrap = (name) => {
       const raw = history[name];
       if (typeof raw !== 'function') return;
       history[name] = function (...args) {
         const ret = raw.apply(this, args);
-        remount();
+        onRouteChange();
         return ret;
       };
     };
     wrap('pushState');
     wrap('replaceState');
-    window.addEventListener('popstate', remount);
+    window.addEventListener('popstate', onRouteChange);
   }
 
+  // ---------------------------------------------------------------------------
+  // Keyboard shortcut: Alt+E to export, Alt+D to dump debug info
+  // ---------------------------------------------------------------------------
+
   window.addEventListener('keydown', (event) => {
-    if (event.altKey && event.key.toLowerCase() === 'e') {
+    if (!event.altKey) return;
+    if (event.key.toLowerCase() === 'e') {
       exportCurrent().catch((error) => {
         console.error('[FenbiExport] export failed:', error);
       });
     }
+    if (event.key.toLowerCase() === 'd') {
+      window.__fb.dump();
+    }
   });
+
+  // ---------------------------------------------------------------------------
+  // Bootstrap
+  // ---------------------------------------------------------------------------
 
   hookFetch();
   hookXHR();

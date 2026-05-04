@@ -1,3 +1,5 @@
+# Frontend is pre-built by the deploy script (scripts/wsl.ps1 -Action deploy)
+# before docker build runs. The dist/ folder is copied in directly.
 FROM error_manage-ocr:latest
 
 WORKDIR /app
@@ -20,6 +22,9 @@ COPY app /app/app
 COPY scripts /app/scripts
 COPY xingce_v3 /app/xingce_v3
 COPY v51_frontend /app/v51_frontend
+
+# Copy pre-built Vue frontend (built by wsl.ps1 deploy/up before docker build)
+COPY frontend/dist /app/frontend/dist
 
 RUN python /app/scripts/build_legacy_assets.py
 

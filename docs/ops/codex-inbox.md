@@ -18,7 +18,7 @@ This is intentionally not a fake realtime chat.
 
 ## Database Model
 
-Two tables are added in [app/main.py](/E:/IdeaProject/git/xingce_v3_lab/app/main.py):
+Two tables are added in [`app/main.py`](../../app/main.py):
 
 1. `codex_threads`
    - one logical conversation per topic
@@ -36,7 +36,7 @@ Message status is only meaningful for `role='user'`:
 
 ## Frontend Entry
 
-The current UI entry is inside [xingce_v3.html](/E:/IdeaProject/git/xingce_v3_lab/xingce_v3/xingce_v3.html):
+The current UI entry is inside [`xingce_v3/xingce_v3.html`](../../xingce_v3/xingce_v3.html):
 
 - floating button: `Codex 留言`
 - more menu entry: `🧾 Codex`
@@ -65,7 +65,7 @@ These APIs are authenticated with the same session cookie as the rest of the wor
 
 ## Scheduled Processing Bridge
 
-The helper script is [scripts/codex_inbox.py](/E:/IdeaProject/git/xingce_v3_lab/scripts/codex_inbox.py).
+The helper script is [`scripts/codex_inbox.py`](../../scripts/codex_inbox.py).
 
 Supported commands:
 
@@ -87,9 +87,9 @@ Recommended scheduled loop:
 
 ## Server Worker
 
-A looping Docker worker now exists at [scripts/codex_inbox_worker.py](/E:/IdeaProject/git/xingce_v3_lab/scripts/codex_inbox_worker.py).
+A looping Docker worker now exists at [`scripts/codex_inbox_worker.py`](../../scripts/codex_inbox_worker.py).
 
-The service is declared in [docker-compose.yml](/E:/IdeaProject/git/xingce_v3_lab/docker-compose.yml) as `codex-inbox-worker`.
+The service is declared in [`docker-compose.yml`](../../docker-compose.yml) as `codex-inbox-worker`.
 
 This worker is now treated as an optional fallback only.
 

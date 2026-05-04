@@ -15,8 +15,8 @@ The first target is a usable Shenlun workflow:
 
 Current in-project source locations:
 
-- [quantity source](E:\IdeaProject\git\xingce_v3_lab\knowledge_sources\shenlun\quantity)
-- [ashore source](E:\IdeaProject\git\xingce_v3_lab\knowledge_sources\shenlun\ashore)
+- [`quantity` source](../../knowledge_sources/shenlun/quantity)
+- [`ashore` source](../../knowledge_sources/shenlun/ashore)
 
 Interpretation:
 

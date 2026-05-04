@@ -7,10 +7,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.config import BASE_DIR, V51_STATIC_DIR
+from app.config import BASE_DIR, FRONTEND_DIST_DIR, V51_STATIC_DIR
 from app.core import on_startup
 from app.database import close_pool
-from app.routers import ai, auth, backup, images, knowledge, practice, sync, web
+from app.routers import ai, auth, backup, images, knowledge, practice, shenlun, sync, web
 
 
 def _parse_csv_env(value: str) -> list[str]:
@@ -59,12 +59,20 @@ def create_app() -> FastAPI:
     app.mount("/assets", StaticFiles(directory=str(BASE_DIR / "xingce_v3")), name="assets")
     if V51_STATIC_DIR.exists():
         app.mount("/v51-static", StaticFiles(directory=str(V51_STATIC_DIR)), name="v51-static")
+    # New Vue frontend assets (Vite base: '/new/', outputs to frontend/dist/assets/)
+    _new_assets_dir = FRONTEND_DIST_DIR / "assets"
+    if _new_assets_dir.exists():
+        app.mount("/new/assets", StaticFiles(directory=str(_new_assets_dir)), name="new-assets")
+
     @app.middleware("http")
     async def disable_static_cache_for_local_debug(request: Request, call_next):
         response = await call_next(request)
         path = request.url.path or ""
         query = request.url.query or ""
         has_asset_version = "v=" in query
+        if path.startswith("/new/assets/"):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            return response
         if path.startswith("/assets/") or path.startswith("/v51-static/assets/"):
             if path.endswith("legacy-app.bundle.manifest.json"):
                 response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
@@ -80,6 +88,11 @@ def create_app() -> FastAPI:
             response.headers["Pragma"] = "no-cache"
             response.headers["Expires"] = "0"
             return response
+        if path in {"/new"} or (path.startswith("/new/") and not path.startswith("/new/assets/")):
+            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+            return response
         if path in {"/", "/legacy", "/v51", "/v53", "/login"} or path.startswith("/v51/") or path.startswith("/v53/"):
             response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
             response.headers["Pragma"] = "no-cache"
@@ -88,7 +101,7 @@ def create_app() -> FastAPI:
 
     app.add_event_handler("startup", on_startup)
     app.add_event_handler("shutdown", close_pool)
-    for router_module in (web, auth, backup, ai, images, sync, practice, knowledge):
+    for router_module in (web, auth, backup, ai, images, sync, practice, knowledge, shenlun):
         app.include_router(router_module.router)
     return app
 

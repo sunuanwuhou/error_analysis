@@ -1,19 +1,12 @@
 # Docs Home
 
-主索引请看：`docs/INDEX.md`
+文档总入口与唯一导航索引：`docs/INDEX.md`
 
-## Read First
+为避免入口重复和阅读顺序冲突，本文件仅保留导航说明，不再维护独立清单。
 
-1. `docs/active/PROJECT_RULES.md`
-2. `docs/active/CURRENT_SCOPE.md`
-3. `docs/active/HANDOFF_CONTEXT.md`
-4. `docs/active/DEVLOG.md`
-5. `docs/active/RELEASE_CHECKLIST.md`
-6. `docs/active/SELF_TEST_REPORT.md`
+## Quick Jump
 
-## Structure
-
-- `docs/active/`: 当前有效规则与交付文档
-- `docs/ops/`: 执行与运维文档
-- `docs/roadmap/`: 路线与阶段规划
-- `docs/archive/`: 历史归档
+- 当前有效文档：`docs/INDEX.md` -> `Active`
+- 运维执行文档：`docs/INDEX.md` -> `Ops`
+- 规划文档：`docs/INDEX.md` -> `Roadmap`
+- 历史归档：`docs/INDEX.md` -> `Archive`

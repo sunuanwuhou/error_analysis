@@ -293,3 +293,47 @@ def init_db() -> None:
         )
         conn.commit()
 
+
+def init_shenlun_tables() -> None:
+    with get_conn() as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS shenlun_sources (
+              id TEXT PRIMARY KEY,
+              user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              source_key TEXT NOT NULL,
+              question_text_raw TEXT NOT NULL DEFAULT '',
+              material_text_raw TEXT NOT NULL DEFAULT '',
+              status TEXT NOT NULL DEFAULT 'raw_draft',
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_sl_sources_user_key ON shenlun_sources(user_id, source_key)"
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS shenlun_attempts (
+              id TEXT PRIMARY KEY,
+              source_id TEXT NOT NULL REFERENCES shenlun_sources(id) ON DELETE CASCADE,
+              user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              attempt_no INTEGER NOT NULL DEFAULT 1,
+              segments_json TEXT NOT NULL DEFAULT '[]',
+              my_final_summary TEXT NOT NULL DEFAULT '',
+              cc_status TEXT NOT NULL DEFAULT 'none',
+              cc_result_json TEXT NOT NULL DEFAULT '',
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_sl_attempts_source ON shenlun_attempts(source_id)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_sl_attempts_user_time ON shenlun_attempts(user_id, updated_at DESC)"
+        )
+        conn.commit()
+

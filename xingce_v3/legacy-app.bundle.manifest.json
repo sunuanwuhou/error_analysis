@@ -1,8 +1,8 @@
 {
-  "built_at": "2026-04-25T14:21:05Z",
+  "built_at": "2026-05-04T10:46:49Z",
   "css_bundle": {
     "path": "xingce_v3/styles/legacy-app.bundle.css",
-    "sha256": "f5912d8db29118aaa9b92b5666abf5b5f1749af7fcdcb3a76661dc7f1b6335f3",
+    "sha256": "5e59924254257e0963dbaf74213b0870c2442460563c1137f87016fc155d4834",
     "sources": [
       "styles/main/00-base-reset.css",
       "styles/main/01-sidebar.css",
@@ -48,7 +48,7 @@
   },
   "js_bundle": {
     "path": "xingce_v3/modules/legacy-app.bundle.js",
-    "sha256": "63f073fdd23636b76b368ba7c20055a0f49955f7790662f47e8c00f5e432f459",
+    "sha256": "14b0fd7d0a090c4b472b7c6be9f19b0e7d2b1fd3c895ad4fca10526739a0f60a",
     "sources": [
       "modules/main/00-event-dispatcher.js",
       "modules/main/01-state.js",
@@ -119,7 +119,7 @@
   "v51_partials": {
     "core": {
       "path": "v51_frontend/partials.bundle.html",
-      "sha256": "7fef0d4dba989cef9e8a6a020ede436637f2aa3771188af5ed9ed3c43322a4f2"
+      "sha256": "a0021a3584f02f6f6e0122db04de7be7fad05fe8a30203852adffe5297fd4d57"
     },
     "deferred": {
       "path": "v51_frontend/deferred-partials.bundle.html",
@@ -129,7 +129,7 @@
   "js_view_bundles": {
     "home": {
       "path": "xingce_v3/modules/legacy-app.home.bundle.js",
-      "sha256": "4384d9f1bd3bcc338446735e74151a867bd7b29862d94a8d661eecdc6cc74cd3",
+      "sha256": "41efbf1222d801cc4985bd1c9df0e40a5c2cccdeef1c7bde2b1410a76802e910",
       "sources": [
         "modules/main/00-event-dispatcher.js",
         "modules/main/01-state.js",
@@ -154,7 +154,7 @@
     },
     "workspace": {
       "path": "xingce_v3/modules/legacy-app.workspace.bundle.js",
-      "sha256": "4098a9e47b3526dda6028716edcff2e81bf82c6baf943aa772b043d9b4595355",
+      "sha256": "172831871e6e76e813ccfa1adcc45b83662bac4bdfefc1723853ee48d7bc0b2c",
       "sources": [
         "modules/main/10-notes-panel.js",
         "modules/main/11-typed-note-tree.js",
@@ -181,7 +181,7 @@
     },
     "modal": {
       "path": "xingce_v3/modules/legacy-app.modal.bundle.js",
-      "sha256": "cd059eb2e645f2002c09e061bcecfc05469b108c48c6f14254155f8ddc8ba048",
+      "sha256": "caf0cb188c7f996f8968c95de0662ac468d355b600c1ada992af6cd23a546d91",
       "sources": [
         "modules/main/06-ai-workbench.js",
         "modules/main/07-image-processing.js",
@@ -210,7 +210,7 @@
     },
     "bootstrap": {
       "path": "xingce_v3/modules/legacy-app.bootstrap.bundle.js",
-      "sha256": "19a18f7f129731ddfe0508809b4a84fd28489fc3563e778adacdf560b2942bb9",
+      "sha256": "d544ed1db4a1dfc71cd26cc60e2e5daec674009c4057e7211f1f79afe78e3493",
       "sources": [
         "modules/main/99-bootstrap.js"
       ]

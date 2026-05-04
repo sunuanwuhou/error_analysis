@@ -180,10 +180,6 @@ powershell -ExecutionPolicy Bypass -File .\scripts\wsl.ps1 -Action up
 
 ## Documentation Map
 
+Use a single docs entry point to avoid navigation drift:
+
 - [docs index](docs/INDEX.md)
-- [current roadmap](docs/roadmap/roadmap.md)
-- [ops notes](docs/ops/ops-notes.md)
-- [Codex inbox](docs/ops/codex-inbox.md)
-- [v3.1 integration plan (archive)](docs/archive/v3.1-integration-plan.md)
-- [v3.1 rollout notes (archive)](docs/archive/v3.1-rollout-notes-2026-03-26.md)
-- [shenlun workbench plan (archive)](docs/archive/shenlun-workbench-plan.md)

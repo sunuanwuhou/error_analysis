@@ -1,13 +1,5 @@
 # Active Docs
 
-当前有效文档，按固定阅读顺序：
+当前有效文档清单与维护状态，以 `docs/INDEX.md` 的 `Active` 表为准。
 
-1. `PROJECT_RULES.md`
-2. `CURRENT_SCOPE.md`
-3. `ROUTE_STATUS.md`
-4. `ROUTE_CALL_MAP.md`
-5. `CHANGE_PROTOCOL.md`
-6. `HANDOFF_CONTEXT.md`
-7. `DEVLOG.md`
-8. `RELEASE_CHECKLIST.md`
-9. `SELF_TEST_REPORT.md`
+本文件仅保留入口说明，避免与索引重复维护。

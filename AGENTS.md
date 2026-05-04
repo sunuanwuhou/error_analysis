@@ -42,6 +42,17 @@ This repository is WSL-first on Windows.
    - live page behavior
 5. Do not treat "local file modified" as equivalent to "container already serving new code".
 
+## Full Sync Build Rule (Mandatory)
+
+1. For any frontend runtime behavior change (especially knowledge tree, persistence, sync, and sidebar rendering), you MUST perform a full legacy asset rebuild before redeploy:
+   - `powershell -ExecutionPolicy Bypass -File .\scripts\wsl.ps1 -Action sh -Cmd "cd /mnt/e/IdeaProject/git/xingce_v3_lab && python3 scripts/release/build_legacy_assets.py"`
+2. After rebuild, you MUST redeploy the app container:
+   - `powershell -ExecutionPolicy Bypass -File .\scripts\wsl.ps1 -Action up -Service app`
+3. After redeploy, you MUST verify served assets contain expected markers from the fix (not just file timestamps), at least on:
+   - `http://127.0.0.1:8080/assets/modules/legacy-app.home.bundle.js`
+4. If a public domain verification URL is provided and accessible, verify that domain asset too before claiming "domain is updated".
+5. If domain verification is blocked (e.g., 403/CDN restriction), explicitly report that domain deployment cannot be confirmed yet and do not claim remote is live.
+
 ## Goal
 
 Keep environment behavior consistent, avoid Windows path/permission differences, and reduce flaky build/runtime issues.

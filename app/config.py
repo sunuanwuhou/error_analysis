@@ -39,6 +39,7 @@ TASK_ROUTING: dict[str, str] = {
     "generate_question": DEEPSEEK_CHAT_MODEL,
     "suggest_restructure": DEEPSEEK_CHAT_MODEL,
     "chat": DEEPSEEK_CHAT_MODEL,
+    "shenlun_cc_review": DEEPSEEK_CHAT_MODEL,
     "evaluate_answer": DEEPSEEK_REASONER_MODEL,
     "discover_patterns": DEEPSEEK_REASONER_MODEL,
     "diagnose": DEEPSEEK_REASONER_MODEL,
@@ -52,6 +53,7 @@ JSON_RESPONSE_TASKS = {
     "evaluate_answer",
     "discover_patterns",
     "diagnose",
+    "shenlun_cc_review",
 }
 ALLOWED_ENTRY_TYPES = {
     "言语理解与表达",
