@@ -81,6 +81,45 @@ async function fetchJsonWithAuth(url, options) {
   return data;
 }
 
+function refreshSidebarAndErrorsList() {
+  if (typeof requestWorkspaceRender === 'function') {
+    requestWorkspaceRender({ sidebar: true });
+    return;
+  }
+  if (typeof renderSidebar === 'function') renderSidebar();
+  if (typeof renderAll === 'function') renderAll();
+}
+
+function refreshErrorsListOnly() {
+  if (typeof requestWorkspaceRender === 'function') {
+    requestWorkspaceRender({ sidebar: false });
+    return;
+  }
+  if (typeof renderAll === 'function') renderAll();
+}
+
+function refreshSidebarErrorsAndNotesPanels(immediate) {
+  const now = !!immediate;
+  if (typeof requestWorkspaceRender === 'function') {
+    requestWorkspaceRender({ sidebar: true, notes: true, immediate: now });
+    return;
+  }
+  if (typeof renderSidebar === 'function') renderSidebar();
+  if (typeof renderAll === 'function') renderAll();
+  if (typeof renderNotesByType === 'function') renderNotesByType();
+}
+
+function refreshSidebarErrorsOptionalNotes(withNotes) {
+  const notes = !!withNotes;
+  if (typeof requestWorkspaceRender === 'function') {
+    requestWorkspaceRender({ sidebar: true, notes });
+    return;
+  }
+  if (typeof renderSidebar === 'function') renderSidebar();
+  if (typeof renderAll === 'function') renderAll();
+  if (notes && typeof renderNotesByType === 'function') renderNotesByType();
+}
+
 if (typeof window !== 'undefined') {
   window.fetchJsonWithAuth = fetchJsonWithAuth;
 }

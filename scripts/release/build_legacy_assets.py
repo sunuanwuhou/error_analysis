@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
+import shutil
+import subprocess
+import tempfile
 from pathlib import Path
 from datetime import datetime, timezone
 from hashlib import sha256
@@ -40,6 +44,87 @@ def build_partials_bundle(partials: list[str]) -> str:
             raise FileNotFoundError(source_path)
         chunks.append(source_path.read_text(encoding='utf-8').rstrip())
     return '\n'.join(chunks) + '\n'
+
+
+def _legacy_js_minify_enabled() -> bool:
+    flag = os.environ.get('XINGCE_LEGACY_MINIFY_JS', '').strip().lower()
+    return flag in ('1', 'true', 'yes')
+
+
+def _terser_cli_path(path: Path) -> str:
+    """Path string for ``npx terser`` when Node may be Windows while Python runs in WSL."""
+    absolute = path.resolve()
+    try:
+        wsp = subprocess.run(
+            ['wslpath', '-w', str(absolute)],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+        if wsp.returncode == 0 and (wsp.stdout or '').strip():
+            return (wsp.stdout or '').strip()
+    except (FileNotFoundError, OSError, subprocess.TimeoutExpired):
+        pass
+    return str(absolute)
+
+
+def _terser_subprocess_env() -> dict[str, str]:
+    """Raise Node heap for large ``legacy-app.bundle.js`` when minifying under Windows."""
+    env = dict(os.environ)
+    prev = str(env.get('NODE_OPTIONS', '') or '').strip()
+    flag = '--max-old-space-size=8192'
+    if flag not in prev:
+        env['NODE_OPTIONS'] = f'{prev} {flag}'.strip()
+    return env
+
+
+def maybe_minify_legacy_js(content: str, bundle_label: str) -> str:
+    """Optional gzip-friendly shrink via terser (compress only; omit -m so names/onclick globals stay intact).
+
+    Uses temp files under repo ``tmp/``. Under WSL, paths passed to Windows ``npx`` are converted via ``wslpath -w``.
+    """
+    if not _legacy_js_minify_enabled():
+        return content
+    npx = shutil.which('npx')
+    if not npx:
+        print(f'WARN XINGCE_LEGACY_MINIFY_JS set but npx not found; skipping minify ({bundle_label})')
+        return content
+    tmp_parent = ROOT / 'tmp'
+    tmp_parent.mkdir(exist_ok=True)
+    proc = None
+    try:
+        with tempfile.TemporaryDirectory(dir=str(tmp_parent), prefix='legacy_minify_') as td:
+            in_path = Path(td) / 'in.js'
+            out_path = Path(td) / 'out.js'
+            in_path.write_text(content, encoding='utf-8')
+            proc = subprocess.run(
+                [
+                    npx,
+                    '--yes',
+                    'terser',
+                    _terser_cli_path(in_path),
+                    '--compress',
+                    'passes=1',
+                    '-o',
+                    _terser_cli_path(out_path),
+                ],
+                capture_output=True,
+                timeout=600,
+                env=_terser_subprocess_env(),
+            )
+            if proc.returncode != 0:
+                err = (proc.stderr or b'').decode('utf-8', errors='replace').strip()
+                print(f'WARN terser exited {proc.returncode} ({bundle_label}); skipping minify: {err}')
+                return content
+            out = out_path.read_text(encoding='utf-8')
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        print(f'WARN legacy JS minify failed ({bundle_label}): {exc}')
+        return content
+    if proc is None:
+        return content
+    print(f'legacy JS minify ({bundle_label}): {len(content)} -> {len(out)} bytes')
+    return out
 
 
 def bundle_contents(paths: list[str], comment_prefix: str) -> str:
@@ -325,9 +410,14 @@ def main() -> None:
         raise RuntimeError(f'top-level await is forbidden in legacy bundles:\n  - {issue_lines}')
 
     css_bundle_path.write_text(bundle_contents(CSS_SOURCES, '/*'), encoding='utf-8')
-    js_bundle_path.write_text(bundle_contents(JS_SOURCES, '/*'), encoding='utf-8')
+    js_full = bundle_contents(JS_SOURCES, '/*')
+    js_bundle_path.write_text(maybe_minify_legacy_js(js_full, 'legacy-app.bundle.js'), encoding='utf-8')
     for name, source_list in JS_VIEW_SPLIT_SOURCES.items():
-        view_bundle_paths[name].write_text(bundle_contents(source_list, '/*'), encoding='utf-8')
+        raw = bundle_contents(source_list, '/*')
+        view_bundle_paths[name].write_text(
+            maybe_minify_legacy_js(raw, f'legacy-app.{name}.bundle.js'),
+            encoding='utf-8',
+        )
     partials_bundle_path.write_text(build_partials_bundle(CORE_PARTIALS), encoding='utf-8')
     deferred_partials_bundle_path.write_text(build_partials_bundle(deferred_partials), encoding='utf-8')
     manifest_path.write_text(

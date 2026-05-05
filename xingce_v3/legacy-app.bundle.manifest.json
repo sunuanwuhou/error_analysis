@@ -1,8 +1,8 @@
 {
-  "built_at": "2026-05-04T14:04:46Z",
+  "built_at": "2026-05-05T07:42:40Z",
   "css_bundle": {
     "path": "xingce_v3/styles/legacy-app.bundle.css",
-    "sha256": "cc8ff20aaf8b445c82245c6daa99c8f43730f1dfd2642f290c316289afcf5ccb",
+    "sha256": "6ea95a29d6e70257757cc6402cea435bea8cbb5d486650d6ef93fcef95eff399",
     "sources": [
       "styles/main/00-base-reset.css",
       "styles/main/01-sidebar.css",
@@ -26,7 +26,6 @@
       "styles/main/19-chapter-filter.css",
       "styles/main/20-quiz-skip.css",
       "styles/main/21-chapter-stats.css",
-      "styles/main/22-expand-collapse-all.css",
       "styles/main/23-md-toolbar.css",
       "styles/main/24-export-modal.css",
       "styles/main/25-type-rules.css",
@@ -40,15 +39,13 @@
       "styles/main/33-note-split-editor.css",
       "styles/main/34-right-note-title-items.css",
       "styles/main/35-ai-workbench-tabs.css",
-      "styles/main/36-review-finish-actions.css",
       "styles/main/37-layout-refresh-v31.css",
-      "styles/main/38-presentation-polish-v31.css",
       "styles/main/39-print.css"
     ]
   },
   "js_bundle": {
     "path": "xingce_v3/modules/legacy-app.bundle.js",
-    "sha256": "f2a3499dbb6b1bd5cd3acd341e0697b4beef3bb6e942c231f953b4a002a510e6",
+    "sha256": "00070e230e867080ecaf9946c38be031961ba1fc65ee2aabef623028beca7c40",
     "sources": [
       "modules/main/00-event-dispatcher.js",
       "modules/main/01-state.js",
@@ -129,7 +126,7 @@
   "js_view_bundles": {
     "home": {
       "path": "xingce_v3/modules/legacy-app.home.bundle.js",
-      "sha256": "3e85e03cf6fd77f868d21a68610cc5b33439c0d311c932c568fe1acff304a90b",
+      "sha256": "d57c1235c3222c37263db8d38353dcea57293413ab438268bef1c3b545891304",
       "sources": [
         "modules/main/00-event-dispatcher.js",
         "modules/main/01-state.js",
@@ -154,7 +151,7 @@
     },
     "workspace": {
       "path": "xingce_v3/modules/legacy-app.workspace.bundle.js",
-      "sha256": "1111edfc2704806017ffd4a3055cc97ee3e32cdfaec9b55ff4d7c18834f68aef",
+      "sha256": "b9975724542b3358df3b811239331fb7114c601baa633b57630406b46a3772b0",
       "sources": [
         "modules/main/10-notes-panel.js",
         "modules/main/11-typed-note-tree.js",
@@ -181,7 +178,7 @@
     },
     "modal": {
       "path": "xingce_v3/modules/legacy-app.modal.bundle.js",
-      "sha256": "57df8e62386e731c4a95f3c77853be81b461f5c17201b5c0fb527f9266cd40b9",
+      "sha256": "79bcd8e8c6e73ae530465148a2459a18f638dfb402358760f7e616097362717d",
       "sources": [
         "modules/main/06-ai-workbench.js",
         "modules/main/07-image-processing.js",
@@ -210,7 +207,7 @@
     },
     "bootstrap": {
       "path": "xingce_v3/modules/legacy-app.bootstrap.bundle.js",
-      "sha256": "2fa074eb9e0668796030b299307f7027f5be65cd204cc903d00bb4566a512a60",
+      "sha256": "ec328e445bc8e63866a574bd7c85d5dc1f0345098827a9b442304c166a3560b5",
       "sources": [
         "modules/main/99-bootstrap.js"
       ]

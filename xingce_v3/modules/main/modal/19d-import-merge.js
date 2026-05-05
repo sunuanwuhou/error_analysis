@@ -73,9 +73,7 @@ function refreshAfterImportApply() {
   if (typeof knowledgeNoteRenderCache !== 'undefined' && knowledgeNoteRenderCache && typeof knowledgeNoteRenderCache.clear === 'function') knowledgeNoteRenderCache.clear();
   if (typeof resetKnowledgeTreeRenderWindow === 'function') resetKnowledgeTreeRenderWindow();
   syncNotesWithErrors();
-  renderSidebar();
-  renderAll();
-  renderNotesByType();
+  refreshSidebarErrorsAndNotesPanels();
   if (typeof renderNotesPanelRight === 'function') renderNotesPanelRight();
 }
 

@@ -34,17 +34,12 @@ function setTaskFilter(mode){
   if (dateFromInput) dateFromInput.value = '';
   if (dateToInput) dateToInput.value = '';
   if (typeof updateSearchClear === 'function') updateSearchClear();
-  if (typeof requestWorkspaceRender === 'function') {
-    requestWorkspaceRender({ sidebar: true });
-  } else {
-    renderSidebar();
-    renderAll();
-  }
+  refreshSidebarAndErrorsList();
 }
-function setStatusFilter(s){ taskFilter='all';statusFilter=s;typeFilter=null;knowledgeNodeFilter=null;if (typeof requestWorkspaceRender === 'function') requestWorkspaceRender({ sidebar:true }); else { renderSidebar();renderAll(); } }
-function setTypeFilter(t){ taskFilter='all';typeFilter={level:'type',value:t};knowledgeNodeFilter=null;if (typeof requestWorkspaceRender === 'function') requestWorkspaceRender({ sidebar:true }); else { renderSidebar();renderAll(); } }
-function setSubFilter(t,s){ taskFilter='all';typeFilter={level:'subtype',type:t,value:s};knowledgeNodeFilter=null;if (typeof requestWorkspaceRender === 'function') requestWorkspaceRender({ sidebar:true }); else { renderSidebar();renderAll(); } }
-function setReasonFilter(r){ taskFilter='all';reasonFilter=(reasonFilter===r)?null:r; knowledgeNodeFilter=null; if (typeof requestWorkspaceRender === 'function') requestWorkspaceRender({ sidebar:true }); else { renderSidebar();renderAll(); } }
+function setStatusFilter(s){ taskFilter='all';statusFilter=s;typeFilter=null;knowledgeNodeFilter=null;refreshSidebarAndErrorsList(); }
+function setTypeFilter(t){ taskFilter='all';typeFilter={level:'type',value:t};knowledgeNodeFilter=null;refreshSidebarAndErrorsList(); }
+function setSubFilter(t,s){ taskFilter='all';typeFilter={level:'subtype',type:t,value:s};knowledgeNodeFilter=null;refreshSidebarAndErrorsList(); }
+function setReasonFilter(r){ taskFilter='all';reasonFilter=(reasonFilter===r)?null:r; knowledgeNodeFilter=null; refreshSidebarAndErrorsList(); }
 
 // ---- 错因表单逻辑（大类过滤 + 自由手填）----
 function initReasonCatSelect(){
@@ -109,8 +104,7 @@ function setSub2Filter(t,s,s2){
   }
   taskFilter='all';
   knowledgeNodeFilter=null;
-  if (typeof requestWorkspaceRender === 'function') requestWorkspaceRender({ sidebar:true });
-  else { renderSidebar();renderAll(); }
+  refreshSidebarAndErrorsList();
 }
 function toggleExpSubtype(t,s){
   const k='sub:'+t+'::'+s;
@@ -120,10 +114,9 @@ function toggleExpSubtype(t,s){
 function onSearch(){
   searchKw=document.getElementById('searchInput').value.trim();
   // 高亮匹配项（可选：在菜单项中用 hl 函数高亮）
-  if (typeof requestWorkspaceRender === 'function') requestWorkspaceRender({ sidebar:false });
-  else renderAll();
+  refreshErrorsListOnly();
 }
-function clearFilter(){ taskFilter='all';statusFilter='all';typeFilter=null;reasonFilter=null;knowledgeNodeFilter=null;searchKw='';dateFrom='';dateTo='';document.getElementById('searchInput').value='';document.getElementById('dateFrom').value='';document.getElementById('dateTo').value='';updateSearchClear();if (typeof requestWorkspaceRender === 'function') requestWorkspaceRender({ sidebar:true }); else { renderSidebar();renderAll(); } }
+function clearFilter(){ taskFilter='all';statusFilter='all';typeFilter=null;reasonFilter=null;knowledgeNodeFilter=null;searchKw='';dateFrom='';dateTo='';document.getElementById('searchInput').value='';document.getElementById('dateFrom').value='';document.getElementById('dateTo').value='';updateSearchClear();refreshSidebarAndErrorsList(); }
 function getTypeFilterPathTitles(filter){
   if(!filter) return [];
   if(Array.isArray(filter.pathTitles) && filter.pathTitles.length) return filter.pathTitles.filter(Boolean);

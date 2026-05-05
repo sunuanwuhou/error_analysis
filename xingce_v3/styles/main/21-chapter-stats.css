@@ -4,3 +4,6 @@
 .chapter-stat-bar-wrap{flex:2;height:8px;background:#f0f0f0;border-radius:4px;overflow:hidden;margin:0 10px}
 .chapter-stat-bar{height:100%;background:#52c41a;border-radius:4px}
 .chapter-stat-val{color:#888;width:60px;text-align:right}
+
+/* ===== 展开收起全部按钮 ===== */
+.expand-btns{display:flex;gap:6px}

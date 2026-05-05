@@ -169,6 +169,13 @@ function withVersion(url, explicitVersion) {
   return `${url}${url.includes('?') ? '&' : '?'}v=${encodeURIComponent(version)}`;
 }
 
+function legacySplitBundleScriptPresent(filenameFragment) {
+  return Array.from(document.getElementsByTagName('script')).some((el) => {
+    const src = el.getAttribute('src') || '';
+    return src.includes(filenameFragment);
+  });
+}
+
 async function loadLegacyModules() {
   const manifest = await loadLegacyManifest();
   const version = String(legacyAssetVersion || manifest?.built_at || manifest?.js_bundle?.sha256 || Date.now());
@@ -202,6 +209,10 @@ async function ensureLegacyModalBundleLoaded() {
   const version = String(legacyAssetVersion || manifest?.built_at || manifest?.js_bundle?.sha256 || Date.now());
   const modalBundlePath = toPublicAssetPath(manifest?.js_view_bundles?.modal?.path || '');
   if (!modalBundlePath) return;
+  if (legacySplitBundleScriptPresent('legacy-app.modal.bundle.js')) {
+    flushDeferredActions();
+    return;
+  }
   if (!legacyModalBundlePromise) {
     legacyModalBundlePromise = loadScript(withVersion(`/assets/${modalBundlePath}`, version)).then(() => {
       flushDeferredActions();
@@ -238,6 +249,8 @@ async function loadV53FeatureModules() {
     await loadScript(withVersion(src));
   }
 }
+
+window.__v53EnsureLegacyModalBundleLoaded = ensureLegacyModalBundleLoaded;
 
 (async () => {
   try {

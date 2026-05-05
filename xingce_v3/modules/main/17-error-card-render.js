@@ -360,7 +360,9 @@ function renderCard(e){
     : [e.type, e.subtype, e.subSubtype].filter(Boolean).join(' > ');
   const opts = e.options ? e.options.split(/\n|\|/).map(o => `<p>${hl(o.trim(),searchKw)}</p>`).join('') : '';
   const imgTag = e.imgData ? `<img src="${escapeHtml(e.imgData)}" class="cuoti-img" loading="lazy" decoding="async" onclick="this.classList.toggle('expanded')" title="toggle zoom">` : '';
-  const processImageTag = renderProcessImagePreview(e, 'card');
+  const processImageTag = typeof renderProcessImagePreview === 'function'
+    ? renderProcessImagePreview(e, 'card')
+    : '';
   const diff = e.difficulty || 0;
   const starHtml = `<span class="star-disp" title="change difficulty">${[1,2,3].map(i=>`<span class="s${i<=diff?' on':''}" onclick='setCardDifficulty(${idLit},${i},event)'>★</span>`).join('')}</span>`;
   const cbHtml = batchMode ? `<input type="checkbox" class="batch-cb" id="bcb_${e.id}" ${batchSelected.has(e.id)?'checked':''} onclick='toggleBatchSelect(${idLit},event)'>` : '';
@@ -407,6 +409,7 @@ function renderCard(e){
         const c=cfg[ml]||cfg.not_mastered;
         return `<button class="btn btn-sm" style="color:${c.color};background:${c.bg};border:1px solid ${c.border}" onclick='cyclemastery(${idLit})' title="toggle mastery">● ${c.label}</button>`;
       })()}
+      <button class="btn btn-sm btn-secondary" onclick='copyQuestionAndOptions(${idLit})'>复制题干</button>
       <button class="btn btn-sm btn-secondary" onclick='copyErrorMarkdown(${idLit})'>复制MD</button>
       <button class="btn btn-sm btn-secondary" onclick='openEditModal(${idLit})'>Edit</button>
       <button class="btn btn-sm btn-secondary" style="color:#4e8ef7;border-color:#adc6ff" onclick='startInlineQuiz(${idLit})'>Quiz</button>

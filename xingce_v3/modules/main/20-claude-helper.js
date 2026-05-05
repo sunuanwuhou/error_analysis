@@ -174,7 +174,7 @@ function importFromClaude(){
     refreshWorkspaceAfterKnowledgeDataChange({ sidebar: true, notes: true, rightPanel: true });
   } else {
     if (typeof invalidateKnowledgeTreeRenderState === 'function') invalidateKnowledgeTreeRenderState();
-    renderSidebar();renderAll();
+    refreshSidebarAndErrorsList();
   }
   openClaudeBankModal();
   showToast(`Claude 题库导入完成：新增 ${added} 题，更新 ${updated} 题`, 'success');
@@ -331,9 +331,7 @@ function convertClaudeBankToError(id) {
   } else {
     if (typeof invalidateKnowledgeTreeRenderState === 'function') invalidateKnowledgeTreeRenderState();
     syncNotesWithErrors();
-    renderSidebar();
-    renderAll();
-    renderNotesByType();
+    refreshSidebarErrorsAndNotesPanels();
   }
   renderClaudeBankModal();
   showToast('已转为错题', 'success');

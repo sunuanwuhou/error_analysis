@@ -88,7 +88,13 @@ let legacyWorkspaceBundlePromise = null;
 let legacyWorkspaceBundleLoaded = false;
 
 function hasLoadedScript(src) {
-  return Boolean(document.querySelector(`script[src="${src}"]`));
+  if (document.querySelector(`script[src="${src}"]`)) return true;
+  const file = String(src || '').split('/').pop().split('?')[0];
+  if (!file) return false;
+  return Array.from(document.getElementsByTagName('script')).some((el) => {
+    const elSrc = el.getAttribute('src') || '';
+    return elSrc.includes(file);
+  });
 }
 
 function loadScriptBySrc(src) {
@@ -107,6 +113,11 @@ function ensureLegacyModalBundleLoaded() {
   if (legacyModalBundleLoaded || hasLoadedScript(LEGACY_MODAL_BUNDLE_SRC)) {
     legacyModalBundleLoaded = true;
     return Promise.resolve();
+  }
+  if (typeof window.__v53EnsureLegacyModalBundleLoaded === 'function') {
+    return Promise.resolve(window.__v53EnsureLegacyModalBundleLoaded()).then(() => {
+      legacyModalBundleLoaded = true;
+    });
   }
   if (legacyModalBundlePromise) return legacyModalBundlePromise;
   legacyModalBundlePromise = loadScriptBySrc(LEGACY_MODAL_BUNDLE_SRC)

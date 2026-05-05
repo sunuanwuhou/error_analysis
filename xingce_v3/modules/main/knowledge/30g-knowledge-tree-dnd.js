@@ -30,9 +30,7 @@ function refreshKnowledgeTreeAfterErrorBindingChange(opts) {
   } else if (typeof requestWorkspaceRender === 'function') {
     requestWorkspaceRender({ sidebar: true, notes: true, immediate: true });
   } else {
-    renderSidebar();
-    renderAll();
-    renderNotesByType();
+    refreshSidebarErrorsAndNotesPanels(true);
   }
   if (typeof renderNotesPanelRight === 'function') renderNotesPanelRight();
 }

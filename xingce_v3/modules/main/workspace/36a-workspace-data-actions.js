@@ -74,9 +74,7 @@ function clearCurrentModuleErrors() {
   saveData();
   saveReveal();
   syncNotesWithErrors();
-  renderSidebar();
-  renderAll();
-  renderNotesByType();
+  refreshSidebarErrorsAndNotesPanels();
   showToast(`${matched.length} question(s) deleted from ${scope.label}`, 'success');
 }
 
@@ -93,9 +91,7 @@ function clearAllErrorsData() {
   saveData();
   saveReveal();
   syncNotesWithErrors();
-  renderSidebar();
-  renderAll();
-  renderNotesByType();
+  refreshSidebarErrorsAndNotesPanels();
   showToast('All error questions cleared', 'success');
 }
 

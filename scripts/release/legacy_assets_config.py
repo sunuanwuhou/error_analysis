@@ -32,7 +32,6 @@ CSS_SOURCES = [
     'styles/main/19-chapter-filter.css',
     'styles/main/20-quiz-skip.css',
     'styles/main/21-chapter-stats.css',
-    'styles/main/22-expand-collapse-all.css',
     'styles/main/23-md-toolbar.css',
     'styles/main/24-export-modal.css',
     'styles/main/25-type-rules.css',
@@ -46,9 +45,7 @@ CSS_SOURCES = [
     'styles/main/33-note-split-editor.css',
     'styles/main/34-right-note-title-items.css',
     'styles/main/35-ai-workbench-tabs.css',
-    'styles/main/36-review-finish-actions.css',
     'styles/main/37-layout-refresh-v31.css',
-    'styles/main/38-presentation-polish-v31.css',
     'styles/main/39-print.css',
 ]
 

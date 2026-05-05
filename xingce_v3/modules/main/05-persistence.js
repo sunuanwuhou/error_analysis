@@ -131,9 +131,7 @@ async function ensureFullWorkspaceDataLoaded() {
     await migrateIntegerIds();
     setErrorSyncSnapshot();
     if (typeof syncNotesWithErrors === 'function') syncNotesWithErrors();
-    if (typeof renderSidebar === 'function') renderSidebar();
-    if (typeof renderAll === 'function') renderAll();
-    if (typeof renderNotesByType === 'function') renderNotesByType();
+    refreshSidebarErrorsAndNotesPanels();
     if (typeof renderHomeDashboard === 'function') renderHomeDashboard();
     return true;
   })().finally(() => {
@@ -1708,9 +1706,7 @@ function applyOps(ops) {
       if (typeof requestWorkspaceRender === 'function') {
         requestWorkspaceRender({ sidebar: true, notes: true, immediate: true });
       } else {
-        renderSidebar();
-        renderAll();
-        renderNotesByType();
+        refreshSidebarErrorsAndNotesPanels();
       }
       if (knowledgeChanged && typeof renderNotesPanelRight === 'function') {
         renderNotesPanelRight();

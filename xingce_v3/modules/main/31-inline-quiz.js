@@ -51,6 +51,5 @@ function saveInlineResult(id) {
   recordErrorUpsert(e);
   saveData();
   delete inlineQuizState[targetId];
-  renderSidebar();
-  renderAll();
+  refreshSidebarAndErrorsList();
 }

@@ -174,9 +174,7 @@ function setCurrentKnowledgeNode(nodeId, opts) {
     if (typeof requestWorkspaceRender === 'function') {
       requestWorkspaceRender({ sidebar: true, notes: true, immediate: true });
     } else {
-      renderSidebar();
-      renderAll();
-      renderNotesByType();
+      refreshSidebarErrorsAndNotesPanels(true);
     }
   }
 }
@@ -228,9 +226,7 @@ function clearKnowledgeNodeFilterView() {
   if (typeof requestWorkspaceRender === 'function') {
     requestWorkspaceRender({ sidebar: true, notes: true, immediate: true });
   } else {
-    renderSidebar();
-    renderAll();
-    renderNotesByType();
+    refreshSidebarErrorsAndNotesPanels(true);
   }
   if (typeof renderNotesPanelRight === 'function') renderNotesPanelRight();
 }

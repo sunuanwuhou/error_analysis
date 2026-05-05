@@ -22,30 +22,6 @@ function loadMoreKnowledgeTreeNodes() {
   renderSidebar();
 }
 
-function renderSidebarKnowledgeTree(nodes, depth) {
-  return (nodes || []).map(node => {
-    const displayNode = getKnowledgeDisplayNode(node);
-    if (!displayNode) return '';
-    if (displayNode.id !== node.id) {
-      return renderSidebarKnowledgeTree([displayNode], depth);
-    }
-    const active = selectedKnowledgeNodeId === displayNode.id || knowledgeNodeFilter === displayNode.id;
-    const count = countErrorsForKnowledgeNode(displayNode.id, true);
-    const cls = depth === 0 ? 'nav-type-header' : depth === 1 ? 'nav-subtype' : 'nav-sub2';
-    const extraStyle = depth > 2 ? `padding-left:${60 + ((depth - 2) * 18)}px` : '';
-    const marker = displayNode.isLeaf ? '•' : '▸';
-    let html = `<div class="${cls} ${active ? 'active' : ''}" style="${extraStyle}" onclick="selectKnowledgeNodeFromSidebar('${displayNode.id}')">
-      <span style="display:flex;align-items:center;gap:6px;min-width:0;flex:1">
-        <span class="nav-arrow" style="transform:none;color:${displayNode.isLeaf ? '#d0d0d0' : '#bbb'}">${marker}</span>
-        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(displayNode.title)}</span>
-      </span>
-      <span class="nav-count">${count}</span></div>`;
-    if (!displayNode.isLeaf && displayNode.children && displayNode.children.length) {
-      html += renderSidebarKnowledgeTree(displayNode.children, depth + 1);
-    }
-    return html;
-  }).join('');
-}
 function renderSidebarKnowledgeTreeV2(nodes, depth, renderBudget) {
   if (renderBudget && renderBudget.done) return '';
   return (nodes || []).filter(node => {

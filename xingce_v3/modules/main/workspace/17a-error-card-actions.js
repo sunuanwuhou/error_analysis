@@ -73,8 +73,7 @@ function clearAllData() {
   revealed = new Set();
   saveData();
   saveReveal();
-  renderSidebar();
-  renderAll();
+  refreshSidebarAndErrorsList();
 }
 
 function getErrorCardMarkdown(errorItem) {
@@ -147,6 +146,45 @@ function copyErrorMarkdown(id) {
   handleFailure();
 }
 
+function getQuestionAndOptionsText(errorItem) {
+  const item = errorItem && typeof errorItem === 'object' ? errorItem : {};
+  const question = String(item.question || '').trim();
+  const options = String(item.options || '')
+    .split(/\n|\|/)
+    .map(part => String(part || '').trim())
+    .filter(Boolean)
+    .join('\n');
+  const sections = [
+    '【题目】',
+    question || '(空)',
+  ];
+  if (options) {
+    sections.push('', '【选项】', options);
+  }
+  return sections.join('\n');
+}
+
+function copyQuestionAndOptions(id) {
+  const errorItem = findErrorById(id);
+  if (!errorItem) {
+    showToast('未找到题目', 'warning');
+    return;
+  }
+  const text = getQuestionAndOptionsText(errorItem);
+  const handleSuccess = () => showToast('题干与选项已复制到剪贴板', 'success');
+  const handleFailure = () => {
+    const ok = fallbackCopyText(text);
+    if (ok) handleSuccess();
+    else showToast('复制失败，请稍后重试', 'error');
+  };
+  if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+    navigator.clipboard.writeText(text).then(handleSuccess).catch(handleFailure);
+    return;
+  }
+  handleFailure();
+}
+
 if (typeof window !== 'undefined') {
   window.copyErrorMarkdown = copyErrorMarkdown;
+  window.copyQuestionAndOptions = copyQuestionAndOptions;
 }

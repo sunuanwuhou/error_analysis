@@ -13,10 +13,90 @@ function findQuizErrorById(errorId) {
 }
 
 let quizQuestionStartedAt = 0;
+let quizSessionPaused = false;
+let quizQuestionPausedAccumMs = 0;
+let quizQuestionPauseStartedAt = 0;
 
 function getCurrentQuizElapsedSec() {
   if (!quizQuestionStartedAt) return 0;
-  return Math.max(1, Math.round((Date.now() - quizQuestionStartedAt) / 1000));
+  const activePausedMs = quizSessionPaused && quizQuestionPauseStartedAt
+    ? (Date.now() - quizQuestionPauseStartedAt)
+    : 0;
+  const elapsedMs = Date.now() - quizQuestionStartedAt - quizQuestionPausedAccumMs - activePausedMs;
+  return Math.max(1, Math.round(Math.max(0, elapsedMs) / 1000));
+}
+
+function resetQuizPauseState() {
+  quizSessionPaused = false;
+  quizQuestionPausedAccumMs = 0;
+  quizQuestionPauseStartedAt = 0;
+}
+
+function startQuizQuestionTimer() {
+  quizQuestionStartedAt = Date.now();
+  quizQuestionPausedAccumMs = 0;
+  quizQuestionPauseStartedAt = 0;
+}
+
+function applyQuizPauseUi() {
+  const paused = !!quizSessionPaused;
+  const pauseBtn = document.getElementById('quizPauseBtn');
+  if (pauseBtn) {
+    pauseBtn.textContent = paused ? '继续' : '暂停';
+    pauseBtn.classList.toggle('active', paused);
+    pauseBtn.disabled = false;
+  }
+  const overlay = document.getElementById('quizPauseOverlay');
+  if (overlay) {
+    overlay.style.display = paused ? 'flex' : 'none';
+    overlay.setAttribute('aria-hidden', paused ? 'false' : 'true');
+  }
+  document.querySelectorAll('.quiz-opt-btn').forEach(btn => {
+    if (paused) {
+      if (!btn.disabled) btn.setAttribute('data-pause-locked', '1');
+      btn.disabled = true;
+    } else if (btn.getAttribute('data-pause-locked') === '1') {
+      btn.disabled = false;
+      btn.removeAttribute('data-pause-locked');
+    }
+  });
+  const skipBtn = document.getElementById('quizSkipBtn');
+  if (skipBtn) {
+    if (paused) {
+      if (!skipBtn.disabled) skipBtn.setAttribute('data-pause-locked', '1');
+      skipBtn.disabled = true;
+    } else if (skipBtn.getAttribute('data-pause-locked') === '1') {
+      skipBtn.disabled = false;
+      skipBtn.removeAttribute('data-pause-locked');
+    }
+  }
+  const nextBtn = document.getElementById('quizNextBtn');
+  if (nextBtn && nextBtn.style.display !== 'none') {
+    if (paused) {
+      if (!nextBtn.disabled) nextBtn.setAttribute('data-pause-locked', '1');
+      nextBtn.disabled = true;
+    } else if (nextBtn.getAttribute('data-pause-locked') === '1') {
+      nextBtn.disabled = false;
+      nextBtn.removeAttribute('data-pause-locked');
+    }
+  }
+}
+
+function toggleQuizPause() {
+  if (!quizQueue.length) return;
+  const titleText = String((document.getElementById('quizTitleText') || {}).textContent || '');
+  if (titleText.indexOf('Review') >= 0 || titleText.indexOf('回顾') >= 0) return;
+  if (!quizSessionPaused) {
+    quizSessionPaused = true;
+    quizQuestionPauseStartedAt = Date.now();
+  } else {
+    if (quizQuestionPauseStartedAt) {
+      quizQuestionPausedAccumMs += (Date.now() - quizQuestionPauseStartedAt);
+    }
+    quizSessionPaused = false;
+    quizQuestionPauseStartedAt = 0;
+  }
+  applyQuizPauseUi();
 }
 
 function getQuizDurationHint(errorLike) {
@@ -74,7 +154,7 @@ async function startPracticeQueue(mode) {
     return;
   }
   quizSessionMode = normalizedMode;
-  quizIdx = 0; quizAnswers = []; quizSkipped = new Set();
+  quizIdx = 0; quizAnswers = []; quizSkipped = new Set(); resetQuizPauseState();
   document.getElementById('quizTitleText').textContent = title;
   openModal('quizModal');
   renderQuizQuestion();
@@ -142,7 +222,7 @@ function startFullPracticeFiltered() {
   });
   if(!quizQueue.length){showToast('所选章节暂无错题', 'warning');return;}
   quizSessionMode = 'full';
-  quizIdx=0; quizAnswers=[]; quizSkipped=new Set();
+  quizIdx=0; quizAnswers=[]; quizSkipped=new Set(); resetQuizPauseState();
   closeModal('chapterFilterModal');
   document.getElementById('quizTitleText').textContent='📚 全量练习';
   openModal('quizModal');
@@ -177,6 +257,7 @@ function resetQuizSession() {
   quizIdx = 0;
   quizAnswers = [];
   quizSkipped = new Set();
+  resetQuizPauseState();
   const titleEl = document.getElementById('quizTitleText');
   const progressEl = document.getElementById('quizProgress');
   const fillEl = document.getElementById('quizProgFill');
@@ -211,6 +292,10 @@ function closeQuizModal(force) {
 }
 
 function nextQuizQuestion() {
+  if (quizSessionPaused) {
+    showToast('当前已暂停，请先继续', 'warning');
+    return;
+  }
   quizIdx++;
   if (quizIdx >= quizQueue.length) {
     renderQuizReview();
@@ -333,8 +418,7 @@ async function saveQuizResults() {
   saveTodayDone();
   saveData();
   closeQuizModal(true);
-  renderSidebar();
-  renderAll();
+  refreshSidebarAndErrorsList();
   showToast('记录已保存', 'success');
 }
 
@@ -344,7 +428,7 @@ function renderQuizQuestionFenbiMode() {
   document.getElementById('quizProgress').textContent = `${quizIdx + 1} / ${total}`;
   document.getElementById('quizProgFill').style.width = `${(quizIdx / total) * 100}%`;
   const e = quizQueue[quizIdx];
-  quizQuestionStartedAt = Date.now();
+  startQuizQuestionTimer();
   const idLit = idArg(e.id);
   const questionText = String(e.question || '').trim();
   const isImageHeavyQuestion = !!e.imgData && questionText.length < 20;
@@ -398,6 +482,7 @@ function renderQuizQuestionFenbiMode() {
       <div class="quiz-bottom-row quiz-action-dock">
         <div class="quiz-action-secondary">
           <button class="quiz-skip-btn" type="button" id="quizCanvasToggleBtn" onclick='toggleQuizProcessCanvas(${idLit}, this)'>画布</button>
+          <button class="quiz-skip-btn" type="button" id="quizPauseBtn" onclick="toggleQuizPause()">暂停</button>
           <button class="quiz-skip-btn" id="quizSkipBtn" onclick="skipQuizQuestion()">跳过</button>
         </div>
         <button class="quiz-next-btn" id="quizNextBtn" onclick="nextQuizQuestion()" style="display:none;flex:1">
@@ -418,12 +503,20 @@ function renderQuizQuestionFenbiMode() {
         </div>
         <canvas id="quizScratchCanvas" class="quiz-scratch-canvas"></canvas>
       </div>
+      <div class="quiz-pause-overlay" id="quizPauseOverlay" style="display:none" onclick="toggleQuizPause()">
+        <div class="quiz-pause-overlay-card">已暂停，点击“继续”或遮罩恢复作答</div>
+      </div>
     </div>`;
   bindQuizScratchCanvas(e.id);
   closeQuizProcessCanvas();
+  applyQuizPauseUi();
 };
 
 function selectQuizAnswerFenbiMode(letter) {
+  if (quizSessionPaused) {
+    showToast('当前已暂停，请先继续', 'warning');
+    return;
+  }
   document.querySelectorAll('.quiz-opt-btn').forEach((b) => { b.disabled = true; });
   const e = quizQueue[quizIdx];
   const correct = e.answer ? e.answer.trim().toUpperCase() : '';
@@ -452,6 +545,7 @@ function selectQuizAnswerFenbiMode(letter) {
 };
 
 function renderQuizReviewFenbiMode() {
+  resetQuizPauseState();
   const realAnswers = quizAnswers.filter((a) => !a.skipped);
   const total = realAnswers.length;
   const correctN = realAnswers.filter((a) => a.correct).length;
@@ -934,6 +1028,7 @@ startPracticeQueue = async function startPracticeQueueWorkflow(mode) {
   quizIdx = 0;
   quizAnswers = [];
   quizSkipped = new Set();
+  resetQuizPauseState();
   document.getElementById('quizTitleText').textContent = title;
   openModal('quizModal');
   renderQuizQuestion();
@@ -951,6 +1046,10 @@ renderQuizQuestion = renderQuizQuestionFenbiMode;
 selectQuizAnswer = selectQuizAnswerFenbiMode;
 renderQuizReview = renderQuizReviewFenbiMode;
 skipQuizQuestion = function skipQuizQuestionWorkflow() {
+  if (quizSessionPaused) {
+    showToast('当前已暂停，请先继续', 'warning');
+    return;
+  }
   const e = quizQueue[quizIdx];
   quizAnswers.push({ id: e.id, userAnswer: 'SKIPPED', correct: false, skipped: true, durationSec: getCurrentQuizElapsedSec() });
   quizSkipped.add(quizIdx);
@@ -958,3 +1057,4 @@ skipQuizQuestion = function skipQuizQuestionWorkflow() {
   if (quizIdx >= quizQueue.length) renderQuizReview();
   else renderQuizQuestion();
 };
+window.toggleQuizPause = toggleQuizPause;

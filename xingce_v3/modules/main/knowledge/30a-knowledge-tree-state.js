@@ -1,23 +1,8 @@
 // ============================================================
 // Knowledge tree state
 // ============================================================
-var KEY_DIR_TREE = typeof KEY_DIR_TREE === 'string' ? KEY_DIR_TREE : 'xc_dir_tree';
-var FIXED_TYPES = Array.isArray(FIXED_TYPES) && FIXED_TYPES.length
-  ? FIXED_TYPES
-  : ['言语理解与表达', '判断推理', '数量关系', '资料分析', '常识判断', '其他'];
-var FIXED_KNOWLEDGE_ROOTS = Array.isArray(FIXED_KNOWLEDGE_ROOTS) && FIXED_KNOWLEDGE_ROOTS.length
-  ? FIXED_KNOWLEDGE_ROOTS
-  : ['言语理解与表达', '判断推理', '数量关系', '资料分析', '常识判断'];
-var DEFAULT_DIR_TREE = (DEFAULT_DIR_TREE && typeof DEFAULT_DIR_TREE === 'object')
-  ? DEFAULT_DIR_TREE
-  : {
-      言语理解与表达: { 未分类: [] },
-      判断推理: { 未分类: [] },
-      数量关系: { 未分类: [] },
-      资料分析: { 未分类: [] },
-      常识判断: { 未分类: [] },
-      其他: { 未分类: [] },
-    };
+// KEY_DIR_TREE / FIXED_TYPES / FIXED_KNOWLEDGE_ROOTS / DEFAULT_DIR_TREE: shared defaults live in `01-state.js`.
+// Split bundles load home before workspace (`v53-bootstrap.js`), so those globals exist before this file runs.
 
 const BAD_KNOWLEDGE_TITLE_RE = /^(?:\?{2,}|未分类\?|未细分\?|知识点\?)$/;
 

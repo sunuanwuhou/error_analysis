@@ -11,7 +11,7 @@ function toggleBatchMode() {
     btn.style.borderColor = batchMode ? '#4e8ef7' : '';
   }
   updateBatchBar();
-  renderAll();
+  refreshErrorsListOnly();
 }
 function toggleBatchSelect(id, event) {
   event && event.stopPropagation();
@@ -47,8 +47,6 @@ function executeBatch(action) {
   saveData();
   syncNotesWithErrors();
   saveKnowledgeState();
-  renderSidebar();
-  renderAll();
-  renderNotesByType();
+  refreshSidebarErrorsAndNotesPanels();
   updateBatchBar();
 }
