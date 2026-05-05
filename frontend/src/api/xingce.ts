@@ -76,6 +76,22 @@ export interface PracticeAttemptRow {
   [key: string]: unknown
 }
 
+export interface TodayTrainingSession {
+  sessionId: string
+  date: string
+  status: 'in_progress' | 'paused' | 'done'
+  totalCount: number
+  queueSize?: number
+  completedCount: number
+  remainingCount: number
+  currentIndex: number
+  nextItemId?: string
+  nextQuestion?: Record<string, unknown> | null
+  queue: Record<string, unknown>[]
+  createdAt?: string
+  updatedAt?: string
+}
+
 export interface LocalBackupItem {
   id: string
   kind?: string
@@ -252,6 +268,28 @@ export const xingceApi = {
     retrainQueue: unknown[]
   }> {
     return request(`/api/practice/daily?limit=${limit}`)
+  },
+
+  startTodaySession(limit = 30): Promise<{ ok: boolean; session: TodayTrainingSession }> {
+    return request(`/api/practice/today/start?limit=${limit}`, { method: 'POST' })
+  },
+
+  getTodaySession(): Promise<{ ok: boolean; exists: boolean; session: TodayTrainingSession | null }> {
+    return request('/api/practice/today/current')
+  },
+
+  pauseTodaySession(sessionId: string): Promise<{ ok: boolean; session?: TodayTrainingSession }> {
+    return request('/api/practice/today/pause', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId }),
+    })
+  },
+
+  answerTodaySession(sessionId: string, itemId: string, isCorrect: boolean): Promise<{ ok: boolean; session?: TodayTrainingSession }> {
+    return request('/api/practice/today/answer', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId, itemId, isCorrect }),
+    })
   },
 
   /** 学习统计 */

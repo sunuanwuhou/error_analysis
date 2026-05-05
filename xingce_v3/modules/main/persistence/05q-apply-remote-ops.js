@@ -1,0 +1,298 @@
+// ============================================================
+// Apply remote sync ops
+// ============================================================
+function buildKnowledgeTreeFromSyncRecords(records) {
+  const rows = Array.isArray(records) ? records : [];
+  const map = new Map();
+  const normalizeRootTitle = value => String(value || '')
+    .replace(/\uFEFF/g, '')
+    .replace(/\u200B/g, '')
+    .replace(/\u00A0/g, '')
+    .replace(/[()（）【】\[\]·•,，.:：;；!?！？]/g, '')
+    .replace(/\s+/g, '')
+    .trim();
+  const noisyRootAlias = new Map([
+    ['片段阅读', '言语理解与表达'],
+    ['数字推理', '数量关系'],
+    ['数学运算', '数量关系'],
+    ['和差倍比', '数量关系'],
+    ['核心思维-纯笔记', '数量关系'],
+    ['比例法', '数量关系'],
+    ['混合', '数量关系'],
+    ['鸡兔', '数量关系'],
+    ['年龄问题', '数量关系'],
+    ['容斥', '数量关系'],
+    ['数列', '数量关系'],
+    ['数推', '数量关系'],
+    ['植树问题', '数量关系'],
+    ['最不利', '数量关系'],
+    ['逻辑判断', '判断推理'],
+    ['物理', '常识判断']
+  ]);
+  const resolveNoisyRootAlias = title => noisyRootAlias.get(normalizeRootTitle(title)) || '';
+  rows.forEach(raw => {
+    if (!raw || !raw.id) return;
+    map.set(String(raw.id), {
+      id: String(raw.id),
+      title: String(raw.title || ''),
+      level: 1,
+      contentMd: String(raw.contentMd || ''),
+      updatedAt: String(raw.updatedAt || ''),
+      isLeaf: true,
+      children: [],
+      sort: Number(raw.sort || 0),
+      parentId: String(raw.parentId || '')
+    });
+  });
+  const roots = [];
+  const detachedRoots = [];
+  map.forEach(node => {
+    if (node.parentId && map.has(node.parentId)) {
+      map.get(node.parentId).children.push(node);
+      return;
+    }
+    roots.push(node);
+    detachedRoots.push(node);
+  });
+  const rootByNormalizedTitle = new Map();
+  roots.forEach(node => {
+    const key = normalizeRootTitle(node && node.title);
+    if (!key || rootByNormalizedTitle.has(key)) return;
+    rootByNormalizedTitle.set(key, node);
+  });
+  detachedRoots.forEach(node => {
+    if (!node || !node.title) return;
+    const targetRootTitle = resolveNoisyRootAlias(node.title);
+    if (!targetRootTitle) return;
+    const targetRoot = rootByNormalizedTitle.get(normalizeRootTitle(targetRootTitle));
+    if (!targetRoot || targetRoot.id === node.id) return;
+    const rootIdx = roots.findIndex(item => item && item.id === node.id);
+    if (rootIdx < 0) return;
+    roots.splice(rootIdx, 1);
+    targetRoot.children = targetRoot.children || [];
+    const sameTitleNode = targetRoot.children.find(item => item && item.title === node.title);
+    if (sameTitleNode) {
+      sameTitleNode.children = (sameTitleNode.children || []).concat(node.children || []);
+      if (!String(sameTitleNode.contentMd || '').trim() && String(node.contentMd || '').trim()) {
+        sameTitleNode.contentMd = node.contentMd || '';
+        sameTitleNode.updatedAt = node.updatedAt || sameTitleNode.updatedAt || '';
+      }
+      return;
+    }
+    targetRoot.children.push(node);
+  });
+  function finalize(nodes, level) {
+    return (nodes || [])
+      .sort((a, b) => (a.sort - b.sort) || String(a.title || '').localeCompare(String(b.title || ''), 'zh-Hans-CN'))
+      .map(node => {
+        const children = finalize(node.children || [], level + 1);
+        return {
+          id: node.id,
+          title: node.title,
+          level,
+          contentMd: node.contentMd || '',
+          updatedAt: node.updatedAt || '',
+          isLeaf: children.length === 0,
+          children
+        };
+      });
+  }
+  return { version: 1, roots: finalize(roots, 1) };
+}
+
+function applySettingSyncValue(key, value) {
+  switch (String(key || '')) {
+    case 'revealed':
+      revealed = new Set(Array.isArray(value) ? value.map(String) : []);
+      return true;
+    case 'exp_types':
+      expTypes = new Set(Array.isArray(value) ? value.map(String) : []);
+      return true;
+    case 'expansion_state': {
+      const data = value && typeof value === 'object' ? value : {};
+      expMain = new Set(Array.isArray(data.main) ? data.main.map(String) : []);
+      expMainSub = new Set(Array.isArray(data.sub) ? data.sub.map(String) : []);
+      expMainSub2 = new Set(Array.isArray(data.sub2) ? data.sub2.map(String) : []);
+      return true;
+    }
+    case 'global_note':
+      globalNote = typeof value === 'string' ? value : '';
+      return true;
+    case 'type_rules':
+      _typeRules = value || null;
+      return true;
+    case 'dir_tree':
+      _dirTree = value || null;
+      return true;
+    case 'knowledge_expanded':
+      knowledgeExpanded = new Set(Array.isArray(value) ? value.map(String) : []);
+      knowledgeExpandedLoaded = true;
+      return true;
+    case 'today_progress': {
+      const data = value && typeof value === 'object' ? value : {};
+      todayDate = String(data.date || today());
+      todayDone = Number(data.done || 0);
+      return true;
+    }
+    case 'history':
+      _history = Array.isArray(value) ? value : [];
+      return true;
+  }
+  return false;
+}
+
+function applyRemoteError(remote) {
+  const idx = errors.findIndex(e => String(e.id) === String(remote.id));
+  if (idx === -1) {
+    errors.push(remote);
+    return true;
+  }
+  if ((remote.updatedAt || '') > (errors[idx].updatedAt || '')) {
+    errors[idx] = { ...errors[idx], ...remote };
+    return true;
+  }
+  return false;
+}
+
+function applyOps(ops) {
+  let errorChanged = false;
+  let notesChanged = false;
+  let noteImagesChanged = false;
+  let knowledgeChanged = false;
+  let settingsChanged = false;
+  let knowledgeRecordMap = null;
+  const isCorruptedKnowledgeTitle = (title) => {
+    const text = String(title || '').trim();
+    if (!text) return true;
+    return /^\?+$/.test(text);
+  };
+  for (const op of ops) {
+    if (op.op_type === 'error_upsert') {
+      const remote = parseSyncPayload(op.payload);
+      if (remote && remote.id) {
+        remote.id = String(remote.id);
+        errorChanged = applyRemoteError(remote) || errorChanged;
+      }
+      continue;
+    }
+    if (op.op_type === 'error_delete') {
+      const before = errors.length;
+      errors = errors.filter(e => String(e.id) !== String(op.entity_id));
+      revealed.delete(String(op.entity_id));
+      errorChanged = errorChanged || errors.length !== before;
+      settingsChanged = true;
+      continue;
+    }
+    if (op.op_type === 'note_type_upsert') {
+      const remote = parseSyncPayload(op.payload);
+      const key = String(remote.key || op.entity_id || '');
+      if (key) {
+        notesByType[key] = remote.value || {};
+        notesChanged = true;
+      }
+      continue;
+    }
+    if (op.op_type === 'note_type_delete') {
+      if (notesByType[String(op.entity_id)] !== undefined) {
+        delete notesByType[String(op.entity_id)];
+        notesChanged = true;
+      }
+      continue;
+    }
+    if (op.op_type === 'note_image_upsert') {
+      const remote = parseSyncPayload(op.payload);
+      const key = String(remote.id || op.entity_id || '');
+      noteImages[key] = remote.data || '';
+      noteImagesChanged = true;
+      continue;
+    }
+    if (op.op_type === 'note_image_delete') {
+      if (noteImages[String(op.entity_id)] !== undefined) {
+        delete noteImages[String(op.entity_id)];
+        noteImagesChanged = true;
+      }
+      continue;
+    }
+    if (op.op_type === 'knowledge_node_upsert') {
+      if (!knowledgeRecordMap) {
+        knowledgeRecordMap = new Map(flattenKnowledgeNodesForSync(getKnowledgeRootNodes(), '', []).map(item => [String(item.id), { ...item }]));
+      }
+      const remote = parseSyncPayload(op.payload);
+      const nodeId = String(remote.id || op.entity_id || '');
+      if (nodeId) {
+        const remoteTitle = String(remote.title || '');
+        if (isCorruptedKnowledgeTitle(remoteTitle)) continue;
+        knowledgeRecordMap.set(nodeId, {
+          id: nodeId,
+          parentId: String(remote.parentId || ''),
+          title: remoteTitle,
+          contentMd: String(remote.contentMd || ''),
+          updatedAt: String(remote.updatedAt || op.created_at || ''),
+          sort: Number(remote.sort || 0)
+        });
+        knowledgeChanged = true;
+      }
+      continue;
+    }
+    if (op.op_type === 'knowledge_node_delete') {
+      if (!knowledgeRecordMap) {
+        knowledgeRecordMap = new Map(flattenKnowledgeNodesForSync(getKnowledgeRootNodes(), '', []).map(item => [String(item.id), { ...item }]));
+      }
+      if (knowledgeRecordMap.delete(String(op.entity_id))) knowledgeChanged = true;
+      continue;
+    }
+    if (op.op_type === 'setting_upsert') {
+      const remote = parseSyncPayload(op.payload);
+      const key = String(remote.key || op.entity_id || '');
+      settingsChanged = applySettingSyncValue(key, remote.value) || settingsChanged;
+      continue;
+    }
+    if (op.op_type === 'setting_delete') {
+      settingsChanged = applySettingSyncValue(String(op.entity_id || ''), null) || settingsChanged;
+    }
+  }
+  if (knowledgeChanged && knowledgeRecordMap) {
+    knowledgeTree = buildKnowledgeTreeFromSyncRecords([...knowledgeRecordMap.values()]);
+    syncKnowledgeNotesFromTree();
+    if (typeof knowledgeNoteRenderCache !== 'undefined' && knowledgeNoteRenderCache && typeof knowledgeNoteRenderCache.clear === 'function') {
+      knowledgeNoteRenderCache.clear();
+    }
+    if (typeof resetKnowledgeTreeRenderWindow === 'function') {
+      resetKnowledgeTreeRenderWindow();
+    }
+    const allNodes = collectKnowledgeNodes();
+    if ((!selectedKnowledgeNodeId || !getKnowledgeNodeById(selectedKnowledgeNodeId)) && allNodes.length > 0) {
+      selectedKnowledgeNodeId = allNodes[0].id;
+    }
+    if (knowledgeNodeFilter && !getKnowledgeNodeById(knowledgeNodeFilter)) {
+      knowledgeNodeFilter = '';
+    }
+  }
+  if (errorChanged || notesChanged || noteImagesChanged || knowledgeChanged || settingsChanged) {
+    withIncrementalSyncSuppressed(() => {
+      if (errorChanged) saveData();
+      if (settingsChanged) {
+        saveReveal();
+        saveExpTypes();
+        saveExpMain();
+        saveKnowledgeExpanded();
+        saveTodayDone();
+        queuePersist(KEY_GLOBAL_NOTE, globalNote || '');
+        queuePersist(KEY_TYPE_RULES, _typeRules);
+        queuePersist(KEY_DIR_TREE, _dirTree);
+        queuePersist(KEY_HISTORY, _history || [], 220);
+      }
+      if (notesChanged || noteImagesChanged) saveNotesByType();
+      if (knowledgeChanged) saveKnowledgeState();
+      syncNotesWithErrors();
+      if (typeof requestWorkspaceRender === 'function') {
+        requestWorkspaceRender({ sidebar: true, notes: true, immediate: true });
+      } else {
+        refreshSidebarErrorsAndNotesPanels();
+      }
+      if (knowledgeChanged && typeof renderNotesPanelRight === 'function') {
+        renderNotesPanelRight();
+      }
+    });
+  }
+}

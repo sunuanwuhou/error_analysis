@@ -177,3 +177,13 @@ class PracticeAttemptItemPayload(BaseModel):
 
 class PracticeAttemptsBatchPayload(BaseModel):
     items: list[PracticeAttemptItemPayload] = Field(default_factory=list)
+
+
+class TodayTrainingPausePayload(BaseModel):
+    sessionId: str = Field(min_length=8, max_length=80)
+
+
+class TodayTrainingAnswerPayload(BaseModel):
+    sessionId: str = Field(min_length=8, max_length=80)
+    itemId: str = Field(min_length=8, max_length=80)
+    isCorrect: bool

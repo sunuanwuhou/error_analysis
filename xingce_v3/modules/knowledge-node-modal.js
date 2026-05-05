@@ -1,72 +1,6 @@
 (function () {
   var knowledgeNodeDropHint = { nodeId: null, mode: "" };
 
-  function syncErrorKnowledgeBindingToNode(errorItem, targetNode) {
-    if (!errorItem || !targetNode || !targetNode.id) return false;
-    var stableTitles = collapseKnowledgePathTitles(getKnowledgePathTitles(targetNode.id));
-    var stablePath = stableTitles.join(" > ");
-    errorItem.noteNodeId = targetNode.id;
-    errorItem.knowledgePathTitles = stableTitles.slice();
-    errorItem.knowledgePath = stablePath;
-    errorItem.knowledgeNodePath = stablePath;
-    errorItem.notePath = stablePath;
-    errorItem.type = stableTitles[0] || "";
-    errorItem.subtype = stableTitles[1] || "";
-    errorItem.subSubtype = stableTitles[stableTitles.length - 1] || "";
-    errorItem.updatedAt = new Date().toISOString();
-    return true;
-  }
-
-  function syncMovedKnowledgeNodeErrors(nodeIds) {
-    var idSet = new Set((nodeIds || []).map(function (id) { return String(id || ""); }).filter(Boolean));
-    if (!idSet.size || !Array.isArray(errors)) return 0;
-    var changed = 0;
-    errors.forEach(function (errorItem) {
-      var nodeId = String((errorItem && errorItem.noteNodeId) || "");
-      if (!nodeId || !idSet.has(nodeId)) return;
-      var node = getKnowledgeNodeById(nodeId);
-      if (!node) return;
-      if (syncErrorKnowledgeBindingToNode(errorItem, node)) changed += 1;
-    });
-    return changed;
-  }
-
-  function rerenderKnowledgeShell() {
-    renderSidebar();
-    renderAll();
-    renderNotesByType();
-    renderNotesPanelRight();
-  }
-
-  function getKnowledgePathOptions(leafOnly, excludeNodeId) {
-    var options = [];
-    function walk(nodes, trail) {
-      (nodes || []).forEach(function (node) {
-        var currentTrail = collapseKnowledgePathTitles(trail.concat(node.title));
-        var pathLabel = currentTrail.join(" > ");
-        if ((!leafOnly || node.isLeaf) && node.id !== excludeNodeId) {
-          options.push({ id: node.id, label: pathLabel, node: node });
-        }
-        if (node.children && node.children.length) {
-          walk(node.children, currentTrail);
-        }
-      });
-    }
-    walk(getKnowledgeRootNodes(), []);
-    return options;
-  }
-
-  function getKnowledgeNodeModalTargetOptions(nodeId) {
-    return getKnowledgePathOptions(false, nodeId).filter(function (item) {
-      return !isKnowledgeDescendant(nodeId, item.id);
-    });
-  }
-
-  function chooseKnowledgeNodeByPrompt() {
-    showToast("编号选择已退到兼容层，当前统一使用弹层搜索和拖拽。", "info");
-    return null;
-  }
-
   function addKnowledgeLeafUnderSelected() {
     ensureKnowledgeState();
     var current = getKnowledgeNodeById(selectedKnowledgeNodeId);
@@ -155,7 +89,7 @@
     if (!list || !searchInput || knowledgeNodeModalState.mode !== "move") return;
 
     var keyword = searchInput.value.trim().toLowerCase();
-    var filtered = getKnowledgeNodeModalTargetOptions(knowledgeNodeModalState.nodeId).filter(function (item) {
+    var filtered = knmGetKnowledgeNodeModalTargetOptions(knowledgeNodeModalState.nodeId).filter(function (item) {
       if (!keyword) return true;
       return item.label.toLowerCase().includes(keyword) || item.node.title.toLowerCase().includes(keyword);
     });
@@ -219,7 +153,7 @@
       knowledgeExpanded.delete(movingNode.id);
       removeKnowledgeNoteEntry(movingNode.id);
       expandKnowledgePath(duplicateTarget.id);
-      syncMovedKnowledgeNodeErrors(descendantIds);
+      knmSyncMovedKnowledgeNodeErrors(descendantIds);
       saveData();
       saveKnowledgeState();
 
@@ -234,7 +168,7 @@
     oldParent.isLeaf = !(Array.isArray(oldParent.children) && oldParent.children.length);
     target.isLeaf = false;
     expandKnowledgePath(target.id);
-    syncMovedKnowledgeNodeErrors(movedNodeIds);
+    knmSyncMovedKnowledgeNodeErrors(movedNodeIds);
     saveData();
     saveKnowledgeState();
 
@@ -316,7 +250,7 @@
   function moveKnowledgeNode(nodeId) {
     var node = getKnowledgeNodeById(nodeId);
     if (!node) return;
-    if (!getKnowledgeNodeModalTargetOptions(nodeId).length) {
+    if (!knmGetKnowledgeNodeModalTargetOptions(nodeId).length) {
       showToast("暂无可移动到的目标节点", "warning");
       return;
     }
@@ -353,7 +287,7 @@
     if (selectedKnowledgeNodeId === node.id) selectedKnowledgeNodeId = parent.id;
     saveData();
     saveKnowledgeState();
-    rerenderKnowledgeShell();
+    knmRerenderKnowledgeShell();
     showToast("已删除知识点：" + node.title, "success");
   }
 
@@ -363,14 +297,14 @@
     if (!errorItem || !targetNode) return false;
 
     var previousNodeId = errorItem.noteNodeId || null;
-    syncErrorKnowledgeBindingToNode(errorItem, targetNode);
+    knmSyncErrorKnowledgeBindingToNode(errorItem, targetNode);
     saveData();
     saveKnowledgeState();
 
     if (opts && opts.focusNode) {
       setCurrentKnowledgeNode(targetNode.id, { switchTab: false });
     } else {
-      rerenderKnowledgeShell();
+      knmRerenderKnowledgeShell();
     }
 
     if (!opts || !opts.silent) {
@@ -475,7 +409,7 @@
     movedNode.updatedAt = new Date().toISOString();
 
     if (pathChanged) {
-      syncMovedKnowledgeNodeErrors(movedNodeIds);
+      knmSyncMovedKnowledgeNodeErrors(movedNodeIds);
       saveData();
     }
     saveKnowledgeState();
@@ -572,7 +506,7 @@
     var list = document.getElementById("knowledgeMoveList");
     if (!list) return;
     var search = (document.getElementById("knowledgeMoveSearch") ? document.getElementById("knowledgeMoveSearch").value : "").trim().toLowerCase();
-    var options = getKnowledgePathOptions(false, null).filter(function (item) {
+    var options = knmGetKnowledgePathOptions(false, null).filter(function (item) {
       if (!search) return true;
       return item.label.toLowerCase().includes(search) || item.node.title.toLowerCase().includes(search);
     });
@@ -619,9 +553,9 @@
   }
 
   window.openKnowledgeNodeModal = openKnowledgeNodeModal;
-  window.getKnowledgePathOptions = getKnowledgePathOptions;
-  window.getKnowledgeNodeModalTargetOptions = getKnowledgeNodeModalTargetOptions;
-  window.chooseKnowledgeNodeByPrompt = chooseKnowledgeNodeByPrompt;
+  window.getKnowledgePathOptions = knmGetKnowledgePathOptions;
+  window.getKnowledgeNodeModalTargetOptions = knmGetKnowledgeNodeModalTargetOptions;
+  window.chooseKnowledgeNodeByPrompt = knmChooseKnowledgeNodeByPrompt;
   window.addKnowledgeLeafUnderSelected = addKnowledgeLeafUnderSelected;
   window.closeKnowledgeNodeModal = closeKnowledgeNodeModal;
   window.handleKnowledgeNodeTitleKeydown = handleKnowledgeNodeTitleKeydown;

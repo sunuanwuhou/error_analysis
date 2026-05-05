@@ -98,7 +98,9 @@ function getErrorRenderStateKey(list){
     statusFilter: String(statusFilter || ''),
     taskFilter: String(taskFilter || ''),
     reasonFilter: String(reasonFilter || ''),
-    typeFilter: typeFilter || null
+    typeFilter: typeFilter || null,
+    errorSortBy: String(errorSortBy || ''),
+    errorSortOrder: String(errorSortOrder || '')
   });
 }
 
@@ -153,8 +155,20 @@ function renderTaskFilterBar(){
     </button>
   `).join('');
 }
+function syncErrorSortUi(){
+  const sortBySelect = document.getElementById('errorSortBy');
+  const sortOrderBtn = document.getElementById('errorSortOrderBtn');
+  const normalizedBy = String(errorSortBy || 'created_at') === 'wrong_count' ? 'wrong_count' : 'created_at';
+  const normalizedOrder = String(errorSortOrder || 'desc') === 'asc' ? 'asc' : 'desc';
+  if(sortBySelect && sortBySelect.value !== normalizedBy) sortBySelect.value = normalizedBy;
+  if(sortOrderBtn){
+    sortOrderBtn.textContent = normalizedOrder === 'asc' ? '升序' : '降序';
+    sortOrderBtn.setAttribute('data-order', normalizedOrder);
+  }
+}
 function renderStats(list){
   renderTaskFilterBar();
+  syncErrorSortUi();
   const f=list.filter(e=>normalizeErrorStatusValue(e.status)==='focus').length;
   const r=list.filter(e=>normalizeErrorStatusValue(e.status)==='review').length;
   const m=list.filter(e=>normalizeErrorStatusValue(e.status)==='mastered').length;

@@ -461,6 +461,8 @@ function getStartupSummaryCache() {
 // 日期筛选
 let dateFrom = '';
 let dateTo   = '';
+let errorSortBy = 'created_at';
+let errorSortOrder = 'desc';
 
 // 内联做题状态：id → {answered:bool, userAnswer:str, correct:bool}
 const inlineQuizState = {};

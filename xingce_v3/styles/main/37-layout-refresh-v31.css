@@ -136,6 +136,23 @@ body{
   color:#475569;
   font-size:13px;
 }
+.knowledge-workspace-sort-tools{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.knowledge-workspace-sort-label{
+  font-size:12px;
+  color:#64748b;
+}
+.knowledge-workspace-sort-select{
+  border:1px solid #d9dee5;
+  background:#fff;
+  color:#475569;
+  border-radius:6px;
+  font-size:12px;
+  padding:4px 8px;
+}
 .notes-content{
   background:transparent;
   overflow:auto;

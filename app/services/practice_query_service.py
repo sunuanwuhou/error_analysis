@@ -13,6 +13,7 @@ from app.database import get_conn
 from app.security import utcnow
 from app.services.practice_log_service import read_recent_practice_logs
 from app.services.practice_stats_service import build_flow_workbench, build_practice_insights
+from app.services.today_training_service import build_today_training_queue
 
 _CACHE_TTL_SECONDS = 45.0
 _PRACTICE_CACHE_LOCK = threading.Lock()
@@ -333,7 +334,7 @@ def _collect_practiced_today_keys(
         error_ids=error_ids,
         question_ids=question_ids,
         limit=max(len(errors) * 4, 200),
-        columns=("error_id", "question_id", "created_at", "updated_at"),
+        columns=("id", "error_id", "question_id", "created_at", "updated_at"),
     )
     for row in attempt_rows:
         last_time = str(row["updated_at"] or row["created_at"] or "")[:10]
@@ -349,7 +350,7 @@ def _collect_practiced_today_keys(
     return practiced_error_ids, practiced_question_ids
 
 
-def build_practice_daily_response(user_id: str, limit: int = 12) -> dict[str, Any]:
+def build_practice_daily_response(user_id: str, limit: int = 30) -> dict[str, Any]:
     cache_key = _cache_key("daily", user_id, limit)
     cached = _cache_get(cache_key)
     if cached is not None:
@@ -377,7 +378,19 @@ def build_practice_daily_response(user_id: str, limit: int = 12) -> dict[str, An
         question_ids=question_ids,
         limit=max(len(filtered_errors) * 4, 200),
     )
-    queue = compute_daily_practice(filtered_errors, max(1, min(limit, 30)), behavior_map)
+    attempt_rows = _fetch_attempt_rows_by_keys(
+        user_id,
+        error_ids=error_ids,
+        question_ids=question_ids,
+        limit=max(len(filtered_errors) * 8, 300),
+        columns=("id", "error_id", "question_id", "result", "created_at", "updated_at"),
+    )
+    queue = build_today_training_queue(
+        filtered_errors,
+        behavior_map,
+        [dict(row) for row in attempt_rows],
+        max(1, min(limit, 30)),
+    )
     insights = build_practice_insights(filtered_errors, behavior_map, daily_limit=max(1, min(limit, 30)), review_limit=min(max(limit // 2, 4), 8))
     flow = build_flow_workbench(filtered_errors, behavior_map, limit=min(max(limit // 2, 4), 8))
     response = {

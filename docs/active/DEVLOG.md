@@ -1,5 +1,28 @@
 # DEVLOG
 
+## 2026-05-05 - prevent frontend target misalignment before UI changes
+
+### Goal
+
+Avoid repeated misdiagnosis where a request points to one runtime page, but edits start in another frontend stack.
+
+### What happened
+
+1. a UI request referenced the active "error list" page
+2. candidate files existed in both `frontend/src/*` and `xingce_v3/*`
+3. implementation planning initially focused on the Vue path before target ownership was reconfirmed
+
+### Rule captured from this incident
+
+1. for page-level requests, confirm target ownership before any implementation edits
+2. ownership means explicitly deciding: legacy runtime (`xingce_v3/*`) or Vue runtime (`frontend/src/*`)
+3. use visible marker text + entry chain confirmation to validate the target path
+4. if ownership is uncertain, stop and verify first
+
+### Docs updated
+
+1. `docs/active/CHANGE_PROTOCOL.md`
+
 ## 2026-04-27 - Shenlun workbench direction fixed into repo docs
 
 ### Goal

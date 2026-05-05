@@ -28,43 +28,19 @@
     noKnowledgeContent: "\u6682\u65f6\u8fd8\u6ca1\u6709\u77e5\u8bc6\u70b9\u5185\u5bb9\uff0c\u5148\u5f55\u5165\u9519\u9898\u540e\u4f1a\u81ea\u52a8\u751f\u6210\u7ed3\u6784\u3002"
   };
 
-  function escapeAttr(value) {
-    return String(value || "")
-      .replace(/&/g, "&amp;")
-      .replace(/"/g, "&quot;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
-  }
+  function escapeAttr(value) { return kwEscapeAttr(value); }
 
-  function getWorkspaceMode() {
-    if (window.knowledgeWorkspaceMode !== "list" && window.knowledgeWorkspaceMode !== "note") {
-      window.knowledgeWorkspaceMode = DEFAULT_MODE;
-    }
-    return window.knowledgeWorkspaceMode;
-  }
+  function getWorkspaceMode() { return kwGetWorkspaceMode(DEFAULT_MODE); }
 
-  function setWorkspaceMode(mode) {
-    window.knowledgeWorkspaceMode = mode === "note" ? "note" : "list";
-  }
+  function setWorkspaceMode(mode) { kwSetWorkspaceMode(mode); }
 
-  function getNoteViewMode() {
-    if (window.knowledgeNoteViewMode !== "directory" && window.knowledgeNoteViewMode !== "current") {
-      window.knowledgeNoteViewMode = "current";
-    }
-    return window.knowledgeNoteViewMode;
-  }
+  function getNoteViewMode() { return kwGetNoteViewMode(); }
 
-  function setNoteViewMode(mode) {
-    window.knowledgeNoteViewMode = mode === "directory" ? "directory" : "current";
-  }
+  function setNoteViewMode(mode) { kwSetNoteViewMode(mode); }
 
-  function getDirectoryPreviewNodeId() {
-    return String(window.knowledgeDirectoryPreviewNodeId || "").trim();
-  }
+  function getDirectoryPreviewNodeId() { return kwGetDirectoryPreviewNodeId(); }
 
-  function setDirectoryPreviewNodeId(nodeId) {
-    window.knowledgeDirectoryPreviewNodeId = String(nodeId || "").trim();
-  }
+  function setDirectoryPreviewNodeId(nodeId) { kwSetDirectoryPreviewNodeId(nodeId); }
 
   function getCurrentKnowledgeNode() {
     return getKnowledgeNodeById(selectedKnowledgeNodeId);
@@ -84,36 +60,15 @@
     return text;
   }
 
-  function buildViewerPayload(currentNode, markdown) {
-    if (!currentNode) return null;
-    return {
-      nodeId: currentNode.id,
-      title: currentNode.title || "",
-      pathText: collapseKnowledgePathTitles(getKnowledgePathTitles(currentNode.id)).join(" > "),
-      markdown: markdown || "",
-      emptyText: TEXT.noNotes
-    };
-  }
+  function buildViewerPayload(currentNode, markdown) { return kwBuildViewerPayload(currentNode, markdown, TEXT.noNotes); }
 
-  function postViewerPayload(frame, payload) {
-    if (!frame || !frame.contentWindow || !payload) return;
-    try {
-      frame.contentWindow.postMessage(
-        { type: "knowledge-note-viewer-sync", payload: payload },
-        window.location.origin
-      );
-    } catch (error) {
-      console.warn("post viewer payload failed", error);
-    }
-  }
+  function postViewerPayload(frame, payload) { kwPostViewerPayload(frame, payload); }
 
   function bindViewerFrame(frame) {
-    if (!frame || frame.dataset.viewerBound === "1") return;
-    frame.dataset.viewerBound = "1";
-    frame.addEventListener("load", function () {
+    kwBindViewerFrame(frame, function () {
       var currentNode = getCurrentKnowledgeNode();
-      if (!currentNode) return;
-      postViewerPayload(frame, buildViewerPayload(currentNode, getCurrentNoteMarkdown()));
+      if (!currentNode) return null;
+      return buildViewerPayload(currentNode, getCurrentNoteMarkdown());
     });
   }
 
@@ -537,6 +492,18 @@
       "<button class=\"btn btn-sm btn-secondary\" onclick=\"selectedKnowledgeNodeId='" + currentNode.id + "';addKnowledgeLeafUnderSelected()\">" + TEXT.createChild + "</button>" +
       "<button class=\"btn btn-sm btn-secondary\" onclick=\"openAddModalForCurrentKnowledge()\">" + TEXT.createQuestion + "</button>" +
     "</div>";
+    var sortBy = String(window.errorSortBy || "created_at") === "wrong_count" ? "wrong_count" : "created_at";
+    var sortOrder = String(window.errorSortOrder || "desc") === "asc" ? "asc" : "desc";
+    var listSortTools = mode === "list"
+      ? "<div class=\"knowledge-workspace-sort-tools\">" +
+          "<span class=\"knowledge-workspace-sort-label\">排序</span>" +
+          "<select class=\"knowledge-workspace-sort-select\" onchange=\"setErrorSortBy(this.value)\">" +
+            "<option value=\"created_at\"" + (sortBy === "created_at" ? " selected" : "") + ">创建时间</option>" +
+            "<option value=\"wrong_count\"" + (sortBy === "wrong_count" ? " selected" : "") + ">错题次数</option>" +
+          "</select>" +
+          "<button class=\"btn btn-sm btn-secondary\" type=\"button\" onclick=\"toggleErrorSortOrder()\">" + (sortOrder === "asc" ? "升序" : "降序") + "</button>" +
+        "</div>"
+      : "";
     return "<div class=\"knowledge-workspace-shell-header\">" +
       "<div class=\"knowledge-workspace-shell-meta\">" +
         "<div class=\"knowledge-workspace-shell-title\">" + escapeHtml(titleText) + "</div>" +
@@ -548,6 +515,7 @@
           "<button class=\"btn btn-sm " + (mode === "list" ? "btn-primary" : "btn-secondary") + "\" onclick=\"setKnowledgeWorkspaceMode('list')\">" + TEXT.tabQuestions + "</button>" +
           "<button class=\"btn btn-sm " + (mode === "note" ? "btn-primary" : "btn-secondary") + "\" onclick=\"setKnowledgeWorkspaceMode('note')\">" + TEXT.tabNotes + "</button>" +
         "</div>" +
+        listSortTools +
         (mode === "note" && isTopLevelKnowledgeNode(currentNode)
           ? "<div class=\"knowledge-workspace-mode-switch knowledge-note-view-switch\">" +
               "<button class=\"btn btn-sm " + (getNoteViewMode() === "current" ? "btn-primary" : "btn-secondary") + "\" onclick=\"setKnowledgeNoteViewMode('current')\">当前笔记</button>" +

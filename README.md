@@ -13,6 +13,7 @@ Before changing code or shipping a new build, read these docs in order:
 7. `docs/active/DEVLOG.md`
 8. `docs/active/RELEASE_CHECKLIST.md`
 9. `docs/active/SELF_TEST_REPORT.md`
+10. `docs/active/FULL_PAGE_FEATURE_MAP.md`
 
 These files are now the repository source of truth for project goals, current phase, delivery rules, handoff context, and what was actually tested.
 

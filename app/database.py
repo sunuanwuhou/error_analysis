@@ -265,6 +265,57 @@ def init_db() -> None:
             """
         )
         conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS today_training_sessions (
+              id TEXT PRIMARY KEY,
+              user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              session_date TEXT NOT NULL,
+              status TEXT NOT NULL DEFAULT 'in_progress',
+              total_count INTEGER NOT NULL DEFAULT 0,
+              completed_count INTEGER NOT NULL DEFAULT 0,
+              current_index INTEGER NOT NULL DEFAULT 0,
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL,
+              paused_at TEXT NOT NULL DEFAULT '',
+              finished_at TEXT NOT NULL DEFAULT '',
+              meta_json TEXT NOT NULL DEFAULT '{}'
+            )
+            """
+        )
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_today_session_user_date ON today_training_sessions(user_id, session_date)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_today_session_user_status ON today_training_sessions(user_id, status, session_date)"
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS today_training_session_items (
+              id TEXT PRIMARY KEY,
+              session_id TEXT NOT NULL REFERENCES today_training_sessions(id) ON DELETE CASCADE,
+              user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              seq_no INTEGER NOT NULL,
+              error_id TEXT NOT NULL DEFAULT '',
+              question_id TEXT NOT NULL DEFAULT '',
+              status TEXT NOT NULL DEFAULT 'pending',
+              queue_score INTEGER NOT NULL DEFAULT 0,
+              payload_json TEXT NOT NULL DEFAULT '{}',
+              answered_at TEXT NOT NULL DEFAULT '',
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_today_items_session_seq ON today_training_session_items(session_id, seq_no)"
+        )
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_today_items_session_error ON today_training_session_items(session_id, error_id)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_today_items_user_status ON today_training_session_items(user_id, status, updated_at)"
+        )
+        conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_practice_attempts_user_time ON practice_attempts(user_id, updated_at DESC)"
         )
         conn.execute(

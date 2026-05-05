@@ -332,13 +332,13 @@ function getDueList() {
   if (typeof hasFullWorkspaceDataLoaded === 'function' && !hasFullWorkspaceDataLoaded()) {
     return [];
   }
-  return buildPracticeTaskPack(24).dailyQueue;
+  return buildPracticeTaskPack(30).dailyQueue;
 }
 
 function updateSidebar() {
   const hasFullData = typeof hasFullWorkspaceDataLoaded === 'function' ? hasFullWorkspaceDataLoaded() : true;
   const summary = typeof getStartupSummaryCache === 'function' ? (getStartupSummaryCache() || {}) : {};
-  const taskPack = hasFullData ? buildPracticeTaskPack(24) : null;
+  const taskPack = hasFullData ? buildPracticeTaskPack(30) : null;
   const dueN = hasFullData ? taskPack.dailyQueue.length : Number(summary.todayDue || 0);
   const noteFirstCount = hasFullData ? Number(taskPack.noteFirstQueue.length || 0) : Number(summary.noteFirstCount || 0);
   const directDoCount = hasFullData ? Number(taskPack.directDoQueue.length || 0) : Number(summary.directDoCount || 0);

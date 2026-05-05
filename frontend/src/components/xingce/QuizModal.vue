@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useXingceStore } from '@/stores/xingceStore'
 import { xingceApi } from '@/api/xingce'
-import type { ErrorEntry } from '@/api/xingce'
+import type { ErrorEntry, TodayTrainingSession } from '@/api/xingce'
 
 type QuizMode = 'daily' | 'full' | 'review' | 'retrain'
 type Phase = 'loading' | 'question' | 'review' | 'saving' | 'done'
@@ -28,6 +28,11 @@ const selected = ref<string | null>(null)
 const startedAt = ref(0)
 const saving = ref(false)
 const errorMsg = ref('')
+const todaySessionId = ref('')
+const todayCurrentItemId = ref('')
+const todayTotalCount = ref(0)
+const todayCompletedCount = ref(0)
+const answeredEntryById = ref<Record<string, ErrorEntry>>({})
 
 const TITLE_MAP: Record<QuizMode, string> = {
   daily:   '📝 今日复习',
@@ -43,8 +48,17 @@ const options = computed(() => {
   return e.options.split(/\n|\|/).map(s => s.trim()).filter(Boolean)
 })
 const progressPct = computed(() =>
-  queue.value.length ? Math.round((idx.value / queue.value.length) * 100) : 0
+  props.mode === 'daily'
+    ? (todayTotalCount.value ? Math.round((todayCompletedCount.value / todayTotalCount.value) * 100) : 0)
+    : (queue.value.length ? Math.round((idx.value / queue.value.length) * 100) : 0)
 )
+const progressText = computed(() => {
+  if (props.mode === 'daily') {
+    const cur = Math.min(todayCompletedCount.value + 1, Math.max(todayTotalCount.value, 1))
+    return `${cur} / ${todayTotalCount.value || 0}`
+  }
+  return `${idx.value + 1} / ${queue.value.length}`
+})
 
 // ── 构建题目队列 ─────────────────────────────────────────────────────────────
 async function buildQueue(): Promise<ErrorEntry[]> {
@@ -56,8 +70,16 @@ async function buildQueue(): Promise<ErrorEntry[]> {
 
   try {
     if (props.mode === 'daily') {
-      const data = await xingceApi.getDaily(12)
-      return resolveIds((data.items as { id?: string }[]).map(i => i.id ?? ''))
+      const data = await xingceApi.startTodaySession(30)
+      const session = data.session as TodayTrainingSession
+      todaySessionId.value = String(session.sessionId || '')
+      todayCurrentItemId.value = String(session.nextItemId || '')
+      todayTotalCount.value = Number(session.totalCount || session.queueSize || 0)
+      todayCompletedCount.value = Number(session.completedCount || 0)
+      const next = (session.nextQuestion || null) as Record<string, unknown> | null
+      if (!next || !next.id) return []
+      idx.value = 0
+      return [next as unknown as ErrorEntry]
     }
     if (props.mode === 'review' || props.mode === 'retrain') {
       const data = await xingceApi.getWorkbench(12)
@@ -104,6 +126,36 @@ function submitAnswer(skip = false) {
   const letter = skip ? '' : (selected.value ?? '')
   const correct = !skip && !!e.answer && letter.trim().toUpperCase()[0] === e.answer.trim().toUpperCase()[0]
 
+  if (props.mode === 'daily' && todaySessionId.value) {
+    const itemId = todayCurrentItemId.value
+    answeredEntryById.value = { ...answeredEntryById.value, [e.id]: e }
+    if (itemId) {
+      phase.value = 'loading'
+      xingceApi.answerTodaySession(todaySessionId.value, itemId, skip ? false : correct)
+        .then(resp => {
+          const session = resp.session
+          todayCompletedCount.value = Number(session?.completedCount || (todayCompletedCount.value + 1))
+          todayTotalCount.value = Number(session?.totalCount || todayTotalCount.value)
+          const nextItemId = String(session?.nextItemId || '')
+          const nextQuestion = (session?.nextQuestion || null) as Record<string, unknown> | null
+          if (nextItemId && nextQuestion?.id) {
+            todayCurrentItemId.value = nextItemId
+            queue.value = [nextQuestion as unknown as ErrorEntry]
+            idx.value = 0
+            selected.value = null
+            startedAt.value = Date.now()
+            phase.value = 'question'
+          } else {
+            phase.value = 'review'
+          }
+        })
+        .catch(() => {
+          phase.value = 'question'
+        })
+      return
+    }
+  }
+
   answers.value.push({ id: e.id, userAnswer: letter, correct, skipped: skip, durationSec })
   selected.value = null
   startedAt.value = Date.now()
@@ -119,7 +171,7 @@ function submitAnswer(skip = false) {
 const reviewItems = computed(() =>
   answers.value.map(a => ({
     answer: a,
-    entry: queue.value.find(e => e.id === a.id),
+    entry: answeredEntryById.value[a.id] || queue.value.find(e => e.id === a.id),
   }))
 )
 
@@ -229,6 +281,11 @@ function tryClose() {
   if (phase.value === 'question' && answers.value.length > 0) {
     if (!confirm('练习尚未保存，确认关闭？')) return
   }
+  if (props.mode === 'daily' && phase.value === 'question' && todaySessionId.value) {
+    xingceApi.pauseTodaySession(todaySessionId.value).catch(() => {
+      // Ignore pause failure; session still resumable by server state.
+    })
+  }
   emit('close')
 }
 </script>
@@ -241,7 +298,7 @@ function tryClose() {
         <div class="qm-header">
           <span class="qm-title">{{ TITLE_MAP[mode] }}</span>
           <span v-if="phase === 'question'" class="qm-progress-text">
-            {{ idx + 1 }} / {{ queue.length }}
+            {{ progressText }}
           </span>
           <button class="qm-close" @click="tryClose">×</button>
         </div>

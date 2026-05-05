@@ -895,7 +895,7 @@ export const useXingceStore = defineStore('xingce', () => {
     try {
       const [wb, daily] = await Promise.all([
         xingceApi.getWorkbench(12),
-        xingceApi.getDaily(12),
+        xingceApi.getDaily(30),
       ])
       const dailyItems = (daily.items ?? []) as unknown[]
       const dueN = dailyItems.length

@@ -83,6 +83,25 @@ The minimum persistent doc set is:
 5. `docs/active/RELEASE_CHECKLIST.md`
 6. `docs/active/SELF_TEST_REPORT.md`
 7. `docs/active/MODULE_BOUNDARIES.md`
+8. `docs/active/FULL_PAGE_FEATURE_MAP.md`
+
+## Page map governance rule (mandatory)
+
+For every user-visible code change, the page/function map must be reviewed and updated in the same delivery.
+
+Mandatory checks per change:
+
+1. identify which user-facing page(s) are affected (legacy or vue)
+2. verify route entry/ownership is still correctly documented
+3. verify API dependency surface is still correctly documented
+4. update `docs/active/FULL_PAGE_FEATURE_MAP.md` if anything changed
+
+Delivery note requirement:
+
+Each delivery must explicitly include one of:
+
+1. "FULL_PAGE_FEATURE_MAP.md updated", or
+2. "FULL_PAGE_FEATURE_MAP.md reviewed, no map delta"
 
 ## Frontend cache-bust rule
 
@@ -128,6 +147,21 @@ Working rules:
 2. do not patch only the monolithic `legacy-app.bundle.js` and assume the live shell will use it
 3. before frontend debugging, confirm which served bundle the active page actually loads
 4. if a legacy fallback path still exists, document it explicitly instead of treating it as the main runtime
+
+## Frontend target ownership rule
+
+For page-level UI requests, target ownership must be confirmed before implementation edits.
+
+Mandatory order:
+
+1. decide target stack explicitly: `legacy (xingce_v3/*)` or `vue (frontend/src/*)`
+2. use at least one visible page marker text from the request (or screenshot) to map to candidate files
+3. verify the runtime entry chain points to the stack being edited
+4. only then start code changes
+
+Stop condition:
+
+If ownership is not confirmed, stop implementation and finish target verification first.
 
 ## Note scroll contract (2026-04-12)
 

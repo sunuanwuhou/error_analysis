@@ -120,6 +120,14 @@
       <div class="content-header" style="padding:10px 16px;border-bottom:1px solid #f0f0f0;border-top:1px solid #f0f0f0">
         <div class="breadcrumb" id="breadcrumb">全部题目</div>
         <div style="display:flex;align-items:center;gap:10px">
+          <div class="error-sort-controls">
+            <span class="error-sort-label">排序</span>
+            <select id="errorSortBy" class="error-sort-select" data-onchange="setErrorSortBy(this.value)">
+              <option value="created_at">创建时间</option>
+              <option value="wrong_count">错题次数</option>
+            </select>
+            <button class="btn btn-sm btn-secondary" id="errorSortOrderBtn" type="button" data-onclick="toggleErrorSortOrder()">降序</button>
+          </div>
           <div class="expand-btns">
             <button class="btn btn-sm btn-secondary" data-onclick="expandAll()">展开全部</button>
             <button class="btn btn-sm btn-secondary" data-onclick="collapseAll()">收起全部</button>

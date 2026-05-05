@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import copy
 import json
+import logging
 import mimetypes
 import re
 import sqlite3
@@ -27,6 +28,7 @@ DELETE_TO_ENTITY_TYPE: dict[str, str] = {ops[1]: entity_type for entity_type, op
 IMAGE_API_REF_RE = re.compile(r"^/api/images/([a-f0-9]{32,64})$", re.I)
 _SNAPSHOT_CACHE_LOCK = threading.Lock()
 _WORKSPACE_SNAPSHOT_CACHE: dict[str, tuple[tuple[int, str], dict[str, Any]]] = {}
+logger = logging.getLogger(__name__)
 
 
 def invalidate_workspace_snapshot_cache(user_id: str) -> None:
@@ -135,6 +137,269 @@ def normalize_knowledge_node_sync_record(entity_id: str, raw: Any, fallback_upda
     }
 
 
+def _normalize_node_title_key(value: Any) -> str:
+    text = re.sub(r"\s+", " ", str(value or "").strip())
+    return text.casefold()
+
+
+def _load_active_knowledge_nodes(user_id: str, conn: sqlite3.Connection) -> dict[str, dict[str, Any]]:
+    rows = conn.execute(
+        """
+        SELECT entity_id, payload_json, updated_at
+        FROM state_entities
+        WHERE user_id = ? AND entity_type = 'knowledge_node' AND deleted_at = ''
+        """,
+        (user_id,),
+    ).fetchall()
+    records: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        entity_id = str(row["entity_id"] or "").strip()
+        if not entity_id:
+            continue
+        try:
+            payload = json.loads(row["payload_json"] or "{}")
+        except json.JSONDecodeError:
+            payload = {}
+        record = normalize_knowledge_node_sync_record(entity_id, payload, str(row["updated_at"] or ""))
+        if not record:
+            continue
+        records[entity_id] = record
+    return records
+
+
+def _mark_knowledge_node_deleted(user_id: str, entity_id: str, deleted_at: str, conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        INSERT INTO state_entities(user_id, entity_type, entity_id, payload_json, updated_at, deleted_at)
+        VALUES (?, 'knowledge_node', ?, '{}', ?, ?)
+        ON CONFLICT(user_id, entity_type, entity_id) DO UPDATE SET
+          payload_json = '{}',
+          updated_at = excluded.updated_at,
+          deleted_at = excluded.deleted_at
+        """,
+        (user_id, entity_id, deleted_at, deleted_at),
+    )
+
+
+def _remap_knowledge_node_references(
+    user_id: str,
+    from_node_id: str,
+    to_node_id: str,
+    updated_at: str,
+    conn: sqlite3.Connection,
+) -> int:
+    if not from_node_id or not to_node_id or from_node_id == to_node_id:
+        return 0
+    touched = 0
+    error_rows = conn.execute(
+        """
+        SELECT entity_id, payload_json
+        FROM state_entities
+        WHERE user_id = ? AND entity_type = 'error' AND deleted_at = ''
+        """,
+        (user_id,),
+    ).fetchall()
+    for row in error_rows:
+        entity_id = str(row["entity_id"] or "").strip()
+        if not entity_id:
+            continue
+        try:
+            payload = json.loads(row["payload_json"] or "{}")
+        except json.JSONDecodeError:
+            payload = {}
+        if not isinstance(payload, dict):
+            continue
+        if str(payload.get("noteNodeId") or "").strip() != from_node_id:
+            continue
+        payload["noteNodeId"] = to_node_id
+        payload["updatedAt"] = str(payload.get("updatedAt") or updated_at)
+        conn.execute(
+            """
+            INSERT INTO state_entities(user_id, entity_type, entity_id, payload_json, updated_at, deleted_at)
+            VALUES (?, 'error', ?, ?, ?, '')
+            ON CONFLICT(user_id, entity_type, entity_id) DO UPDATE SET
+              payload_json = excluded.payload_json,
+              updated_at = excluded.updated_at,
+              deleted_at = ''
+            """,
+            (user_id, entity_id, json.dumps(payload, ensure_ascii=False), updated_at),
+        )
+        touched += 1
+
+    conn.execute(
+        """
+        UPDATE practice_attempts
+        SET note_node_id = ?, updated_at = ?
+        WHERE user_id = ? AND note_node_id = ?
+        """,
+        (to_node_id, updated_at, user_id, from_node_id),
+    )
+    return touched
+
+
+def _merge_knowledge_node_records(left: dict[str, Any], right: dict[str, Any], updated_at: str) -> dict[str, Any]:
+    left_content = str(left.get("contentMd") or "")
+    right_content = str(right.get("contentMd") or "")
+    content = left_content if left_content.strip() else right_content
+    title = str(left.get("title") or "").strip() or str(right.get("title") or "").strip()
+    parent_id = str(left.get("parentId") or "").strip() or str(right.get("parentId") or "").strip()
+    sort_value = min(int(left.get("sort") or 0), int(right.get("sort") or 0))
+    latest = max(
+        str(left.get("updatedAt") or ""),
+        str(right.get("updatedAt") or ""),
+        str(updated_at or ""),
+    )
+    return {
+        "id": str(left.get("id") or right.get("id") or ""),
+        "parentId": parent_id,
+        "title": title,
+        "contentMd": content,
+        "updatedAt": latest or utcnow().isoformat(),
+        "sort": sort_value,
+    }
+
+
+def _remap_knowledge_node_children_parent(
+    user_id: str,
+    from_parent_id: str,
+    to_parent_id: str,
+    updated_at: str,
+    conn: sqlite3.Connection,
+) -> int:
+    if not from_parent_id or from_parent_id == to_parent_id:
+        return 0
+    moved = 0
+    rows = conn.execute(
+        """
+        SELECT entity_id, payload_json
+        FROM state_entities
+        WHERE user_id = ? AND entity_type = 'knowledge_node' AND deleted_at = ''
+        """,
+        (user_id,),
+    ).fetchall()
+    for row in rows:
+        entity_id = str(row["entity_id"] or "").strip()
+        if not entity_id:
+            continue
+        try:
+            payload = json.loads(row["payload_json"] or "{}")
+        except json.JSONDecodeError:
+            payload = {}
+        record = normalize_knowledge_node_sync_record(entity_id, payload, updated_at)
+        if not record:
+            continue
+        if str(record.get("parentId") or "") != from_parent_id:
+            continue
+        record["parentId"] = to_parent_id
+        record["updatedAt"] = str(record.get("updatedAt") or updated_at)
+        conn.execute(
+            """
+            INSERT INTO state_entities(user_id, entity_type, entity_id, payload_json, updated_at, deleted_at)
+            VALUES (?, 'knowledge_node', ?, ?, ?, '')
+            ON CONFLICT(user_id, entity_type, entity_id) DO UPDATE SET
+              payload_json = excluded.payload_json,
+              updated_at = excluded.updated_at,
+              deleted_at = ''
+            """,
+            (user_id, entity_id, json.dumps(record, ensure_ascii=False), updated_at),
+        )
+        moved += 1
+    return moved
+
+
+def _repair_orphan_knowledge_nodes(user_id: str, conn: sqlite3.Connection, updated_at: str) -> int:
+    records = _load_active_knowledge_nodes(user_id, conn)
+    if not records:
+        return 0
+    fixed = 0
+    for record in records.values():
+        parent_id = str(record.get("parentId") or "")
+        if not parent_id or parent_id in records:
+            continue
+        record["parentId"] = ""
+        record["updatedAt"] = str(record.get("updatedAt") or updated_at)
+        conn.execute(
+            """
+            INSERT INTO state_entities(user_id, entity_type, entity_id, payload_json, updated_at, deleted_at)
+            VALUES (?, 'knowledge_node', ?, ?, ?, '')
+            ON CONFLICT(user_id, entity_type, entity_id) DO UPDATE SET
+              payload_json = excluded.payload_json,
+              updated_at = excluded.updated_at,
+              deleted_at = ''
+            """,
+            (
+                user_id,
+                str(record.get("id") or ""),
+                json.dumps(record, ensure_ascii=False),
+                str(record.get("updatedAt") or updated_at),
+            ),
+        )
+        fixed += 1
+    if fixed:
+        logger.info("repaired orphan knowledge nodes user=%s fixed=%s", user_id, fixed)
+    return fixed
+
+
+def _canonicalize_existing_knowledge_nodes(user_id: str, conn: sqlite3.Connection, updated_at: str) -> int:
+    records = _load_active_knowledge_nodes(user_id, conn)
+    if not records:
+        return 0
+    grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for record in records.values():
+        title_key = _normalize_node_title_key(record.get("title"))
+        if not title_key:
+            continue
+        parent_id = str(record.get("parentId") or "")
+        grouped.setdefault((parent_id, title_key), []).append(record)
+
+    merged_nodes = 0
+    for _, group in grouped.items():
+        if len(group) <= 1:
+            continue
+        ordered = sorted(group, key=lambda item: (str(item.get("updatedAt") or ""), str(item.get("id") or "")))
+        canonical = ordered[0]
+        for duplicate in ordered[1:]:
+            if str(duplicate.get("id") or "") == str(canonical.get("id") or ""):
+                continue
+            canonical = _merge_knowledge_node_records(canonical, duplicate, updated_at)
+            conn.execute(
+                """
+                INSERT INTO state_entities(user_id, entity_type, entity_id, payload_json, updated_at, deleted_at)
+                VALUES (?, 'knowledge_node', ?, ?, ?, '')
+                ON CONFLICT(user_id, entity_type, entity_id) DO UPDATE SET
+                  payload_json = excluded.payload_json,
+                  updated_at = excluded.updated_at,
+                  deleted_at = ''
+                """,
+                (
+                    user_id,
+                    canonical["id"],
+                    json.dumps(canonical, ensure_ascii=False),
+                    str(canonical.get("updatedAt") or updated_at),
+                ),
+            )
+            _mark_knowledge_node_deleted(user_id, str(duplicate.get("id") or ""), updated_at, conn)
+            _remap_knowledge_node_children_parent(
+                user_id,
+                str(duplicate.get("id") or ""),
+                str(canonical.get("id") or ""),
+                updated_at,
+                conn,
+            )
+            _remap_knowledge_node_references(
+                user_id,
+                str(duplicate.get("id") or ""),
+                str(canonical.get("id") or ""),
+                updated_at,
+                conn,
+            )
+            merged_nodes += 1
+    _repair_orphan_knowledge_nodes(user_id, conn, updated_at)
+    if merged_nodes:
+        logger.info("canonicalized knowledge nodes user=%s merged=%s", user_id, merged_nodes)
+    return merged_nodes
+
+
 def iter_backup_sync_entities(data: dict[str, Any], fallback_updated_at: str) -> list[tuple[str, str, str, str]]:
     entities: list[tuple[str, str, str, str]] = []
     backup_updated_at = fallback_updated_at or utcnow().isoformat()
@@ -231,6 +496,7 @@ def replace_workspace_entities_from_snapshot(
             """,
             [(user_id, entity_type, entity_id, payload_json, updated_at) for entity_type, entity_id, payload_json, updated_at in entities],
         )
+    _canonicalize_existing_knowledge_nodes(user_id, conn, fallback_updated_at or utcnow().isoformat())
     invalidate_workspace_snapshot_cache(user_id)
     return len(entities)
 
@@ -318,6 +584,49 @@ def apply_sync_op_to_state_entity(user_id: str, op: dict[str, Any], conn: sqlite
         record = normalize_setting_sync_record(entity_id, payload, created_at)
     if not entity_type or not record:
         return
+    if entity_type == "knowledge_node":
+        active_nodes = _load_active_knowledge_nodes(user_id, conn)
+        title_key = _normalize_node_title_key(record.get("title"))
+        parent_id = str(record.get("parentId") or "")
+        duplicate: Optional[dict[str, Any]] = None
+        if title_key:
+            for candidate_id, candidate in active_nodes.items():
+                if candidate_id == entity_id:
+                    continue
+                if str(candidate.get("parentId") or "") != parent_id:
+                    continue
+                if _normalize_node_title_key(candidate.get("title")) != title_key:
+                    continue
+                duplicate = candidate
+                break
+        if duplicate:
+            merged = _merge_knowledge_node_records(duplicate, record, created_at)
+            conn.execute(
+                """
+                INSERT INTO state_entities(user_id, entity_type, entity_id, payload_json, updated_at, deleted_at)
+                VALUES (?, 'knowledge_node', ?, ?, ?, '')
+                ON CONFLICT(user_id, entity_type, entity_id) DO UPDATE SET
+                  payload_json = excluded.payload_json,
+                  updated_at = excluded.updated_at,
+                  deleted_at = ''
+                """,
+                (
+                    user_id,
+                    str(duplicate.get("id") or ""),
+                    json.dumps(merged, ensure_ascii=False),
+                    str(merged.get("updatedAt") or created_at),
+                ),
+            )
+            _mark_knowledge_node_deleted(user_id, entity_id, created_at, conn)
+            _remap_knowledge_node_references(
+                user_id,
+                entity_id,
+                str(duplicate.get("id") or ""),
+                created_at,
+                conn,
+            )
+            invalidate_workspace_snapshot_cache(user_id)
+            return
     conn.execute(
         """
         INSERT INTO state_entities(user_id, entity_type, entity_id, payload_json, updated_at, deleted_at)

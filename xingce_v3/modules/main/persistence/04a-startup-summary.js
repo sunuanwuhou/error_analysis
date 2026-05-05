@@ -48,7 +48,7 @@ function buildStartupSummary(errorsBytes) {
     workflowAdvice: []
   };
   if (typeof buildPracticeTaskPack === 'function') {
-    const taskPack = buildPracticeTaskPack(24);
+    const taskPack = buildPracticeTaskPack(30);
     summary.totalErrors = getErrorEntries().length;
     summary.fullPracticeCount = getErrorEntries().filter(e => !isEffectivelyMastered(e)).length;
     summary.todayDue = Number((taskPack.dailyQueue || []).length || 0);

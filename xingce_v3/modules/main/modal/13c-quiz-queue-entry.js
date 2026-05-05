@@ -1,24 +1,36 @@
 // ============================================================
 // Quiz queue entry actions
 // ============================================================
+function renderQuizLoadingState(titleText) {
+  document.getElementById('quizTitleText').textContent = titleText || '📝 今日复习';
+  document.getElementById('quizProgress').textContent = '加载中';
+  document.getElementById('quizProgFill').style.width = '0%';
+  document.getElementById('quizContent').innerHTML = `
+    <div style="padding:24px;text-align:center;color:#64748b">
+      <div style="font-size:14px;margin-bottom:8px">正在加载题目...</div>
+      <div style="font-size:12px;color:#94a3b8">优先准备当前最该复习的题</div>
+    </div>`;
+}
+
 async function startPracticeQueue(mode) {
   if (!(await ensureQuizModalReady())) return;
   const normalizedMode = String(mode || 'daily');
+  let title = '📝 今日复习';
+  if (normalizedMode === 'review') title = '🧩 待复盘训练';
+  else if (normalizedMode === 'retrain') title = '🔁 待复训训练';
+  openModal('quizModal');
+  renderQuizLoadingState(title);
   let serverPayload = null;
   try {
-    serverPayload = await fetchJsonWithAuth('/api/practice/daily?limit=12');
+    serverPayload = await fetchJsonWithAuth('/api/practice/daily?limit=30');
   } catch (e) {
     console.warn('daily practice fallback:', e);
   }
 
-  const localPack = typeof buildPracticeTaskPack === 'function' ? buildPracticeTaskPack(12) : null;
+  const localPack = typeof buildPracticeTaskPack === 'function' ? buildPracticeTaskPack(30) : null;
   const serverDaily = buildQuizQueueFromItems(serverPayload && serverPayload.items);
   const serverReview = buildQuizQueueFromItems(serverPayload && serverPayload.reviewQueue);
   const serverRetrain = buildQuizQueueFromItems(serverPayload && serverPayload.retrainQueue);
-
-  let title = '📝 今日复习';
-  if (normalizedMode === 'review') title = '🧩 待复盘训练';
-  else if (normalizedMode === 'retrain') title = '🔁 待复训训练';
 
   if (normalizedMode === 'daily') {
     const advice = Array.isArray(serverPayload && serverPayload.advice) ? serverPayload.advice[0] : null;
@@ -27,9 +39,9 @@ async function startPracticeQueue(mode) {
     else if (fallbackTitle) title = `📝 今日复习 · ${fallbackTitle}`;
     quizQueue = serverDaily.length ? serverDaily : (localPack ? localPack.dailyQueue : getDueList());
   } else if (normalizedMode === 'review') {
-    quizQueue = serverReview.length ? serverReview : ((localPack && localPack.reviewQueue) || (typeof getTaskPackQueueByMode === 'function' ? getTaskPackQueueByMode('review', 12) : []));
+    quizQueue = serverReview.length ? serverReview : ((localPack && localPack.reviewQueue) || (typeof getTaskPackQueueByMode === 'function' ? getTaskPackQueueByMode('review', 30) : []));
   } else if (normalizedMode === 'retrain') {
-    quizQueue = serverRetrain.length ? serverRetrain : ((localPack && localPack.retrainQueue) || (typeof getTaskPackQueueByMode === 'function' ? getTaskPackQueueByMode('retrain', 12) : []));
+    quizQueue = serverRetrain.length ? serverRetrain : ((localPack && localPack.retrainQueue) || (typeof getTaskPackQueueByMode === 'function' ? getTaskPackQueueByMode('retrain', 30) : []));
   } else {
     quizQueue = serverDaily.length ? serverDaily : (localPack ? localPack.dailyQueue : getDueList());
   }
@@ -37,12 +49,12 @@ async function startPracticeQueue(mode) {
   if (!quizQueue.length) {
     const msg = normalizedMode === 'review' ? '当前没有待复盘题' : (normalizedMode === 'retrain' ? '当前没有待复训题' : '今日暂无需要复习的题目');
     showToast(msg, 'warning');
+    closeModal('quizModal');
     return;
   }
   quizSessionMode = normalizedMode;
   quizIdx = 0; quizAnswers = []; quizSkipped = new Set(); resetQuizPauseState();
   document.getElementById('quizTitleText').textContent = title;
-  openModal('quizModal');
   renderQuizQuestion();
 }
 

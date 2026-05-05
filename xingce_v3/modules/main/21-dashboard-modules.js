@@ -188,7 +188,7 @@ function returnToRecommendedNotes() {
 }
 
 function openRecommendedNotesModal() {
-  const taskPack = typeof buildPracticeTaskPack === 'function' ? buildPracticeTaskPack(12) : null;
+  const taskPack = typeof buildPracticeTaskPack === 'function' ? buildPracticeTaskPack(30) : null;
   const remotePack = _practiceWorkbenchState.loaded ? (_practiceWorkbenchState.data || {}) : null;
   const rawGroups = buildRecommendedNoteGroups(remotePack?.noteFirstQueue || taskPack?.noteFirstQueue || []);
   const pendingGroups = filterPendingRecommendedGroups(rawGroups);
@@ -339,7 +339,7 @@ function renderHomeDashboard() {
 
   const hasFullData = typeof hasFullWorkspaceDataLoaded === 'function' ? hasFullWorkspaceDataLoaded() : true;
   const startupSummary = typeof getStartupSummaryCache === 'function' ? (getStartupSummaryCache() || {}) : {};
-  const taskPack = (hasFullData && typeof buildPracticeTaskPack === 'function') ? buildPracticeTaskPack(12) : null;
+  const taskPack = (hasFullData && typeof buildPracticeTaskPack === 'function') ? buildPracticeTaskPack(30) : null;
   if (!taskPack && !_practiceWorkbenchState.loaded) {
     const startupAdvice = Array.isArray(startupSummary.workflowAdvice) ? startupSummary.workflowAdvice.slice(0, 4) : [];
     const noteFirstCount = Number(startupSummary.noteFirstCount || 0);

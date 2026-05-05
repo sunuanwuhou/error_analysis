@@ -117,6 +117,75 @@ function onSearch(){
   refreshErrorsListOnly();
 }
 function clearFilter(){ taskFilter='all';statusFilter='all';typeFilter=null;reasonFilter=null;knowledgeNodeFilter=null;searchKw='';dateFrom='';dateTo='';document.getElementById('searchInput').value='';document.getElementById('dateFrom').value='';document.getElementById('dateTo').value='';updateSearchClear();refreshSidebarAndErrorsList(); }
+function normalizeErrorSortBy(value){
+  return String(value || '').trim() === 'wrong_count' ? 'wrong_count' : 'created_at';
+}
+function normalizeErrorSortOrder(value){
+  return String(value || '').trim() === 'asc' ? 'asc' : 'desc';
+}
+function setErrorSortBy(nextSortBy){
+  errorSortBy = normalizeErrorSortBy(nextSortBy);
+  if(errorSortBy === 'wrong_count' && !errorSortOrder) errorSortOrder = 'desc';
+  refreshErrorsListOnly();
+}
+function toggleErrorSortOrder(nextOrder){
+  if(nextOrder === 'asc' || nextOrder === 'desc'){
+    errorSortOrder = nextOrder;
+  }else{
+    errorSortOrder = normalizeErrorSortOrder(errorSortOrder) === 'desc' ? 'asc' : 'desc';
+  }
+  refreshErrorsListOnly();
+}
+function toSortableTimestamp(raw){
+  if(!raw) return 0;
+  const ts = Date.parse(String(raw));
+  return Number.isFinite(ts) ? ts : 0;
+}
+function getErrorCreatedTimestamp(errorItem){
+  if(!errorItem) return 0;
+  return (
+    toSortableTimestamp(errorItem.createdAt)
+    || toSortableTimestamp(errorItem.addDate)
+    || toSortableTimestamp(errorItem.updatedAt)
+    || 0
+  );
+}
+function getErrorWrongCountForSort(errorItem){
+  if(typeof getErrorWrongCount === 'function'){
+    const summary = typeof getPracticeSummarySnapshotForError === 'function'
+      ? getPracticeSummarySnapshotForError(errorItem)
+      : null;
+    return Number(getErrorWrongCount(errorItem, summary) || 0);
+  }
+  const directWrong = Number(errorItem && (errorItem.recentWrongCount ?? errorItem.wrongCount));
+  return Number.isFinite(directWrong) && directWrong > 0 ? directWrong : 0;
+}
+function sortFilteredErrors(list){
+  const sortBy = normalizeErrorSortBy(errorSortBy);
+  const order = normalizeErrorSortOrder(errorSortOrder);
+  const orderSign = order === 'asc' ? 1 : -1;
+  const decorated = (list || []).map((item, index) => ({ item, index }));
+  decorated.sort((a, b) => {
+    let cmp = 0;
+    if(sortBy === 'wrong_count'){
+      const aWrong = getErrorWrongCountForSort(a.item);
+      const bWrong = getErrorWrongCountForSort(b.item);
+      cmp = (aWrong - bWrong) * orderSign;
+      if(cmp !== 0) return cmp;
+      const aTime = getErrorCreatedTimestamp(a.item);
+      const bTime = getErrorCreatedTimestamp(b.item);
+      cmp = (aTime - bTime) * -1;
+      if(cmp !== 0) return cmp;
+    }else{
+      const aTime = getErrorCreatedTimestamp(a.item);
+      const bTime = getErrorCreatedTimestamp(b.item);
+      cmp = (aTime - bTime) * orderSign;
+      if(cmp !== 0) return cmp;
+    }
+    return a.index - b.index;
+  });
+  return decorated.map(entry => entry.item);
+}
 function getTypeFilterPathTitles(filter){
   if(!filter) return [];
   if(Array.isArray(filter.pathTitles) && filter.pathTitles.length) return filter.pathTitles.filter(Boolean);
@@ -140,7 +209,7 @@ function resolveTypeFilterNodeScope(filter){
   };
 }
 function getFiltered(){
-  return getErrorEntries().filter(e=>{
+  const filtered = getErrorEntries().filter(e=>{
     if(!matchTaskFilter(e, taskFilter)) return false;
     if(statusFilter!=='all' && normalizeErrorStatusValue(e.status)!==statusFilter) return false;
     if(knowledgeNodeFilter){
@@ -176,9 +245,12 @@ function getFiltered(){
     if(dateTo   && e.addDate && e.addDate > dateTo)   return false;
     return true;
   });
+  return sortFilteredErrors(filtered);
 }
 
 window.getTaskFilterLabel = getTaskFilterLabel;
 window.matchTaskFilter = matchTaskFilter;
 window.getTypeFilterPathTitles = getTypeFilterPathTitles;
 window.resolveTypeFilterNodeScope = resolveTypeFilterNodeScope;
+window.setErrorSortBy = setErrorSortBy;
+window.toggleErrorSortOrder = toggleErrorSortOrder;
