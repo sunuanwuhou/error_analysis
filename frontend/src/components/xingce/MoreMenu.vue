@@ -1,0 +1,236 @@
+<script setup lang="ts">
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
+import { useXingceStore } from '@/stores/xingceStore'
+import { xingceApi } from '@/api/xingce'
+import type { ErrorEntry, KnowledgeNode } from '@/api/xingce'
+import LocalBackupModal from './LocalBackupModal.vue'
+import DashboardModal from './DashboardModal.vue'
+
+const emit = defineEmits<{
+  openImport: []
+  randomNote: []
+  openMarkdownEditor: []
+  openHistory: []
+  openTypeRules: []
+}>()
+
+const store = useXingceStore()
+const open = ref(false)
+const btnRef = ref<HTMLElement | null>(null)
+const menuRef = ref<HTMLElement | null>(null)
+
+function toggle() { open.value = !open.value }
+
+function closeOnOutside(e: MouseEvent) {
+  if (!open.value) return
+  if (!btnRef.value?.contains(e.target as Node) && !menuRef.value?.contains(e.target as Node)) {
+    open.value = false
+  }
+}
+
+onMounted(() => document.addEventListener('mousedown', closeOnOutside))
+onBeforeUnmount(() => document.removeEventListener('mousedown', closeOnOutside))
+
+// ── 功能 ──────────────────────────────────────────────────────────────────────
+
+function exportJson() {
+  open.value = false
+  const payload = {
+    exportTime: new Date().toISOString(),
+    version: '2',
+    errors: store.errors,
+    knowledgeNodes: store.knowledgeNodes,
+  }
+  const data = JSON.stringify(payload, null, 2)
+  const blob = new Blob([data], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  const day = new Date().toISOString().slice(0, 10)
+  a.download = `xingce_backup_${day}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+async function cloudSave() {
+  open.value = false
+  await store.flushSave()
+  alert('已同步到云端')
+}
+
+function cloudLoad() {
+  open.value = false
+  if (confirm('重新从云端加载数据？本地未保存的更改将丢失。')) {
+    store.load()
+  }
+}
+
+async function cloudFullSave() {
+  open.value = false
+  const payload = {
+    exportTime: new Date().toISOString(),
+    errors: store.errors,
+    knowledgeNodes: store.knowledgeNodes,
+  }
+  await xingceApi.putCloudBackup(payload as Record<string, unknown>)
+  alert('云端全量备份完成')
+}
+
+async function cloudFullLoad() {
+  open.value = false
+  if (!confirm('全量从云端同步会覆盖本地，继续吗？')) return
+  const data = await xingceApi.getCloudBackup()
+  const backup = (data.backup ?? data.payload ?? {}) as Record<string, unknown>
+  const errors = (backup.errors as unknown[]) ?? []
+  const knowledgeNodes = (backup.knowledgeNodes as unknown[]) ?? (backup.knowledge_nodes as unknown[]) ?? []
+  if (!errors.length && !knowledgeNodes.length) {
+    alert('云端暂无可用全量数据')
+    return
+  }
+  store.replaceWorkspaceSnapshot(errors as ErrorEntry[], knowledgeNodes as KnowledgeNode[])
+  await store.flushSave()
+  await store.load()
+  alert('云端全量已同步到本地')
+}
+
+function printList() {
+  open.value = false
+  window.print()
+}
+
+const ccText = computed(() => {
+  const list = store.filteredErrors.slice(0, 20)
+  return list.map((e, i) => `${i + 1}. [${e.type}/${e.subtype}] ${String(e.question || '').slice(0, 80)}`).join('\n')
+})
+
+async function sendToCC() {
+  open.value = false
+  const text = ccText.value || '暂无内容'
+  try {
+    await navigator.clipboard.writeText(text)
+    alert('已复制到剪贴板，可直接发给 CC')
+  } catch {
+    alert(text)
+  }
+}
+
+function clearCurrentModuleErrors() {
+  open.value = false
+  const ids = store.filteredErrors.map(e => e.id)
+  if (!ids.length) return
+  if (!confirm(`清空当前筛选内 ${ids.length} 条错题？`)) return
+  store.clearErrorsByFilter(ids)
+}
+
+function clearAllErrors() {
+  open.value = false
+  if (!confirm('清空全部错题？该操作不可恢复。')) return
+  store.clearAllErrors()
+}
+
+function resetAllStudyData() {
+  open.value = false
+  if (!confirm('重置全部学习数据（状态/掌握度/练习轨迹）？')) return
+  store.resetAllStudyFields()
+}
+
+function openMarkdownNote() {
+  open.value = false
+  emit('openMarkdownEditor')
+}
+
+const showStats = ref(false)
+const showLocalBackups = ref(false)
+
+function openStats() {
+  open.value = false
+  showStats.value = true
+}
+
+</script>
+
+<template>
+  <div class="mm">
+    <button ref="btnRef" class="mm-btn" @click="toggle">更多 ▾</button>
+
+    <div v-if="open" ref="menuRef" class="mm-dropdown">
+      <button class="mm-item" @click="() => { open = false; emit('openImport') }">导入错题</button>
+      <button class="mm-item" @click="() => { open = false; emit('randomNote') }">随机笔记</button>
+      <button class="mm-item" @click="exportJson">导出</button>
+      <button class="mm-item" @click="() => { open = false; showLocalBackups = true }">备份数据列表</button>
+      <button class="mm-item" @click="cloudFullSave">从本地到云端全量</button>
+      <button class="mm-item" @click="cloudFullLoad">全量从云端同步（覆盖本地）</button>
+      <button class="mm-item" @click="sendToCC">发给CC</button>
+      <button class="mm-item" @click="openMarkdownNote">Markdown备注（专业）</button>
+      <button class="mm-item" @click="() => { open = false; emit('openHistory') }">学习历史</button>
+      <button class="mm-item" @click="() => { open = false; emit('openTypeRules') }">题型规则</button>
+      <button class="mm-item" @click="openStats">学习统计</button>
+      <button class="mm-item" @click="printList">打印</button>
+      <hr class="mm-sep" />
+      <details class="mm-adv">
+        <summary>高级数据</summary>
+        <div class="mm-adv-body">
+          <button class="mm-item" @click="clearCurrentModuleErrors">清空当前模块</button>
+          <button class="mm-item" @click="clearAllErrors">清空全部错题</button>
+          <button class="mm-item" @click="resetAllStudyData">重置全部学习数据</button>
+        </div>
+      </details>
+      <hr class="mm-sep" />
+      <button class="mm-item" @click="cloudSave">Cloud Save（增量）</button>
+      <button class="mm-item" @click="cloudLoad">Cloud Load（增量）</button>
+    </div>
+  </div>
+
+  <LocalBackupModal v-if="showLocalBackups" @close="showLocalBackups = false" />
+  <DashboardModal v-if="showStats" @close="showStats = false" />
+</template>
+
+<style scoped>
+.mm { position: relative; }
+
+.mm-btn {
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #475569;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.mm-btn:hover { background: #f8fafc; }
+
+.mm-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.12);
+  min-width: 140px;
+  z-index: 500;
+  padding: 4px;
+}
+
+.mm-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 7px 12px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  color: #334155;
+  cursor: pointer;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+.mm-item:hover { background: #f1f5f9; }
+
+.mm-sep { border: none; border-top: 1px solid #f1f5f9; margin: 4px 0; }
+
+.mm-adv { padding: 2px 6px; font-size: 12px; color: #64748b; }
+.mm-adv summary { cursor: pointer; user-select: none; }
+.mm-adv-body { margin-top: 4px; display: flex; flex-direction: column; gap: 2px; }
+</style>

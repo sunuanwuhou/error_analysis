@@ -31,6 +31,8 @@ async function submit() {
       correct: isCorrect.value,
       durationSec,
     })
+    store.invalidatePracticeSummaries([props.entry.id])
+    store.queuePracticeSummaries([props.entry.id])
     // 更新掌握度
     if (isCorrect.value) {
       const next: Record<string, ErrorEntry['masteryLevel']> = {

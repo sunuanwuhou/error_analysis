@@ -1,51 +1,37 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, nextTick } from 'vue'
 import type { KnowledgeNode } from '@/api/xingce'
 import { useXingceStore } from '@/stores/xingceStore'
 
 const props = defineProps<{
   node: KnowledgeNode
   depth: number
-  searchKeyword?: string
 }>()
 
 const store = useXingceStore()
+
+const renaming = ref(false)
+const draftTitle = ref('')
+const renameInputRef = ref<HTMLInputElement | null>(null)
 
 const isExpanded = computed(() => store.knowledgeExpandedIds.has(props.node.id))
 const isActive = computed(() => store.activeNodeId === props.node.id)
 const aggCount = computed(() => store.errorCountByNodeAgg[props.node.id] ?? 0)
 const hasChildren = computed(() => (props.node.children?.length ?? 0) > 0)
 
-// 搜索匹配逻辑：自身匹配 or 子孙中有匹配
-const matchesSearch = computed(() => {
-  const kw = props.searchKeyword?.toLowerCase() ?? ''
-  if (!kw) return true
-  return nodeMatchesKeyword(props.node, kw)
-})
-
-function nodeMatchesKeyword(node: KnowledgeNode, kw: string): boolean {
-  if (node.title.toLowerCase().includes(kw)) return true
-  return (node.children ?? []).some(c => nodeMatchesKeyword(c, kw))
-}
-
-// 专注树：aggCount=0 且非活跃时隐藏
 const isVisible = computed(() => {
-  if (!matchesSearch.value) return false
-  if (store.knowledgeFocusMode && aggCount.value === 0 && !isActive.value) return false
+  if (!store.isNodeVisibleBySearch(props.node)) return false
   return true
 })
 
 // 搜索时自动展开匹配的节点
 const shouldExpand = computed(() => {
-  const kw = props.searchKeyword?.toLowerCase() ?? ''
-  if (kw && (props.node.children ?? []).some(c => nodeMatchesKeyword(c, kw))) return true
+  if (store.hasKnowledgeSearch() && hasChildren.value) return true
   return isExpanded.value
 })
 
 function handleClick() {
-  if (isActive.value) {
-    store.setActiveNode(null)
-  } else {
+  if (!isActive.value) {
     store.setActiveNode(props.node.id)
   }
 }
@@ -53,6 +39,28 @@ function handleClick() {
 function handleToggle(e: Event) {
   e.stopPropagation()
   store.toggleKnowledgeNode(props.node.id)
+}
+
+async function beginRename(e: Event) {
+  e.stopPropagation()
+  renaming.value = true
+  draftTitle.value = props.node.title
+  await nextTick()
+  renameInputRef.value?.focus()
+  renameInputRef.value?.select()
+}
+
+function cancelRename() {
+  renaming.value = false
+}
+
+function commitRename() {
+  if (!renaming.value) return
+  const prev = props.node.title
+  const next = draftTitle.value.trim()
+  renaming.value = false
+  if (!next || next === prev) return
+  store.renameKnowledgeNode(props.node.id, next)
 }
 </script>
 
@@ -72,14 +80,29 @@ function handleToggle(e: Event) {
       >{{ shouldExpand ? '▾' : '▸' }}</span>
       <span v-else class="ktn-arrow-placeholder" />
 
-      <!-- 节点标题 -->
-      <span class="ktn-title">{{ node.title }}</span>
+      <!-- 节点标题（双击重命名） -->
+      <span
+        v-if="!renaming"
+        class="ktn-title"
+        :title="'双击重命名'"
+        @dblclick.stop="beginRename"
+      >{{ node.title }}</span>
+      <input
+        v-else
+        ref="renameInputRef"
+        v-model="draftTitle"
+        class="ktn-rename"
+        type="text"
+        @click.stop
+        @keydown.enter.prevent="commitRename"
+        @keydown.escape.prevent="cancelRename"
+        @blur="commitRename"
+      >
 
       <!-- 错题数 badge -->
       <span
-        v-if="aggCount > 0"
         class="ktn-badge"
-        :class="{ 'badge-warn': aggCount > 20 }"
+        :class="{ 'badge-warn': aggCount > 20, 'is-empty': aggCount === 0 }"
       >{{ aggCount }}</span>
     </div>
 
@@ -90,7 +113,6 @@ function handleToggle(e: Event) {
         :key="child.id"
         :node="child"
         :depth="depth + 1"
-        :search-keyword="searchKeyword"
       />
     </div>
   </div>
@@ -141,6 +163,16 @@ function handleToggle(e: Event) {
   white-space: nowrap;
   line-height: 1.4;
 }
+.ktn-rename {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  padding: 2px 6px;
+  border: 1px solid #93c5fd;
+  border-radius: 4px;
+  outline: none;
+  color: #1e293b;
+}
 
 .ktn-badge {
   font-size: 10px;
@@ -154,6 +186,7 @@ function handleToggle(e: Event) {
   font-weight: 500;
 }
 .ktn-badge.badge-warn { background: #fff1f0; color: #cf1322; }
+.ktn-badge.is-empty { visibility: hidden; }
 
 .ktn-children {
   display: flex;

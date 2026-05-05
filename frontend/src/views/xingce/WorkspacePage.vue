@@ -1,92 +1,178 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useXingceStore } from '@/stores/xingceStore'
+import WorkspaceSidebarBrand from '@/components/xingce/WorkspaceSidebarBrand.vue'
 import FilterSidebar from '@/components/xingce/FilterSidebar.vue'
 import PracticePanel from '@/components/xingce/PracticePanel.vue'
-import ErrorList from '@/components/xingce/ErrorList.vue'
+import NotesWorkspacePanel from '@/components/xingce/NotesWorkspacePanel.vue'
+import ErrorsWorkspacePanel from '@/components/xingce/ErrorsWorkspacePanel.vue'
+import GlobalSearchModal from '@/components/xingce/GlobalSearchModal.vue'
+import QuizModal from '@/components/xingce/QuizModal.vue'
+import AddErrorModal from '@/components/xingce/AddErrorModal.vue'
+import ImportModal from '@/components/xingce/ImportModal.vue'
+import HistoryModal from '@/components/xingce/HistoryModal.vue'
+import TypeRulesModal from '@/components/xingce/TypeRulesModal.vue'
 
 const store = useXingceStore()
+const quizMode = ref<'daily' | 'full' | 'review' | 'retrain' | null>(null)
+const showAddModal = ref(false)
+const showImportModal = ref(false)
+const showGlobalSearch = ref(false)
+const showHistoryModal = ref(false)
+const showTypeRulesModal = ref(false)
+const notesWorkspaceRef = ref<InstanceType<typeof NotesWorkspacePanel> | null>(null)
 
-onMounted(() => { store.load() })
+/** 与旧版 `switchTab` 默认一致：工作区先展示「学习笔记」 */
+const mainTab = ref<'notes' | 'errors'>('notes')
 
-/** 当前筛选的面包屑描述 */
-const filterDesc = computed(() => {
-  const parts: string[] = []
-  if (store.activeNodeId) {
-    // 找节点标题
-    function findTitle(nodes: typeof store.knowledgeTree, id: string): string | null {
-      for (const n of nodes) {
-        if (n.id === id) return n.title
-        const found = findTitle(n.children ?? [], id)
-        if (found) return found
-      }
-      return null
-    }
-    const title = findTitle(store.knowledgeTree, store.activeNodeId)
-    if (title) parts.push(title)
+function onGlobalKeydown(e: KeyboardEvent) {
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+    e.preventDefault()
+    showGlobalSearch.value = true
   }
-  if (store.taskFilter !== 'all') {
-    const tmap: Record<string, string> = { diagnose: '待判因', review_ready: '待复盘', retrain: '待复训' }
-    parts.push(tmap[store.taskFilter] ?? store.taskFilter)
-  }
-  if (store.statusFilter !== 'all') {
-    const map: Record<string, string> = { focus: '重点复习', review: '待复习', mastered: '已掌握' }
-    parts.push(map[store.statusFilter] ?? store.statusFilter)
-  }
-  if (store.reasonFilter) parts.push(`错因: ${store.reasonFilter}`)
-  if (store.dateFrom || store.dateTo) {
-    parts.push(`${store.dateFrom || '…'} ~ ${store.dateTo || '…'}`)
-  }
-  if (store.searchQuery.trim()) parts.push(`"${store.searchQuery.trim()}"`)
-  return parts.join(' · ')
+}
+
+onMounted(() => {
+  store.load()
+  store.loadMe()
+  window.addEventListener('keydown', onGlobalKeydown)
 })
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onGlobalKeydown)
+})
+
+function onPickQuestion(id: string) {
+  showGlobalSearch.value = false
+  mainTab.value = 'errors'
+  store.clearFilters()
+  nextTick(() => {
+    const safe = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(id) : id.replace(/"/g, '\\"')
+    const el = document.querySelector(`[data-error-id="${safe}"]`) as HTMLElement | null
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    el?.classList.add('ec--picked')
+    window.setTimeout(() => el?.classList.remove('ec--picked'), 2200)
+  })
+}
+
+function onStartRandomNote() {
+  const withNotes = store.knowledgeNodes.filter((n) => {
+    const md = String(n.contentMd ?? '').trim()
+    const nt = String(n.noteContent ?? '').trim()
+    return !!(md || nt)
+  })
+  if (!withNotes.length) {
+    window.alert('暂无笔记内容')
+    return
+  }
+  const pick = withNotes[Math.floor(Math.random() * withNotes.length)]!
+  store.setActiveNode(pick.id)
+  mainTab.value = 'notes'
+}
+
+function onOpenMarkdownEditor() {
+  mainTab.value = 'notes'
+  nextTick(() => notesWorkspaceRef.value?.enterNoteEdit())
+}
+
+function onPickNote(nodeId: string) {
+  store.setActiveNode(nodeId)
+  mainTab.value = 'notes'
+  showGlobalSearch.value = false
+}
 </script>
 
 <template>
   <div class="xc-workspace">
-    <!-- Header -->
-    <header class="xc-header">
-      <span class="xc-logo">行测工作台</span>
-      <span class="xc-count">
-        <template v-if="filterDesc">
-          <span class="xc-filter-desc">{{ filterDesc }}</span>
-          <span class="xc-sep">·</span>
-        </template>
-        {{ store.filteredErrors.length }} / {{ store.errors.length }} 题
-      </span>
-      <button
-        v-if="store.activeNodeId || store.statusFilter !== 'all' || store.taskFilter !== 'all' || store.reasonFilter || store.dateFrom || store.dateTo || store.searchQuery"
-        class="xc-clear-btn"
-        @click="store.clearFilters()"
-      >清除筛选</button>
-      <span v-if="store.saving" class="xc-save-status saving">保存中…</span>
-      <span v-else-if="store.lastSavedAt" class="xc-save-status saved">已保存</span>
-    </header>
-
-    <!-- 加载中 -->
     <div v-if="store.loading" class="xc-loading">
       <div class="xc-spinner" />
       <p>加载数据中…</p>
     </div>
 
-    <!-- 加载失败 -->
     <div v-else-if="store.loadError" class="xc-error-state">
       <p class="xc-error-msg">{{ store.loadError }}</p>
       <button class="xc-btn" @click="store.load()">重试</button>
     </div>
 
-    <!-- 主体 -->
     <div v-else class="xc-body">
-      <!-- 左侧栏：练习面板 + 筛选/知识树 -->
-      <div class="xc-sidebar">
-        <PracticePanel @start-quiz="() => {}" @start-random-note="() => {}" />
-        <div class="xc-sidebar-divider" />
+      <aside class="xc-sidebar">
+        <WorkspaceSidebarBrand />
+        <PracticePanel
+          v-if="!store.knowledgeFocusMode"
+          @start-quiz="(mode) => { quizMode = mode }"
+          @start-random-note="onStartRandomNote"
+          @open-add="showAddModal = true"
+          @open-import="showImportModal = true"
+          @open-markdown-editor="onOpenMarkdownEditor"
+          @open-history="showHistoryModal = true"
+          @open-type-rules="showTypeRulesModal = true"
+        />
+        <div v-if="!store.knowledgeFocusMode" class="xc-sidebar-divider" />
         <FilterSidebar />
+      </aside>
+
+      <div class="xc-main-wrap">
+        <div class="xc-main-tabs-row">
+          <div class="xc-tabs">
+            <button
+              type="button"
+              class="xc-tab"
+              data-testid="workspace-tab-notes"
+              :class="{ active: mainTab === 'notes' }"
+              @click="mainTab = 'notes'"
+            >学习笔记</button>
+            <button
+              type="button"
+              class="xc-tab"
+              data-testid="workspace-tab-errors"
+              :class="{ active: mainTab === 'errors' }"
+              @click="mainTab = 'errors'"
+            >错题列表</button>
+          </div>
+          <div class="xc-main-meta">
+            <span v-if="store.currentUser" class="xc-user">{{ store.currentUser.username }}</span>
+            <span v-if="mainTab === 'errors'" class="xc-mini-count" title="当前筛选 / 全库">
+              {{ store.filteredErrors.length }} / {{ store.errors.length }} 题
+            </span>
+            <button
+              v-if="store.activeNodeId || store.statusFilter !== 'all' || store.taskFilter !== 'all' || store.reasonFilter || store.dateFrom || store.dateTo || store.searchQuery"
+              type="button"
+              class="xc-clear-btn"
+              @click="store.clearFilters()"
+            >清除筛选</button>
+            <span v-if="store.saving" class="xc-save-status saving">保存中…</span>
+            <span v-else-if="store.lastSavedAt" class="xc-save-status saved">已保存</span>
+          </div>
+        </div>
+
+        <main
+          class="xc-main"
+          :data-filtered-count="store.filteredErrors.length"
+          :data-total-count="store.errors.length"
+        >
+          <NotesWorkspacePanel
+            ref="notesWorkspaceRef"
+            v-show="mainTab === 'notes'"
+            @open-import="showImportModal = true"
+            @open-global-search="showGlobalSearch = true"
+          />
+          <ErrorsWorkspacePanel v-show="mainTab === 'errors'" @open-global-search="showGlobalSearch = true" />
+        </main>
       </div>
-      <main class="xc-main">
-        <ErrorList :entries="store.filteredErrors" />
-      </main>
     </div>
+
+    <GlobalSearchModal
+      v-if="showGlobalSearch"
+      @close="showGlobalSearch = false"
+      @pick-question="onPickQuestion"
+      @pick-note="onPickNote"
+    />
+    <QuizModal v-if="quizMode" :mode="quizMode" @close="quizMode = null" />
+    <AddErrorModal v-if="showAddModal" @close="showAddModal = false" @added="() => {}" />
+    <ImportModal v-if="showImportModal" @close="showImportModal = false" @imported="() => {}" />
+
+    <HistoryModal v-if="showHistoryModal" @close="showHistoryModal = false" />
+    <TypeRulesModal v-if="showTypeRulesModal" @close="showTypeRulesModal = false" />
   </div>
 </template>
 
@@ -100,37 +186,99 @@ const filterDesc = computed(() => {
   overflow: hidden;
 }
 
-.xc-header {
+.xc-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+  gap: 0;
+}
+
+.xc-sidebar {
+  width: 260px;
+  min-width: 260px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: #fff;
+  border-right: 1px solid #e8e8e8;
+  padding: 0 10px 12px;
+}
+
+.xc-sidebar-divider {
+  height: 1px;
+  background: #e8e8e8;
+  flex-shrink: 0;
+  margin: 0 -10px;
+}
+
+.xc-main-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.xc-main-tabs-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
-  padding: 10px 20px;
+  padding: 10px 14px;
   background: #fff;
   border-bottom: 1px solid #e8e8e8;
-  font-size: 14px;
   flex-shrink: 0;
 }
 
-.xc-logo {
-  font-weight: 700;
-  color: #1a1a1a;
-  font-size: 15px;
-}
-
-.xc-count {
-  font-size: 12px;
-  color: #888;
+.xc-tabs {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
-.xc-filter-desc {
-  color: #4a6cf7;
+.xc-tab {
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
+  border-radius: 8px;
+  font-size: 13px;
+  padding: 8px 16px;
+  cursor: pointer;
   font-weight: 500;
 }
+.xc-tab:hover { background: #f1f5f9; color: #334155; }
+.xc-tab.active {
+  background: #fff;
+  border-color: #cbd5e1;
+  color: #1e293b;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
 
-.xc-sep { color: #ccc; }
+.xc-main-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.xc-user {
+  font-size: 12px;
+  color: #64748b;
+  padding: 2px 8px;
+  background: #f1f5f9;
+  border-radius: 6px;
+}
+
+.xc-mini-count {
+  font-size: 12px;
+  color: #888;
+}
 
 .xc-clear-btn {
   font-size: 11px;
@@ -147,10 +295,18 @@ const filterDesc = computed(() => {
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 10px;
-  margin-left: auto;
 }
 .xc-save-status.saving { background: #fff7e6; color: #d46b08; }
 .xc-save-status.saved  { background: #f6ffed; color: #389e0d; }
+
+.xc-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0 14px 14px;
+}
 
 .xc-loading,
 .xc-error-state {
@@ -186,35 +342,4 @@ const filterDesc = computed(() => {
   font-size: 14px;
 }
 .xc-btn:hover { background: #3a5ce5; }
-
-.xc-body {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-  padding: 14px;
-  gap: 14px;
-  min-height: 0;
-}
-
-.xc-sidebar {
-  width: 220px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-.xc-sidebar-divider {
-  height: 1px;
-  background: #e2e8f0;
-  flex-shrink: 0;
-}
-
-.xc-main {
-  flex: 1;
-  overflow-y: auto;
-  min-width: 0;
-}
 </style>

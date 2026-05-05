@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useXingceStore } from '@/stores/xingceStore'
 import KnowledgeTreeNode from './KnowledgeTreeNode.vue'
 
@@ -15,7 +15,24 @@ const focusMode = computed({
   set: (v) => { store.knowledgeFocusMode = v },
 })
 
+/** 与旧版一致：不展示「无任何子节点且无错题」的虚拟根（如空的「其他」） */
+const displayRoots = computed(() => {
+  const agg = store.errorCountByNodeAgg
+  return store.knowledgeTree.filter((root) => {
+    const id = String(root.id || '')
+    if (!id.startsWith('__virtual_root__')) return true
+    const children = root.children?.length ?? 0
+    const n = agg[id] ?? 0
+    return children > 0 || n > 0
+  })
+})
+
 const hasActiveNode = computed(() => store.activeNodeId !== null)
+const searchMetaText = computed(() => {
+  if (!store.hasKnowledgeSearch()) return '支持按节点名和路径搜索'
+  const count = store.visibleKnowledgeNodeCount
+  return count > 0 ? `命中 ${count} 个节点` : '未找到匹配节点'
+})
 
 function clearNodeFilter() {
   store.setActiveNode(null)
@@ -24,6 +41,10 @@ function clearNodeFilter() {
 function clearSearch() {
   store.knowledgeTreeSearch = ''
 }
+
+onMounted(() => {
+  store.loadKnowledgeExpandedState()
+})
 </script>
 
 <template>
@@ -46,10 +67,11 @@ function clearSearch() {
       <button
         class="kt-focus-btn"
         :class="{ active: focusMode }"
-        title="专注树：只显示有错题的节点"
+        :title="focusMode ? '退出专注树模式' : '进入专注树模式'"
         @click="focusMode = !focusMode"
-      >专注</button>
+      >{{ focusMode ? '退出专注' : '专注树' }}</button>
     </div>
+    <div class="kt-search-meta">{{ searchMetaText }}</div>
 
     <!-- 当前节点筛选提示 -->
     <div v-if="hasActiveNode" class="kt-active-hint">
@@ -61,11 +83,10 @@ function clearSearch() {
     <div class="kt-body">
       <div v-if="!store.knowledgeTree.length" class="kt-empty">暂无知识树数据</div>
       <KnowledgeTreeNode
-        v-for="root in store.knowledgeTree"
+        v-for="root in displayRoots"
         :key="root.id"
         :node="root"
         :depth="0"
-        :search-keyword="searchKw"
       />
     </div>
   </div>
@@ -84,6 +105,12 @@ function clearSearch() {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+.kt-search-meta {
+  min-height: 16px;
+  font-size: 11px;
+  color: #8a6f57;
+  padding: 0 2px;
 }
 
 .kt-search-wrap {

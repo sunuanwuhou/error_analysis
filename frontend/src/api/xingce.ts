@@ -42,16 +42,52 @@ export interface KnowledgeNode {
   level?: number
   order?: number
   noteContent?: string
+  /** Markdown 正文（与旧版 knowledge node `contentMd` 对齐） */
+  contentMd?: string
+  updatedAt?: string
   children?: KnowledgeNode[]
 }
 
 export interface AttemptSummary {
   recentWrongCount?: number
+  wrongCount?: number
   lastConfidence?: number
   lastDuration?: number
   avgDuration?: number
   lastResult?: string
   lastTime?: string
+}
+
+/** GET /api/practice/attempts 单条练习记录（与后端 read_practice_attempts 对齐） */
+export interface PracticeAttemptRow {
+  id: string
+  createdAt?: string
+  updatedAt?: string
+  sessionMode?: string
+  errorId?: string
+  questionId?: string
+  type?: string
+  subtype?: string
+  questionText?: string
+  myAnswer?: string
+  result?: string
+  durationSec?: number
+  confidence?: number
+  [key: string]: unknown
+}
+
+export interface LocalBackupItem {
+  id: string
+  kind?: string
+  label?: string
+  createdAt?: string
+  updatedAt?: string
+  summary?: {
+    errorCount?: number
+    knowledgeNodeCount?: number
+    noteModuleCount?: number
+  }
+  [key: string]: unknown
 }
 
 /** GET /api/sync 返回的原始 op 结构 */
@@ -160,6 +196,16 @@ export function opsToSnapshot(ops: SyncOp[]): WorkspaceSnapshot {
 // ── API ──────────────────────────────────────────────────────────────────────
 
 export const xingceApi = {
+  /** 当前登录用户 */
+  getMe(): Promise<{ authenticated: boolean; user?: { id: string; username: string } }> {
+    return request('/api/me')
+  },
+
+  /** 登出（清 cookie） */
+  logout(): Promise<{ ok: boolean }> {
+    return request('/api/auth/logout', { method: 'POST' })
+  },
+
   /** 拉取全量 ops，重建本地快照 */
   async load(): Promise<WorkspaceSnapshot> {
     const res = await request<SyncPullResponse>('/api/sync')
@@ -172,6 +218,11 @@ export const xingceApi = {
       method: 'POST',
       body: JSON.stringify({ ops }),
     })
+  },
+
+  /** 最近练习记录时间线 */
+  getPracticeAttempts(limit = 120): Promise<{ ok: boolean; items: PracticeAttemptRow[] }> {
+    return request(`/api/practice/attempts?limit=${limit}`)
   },
 
   /** 获取多条错题的练习摘要，返回 { items: { [errorId]: AttemptSummary } } */
@@ -201,6 +252,52 @@ export const xingceApi = {
     retrainQueue: unknown[]
   }> {
     return request(`/api/practice/daily?limit=${limit}`)
+  },
+
+  /** 学习统计 */
+  getInsights(limit = 12): Promise<Record<string, unknown>> {
+    return request(`/api/practice/insights?limit=${limit}`)
+  },
+
+  /** 云端全量读取 */
+  getCloudBackup(): Promise<Record<string, unknown>> {
+    return request('/api/backup')
+  },
+
+  /** 云端全量写入 */
+  putCloudBackup(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return request('/api/backup', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    })
+  },
+
+  /** 本地备份列表 */
+  listLocalBackups(): Promise<{ ok: boolean; items: LocalBackupItem[] }> {
+    return request('/api/local-backups')
+  },
+
+  /** 创建本地备份 */
+  createLocalBackup(payload: { kind?: string; label?: string; skipRecentHours?: number }): Promise<Record<string, unknown>> {
+    return request('/api/local-backups/create', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  },
+
+  /** 恢复本地备份 */
+  restoreLocalBackup(backupId: string, createSafetyBackup = true): Promise<Record<string, unknown>> {
+    return request('/api/local-backups/restore', {
+      method: 'POST',
+      body: JSON.stringify({ backupId, createSafetyBackup }),
+    })
+  },
+
+  /** 删除本地备份 */
+  deleteLocalBackup(backupId: string): Promise<Record<string, unknown>> {
+    return request(`/api/local-backups/${encodeURIComponent(backupId)}`, {
+      method: 'DELETE',
+    })
   },
 
   /** 记录一次练习结果 */
