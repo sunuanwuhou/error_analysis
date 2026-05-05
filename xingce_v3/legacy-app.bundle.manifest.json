@@ -1,8 +1,8 @@
 {
-  "built_at": "2026-05-05T07:42:40Z",
+  "built_at": "2026-05-05T12:59:51Z",
   "css_bundle": {
     "path": "xingce_v3/styles/legacy-app.bundle.css",
-    "sha256": "6ea95a29d6e70257757cc6402cea435bea8cbb5d486650d6ef93fcef95eff399",
+    "sha256": "f2adf021682820beaaca5044bb9ecb4579ca3b00bb6b2348df92134dce94fb67",
     "sources": [
       "styles/main/00-base-reset.css",
       "styles/main/01-sidebar.css",
@@ -45,13 +45,23 @@
   },
   "js_bundle": {
     "path": "xingce_v3/modules/legacy-app.bundle.js",
-    "sha256": "00070e230e867080ecaf9946c38be031961ba1fc65ee2aabef623028beca7c40",
+    "sha256": "b64f89b4ddc0829cf9268c1b763c8d3cd6cf05b111fd6cdffaebae1371dd5945",
     "sources": [
       "modules/main/00-event-dispatcher.js",
       "modules/main/01-state.js",
       "modules/main/02-indexeddb.js",
       "modules/main/03-storage-usage.js",
       "modules/main/04-utils.js",
+      "modules/main/persistence/04a-startup-summary.js",
+      "modules/main/persistence/04b-persist-primitives.js",
+      "modules/main/persistence/05e-sync-snapshots.js",
+      "modules/main/persistence/05f-portable-backup.js",
+      "modules/main/persistence/05g-cloud-fetch.js",
+      "modules/main/persistence/05h-cloud-restore-flow.js",
+      "modules/main/persistence/05i-cloud-ui.js",
+      "modules/main/persistence/05j-cloud-entry-actions.js",
+      "modules/main/persistence/05k-cloud-save-actions.js",
+      "modules/main/persistence/05l-cloud-schedule-actions.js",
       "modules/main/05-persistence.js",
       "modules/main/persistence/05a-note-sync-and-history.js",
       "modules/main/persistence/05b-cloud-bootstrap-and-schedule.js",
@@ -64,6 +74,9 @@
       "modules/main/10-notes-panel.js",
       "modules/main/11-typed-note-tree.js",
       "modules/main/12-review-engine.js",
+      "modules/main/modal/13b-quiz-pause-timer.js",
+      "modules/main/modal/13c-quiz-queue-entry.js",
+      "modules/main/modal/13d-quiz-session-shell.js",
       "modules/main/13-quiz-flow.js",
       "modules/main/modal/13a-quiz-canvas-feedback.js",
       "modules/main/14-sidebar-render.js",
@@ -126,13 +139,23 @@
   "js_view_bundles": {
     "home": {
       "path": "xingce_v3/modules/legacy-app.home.bundle.js",
-      "sha256": "d57c1235c3222c37263db8d38353dcea57293413ab438268bef1c3b545891304",
+      "sha256": "38c1d10aa08e05df0de9e5039fde1700a3aca1592f633fab5fded8c16c9ec95e",
       "sources": [
         "modules/main/00-event-dispatcher.js",
         "modules/main/01-state.js",
         "modules/main/02-indexeddb.js",
         "modules/main/03-storage-usage.js",
         "modules/main/04-utils.js",
+        "modules/main/persistence/04a-startup-summary.js",
+        "modules/main/persistence/04b-persist-primitives.js",
+        "modules/main/persistence/05e-sync-snapshots.js",
+        "modules/main/persistence/05f-portable-backup.js",
+        "modules/main/persistence/05g-cloud-fetch.js",
+        "modules/main/persistence/05h-cloud-restore-flow.js",
+        "modules/main/persistence/05i-cloud-ui.js",
+        "modules/main/persistence/05j-cloud-entry-actions.js",
+        "modules/main/persistence/05k-cloud-save-actions.js",
+        "modules/main/persistence/05l-cloud-schedule-actions.js",
         "modules/main/05-persistence.js",
         "modules/main/persistence/05a-note-sync-and-history.js",
         "modules/main/persistence/05b-cloud-bootstrap-and-schedule.js",
@@ -151,7 +174,7 @@
     },
     "workspace": {
       "path": "xingce_v3/modules/legacy-app.workspace.bundle.js",
-      "sha256": "b9975724542b3358df3b811239331fb7114c601baa633b57630406b46a3772b0",
+      "sha256": "032be569083cc519dfb644572532a4890ff7223feeec859f36137485b4949673",
       "sources": [
         "modules/main/10-notes-panel.js",
         "modules/main/11-typed-note-tree.js",
@@ -178,7 +201,7 @@
     },
     "modal": {
       "path": "xingce_v3/modules/legacy-app.modal.bundle.js",
-      "sha256": "79bcd8e8c6e73ae530465148a2459a18f638dfb402358760f7e616097362717d",
+      "sha256": "5bdf4c552ae16b0939b4af1bc43adf42c21ee1a3d8c42d9519badfdb71c53ce1",
       "sources": [
         "modules/main/06-ai-workbench.js",
         "modules/main/07-image-processing.js",
@@ -195,6 +218,9 @@
         "modules/main/26-export-upgrade.js",
         "modules/main/28-vocabulary-bank.js",
         "modules/main/29-quiz-shortcuts.js",
+        "modules/main/modal/13b-quiz-pause-timer.js",
+        "modules/main/modal/13c-quiz-queue-entry.js",
+        "modules/main/modal/13d-quiz-session-shell.js",
         "modules/main/13-quiz-flow.js",
         "modules/main/modal/13a-quiz-canvas-feedback.js",
         "modules/main/31-inline-quiz.js",
@@ -207,7 +233,7 @@
     },
     "bootstrap": {
       "path": "xingce_v3/modules/legacy-app.bootstrap.bundle.js",
-      "sha256": "ec328e445bc8e63866a574bd7c85d5dc1f0345098827a9b442304c166a3560b5",
+      "sha256": "0a4065e49447ed93085463628340ce168b06f8beda0e8ac2e70f3f57d7f69d7a",
       "sources": [
         "modules/main/99-bootstrap.js"
       ]
