@@ -3,6 +3,8 @@
 > 目标路径：`/new/xingce/workspace`  
 > 原则：**不动旧版任何文件**，新版与旧版并行，功能完全对齐旧版
 
+**当前策略（2026-05-05）**：日常仍以旧版根路径工作区为主；**新版 `http://127.0.0.1:8080/new/xingce/workspace` 暂时不继续迭代**，先「将就」用旧版。细节与验收状态见 `docs/active/XINGCE_WORKSPACE_ALIGNMENT.md` 文首「当前使用策略」。
+
 ---
 
 ## 架构总体原则
