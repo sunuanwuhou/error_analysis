@@ -70,7 +70,19 @@ function ensureFixedKnowledgeRoots() {
   const desiredTitles = [...FIXED_KNOWLEDGE_ROOTS, '未分类'];
   const orderMap = new Map(desiredTitles.map((title, index) => [title, index]));
   let changed = false;
-  // 一级节点允许手动删除：这里只做排序，不再强制补回缺失根节点。
+  const normalizedRootMap = new Map();
+  roots.forEach(node => {
+    if (!node) return;
+    const normalized = normalizeKnowledgeRootTitleForCleanup(node.title);
+    if (!normalized || normalizedRootMap.has(normalized)) return;
+    normalizedRootMap.set(normalized, node);
+  });
+  desiredTitles.forEach(title => {
+    const normalized = normalizeKnowledgeRootTitleForCleanup(title);
+    if (normalizedRootMap.has(normalized)) return;
+    roots.push(createKnowledgeNode(title, 1, false));
+    changed = true;
+  });
   const sortedRoots = roots.slice().sort((a, b) => {
     const left = orderMap.has(String(a.title || '')) ? orderMap.get(String(a.title || '')) : desiredTitles.length + 100;
     const right = orderMap.has(String(b.title || '')) ? orderMap.get(String(b.title || '')) : desiredTitles.length + 100;

@@ -60,7 +60,13 @@ function renderKnowledgeNodeTargetOptions() {
   const searchInput = document.getElementById('knowledgeNodeTargetSearch');
   if (!list || !searchInput || knowledgeNodeModalState.mode !== 'move') return;
   const keyword = searchInput.value.trim().toLowerCase();
-  const filtered = getKnowledgeNodeModalTargetOptions(knowledgeNodeModalState.nodeId).filter(item => {
+  const options = getKnowledgeNodeModalTargetOptions(knowledgeNodeModalState.nodeId).slice();
+  options.unshift({
+    id: '__ROOT_LEVEL__',
+    label: '一级根层',
+    node: { id: '__ROOT_LEVEL__', title: '一级根层' }
+  });
+  const filtered = options.filter(item => {
     if (!keyword) return true;
     return item.label.toLowerCase().includes(keyword) || item.node.title.toLowerCase().includes(keyword);
   });
@@ -110,7 +116,7 @@ function updateKnowledgeWorkspaceChrome(currentNode, linkedCount) {
       <button class="btn btn-secondary" onclick="setKnowledgeRelatedMode('all');renderNotesPanelRight()">关联错题</button>
       <button class="btn btn-secondary" onclick="addKnowledgeLeafUnderSelected()">+ 新建知识点</button>
       ${currentNode ? `<button class="btn btn-secondary" onclick="renameKnowledgeNode('${currentNode.id}')">重命名</button>` : ''}
-      ${currentNode && findKnowledgeParent(currentNode.id) ? `<button class="btn btn-secondary" onclick="moveKnowledgeNode('${currentNode.id}')">移动</button>` : ''}
+      ${currentNode && typeof canMoveKnowledgeNode === 'function' && canMoveKnowledgeNode(currentNode.id) ? `<button class="btn btn-secondary" onclick="moveKnowledgeNode('${currentNode.id}')">移动</button>` : ''}
       ${currentNode ? `<button class="btn btn-secondary" onclick="deleteKnowledgeNode('${currentNode.id}')">删除知识点</button>` : ''}
       ${currentNode ? `<button class="btn btn-secondary" onclick="clearNotes()">清空</button>` : ''}
     `;

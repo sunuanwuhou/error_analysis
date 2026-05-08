@@ -180,23 +180,19 @@ function renameKnowledgeNode(nodeId) {
 
 function moveKnowledgeNodeToTarget(nodeId, targetId, opts) {
   const node = getKnowledgeNodeById(nodeId);
-  const target = getKnowledgeNodeById(targetId);
-  if (!node || !target) return false;
-  if (node.id === target.id) {
+  const moveToRoot = String(targetId || '') === '__ROOT_LEVEL__';
+  const target = moveToRoot ? null : getKnowledgeNodeById(targetId);
+  if (!node || (!moveToRoot && !target)) return false;
+  if (!moveToRoot && node.id === target.id) {
     showToast('不能移动到自己', 'warning');
     return false;
   }
-  if (isKnowledgeDescendant(node.id, target.id)) {
+  if (!moveToRoot && isKnowledgeDescendant(node.id, target.id)) {
     showToast('不能移动到自己的下级节点', 'error');
     return false;
   }
   const oldParent = findKnowledgeParent(node.id);
-  if (!oldParent) {
-    showToast('一级节点暂不支持移动', 'warning');
-    return false;
-  }
-  target.children = target.children || [];
-  const oldList = oldParent.children || [];
+  const oldList = oldParent ? (oldParent.children || []) : getKnowledgeRootNodes();
   const idx = oldList.findIndex(item => item.id === node.id);
   if (idx < 0) return false;
   const movedNodeIds = typeof getKnowledgeDescendantNodeIds === 'function'
@@ -206,12 +202,21 @@ function moveKnowledgeNodeToTarget(nodeId, targetId, opts) {
     ? detachKnowledgeNodeById(node.id)
     : null;
   const movingNode = detachedNode || node;
-  oldParent.isLeaf = !(Array.isArray(oldParent.children) && oldParent.children.length);
-  const duplicateTarget = target.children.find(item => item.id !== node.id && item.title === node.title);
-  if (duplicateTarget) {
+  if (oldParent) {
+    oldParent.isLeaf = !(Array.isArray(oldParent.children) && oldParent.children.length);
+  }
+  if (!moveToRoot) {
+    target.children = target.children || [];
+  }
+  const duplicateTarget = !moveToRoot
+    ? target.children.find(item => item.id !== node.id && item.title === node.title)
+    : null;
+  if (duplicateTarget && !moveToRoot) {
     const descendantIds = movedNodeIds.filter(id => id && id !== String(node.id || ''));
     mergeKnowledgeNodeIntoTarget(duplicateTarget, movingNode);
-    oldParent.isLeaf = !(Array.isArray(oldParent.children) && oldParent.children.length);
+    if (oldParent) {
+      oldParent.isLeaf = !(Array.isArray(oldParent.children) && oldParent.children.length);
+    }
     duplicateTarget.isLeaf = (duplicateTarget.children || []).length === 0;
     knowledgeExpanded.delete(movingNode.id);
     removeKnowledgeNoteEntry(movingNode.id);
@@ -225,18 +230,35 @@ function moveKnowledgeNodeToTarget(nodeId, targetId, opts) {
     setCurrentKnowledgeNode(duplicateTarget.id, { switchTab: false });
     return true;
   }
-  target.children.push(movingNode);
-  oldParent.isLeaf = !(Array.isArray(oldParent.children) && oldParent.children.length);
-  target.isLeaf = false;
-  expandKnowledgePath(target.id);
+  if (moveToRoot) {
+    movingNode.level = 1;
+    getKnowledgeRootNodes().push(movingNode);
+  } else {
+    target.children.push(movingNode);
+  }
+  if (oldParent) {
+    oldParent.isLeaf = !(Array.isArray(oldParent.children) && oldParent.children.length);
+  }
+  if (!moveToRoot) {
+    target.isLeaf = false;
+    expandKnowledgePath(target.id);
+  }
   if (typeof syncMovedKnowledgeNodeErrors === 'function') {
     syncMovedKnowledgeNodeErrors(movedNodeIds);
   }
   saveData();
   saveKnowledgeState();
-  if (!opts || !opts.silent) showToast(`节点已移动到：${collapseKnowledgePathTitles(getKnowledgePathTitles(target.id)).join(' > ')}`, 'success');
+  if (!opts || !opts.silent) {
+    if (moveToRoot) showToast('节点已移动到一级根层', 'success');
+    else showToast(`节点已移动到：${collapseKnowledgePathTitles(getKnowledgePathTitles(target.id)).join(' > ')}`, 'success');
+  }
   setCurrentKnowledgeNode(movingNode.id, { switchTab: false });
   return true;
+}
+
+function canMoveKnowledgeNode(nodeId) {
+  const node = getKnowledgeNodeById(nodeId);
+  return !!node;
 }
 
 function moveKnowledgeNode(nodeId) {

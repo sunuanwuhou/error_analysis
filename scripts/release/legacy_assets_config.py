@@ -154,6 +154,7 @@ JS_SOURCES = [
     'modules/main/workspace/36g-note-editor-actions.js',
     'modules/main/workspace/36h-knowledge-workspace-state-utils.js',
     'modules/main/workspace/36i-knowledge-viewer-sync.js',
+    'modules/main/workspace/36j-knowledge-note-preview-layout.js',
     'modules/main/workspace/36a-workspace-data-actions.js',
     'modules/main/workspace/36c-notes-view-helpers.js',
     'modules/main/workspace/36d-notes-tree-status.js',
@@ -204,6 +205,7 @@ JS_VIEW_SPLIT_SOURCES = {
         'modules/main/workspace/36g-note-editor-actions.js',
         'modules/main/workspace/36h-knowledge-workspace-state-utils.js',
         'modules/main/workspace/36i-knowledge-viewer-sync.js',
+        'modules/main/workspace/36j-knowledge-note-preview-layout.js',
         'modules/main/36-tab-coordination.js',
     ],
     'workspace': [
@@ -240,6 +242,7 @@ JS_VIEW_SPLIT_SOURCES = {
         'modules/main/workspace/36d-notes-tree-status.js',
         'modules/main/workspace/36h-knowledge-workspace-state-utils.js',
         'modules/main/workspace/36i-knowledge-viewer-sync.js',
+        'modules/main/workspace/36j-knowledge-note-preview-layout.js',
         'modules/knowledge-workspace.js',
         'modules/data-management.js',
     ],

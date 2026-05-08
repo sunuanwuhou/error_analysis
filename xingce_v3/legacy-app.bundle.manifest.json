@@ -1,8 +1,8 @@
 {
-  "built_at": "2026-05-05T14:44:40Z",
+  "built_at": "2026-05-08T09:42:10Z",
   "css_bundle": {
     "path": "xingce_v3/styles/legacy-app.bundle.css",
-    "sha256": "8857b85829bd25a2ccec074a2157af8f3cbdb3eb3b40ae8f54af305a18493635",
+    "sha256": "e2d58352821fb60b9287c3279dd60b3106bb7abb0d6fc419811be57ba39c8669",
     "sources": [
       "styles/main/00-base-reset.css",
       "styles/main/01-sidebar.css",
@@ -45,7 +45,7 @@
   },
   "js_bundle": {
     "path": "xingce_v3/modules/legacy-app.bundle.js",
-    "sha256": "ab17b5c05845c3409741e7e836974fd8b9256ada673477da9ffea1acae302ec3",
+    "sha256": "3167ce79cb186e8238c55fdf501453def93f0154ef03175af5e12039ab69c8be",
     "sources": [
       "modules/main/00-event-dispatcher.js",
       "modules/main/01-state.js",
@@ -151,6 +151,7 @@
       "modules/main/workspace/36g-note-editor-actions.js",
       "modules/main/workspace/36h-knowledge-workspace-state-utils.js",
       "modules/main/workspace/36i-knowledge-viewer-sync.js",
+      "modules/main/workspace/36j-knowledge-note-preview-layout.js",
       "modules/main/workspace/36a-workspace-data-actions.js",
       "modules/main/workspace/36c-notes-view-helpers.js",
       "modules/main/workspace/36d-notes-tree-status.js",
@@ -174,7 +175,7 @@
   "js_view_bundles": {
     "home": {
       "path": "xingce_v3/modules/legacy-app.home.bundle.js",
-      "sha256": "bd64a49f2225a8d255bb096faeaf846db0914c3dd8c1a53d07c508b0a34e5d76",
+      "sha256": "1295cdddc7c642018585704849367b8591abf73b711d7164a2d3f73347a10096",
       "sources": [
         "modules/main/00-event-dispatcher.js",
         "modules/main/01-state.js",
@@ -214,12 +215,13 @@
         "modules/main/workspace/36g-note-editor-actions.js",
         "modules/main/workspace/36h-knowledge-workspace-state-utils.js",
         "modules/main/workspace/36i-knowledge-viewer-sync.js",
+        "modules/main/workspace/36j-knowledge-note-preview-layout.js",
         "modules/main/36-tab-coordination.js"
       ]
     },
     "workspace": {
       "path": "xingce_v3/modules/legacy-app.workspace.bundle.js",
-      "sha256": "f7c716608844ad2302448f264a74032e2e84c7785aaf5609841b2ff1a200417d",
+      "sha256": "ea363ddd114971800bd0b61956281b508281653f3ccdb6055415915307dad6b0",
       "sources": [
         "modules/main/10-notes-panel.js",
         "modules/main/11-typed-note-tree.js",
@@ -254,13 +256,14 @@
         "modules/main/workspace/36d-notes-tree-status.js",
         "modules/main/workspace/36h-knowledge-workspace-state-utils.js",
         "modules/main/workspace/36i-knowledge-viewer-sync.js",
+        "modules/main/workspace/36j-knowledge-note-preview-layout.js",
         "modules/knowledge-workspace.js",
         "modules/data-management.js"
       ]
     },
     "modal": {
       "path": "xingce_v3/modules/legacy-app.modal.bundle.js",
-      "sha256": "c8936b43723dfd4912a9a0d892113ef3326e76b218dabf0fcb6f30bd5c90da2c",
+      "sha256": "e92c8c9847c1822a8cadb99a288e2921ea42a467c46cdc674dfe4c7bc54113b5",
       "sources": [
         "modules/main/06-ai-workbench.js",
         "modules/main/image/07a-image-value-utils.js",
@@ -305,7 +308,7 @@
     },
     "bootstrap": {
       "path": "xingce_v3/modules/legacy-app.bootstrap.bundle.js",
-      "sha256": "92e4a03d3f96984ed04635a14f27a463f53fe5fc6dd69c2a64eb117051820537",
+      "sha256": "b53f5ab130b9cbb550a7e3e59eee4400cd5455caf1d4b5601c64b254bb30b6ff",
       "sources": [
         "modules/main/99-bootstrap.js"
       ]

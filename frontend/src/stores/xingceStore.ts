@@ -293,6 +293,10 @@ function findNodePathTitles(nodes: KnowledgeNode[], id: string, parentTitles: st
   return null
 }
 
+function isVirtualKnowledgeNodeId(id: string | null | undefined): boolean {
+  return String(id || '').startsWith('__virtual_root__')
+}
+
 // ── Store ─────────────────────────────────────────────────────────────────────
 
 export const useXingceStore = defineStore('xingce', () => {
@@ -758,6 +762,72 @@ export const useXingceStore = defineStore('xingce', () => {
     scheduleSave()
   }
 
+  function canMoveKnowledgeNode(nodeId: string): boolean {
+    const node = knowledgeNodes.value.find(n => n.id === nodeId)
+    if (!node) return false
+    if (isVirtualKnowledgeNodeId(node.id)) return false
+    const isRoot = !node.parentId
+    if (!isRoot) return true
+    return !FIXED_ROOT_ORDER.includes(String(node.title || ''))
+  }
+
+  function getKnowledgeMoveTargetOptions(nodeId: string): Array<{ id: string; label: string }> {
+    const source = findNodeInTree(knowledgeTree.value, nodeId)
+    if (!source) return []
+    const blocked = new Set(collectDescendantIds(source))
+    blocked.add(nodeId)
+    const options: Array<{ id: string; label: string }> = []
+    const walk = (nodes: KnowledgeNode[], trail: string[]) => {
+      for (const n of nodes) {
+        const nextTrail = [...trail, n.title]
+        if (!blocked.has(n.id) && !isVirtualKnowledgeNodeId(n.id)) {
+          options.push({ id: n.id, label: nextTrail.join(' > ') })
+        }
+        if (n.children?.length) walk(n.children, nextTrail)
+      }
+    }
+    walk(knowledgeTree.value, [])
+    return options
+  }
+
+  function moveKnowledgeNode(nodeId: string, targetParentId: string) {
+    if (!canMoveKnowledgeNode(nodeId)) {
+      window.alert('基础一级节点不支持移动')
+      return false
+    }
+    const node = knowledgeNodes.value.find(n => n.id === nodeId)
+    if (!node) return false
+    if (!targetParentId || targetParentId === nodeId) return false
+    if (isVirtualKnowledgeNodeId(targetParentId)) {
+      window.alert('目标节点无效，请选择真实节点')
+      return false
+    }
+    const sourceInTree = findNodeInTree(knowledgeTree.value, nodeId)
+    if (!sourceInTree) return false
+    const descendantIds = new Set(collectDescendantIds(sourceInTree))
+    if (descendantIds.has(targetParentId)) {
+      window.alert('不能移动到自己的下级节点')
+      return false
+    }
+    const target = knowledgeNodes.value.find(n => n.id === targetParentId)
+    if (!target) {
+      window.alert('目标节点不存在')
+      return false
+    }
+    const duplicate = knowledgeNodes.value.find(n =>
+      n.id !== node.id &&
+      n.parentId === targetParentId &&
+      String(n.title || '').trim() === String(node.title || '').trim()
+    )
+    if (duplicate) {
+      window.alert('目标父节点下已存在同名节点，请先重命名后再移动')
+      return false
+    }
+    updateKnowledgeNode(nodeId, { parentId: targetParentId })
+    expandKnowledgeNode(targetParentId)
+    return true
+  }
+
   /** 全局搜索：与错题列表筛选同为 AND 词匹配（沿用 buildErrorSearchText） */
   function globalSearchMatchError(e: ErrorEntry, terms: string[]): boolean {
     if (!terms.length) return false
@@ -1095,6 +1165,9 @@ export const useXingceStore = defineStore('xingce', () => {
     deleteError,
     updateKnowledgeNode,
     renameKnowledgeNode,
+    canMoveKnowledgeNode,
+    getKnowledgeMoveTargetOptions,
+    moveKnowledgeNode,
     deleteKnowledgeNode,
     globalSearchMatchError,
     globalSearchMatchKnowledgeNode,

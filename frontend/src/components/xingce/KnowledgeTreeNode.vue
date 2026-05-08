@@ -62,6 +62,28 @@ function commitRename() {
   if (!next || next === prev) return
   store.renameKnowledgeNode(props.node.id, next)
 }
+
+function moveNodeByPrompt(e: Event) {
+  e.stopPropagation()
+  if (!store.canMoveKnowledgeNode(props.node.id)) {
+    window.alert('基础一级节点不支持移动')
+    return
+  }
+  const options = store.getKnowledgeMoveTargetOptions(props.node.id)
+  if (!options.length) {
+    window.alert('暂无可移动目标')
+    return
+  }
+  const menu = options.map((item, idx) => `${idx + 1}. ${item.label}`).join('\n')
+  const answer = window.prompt(`选择目标父节点编号：\n\n${menu}`, '1')
+  if (answer == null) return
+  const picked = options[Number(answer) - 1]
+  if (!picked) {
+    window.alert('选择无效')
+    return
+  }
+  store.moveKnowledgeNode(props.node.id, picked.id)
+}
 </script>
 
 <template>
@@ -104,6 +126,12 @@ function commitRename() {
         class="ktn-badge"
         :class="{ 'badge-warn': aggCount > 20, 'is-empty': aggCount === 0 }"
       >{{ aggCount }}</span>
+      <button
+        v-if="isActive && store.canMoveKnowledgeNode(node.id)"
+        class="ktn-move-btn"
+        title="移动到其它父节点"
+        @click.stop="moveNodeByPrompt"
+      >移动</button>
     </div>
 
     <!-- 子节点（递归） -->
@@ -187,6 +215,20 @@ function commitRename() {
 }
 .ktn-badge.badge-warn { background: #fff1f0; color: #cf1322; }
 .ktn-badge.is-empty { visibility: hidden; }
+
+.ktn-move-btn {
+  border: 1px solid #dbe3ef;
+  background: #fff;
+  color: #334155;
+  border-radius: 10px;
+  font-size: 11px;
+  line-height: 1;
+  padding: 4px 7px;
+  cursor: pointer;
+}
+.ktn-move-btn:hover {
+  border-color: #94a3b8;
+}
 
 .ktn-children {
   display: flex;

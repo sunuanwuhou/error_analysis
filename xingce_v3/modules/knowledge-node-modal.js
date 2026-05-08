@@ -89,7 +89,13 @@
     if (!list || !searchInput || knowledgeNodeModalState.mode !== "move") return;
 
     var keyword = searchInput.value.trim().toLowerCase();
-    var filtered = knmGetKnowledgeNodeModalTargetOptions(knowledgeNodeModalState.nodeId).filter(function (item) {
+    var options = knmGetKnowledgeNodeModalTargetOptions(knowledgeNodeModalState.nodeId).slice();
+    options.unshift({
+      id: "__ROOT_LEVEL__",
+      label: "一级根层",
+      node: { id: "__ROOT_LEVEL__", title: "一级根层" }
+    });
+    var filtered = options.filter(function (item) {
       if (!keyword) return true;
       return item.label.toLowerCase().includes(keyword) || item.node.title.toLowerCase().includes(keyword);
     });
@@ -115,25 +121,20 @@
 
   function moveKnowledgeNodeToTarget(nodeId, targetId, opts) {
     var node = getKnowledgeNodeById(nodeId);
-    var target = getKnowledgeNodeById(targetId);
-    if (!node || !target) return false;
-    if (node.id === target.id) {
+    var moveToRoot = String(targetId || "") === "__ROOT_LEVEL__";
+    var target = moveToRoot ? null : getKnowledgeNodeById(targetId);
+    if (!node || (!moveToRoot && !target)) return false;
+    if (!moveToRoot && node.id === target.id) {
       showToast("不能移动到自己", "warning");
       return false;
     }
-    if (isKnowledgeDescendant(node.id, target.id)) {
+    if (!moveToRoot && isKnowledgeDescendant(node.id, target.id)) {
       showToast("不能移动到自己的下级节点", "error");
       return false;
     }
 
     var oldParent = findKnowledgeParent(node.id);
-    if (!oldParent) {
-      showToast("一级节点暂不支持移动", "warning");
-      return false;
-    }
-
-    target.children = target.children || [];
-    var oldList = oldParent.children || [];
+    var oldList = oldParent ? (oldParent.children || []) : getKnowledgeRootNodes();
     var idx = oldList.findIndex(function (item) { return item.id === node.id; });
     if (idx < 0) return false;
     var movedNodeIds = typeof getKnowledgeDescendantNodeIds === "function"
@@ -143,12 +144,19 @@
       ? detachKnowledgeNodeById(node.id)
       : null;
     var movingNode = detachedNode || node;
-    oldParent.isLeaf = !(Array.isArray(oldParent.children) && oldParent.children.length);
-    var duplicateTarget = target.children.find(function (item) { return item.id !== node.id && item.title === node.title; });
-    if (duplicateTarget) {
+    if (oldParent) {
+      oldParent.isLeaf = !(Array.isArray(oldParent.children) && oldParent.children.length);
+    }
+    if (!moveToRoot) {
+      target.children = target.children || [];
+    }
+    var duplicateTarget = !moveToRoot
+      ? target.children.find(function (item) { return item.id !== node.id && item.title === node.title; })
+      : null;
+    if (duplicateTarget && !moveToRoot) {
       var descendantIds = movedNodeIds.filter(function (id) { return id && id !== String(node.id || ""); });
       mergeKnowledgeNodeIntoTarget(duplicateTarget, movingNode);
-      oldParent.isLeaf = !(Array.isArray(oldParent.children) && oldParent.children.length);
+      if (oldParent) oldParent.isLeaf = !(Array.isArray(oldParent.children) && oldParent.children.length);
       duplicateTarget.isLeaf = (duplicateTarget.children || []).length === 0;
       knowledgeExpanded.delete(movingNode.id);
       removeKnowledgeNoteEntry(movingNode.id);
@@ -164,16 +172,22 @@
       return true;
     }
 
-    target.children.push(movingNode);
-    oldParent.isLeaf = !(Array.isArray(oldParent.children) && oldParent.children.length);
-    target.isLeaf = false;
-    expandKnowledgePath(target.id);
+    if (moveToRoot) {
+      movingNode.level = 1;
+      getKnowledgeRootNodes().push(movingNode);
+    } else {
+      target.children.push(movingNode);
+      target.isLeaf = false;
+      expandKnowledgePath(target.id);
+    }
+    if (oldParent) oldParent.isLeaf = !(Array.isArray(oldParent.children) && oldParent.children.length);
     knmSyncMovedKnowledgeNodeErrors(movedNodeIds);
     saveData();
     saveKnowledgeState();
 
     if (!opts || !opts.silent) {
-      showToast("节点已移动到：" + collapseKnowledgePathTitles(getKnowledgePathTitles(target.id)).join(" > "), "success");
+      if (moveToRoot) showToast("节点已移动到一级根层", "success");
+      else showToast("节点已移动到：" + collapseKnowledgePathTitles(getKnowledgePathTitles(target.id)).join(" > "), "success");
     }
     setCurrentKnowledgeNode(movingNode.id, { switchTab: false });
     return true;
@@ -255,6 +269,10 @@
       return;
     }
     openKnowledgeNodeModal("move", { nodeId: node.id });
+  }
+
+  function canMoveKnowledgeNode(nodeId) {
+    return !!getKnowledgeNodeById(nodeId);
   }
 
   function deleteKnowledgeNode(nodeId) {
@@ -552,33 +570,34 @@
     assignErrorToKnowledgeNode(errorItem.id, targetNode.id, { focusNode: true });
   }
 
-  window.openKnowledgeNodeModal = openKnowledgeNodeModal;
-  window.getKnowledgePathOptions = knmGetKnowledgePathOptions;
-  window.getKnowledgeNodeModalTargetOptions = knmGetKnowledgeNodeModalTargetOptions;
-  window.chooseKnowledgeNodeByPrompt = knmChooseKnowledgeNodeByPrompt;
-  window.addKnowledgeLeafUnderSelected = addKnowledgeLeafUnderSelected;
-  window.closeKnowledgeNodeModal = closeKnowledgeNodeModal;
-  window.handleKnowledgeNodeTitleKeydown = handleKnowledgeNodeTitleKeydown;
-  window.renderKnowledgeNodeTargetOptions = renderKnowledgeNodeTargetOptions;
-  window.selectKnowledgeNodeModalTarget = selectKnowledgeNodeModalTarget;
-  window.submitKnowledgeNodeModal = submitKnowledgeNodeModal;
-  window.renameKnowledgeNode = renameKnowledgeNode;
-  window.moveKnowledgeNodeToTarget = moveKnowledgeNodeToTarget;
-  window.moveKnowledgeNodeToSiblingPosition = moveKnowledgeNodeToSiblingPosition;
-  window.moveKnowledgeNode = moveKnowledgeNode;
-  window.deleteKnowledgeNode = deleteKnowledgeNode;
-  window.assignErrorToKnowledgeNode = assignErrorToKnowledgeNode;
-  window.startKnowledgeNodeDrag = startKnowledgeNodeDrag;
-  window.endKnowledgeNodeDrag = endKnowledgeNodeDrag;
-  window.startErrorDrag = startErrorDrag;
-  window.endErrorDrag = endErrorDrag;
-  window.allowKnowledgeDrop = allowKnowledgeDrop;
-  window.leaveKnowledgeDrop = leaveKnowledgeDrop;
-  window.handleKnowledgeDrop = handleKnowledgeDrop;
-  window.moveErrorToKnowledgeNode = moveErrorToKnowledgeNode;
-  window.closeKnowledgeMoveModal = closeKnowledgeMoveModal;
-  window.renderKnowledgeMoveOptions = renderKnowledgeMoveOptions;
-  window.selectKnowledgeMoveTarget = selectKnowledgeMoveTarget;
-  window.getErrorKnowledgeNodeId = getErrorKnowledgeNodeId;
-  window.applyKnowledgeMove = applyKnowledgeMove;
+  if (typeof window.openKnowledgeNodeModal !== "function") window.openKnowledgeNodeModal = openKnowledgeNodeModal;
+  if (typeof window.getKnowledgePathOptions !== "function") window.getKnowledgePathOptions = knmGetKnowledgePathOptions;
+  if (typeof window.getKnowledgeNodeModalTargetOptions !== "function") window.getKnowledgeNodeModalTargetOptions = knmGetKnowledgeNodeModalTargetOptions;
+  if (typeof window.chooseKnowledgeNodeByPrompt !== "function") window.chooseKnowledgeNodeByPrompt = knmChooseKnowledgeNodeByPrompt;
+  if (typeof window.addKnowledgeLeafUnderSelected !== "function") window.addKnowledgeLeafUnderSelected = addKnowledgeLeafUnderSelected;
+  if (typeof window.closeKnowledgeNodeModal !== "function") window.closeKnowledgeNodeModal = closeKnowledgeNodeModal;
+  if (typeof window.handleKnowledgeNodeTitleKeydown !== "function") window.handleKnowledgeNodeTitleKeydown = handleKnowledgeNodeTitleKeydown;
+  if (typeof window.renderKnowledgeNodeTargetOptions !== "function") window.renderKnowledgeNodeTargetOptions = renderKnowledgeNodeTargetOptions;
+  if (typeof window.selectKnowledgeNodeModalTarget !== "function") window.selectKnowledgeNodeModalTarget = selectKnowledgeNodeModalTarget;
+  if (typeof window.submitKnowledgeNodeModal !== "function") window.submitKnowledgeNodeModal = submitKnowledgeNodeModal;
+  if (typeof window.renameKnowledgeNode !== "function") window.renameKnowledgeNode = renameKnowledgeNode;
+  if (typeof window.moveKnowledgeNodeToTarget !== "function") window.moveKnowledgeNodeToTarget = moveKnowledgeNodeToTarget;
+  if (typeof window.moveKnowledgeNodeToSiblingPosition !== "function") window.moveKnowledgeNodeToSiblingPosition = moveKnowledgeNodeToSiblingPosition;
+  if (typeof window.canMoveKnowledgeNode !== "function") window.canMoveKnowledgeNode = canMoveKnowledgeNode;
+  if (typeof window.moveKnowledgeNode !== "function") window.moveKnowledgeNode = moveKnowledgeNode;
+  if (typeof window.deleteKnowledgeNode !== "function") window.deleteKnowledgeNode = deleteKnowledgeNode;
+  if (typeof window.assignErrorToKnowledgeNode !== "function") window.assignErrorToKnowledgeNode = assignErrorToKnowledgeNode;
+  if (typeof window.startKnowledgeNodeDrag !== "function") window.startKnowledgeNodeDrag = startKnowledgeNodeDrag;
+  if (typeof window.endKnowledgeNodeDrag !== "function") window.endKnowledgeNodeDrag = endKnowledgeNodeDrag;
+  if (typeof window.startErrorDrag !== "function") window.startErrorDrag = startErrorDrag;
+  if (typeof window.endErrorDrag !== "function") window.endErrorDrag = endErrorDrag;
+  if (typeof window.allowKnowledgeDrop !== "function") window.allowKnowledgeDrop = allowKnowledgeDrop;
+  if (typeof window.leaveKnowledgeDrop !== "function") window.leaveKnowledgeDrop = leaveKnowledgeDrop;
+  if (typeof window.handleKnowledgeDrop !== "function") window.handleKnowledgeDrop = handleKnowledgeDrop;
+  if (typeof window.moveErrorToKnowledgeNode !== "function") window.moveErrorToKnowledgeNode = moveErrorToKnowledgeNode;
+  if (typeof window.closeKnowledgeMoveModal !== "function") window.closeKnowledgeMoveModal = closeKnowledgeMoveModal;
+  if (typeof window.renderKnowledgeMoveOptions !== "function") window.renderKnowledgeMoveOptions = renderKnowledgeMoveOptions;
+  if (typeof window.selectKnowledgeMoveTarget !== "function") window.selectKnowledgeMoveTarget = selectKnowledgeMoveTarget;
+  if (typeof window.getErrorKnowledgeNodeId !== "function") window.getErrorKnowledgeNodeId = getErrorKnowledgeNodeId;
+  if (typeof window.applyKnowledgeMove !== "function") window.applyKnowledgeMove = applyKnowledgeMove;
 })();

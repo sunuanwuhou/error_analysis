@@ -4,31 +4,12 @@
 function buildKnowledgeTreeFromSyncRecords(records) {
   const rows = Array.isArray(records) ? records : [];
   const map = new Map();
-  const normalizeRootTitle = value => String(value || '')
-    .replace(/\uFEFF/g, '')
-    .replace(/\u200B/g, '')
-    .replace(/\u00A0/g, '')
-    .replace(/[()（）【】\[\]·•,，.:：;；!?！？]/g, '')
-    .replace(/\s+/g, '')
-    .trim();
-  const noisyRootAlias = new Map([
-    ['片段阅读', '言语理解与表达'],
-    ['数字推理', '数量关系'],
-    ['数学运算', '数量关系'],
-    ['和差倍比', '数量关系'],
-    ['核心思维-纯笔记', '数量关系'],
-    ['比例法', '数量关系'],
-    ['混合', '数量关系'],
-    ['鸡兔', '数量关系'],
-    ['年龄问题', '数量关系'],
-    ['容斥', '数量关系'],
-    ['数列', '数量关系'],
-    ['数推', '数量关系'],
-    ['植树问题', '数量关系'],
-    ['最不利', '数量关系'],
-    ['逻辑判断', '判断推理'],
-    ['物理', '常识判断']
-  ]);
+  const normalizeRootTitle = value => typeof normalizeKnowledgeRootTitleForCleanup === 'function'
+    ? normalizeKnowledgeRootTitleForCleanup(value)
+    : String(value || '').trim();
+  const noisyRootAlias = typeof getLegacyKnowledgeRootAliasMap === 'function'
+    ? getLegacyKnowledgeRootAliasMap(false)
+    : new Map();
   const resolveNoisyRootAlias = title => noisyRootAlias.get(normalizeRootTitle(title)) || '';
   rows.forEach(raw => {
     if (!raw || !raw.id) return;

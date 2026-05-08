@@ -80,8 +80,9 @@ function scheduleWorkspaceWarmup() {
   setTimeout(run, 900);
 }
 
-const LEGACY_MODAL_BUNDLE_SRC = '/assets/modules/legacy-app.modal.bundle.js';
-const LEGACY_WORKSPACE_BUNDLE_SRC = '/assets/modules/legacy-app.workspace.bundle.js';
+const LEGACY_SPLIT_BUNDLE_VERSION = '20260508-root-move-fix';
+const LEGACY_MODAL_BUNDLE_SRC = `/assets/modules/legacy-app.modal.bundle.js?v=${LEGACY_SPLIT_BUNDLE_VERSION}`;
+const LEGACY_WORKSPACE_BUNDLE_SRC = `/assets/modules/legacy-app.workspace.bundle.js?v=${LEGACY_SPLIT_BUNDLE_VERSION}`;
 let legacyModalBundlePromise = null;
 let legacyModalBundleLoaded = false;
 let legacyWorkspaceBundlePromise = null;
