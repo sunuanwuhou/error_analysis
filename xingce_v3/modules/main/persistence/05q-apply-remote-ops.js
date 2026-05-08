@@ -141,7 +141,6 @@ function applyOps(ops) {
   let noteImagesChanged = false;
   let knowledgeChanged = false;
   let settingsChanged = false;
-  let knowledgeRecordMap = null;
   const isCorruptedKnowledgeTitle = (title) => {
     const text = String(title || '').trim();
     if (!text) return true;
@@ -194,32 +193,9 @@ function applyOps(ops) {
       }
       continue;
     }
-    if (op.op_type === 'knowledge_node_upsert') {
-      if (!knowledgeRecordMap) {
-        knowledgeRecordMap = new Map(flattenKnowledgeNodesForSync(getKnowledgeRootNodes(), '', []).map(item => [String(item.id), { ...item }]));
-      }
-      const remote = parseSyncPayload(op.payload);
-      const nodeId = String(remote.id || op.entity_id || '');
-      if (nodeId) {
-        const remoteTitle = String(remote.title || '');
-        if (isCorruptedKnowledgeTitle(remoteTitle)) continue;
-        knowledgeRecordMap.set(nodeId, {
-          id: nodeId,
-          parentId: String(remote.parentId || ''),
-          title: remoteTitle,
-          contentMd: String(remote.contentMd || ''),
-          updatedAt: String(remote.updatedAt || op.created_at || ''),
-          sort: Number(remote.sort || 0)
-        });
-        knowledgeChanged = true;
-      }
-      continue;
-    }
-    if (op.op_type === 'knowledge_node_delete') {
-      if (!knowledgeRecordMap) {
-        knowledgeRecordMap = new Map(flattenKnowledgeNodesForSync(getKnowledgeRootNodes(), '', []).map(item => [String(item.id), { ...item }]));
-      }
-      if (knowledgeRecordMap.delete(String(op.entity_id))) knowledgeChanged = true;
+    if (op.op_type === 'knowledge_node_upsert' || op.op_type === 'knowledge_node_delete') {
+      // Lock tree structure locally: remote knowledge-node ops are treated as non-authoritative.
+      // We only keep question bindings consistent via ensureKnowledgeState/rebind flow.
       continue;
     }
     if (op.op_type === 'setting_upsert') {
@@ -232,22 +208,8 @@ function applyOps(ops) {
       settingsChanged = applySettingSyncValue(String(op.entity_id || ''), null) || settingsChanged;
     }
   }
-  if (knowledgeChanged && knowledgeRecordMap) {
-    knowledgeTree = buildKnowledgeTreeFromSyncRecords([...knowledgeRecordMap.values()]);
-    syncKnowledgeNotesFromTree();
-    if (typeof knowledgeNoteRenderCache !== 'undefined' && knowledgeNoteRenderCache && typeof knowledgeNoteRenderCache.clear === 'function') {
-      knowledgeNoteRenderCache.clear();
-    }
-    if (typeof resetKnowledgeTreeRenderWindow === 'function') {
-      resetKnowledgeTreeRenderWindow();
-    }
-    const allNodes = collectKnowledgeNodes();
-    if ((!selectedKnowledgeNodeId || !getKnowledgeNodeById(selectedKnowledgeNodeId)) && allNodes.length > 0) {
-      selectedKnowledgeNodeId = allNodes[0].id;
-    }
-    if (knowledgeNodeFilter && !getKnowledgeNodeById(knowledgeNodeFilter)) {
-      knowledgeNodeFilter = '';
-    }
+  if (knowledgeChanged) {
+    ensureKnowledgeState({ persist: true });
   }
   if (errorChanged || notesChanged || noteImagesChanged || knowledgeChanged || settingsChanged) {
     withIncrementalSyncSuppressed(() => {

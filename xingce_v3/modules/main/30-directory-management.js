@@ -66,8 +66,14 @@ function ensureKnowledgeState(opts) {
   const options = opts || {};
   getKnowledgeRootNodes();
   knowledgeNotes = knowledgeNotes && typeof knowledgeNotes === 'object' ? knowledgeNotes : {};
-  let changed = ensureFixedKnowledgeRoots();
-  if (cleanupNoisyRootNodes()) changed = true;
+  let changed = false;
+  const baselineApplied = typeof applyKnowledgeTreeBaselineFreeze === 'function' && applyKnowledgeTreeBaselineFreeze();
+  if (baselineApplied) {
+    changed = true;
+  } else {
+    changed = ensureFixedKnowledgeRoots();
+    if (cleanupNoisyRootNodes()) changed = true;
+  }
   if (mergeDuplicateKnowledgeSiblings(getKnowledgeRootNodes())) changed = true;
   if (collapseDuplicateKnowledgeWrappers(getKnowledgeRootNodes())) changed = true;
   normalizeKnowledgeNodes(getKnowledgeRootNodes(), 1);

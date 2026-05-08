@@ -18,6 +18,8 @@ const KEY_STARTUP_SUMMARY = 'xc_startup_summary';
 
 // 跨分包常量兜底：home/bootstrap 可能先于 knowledge 模块加载。
 var KEY_DIR_TREE = typeof KEY_DIR_TREE === 'string' ? KEY_DIR_TREE : 'xc_dir_tree';
+var KEY_KNOWLEDGE_BASELINE_NODES = typeof KEY_KNOWLEDGE_BASELINE_NODES === 'string' ? KEY_KNOWLEDGE_BASELINE_NODES : 'xc_knowledge_baseline_nodes';
+var KEY_KNOWLEDGE_BASELINE_VERSION = typeof KEY_KNOWLEDGE_BASELINE_VERSION === 'string' ? KEY_KNOWLEDGE_BASELINE_VERSION : 'xc_knowledge_baseline_version';
 var FIXED_TYPES = Array.isArray(FIXED_TYPES) && FIXED_TYPES.length
   ? FIXED_TYPES
   : ['言语理解与表达', '判断推理', '数量关系', '资料分析', '常识判断', '其他'];
@@ -71,6 +73,8 @@ let globalNoteEditing = false; // 笔记编辑模式状态
 let noteEditing = false;    // 笔记是否处于编辑模式（默认预览）
 let knowledgeTree = null;
 let knowledgeNotes = {};
+let knowledgeBaselineNodes = null;
+let knowledgeBaselineVersion = '';
 let selectedKnowledgeNodeId = null;
 let knowledgeErrorCountCacheVersion = 0;
 let knowledgeErrorCountCache = { version: -1, direct: new Map(), aggregate: new Map() };
@@ -147,13 +151,12 @@ const REASON_GROUPS = [
   ]},
 ];
 function getReasonGroup(reason){
-  return REASON_GROUPS.find(g=>g.reasons.some(r=>r.v===reason))||null;
+  return stGetReasonGroup(reason, REASON_GROUPS);
 }
 function getReasonDesc(reason){
-  for(const g of REASON_GROUPS){ const r=g.reasons.find(r=>r.v===reason); if(r) return r.d; }
-  return '';
+  return stGetReasonDesc(reason, REASON_GROUPS);
 }
-function escapeAttrStr(s){ return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+function escapeAttrStr(s){ return stEscapeAttrStr(s); }
 
 const ERROR_STATUS_OPTIONS = [
   { value:'focus', label:'重点复习', color:'#e74c3c' },
@@ -170,42 +173,26 @@ const ERROR_WORKFLOW_STAGE_META = {
 };
 
 function normalizeErrorStatusValue(raw){
-  const value = String(raw || '').trim();
-  if(value === 'mastered') return 'mastered';
-  if(value === 'review') return 'review';
-  return 'focus';
+  return stNormalizeErrorStatusValue(raw);
 }
 function normalizeMasteryLevelValue(raw){
-  const value = String(raw || '').trim();
-  if(value === 'mastered') return 'mastered';
-  if(value === 'fuzzy') return 'fuzzy';
-  return 'not_mastered';
+  return stNormalizeMasteryLevelValue(raw);
 }
 function getPracticeSummarySnapshotForError(errorLike){
-  const normalizedId = normalizeErrorId(errorLike && errorLike.id);
-  if(normalizedId && practiceAttemptSummaryByErrorId && Object.prototype.hasOwnProperty.call(practiceAttemptSummaryByErrorId, normalizedId)) return practiceAttemptSummaryByErrorId[normalizedId];
-  const questionId = String((errorLike && errorLike.id) || '').trim();
-  if(questionId && practiceAttemptSummaryByErrorId && Object.prototype.hasOwnProperty.call(practiceAttemptSummaryByErrorId, questionId)) return practiceAttemptSummaryByErrorId[questionId];
-  return null;
+  return stGetPracticeSummarySnapshotForError(errorLike, {
+    normalizeErrorId,
+    practiceAttemptSummaryByErrorId
+  });
 }
 function getErrorStatusLabel(status){
   return ERROR_STATUS_LABEL_MAP[normalizeErrorStatusValue(status)] || '重点复习';
 }
 function getErrorWorkflowStage(errorLike){
-  const error = errorLike || {};
-  const status = normalizeErrorStatusValue(error.status);
-  const masteryLevel = normalizeMasteryLevelValue(error.masteryLevel);
-  const summary = getPracticeSummarySnapshotForError(error);
-  const hasAttemptSummary = !!(summary && (summary.lastTime || summary.lastResult || summary.lastConfidence || summary.lastDuration));
-  const hasReason = !!String(error.rootReason || error.errorReason || error.mistakeType || error.triggerPoint || '').trim();
-  const hasModel = !!String(error.analysis || error.correctModel || '').trim();
-  const processImage = typeof getProcessImageUrl === 'function' ? getProcessImageUrl(error) : '';
-  const hasReviewArtifact = !!String(error.note || error.nextAction || error.processCanvasData || processImage || '').trim();
-  if(masteryLevel === 'mastered' || status === 'mastered') return 'mastered';
-  if(hasAttemptSummary) return 'pending_retry';
-  if(hasReviewArtifact || status === 'review') return 'review_ready';
-  if(hasReason || hasModel || status === 'focus') return 'captured';
-  return 'new';
+  return stGetErrorWorkflowStage(errorLike, {
+    normalizeErrorId,
+    practiceAttemptSummaryByErrorId,
+    getProcessImageUrl
+  });
 }
 function getErrorWorkflowStageMeta(errorLike){
   const key = getErrorWorkflowStage(errorLike);
@@ -221,12 +208,13 @@ function touchErrorUpdatedAt(errorLike){
   if(errorLike && typeof errorLike === 'object') errorLike.updatedAt = new Date().toISOString();
 }
 function refreshWorkspaceAfterErrorMutation(options){
-  const cfg = Object.assign({ save:true, reveal:false, syncNotes:false, saveKnowledge:false, renderNotes:false }, options || {});
-  if(cfg.save && typeof saveData === 'function') saveData();
-  if(cfg.reveal && typeof saveReveal === 'function') saveReveal();
-  if(cfg.syncNotes && typeof syncNotesWithErrors === 'function') syncNotesWithErrors();
-  if(cfg.saveKnowledge && typeof saveKnowledgeState === 'function') saveKnowledgeState();
-  refreshSidebarErrorsOptionalNotes(cfg.renderNotes);
+  stRefreshWorkspaceAfterErrorMutation(options, {
+    saveData,
+    saveReveal,
+    syncNotesWithErrors,
+    saveKnowledgeState,
+    refreshSidebarErrorsOptionalNotes
+  });
 }
 
 window.normalizeErrorStatusValue = normalizeErrorStatusValue;
@@ -303,22 +291,16 @@ function setSaveErrorBusyState(next) {
 }
 
 function readUiBool(key, fallback){
-  try{
-    const raw = localStorage.getItem(key);
-    if(raw === null) return !!fallback;
-    return raw === 'true' || raw === '1';
-  }catch(e){
-    return !!fallback;
-  }
+  return stReadUiBool(key, fallback);
 }
 function writeUiBool(key, value){
-  try{ localStorage.setItem(key, value ? '1' : '0'); }catch(e){}
+  stWriteUiBool(key, value);
 }
 function hasKnowledgeTreeSearch(){
-  return !!String(knowledgeTreeSearchQuery || '').trim();
+  return stHasKnowledgeTreeSearch(knowledgeTreeSearchQuery);
 }
 function getKnowledgeTreeSearchTerms(){
-  return String(knowledgeTreeSearchQuery || '').toLowerCase().split(/\s+/).filter(Boolean);
+  return stGetKnowledgeTreeSearchTerms(knowledgeTreeSearchQuery);
 }
 function getKnowledgeTreeNodeSearchText(node){
   if(!node) return '';

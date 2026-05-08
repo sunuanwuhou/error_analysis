@@ -61,11 +61,6 @@ function renderKnowledgeNodeTargetOptions() {
   if (!list || !searchInput || knowledgeNodeModalState.mode !== 'move') return;
   const keyword = searchInput.value.trim().toLowerCase();
   const options = getKnowledgeNodeModalTargetOptions(knowledgeNodeModalState.nodeId).slice();
-  options.unshift({
-    id: '__ROOT_LEVEL__',
-    label: '一级根层',
-    node: { id: '__ROOT_LEVEL__', title: '一级根层' }
-  });
   const filtered = options.filter(item => {
     if (!keyword) return true;
     return item.label.toLowerCase().includes(keyword) || item.node.title.toLowerCase().includes(keyword);

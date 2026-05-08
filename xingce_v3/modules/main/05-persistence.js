@@ -43,6 +43,10 @@ async function loadKnowledgeState() {
   catch(e) { knowledgeTree = null; }
   try { knowledgeNotes = JSON.parse(await DB.get(KEY_KNOWLEDGE_NOTES) || '{}') || {}; }
   catch(e) { knowledgeNotes = {}; }
+  try { knowledgeBaselineNodes = JSON.parse(await DB.get(KEY_KNOWLEDGE_BASELINE_NODES) || 'null'); }
+  catch(e) { knowledgeBaselineNodes = null; }
+  try { knowledgeBaselineVersion = String(await DB.get(KEY_KNOWLEDGE_BASELINE_VERSION) || ''); }
+  catch(e) { knowledgeBaselineVersion = ''; }
   try {
     const rawExpanded = await DB.get(KEY_KNOWLEDGE_EXPANDED);
     knowledgeExpanded = new Set(JSON.parse(rawExpanded || '[]') || []);

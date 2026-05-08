@@ -1,8 +1,8 @@
 {
-  "built_at": "2026-05-08T09:42:10Z",
+  "built_at": "2026-05-08T14:27:09Z",
   "css_bundle": {
     "path": "xingce_v3/styles/legacy-app.bundle.css",
-    "sha256": "e2d58352821fb60b9287c3279dd60b3106bb7abb0d6fc419811be57ba39c8669",
+    "sha256": "573bcb6d46895125eee9e1da540770f17585eebf33535a928aa9d3f9e09f24b4",
     "sources": [
       "styles/main/00-base-reset.css",
       "styles/main/01-sidebar.css",
@@ -45,9 +45,12 @@
   },
   "js_bundle": {
     "path": "xingce_v3/modules/legacy-app.bundle.js",
-    "sha256": "3167ce79cb186e8238c55fdf501453def93f0154ef03175af5e12039ab69c8be",
+    "sha256": "4158d679de59f933d5271e82ae1f265fb88617a36286371075034f825b4830ef",
     "sources": [
       "modules/main/00-event-dispatcher.js",
+      "modules/main/state/01a-reason-utils.js",
+      "modules/main/state/01b-error-workflow-utils.js",
+      "modules/main/state/01c-knowledge-search-ui.js",
       "modules/main/01-state.js",
       "modules/main/02-indexeddb.js",
       "modules/main/03-storage-usage.js",
@@ -140,6 +143,7 @@
       "modules/main/knowledge/30q-entry-path-form.js",
       "modules/main/knowledge/30r-knowledge-cleanup.js",
       "modules/main/knowledge/30s-node-modal-utils.js",
+      "modules/main/knowledge/30t-knowledge-tree-baseline-freeze.js",
       "modules/main/30-directory-management.js",
       "modules/main/31-inline-quiz.js",
       "modules/main/32-difficulty-rating.js",
@@ -152,6 +156,17 @@
       "modules/main/workspace/36h-knowledge-workspace-state-utils.js",
       "modules/main/workspace/36i-knowledge-viewer-sync.js",
       "modules/main/workspace/36j-knowledge-note-preview-layout.js",
+      "modules/main/workspace/36k-knowledge-directory-data-utils.js",
+      "modules/main/workspace/36l-knowledge-error-navigation.js",
+      "modules/main/workspace/36m-knowledge-note-editor-modal.js",
+      "modules/main/workspace/36n-knowledge-workspace-shell-render.js",
+      "modules/main/workspace/36o-knowledge-note-mode-render.js",
+      "modules/main/workspace/36p-knowledge-workspace-events.js",
+      "modules/main/modal/36q-knowledge-node-modal-open.js",
+      "modules/main/modal/36r-knowledge-node-modal-submit.js",
+      "modules/main/modal/36s-knowledge-node-dnd.js",
+      "modules/main/modal/36t-knowledge-move-modal.js",
+      "modules/main/modal/36u-knowledge-node-relink-and-reorder.js",
       "modules/main/workspace/36a-workspace-data-actions.js",
       "modules/main/workspace/36c-notes-view-helpers.js",
       "modules/main/workspace/36d-notes-tree-status.js",
@@ -165,7 +180,7 @@
   "v51_partials": {
     "core": {
       "path": "v51_frontend/partials.bundle.html",
-      "sha256": "9ab0ab3d2e3cb72f42d9424afab6c7dfe6d91d76ad2fe87ca6fa101426ec61f7"
+      "sha256": "af55c1710d346ccbadf9d12cdb3afce668360a4ffc751aeb5ea0e10828d398a5"
     },
     "deferred": {
       "path": "v51_frontend/deferred-partials.bundle.html",
@@ -175,9 +190,12 @@
   "js_view_bundles": {
     "home": {
       "path": "xingce_v3/modules/legacy-app.home.bundle.js",
-      "sha256": "1295cdddc7c642018585704849367b8591abf73b711d7164a2d3f73347a10096",
+      "sha256": "a34d84b60fe50edb5f9e15fcf5197caf87699236eb74cd2b93fc11455a04b982",
       "sources": [
         "modules/main/00-event-dispatcher.js",
+        "modules/main/state/01a-reason-utils.js",
+        "modules/main/state/01b-error-workflow-utils.js",
+        "modules/main/state/01c-knowledge-search-ui.js",
         "modules/main/01-state.js",
         "modules/main/02-indexeddb.js",
         "modules/main/03-storage-usage.js",
@@ -216,12 +234,18 @@
         "modules/main/workspace/36h-knowledge-workspace-state-utils.js",
         "modules/main/workspace/36i-knowledge-viewer-sync.js",
         "modules/main/workspace/36j-knowledge-note-preview-layout.js",
+        "modules/main/workspace/36k-knowledge-directory-data-utils.js",
+        "modules/main/workspace/36l-knowledge-error-navigation.js",
+        "modules/main/workspace/36m-knowledge-note-editor-modal.js",
+        "modules/main/workspace/36n-knowledge-workspace-shell-render.js",
+        "modules/main/workspace/36o-knowledge-note-mode-render.js",
+        "modules/main/workspace/36p-knowledge-workspace-events.js",
         "modules/main/36-tab-coordination.js"
       ]
     },
     "workspace": {
       "path": "xingce_v3/modules/legacy-app.workspace.bundle.js",
-      "sha256": "ea363ddd114971800bd0b61956281b508281653f3ccdb6055415915307dad6b0",
+      "sha256": "c60711cc79feb22ff0a49d63c16d49ee2c27ae28cae0e52197e02f37b4994731",
       "sources": [
         "modules/main/10-notes-panel.js",
         "modules/main/11-typed-note-tree.js",
@@ -250,6 +274,7 @@
         "modules/main/knowledge/30q-entry-path-form.js",
         "modules/main/knowledge/30r-knowledge-cleanup.js",
         "modules/main/knowledge/30s-node-modal-utils.js",
+        "modules/main/knowledge/30t-knowledge-tree-baseline-freeze.js",
         "modules/main/30-directory-management.js",
         "modules/main/workspace/36a-workspace-data-actions.js",
         "modules/main/workspace/36c-notes-view-helpers.js",
@@ -257,13 +282,19 @@
         "modules/main/workspace/36h-knowledge-workspace-state-utils.js",
         "modules/main/workspace/36i-knowledge-viewer-sync.js",
         "modules/main/workspace/36j-knowledge-note-preview-layout.js",
+        "modules/main/workspace/36k-knowledge-directory-data-utils.js",
+        "modules/main/workspace/36l-knowledge-error-navigation.js",
+        "modules/main/workspace/36m-knowledge-note-editor-modal.js",
+        "modules/main/workspace/36n-knowledge-workspace-shell-render.js",
+        "modules/main/workspace/36o-knowledge-note-mode-render.js",
+        "modules/main/workspace/36p-knowledge-workspace-events.js",
         "modules/knowledge-workspace.js",
         "modules/data-management.js"
       ]
     },
     "modal": {
       "path": "xingce_v3/modules/legacy-app.modal.bundle.js",
-      "sha256": "e92c8c9847c1822a8cadb99a288e2921ea42a467c46cdc674dfe4c7bc54113b5",
+      "sha256": "206329d4b8ab5a15eb6f7e251ceccc3b52ce13433471e18772280265421b2b79",
       "sources": [
         "modules/main/06-ai-workbench.js",
         "modules/main/image/07a-image-value-utils.js",
@@ -303,12 +334,17 @@
         "modules/main/33-bulk-actions.js",
         "modules/main/34-modal-controls.js",
         "modules/main/modal/36b-entry-ai-and-save.js",
+        "modules/main/modal/36q-knowledge-node-modal-open.js",
+        "modules/main/modal/36r-knowledge-node-modal-submit.js",
+        "modules/main/modal/36s-knowledge-node-dnd.js",
+        "modules/main/modal/36t-knowledge-move-modal.js",
+        "modules/main/modal/36u-knowledge-node-relink-and-reorder.js",
         "modules/knowledge-node-modal.js"
       ]
     },
     "bootstrap": {
       "path": "xingce_v3/modules/legacy-app.bootstrap.bundle.js",
-      "sha256": "b53f5ab130b9cbb550a7e3e59eee4400cd5455caf1d4b5601c64b254bb30b6ff",
+      "sha256": "a174fa776298f5257bbef5f1f4700baf883edd3e22cd63abc673017588f0b9c5",
       "sources": [
         "modules/main/99-bootstrap.js"
       ]

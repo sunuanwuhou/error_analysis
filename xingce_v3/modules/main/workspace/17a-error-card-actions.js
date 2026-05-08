@@ -126,6 +126,42 @@ function fallbackCopyText(text) {
   return ok;
 }
 
+function dataUrlToBlob(dataUrl) {
+  if (!dataUrl || typeof dataUrl !== 'string') return null;
+  const matched = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+  if (!matched) return null;
+  try {
+    const mime = matched[1] || 'application/octet-stream';
+    const b64 = matched[2] || '';
+    const binary = atob(b64);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i += 1) bytes[i] = binary.charCodeAt(i);
+    return new Blob([bytes], { type: mime });
+  } catch (e) {
+    return null;
+  }
+}
+
+function copyTextWithOptionalImage(text, imageDataUrl, onSuccess, onFailure) {
+  const hasClipboardWrite = navigator.clipboard && typeof navigator.clipboard.write === 'function';
+  const hasClipboardWriteText = navigator.clipboard && typeof navigator.clipboard.writeText === 'function';
+  const imageBlob = dataUrlToBlob(imageDataUrl);
+  if (hasClipboardWrite && imageBlob && typeof ClipboardItem !== 'undefined') {
+    const item = new ClipboardItem({
+      'text/plain': new Blob([text], { type: 'text/plain' }),
+      [imageBlob.type || 'image/png']: imageBlob
+    });
+    navigator.clipboard.write([item]).then(onSuccess).catch(onFailure);
+    return;
+  }
+  if (hasClipboardWriteText) {
+    navigator.clipboard.writeText(text).then(onSuccess).catch(onFailure);
+    return;
+  }
+  onFailure();
+}
+
 function copyErrorMarkdown(id) {
   const errorItem = findErrorById(id);
   if (!errorItem) {
@@ -139,28 +175,20 @@ function copyErrorMarkdown(id) {
     if (ok) handleSuccess();
     else showToast('复制失败，请稍后重试', 'error');
   };
-  if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-    navigator.clipboard.writeText(text).then(handleSuccess).catch(handleFailure);
-    return;
-  }
-  handleFailure();
+  copyTextWithOptionalImage(text, errorItem && errorItem.imgData, handleSuccess, handleFailure);
 }
 
 function getQuestionAndOptionsText(errorItem) {
   const item = errorItem && typeof errorItem === 'object' ? errorItem : {};
-  const question = String(item.question || '').trim();
-  const options = String(item.options || '')
-    .split(/\n|\|/)
-    .map(part => String(part || '').trim())
-    .filter(Boolean)
-    .join('\n');
+  const answer = String(item.answer || '').trim();
+  const analysis = String(item.correctModel || item.analysis || '').trim();
+  const scoreTip = String(item.nextAction || item.tip || '').trim();
   const sections = [
-    '【题目】',
-    question || '(空)',
+    '【答案】',
+    answer || '(空)'
   ];
-  if (options) {
-    sections.push('', '【选项】', options);
-  }
+  if (analysis) sections.push('', '【解析】', analysis);
+  if (scoreTip) sections.push('', '【提分】', scoreTip);
   return sections.join('\n');
 }
 
@@ -171,17 +199,13 @@ function copyQuestionAndOptions(id) {
     return;
   }
   const text = getQuestionAndOptionsText(errorItem);
-  const handleSuccess = () => showToast('题干与选项已复制到剪贴板', 'success');
+  const handleSuccess = () => showToast('答案与解析已复制到剪贴板', 'success');
   const handleFailure = () => {
     const ok = fallbackCopyText(text);
     if (ok) handleSuccess();
     else showToast('复制失败，请稍后重试', 'error');
   };
-  if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-    navigator.clipboard.writeText(text).then(handleSuccess).catch(handleFailure);
-    return;
-  }
-  handleFailure();
+  copyTextWithOptionalImage(text, errorItem && errorItem.imgData, handleSuccess, handleFailure);
 }
 
 if (typeof window !== 'undefined') {

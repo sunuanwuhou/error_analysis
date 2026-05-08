@@ -2,7 +2,43 @@
 // Ensure knowledge node paths and leaves
 // ============================================================
 function ensureKnowledgePathByTitles(pathTitles) {
-  const titles = normalizeKnowledgePathTitles(pathTitles);
+  const normalizeRootTitle = title => {
+    const raw = normalizeKnowledgeTitle(title, '');
+    if (!raw) return '';
+    if (Array.isArray(FIXED_KNOWLEDGE_ROOTS) && FIXED_KNOWLEDGE_ROOTS.includes(raw)) return raw;
+    if (typeof resolveLegacyKnowledgeRootAlias === 'function') {
+      const alias = resolveLegacyKnowledgeRootAlias(raw);
+      if (alias && FIXED_KNOWLEDGE_ROOTS.includes(alias)) return alias;
+    }
+    const normalized = typeof normalizeKnowledgeRootTitleForCleanup === 'function'
+      ? normalizeKnowledgeRootTitleForCleanup(raw)
+      : raw;
+    const fixedRoots = Array.isArray(FIXED_KNOWLEDGE_ROOTS) ? FIXED_KNOWLEDGE_ROOTS : [];
+    for (let i = 0; i < fixedRoots.length; i += 1) {
+      const item = fixedRoots[i];
+      const itemNormalized = typeof normalizeKnowledgeRootTitleForCleanup === 'function'
+        ? normalizeKnowledgeRootTitleForCleanup(item)
+        : item;
+      if (normalized === itemNormalized) return item;
+    }
+    return '常识判断';
+  };
+  const normalizeCreationTitles = titles => {
+    const list = Array.isArray(titles) ? titles.map(item => normalizeKnowledgeTitle(item, '')).filter(Boolean) : [];
+    if (!list.length) return [];
+    const firstRaw = list[0];
+    const rootTitle = normalizeRootTitle(firstRaw);
+    const output = [rootTitle];
+    // If incoming first title is an alias (e.g. 片段阅读), keep it as level-2 topic under canonical root.
+    if (firstRaw && firstRaw !== rootTitle) output.push(firstRaw);
+    for (let i = 1; i < list.length; i += 1) {
+      const title = list[i];
+      if (!title || title === output[output.length - 1]) continue;
+      output.push(title);
+    }
+    return output;
+  };
+  const titles = normalizeCreationTitles(normalizeKnowledgePathTitles(pathTitles));
   if (!titles.length) return null;
   let siblings = getKnowledgeRootNodes();
   let node = null;

@@ -180,9 +180,13 @@ function renameKnowledgeNode(nodeId) {
 
 function moveKnowledgeNodeToTarget(nodeId, targetId, opts) {
   const node = getKnowledgeNodeById(nodeId);
-  const moveToRoot = String(targetId || '') === '__ROOT_LEVEL__';
+  const moveToRoot = false;
   const target = moveToRoot ? null : getKnowledgeNodeById(targetId);
   if (!node || (!moveToRoot && !target)) return false;
+  if (Number(node.level || 0) <= 1) {
+    showToast('一级节点不支持移动', 'warning');
+    return false;
+  }
   if (!moveToRoot && node.id === target.id) {
     showToast('不能移动到自己', 'warning');
     return false;
@@ -230,27 +234,19 @@ function moveKnowledgeNodeToTarget(nodeId, targetId, opts) {
     setCurrentKnowledgeNode(duplicateTarget.id, { switchTab: false });
     return true;
   }
-  if (moveToRoot) {
-    movingNode.level = 1;
-    getKnowledgeRootNodes().push(movingNode);
-  } else {
-    target.children.push(movingNode);
-  }
+  target.children.push(movingNode);
   if (oldParent) {
     oldParent.isLeaf = !(Array.isArray(oldParent.children) && oldParent.children.length);
   }
-  if (!moveToRoot) {
-    target.isLeaf = false;
-    expandKnowledgePath(target.id);
-  }
+  target.isLeaf = false;
+  expandKnowledgePath(target.id);
   if (typeof syncMovedKnowledgeNodeErrors === 'function') {
     syncMovedKnowledgeNodeErrors(movedNodeIds);
   }
   saveData();
   saveKnowledgeState();
   if (!opts || !opts.silent) {
-    if (moveToRoot) showToast('节点已移动到一级根层', 'success');
-    else showToast(`节点已移动到：${collapseKnowledgePathTitles(getKnowledgePathTitles(target.id)).join(' > ')}`, 'success');
+    showToast(`节点已移动到：${collapseKnowledgePathTitles(getKnowledgePathTitles(target.id)).join(' > ')}`, 'success');
   }
   setCurrentKnowledgeNode(movingNode.id, { switchTab: false });
   return true;
@@ -258,7 +254,7 @@ function moveKnowledgeNodeToTarget(nodeId, targetId, opts) {
 
 function canMoveKnowledgeNode(nodeId) {
   const node = getKnowledgeNodeById(nodeId);
-  return !!node;
+  return !!node && Number(node.level || 0) > 1;
 }
 
 function moveKnowledgeNode(nodeId) {
@@ -290,11 +286,14 @@ function deleteKnowledgeNode(nodeId) {
   const isRootNode = !parent;
   const roots = getKnowledgeRootNodes();
   const siblings = parent ? (parent.children || []) : roots;
+  // Fast path for delete pre-check: avoid heavy resolver on every record.
   const directErrors = errors.filter(item => {
+    const directNodeId = String((item && item.noteNodeId) || '');
+    if (directNodeId) return directNodeId === node.id;
     const currentNodeId = typeof resolveErrorKnowledgeNodeId === 'function'
       ? resolveErrorKnowledgeNodeId(item)
-      : String(item && item.noteNodeId || '');
-    return currentNodeId === node.id;
+      : '';
+    return String(currentNodeId || '') === node.id;
   });
   const childCount = (node.children || []).length;
   if (childCount || directErrors.length) {

@@ -92,139 +92,38 @@
 
 
   function ensureEmbeddedNoteEditorModal() {
-    var existing = document.getElementById("knowledgeNoteEditorModal");
-    if (existing) return existing;
-
-    var mask = document.createElement("div");
-    mask.id = "knowledgeNoteEditorModal";
-    mask.className = "modal-mask note-editor-modal-mask";
-    mask.innerHTML = "" +
-      "<div class=\"note-editor-modal\" role=\"dialog\" aria-modal=\"true\" aria-label=\"" + TEXT.standaloneEdit + "\">" +
-        "<button class=\"note-editor-modal-close\" type=\"button\" aria-label=\"Close\">&times;</button>" +
-        "<iframe id=\"knowledgeNoteEditorModalFrame\" class=\"note-editor-modal-frame\" title=\"" + TEXT.standaloneEdit + "\"></iframe>" +
-      "</div>";
-
-    function requestClose() {
-      var frame = document.getElementById("knowledgeNoteEditorModalFrame");
-      var editorWindow = frame && frame.contentWindow;
-      if (editorWindow && typeof editorWindow.requestNoteEditorClose === "function") {
-        if (editorWindow.requestNoteEditorClose(false) === false) return;
-      }
-      closeEmbeddedKnowledgeNoteEditor(true);
-    }
-
-    mask.addEventListener("click", function (event) {
-      if (event.target === mask) requestClose();
-    });
-    mask.querySelector(".note-editor-modal-close").addEventListener("click", requestClose);
-    document.addEventListener("keydown", function (event) {
-      if (event.key !== "Escape") return;
-      if (!mask.classList.contains("open")) return;
-      requestClose();
-    });
-
-    document.body.appendChild(mask);
-    return mask;
+    return kwEnsureEmbeddedNoteEditorModal(TEXT, closeEmbeddedKnowledgeNoteEditor);
   }
 
   function closeEmbeddedKnowledgeNoteEditor(force) {
-    var mask = document.getElementById("knowledgeNoteEditorModal");
-    if (!mask) return;
-    if (!force) {
-      var frame = document.getElementById("knowledgeNoteEditorModalFrame");
-      var editorWindow = frame && frame.contentWindow;
-      if (editorWindow && typeof editorWindow.requestNoteEditorClose === "function") {
-        if (editorWindow.requestNoteEditorClose(false) === false) return;
-      }
-    }
-    mask.classList.remove("open");
-    document.body.classList.remove("note-editor-modal-open");
+    kwCloseEmbeddedKnowledgeNoteEditor(force);
   }
 
   function collectNodeErrors(currentNode) {
-    if (!currentNode) return [];
-    var nodeIds = getKnowledgeDescendantNodeIds(currentNode);
-    return getFiltered().filter(function (item) {
-      var nodeId = typeof resolveErrorKnowledgeNodeId === "function"
-        ? resolveErrorKnowledgeNodeId(item)
-        : String(item.noteNodeId || "");
-      return nodeIds.includes(nodeId);
-    });
+    return kwCollectNodeErrors(currentNode, getFiltered());
   }
 
   function isTopLevelKnowledgeNode(node) {
-    if (!node || !node.id) return false;
-    return !findKnowledgeParent(node.id);
+    return kwIsTopLevelKnowledgeNode(node);
   }
 
   function collectDirectorySections(currentNode) {
-    if (!currentNode) return [];
-    var sections = [];
-    var childNodes = (currentNode.children || []).slice();
-    childNodes.forEach(function (node) {
-      if (!node) return;
-      var markdown = normalizeKnowledgeNoteMarkdown(node.contentMd).trim();
-      var childCount = countErrorsForKnowledgeNode(node.id, true);
-      var hasChildren = !!(node.children && node.children.length);
-      if (!markdown && !hasChildren) return;
-      sections.push({
-        nodeId: node.id,
-        title: node.title || "",
-        pathText: collapseKnowledgePathTitles(getKnowledgePathTitles(node.id)).join(" > "),
-        hasContent: !!markdown,
-        hasChildren: hasChildren,
-        childCount: childCount
-      });
-    });
-    return sections;
+    return kwCollectDirectorySections(currentNode, normalizeKnowledgeNoteMarkdown);
   }
 
   function buildDirectoryTree(node) {
-    if (!node) return null;
-    var markdown = normalizeKnowledgeNoteMarkdown(node.contentMd).trim();
-    var children = (node.children || []).map(buildDirectoryTree).filter(Boolean);
-    var childCount = countErrorsForKnowledgeNode(node.id, true);
-    if (!markdown && !children.length) return null;
-    return {
-      nodeId: node.id,
-      title: node.title || "",
-      pathText: collapseKnowledgePathTitles(getKnowledgePathTitles(node.id)).join(" > "),
-      hasContent: !!markdown,
-      childCount: childCount,
-      children: children
-    };
+    return kwBuildDirectoryTree(node, normalizeKnowledgeNoteMarkdown);
   }
 
   function flattenDirectoryTree(tree) {
-    var list = [];
-    (tree || []).forEach(function walk(node, depth) {
-      if (!node) return;
-      list.push({
-        nodeId: node.nodeId,
-        title: node.title,
-        pathText: node.pathText,
-        hasContent: node.hasContent,
-        childCount: node.childCount,
-        depth: depth || 0
-      });
-      (node.children || []).forEach(function (child) {
-        walk(child, (depth || 0) + 1);
-      });
-    });
-    return list;
+    return kwFlattenDirectoryTree(tree);
   }
 
   function getDirectoryPreviewNode(currentNode, sections) {
-    var preferredId = getDirectoryPreviewNodeId();
-    if (preferredId) {
-      var preferred = sections.find(function (section) { return section.nodeId === preferredId; });
-      if (preferred) return getKnowledgeNodeById(preferred.nodeId);
-    }
-    var firstWithContent = sections.find(function (section) { return section.hasContent; });
-    var fallback = firstWithContent || sections[0];
-    if (!fallback) return null;
-    setDirectoryPreviewNodeId(fallback.nodeId);
-    return getKnowledgeNodeById(fallback.nodeId);
+    var previewNodeId = kwPickDirectoryPreviewNodeId(sections, getDirectoryPreviewNodeId());
+    if (!previewNodeId) return null;
+    setDirectoryPreviewNodeId(previewNodeId);
+    return getKnowledgeNodeById(previewNodeId);
   }
 
   function setCurrentKnowledgeNode(nodeId, opts) {
@@ -283,97 +182,33 @@
   }
 
   function openKnowledgeForError(errorId) {
-    var targetId = typeof normalizeErrorId === "function" ? normalizeErrorId(errorId) : String(errorId || "").trim();
-    var errorItem = typeof findErrorById === "function"
-      ? findErrorById(targetId)
-      : errors.find(function (item) { return String(item.id || "").trim() === targetId; });
-    if (!errorItem || !errorItem.noteNodeId) {
-      showToast(TEXT.noKnowledgeNode, "warning");
-      return;
-    }
-    setCurrentKnowledgeNode(errorItem.noteNodeId, { switchTab: true, mode: "list" });
+    kwOpenKnowledgeForError(errorId, {
+      normalizeErrorId: normalizeErrorId,
+      findErrorById: findErrorById,
+      errors: errors,
+      showToast: showToast,
+      noKnowledgeNodeText: TEXT.noKnowledgeNode,
+      setCurrentKnowledgeNode: setCurrentKnowledgeNode
+    });
   }
 
   function jumpToErrorInList(errorId) {
-    var targetId = typeof normalizeErrorId === "function" ? normalizeErrorId(errorId) : String(errorId || "").trim();
-    var errorItem = typeof findErrorById === "function"
-      ? findErrorById(targetId)
-      : errors.find(function (item) { return String(item.id || "").trim() === targetId; });
-
-    function forceOpenEditor() {
-      if (typeof openEditModal === "function") {
-        try { openEditModal(targetId); } catch (e) {}
-      }
-    }
-
-    if (!errorItem) {
-      showToast("未找到对应错题", "warning");
-      forceOpenEditor();
-      return;
-    }
-
-    var selectors = [
-      "[data-error-id=\"" + targetId + "\"]",
-      "#card-" + targetId,
-      ".notes-panel-right [data-error-id=\"" + targetId + "\"]",
-      "#noteErrorList [data-error-id=\"" + targetId + "\"]"
-    ];
-
-    var attempts = 0;
-    var maxAttempts = 14;
-
-    function attemptLocate() {
-      attempts += 1;
-      for (var i = 0; i < selectors.length; i += 1) {
-        var el = document.querySelector(selectors[i]);
-        if (!el) continue;
-        try { el.scrollIntoView({ behavior: "smooth", block: "nearest" }); } catch (e) {}
-        setTimeout(forceOpenEditor, 80);
-        return;
-      }
-      if (attempts < maxAttempts) {
-        setTimeout(attemptLocate, 140);
-        return;
-      }
-      forceOpenEditor();
-      showToast("已定位到题目编辑面板", "success");
-    }
-
-    function openWorkspaceAndLocate() {
-      try {
-        if (typeof switchAppView === "function") switchAppView("workspace");
-        if (errorItem.noteNodeId) {
-          setCurrentKnowledgeNode(errorItem.noteNodeId, { switchTab: true, mode: "list" });
-        } else if (typeof switchTab === "function") {
-          switchTab("notes");
-        }
-      } catch (e) {
-        console.warn("[knowledge-workspace] jumpToErrorInList workspace switch failed", e);
-      }
-      if (typeof requestWorkspaceRender === "function") {
-        requestWorkspaceRender({ sidebar: false, notes: true, immediate: true });
-      } else {
-        if (typeof renderAll === "function") renderAll();
-        if (typeof renderNotesByType === "function") renderNotesByType();
-      }
-      if (typeof renderNotesPanelRight === "function") renderNotesPanelRight();
-      if (typeof requestAnimationFrame === "function") {
-        requestAnimationFrame(function () {
-          requestAnimationFrame(attemptLocate);
-        });
-      } else {
-        setTimeout(attemptLocate, 32);
-      }
-    }
-
-    if (typeof hasFullWorkspaceDataLoaded === "function"
-      && typeof ensureFullWorkspaceDataLoaded === "function"
-      && !hasFullWorkspaceDataLoaded()) {
-      ensureFullWorkspaceDataLoaded().finally(function () { setTimeout(openWorkspaceAndLocate, 60); });
-    } else {
-      setTimeout(openWorkspaceAndLocate, 60);
-    }
-    setTimeout(forceOpenEditor, 700);
+    kwJumpToErrorInList(errorId, {
+      normalizeErrorId: normalizeErrorId,
+      findErrorById: findErrorById,
+      errors: errors,
+      showToast: showToast,
+      openEditModal: openEditModal,
+      switchAppView: switchAppView,
+      setCurrentKnowledgeNode: setCurrentKnowledgeNode,
+      switchTab: switchTab,
+      requestWorkspaceRender: requestWorkspaceRender,
+      renderAll: renderAll,
+      renderNotesByType: renderNotesByType,
+      renderNotesPanelRight: renderNotesPanelRight,
+      hasFullWorkspaceDataLoaded: hasFullWorkspaceDataLoaded,
+      ensureFullWorkspaceDataLoaded: ensureFullWorkspaceDataLoaded
+    });
   }
 
   function bindKnowledgeEditorShortcuts(content) {
@@ -388,18 +223,16 @@
   }
 
   function openExternalKnowledgeNoteEditor(nodeId) {
-    ensureKnowledgeState();
-    var targetNode = getKnowledgeNodeById(nodeId || selectedKnowledgeNodeId) || getCurrentKnowledgeNode();
-    if (!targetNode) {
-      showToast(TEXT.pickKnowledgeNode, "warning");
-      return;
-    }
-    var mask = ensureEmbeddedNoteEditorModal();
-    var frame = document.getElementById("knowledgeNoteEditorModalFrame");
-    if (!frame) return;
-    frame.src = "/assets/note_editor.html?nodeId=" + encodeURIComponent(targetNode.id) + "&embed=1";
-    mask.classList.add("open");
-    document.body.classList.add("note-editor-modal-open");
+    kwOpenExternalKnowledgeNoteEditor(nodeId, {
+      ensureKnowledgeState: ensureKnowledgeState,
+      getKnowledgeNodeById: getKnowledgeNodeById,
+      selectedKnowledgeNodeId: selectedKnowledgeNodeId,
+      getCurrentKnowledgeNode: getCurrentKnowledgeNode,
+      showToast: showToast,
+      pickKnowledgeNodeText: TEXT.pickKnowledgeNode,
+      texts: TEXT,
+      closeEmbeddedKnowledgeNoteEditor: closeEmbeddedKnowledgeNoteEditor
+    });
   }
 
   function liveNotePreview() {
@@ -423,256 +256,75 @@
   }
 
   function renderWorkspaceHeader(currentNode, pathText, directCount, linkedCount, errorCount, mode) {
-    var titleText = String((currentNode && currentNode.title) || "");
-    var pathValue = String(pathText || "");
-    var showPath = pathValue && pathValue !== titleText;
-    var pathHtml = showPath
-      ? "<div class=\"knowledge-workspace-shell-path\">" + escapeHtml(pathValue) + "</div>"
-      : "";
-    var backToRecommended = window.__recommendedNotesReturnEnabled
-      ? "<button class=\"btn btn-sm btn-secondary\" onclick=\"returnToRecommendedNotes()\">返回推荐列表</button>"
-      : "";
-    var nodeActions = "<div class=\"knowledge-workspace-node-actions\">" +
-      "<button class=\"btn btn-sm btn-secondary\" onclick=\"openExternalKnowledgeNoteEditor('" + currentNode.id + "')\">" + TEXT.standaloneEdit + "</button>" +
-      "<button class=\"btn btn-sm btn-secondary\" onclick=\"renameKnowledgeNode('" + currentNode.id + "')\">" + TEXT.rename + "</button>" +
-      (findKnowledgeParent(currentNode.id) ? "<button class=\"btn btn-sm btn-secondary\" onclick=\"moveKnowledgeNode('" + currentNode.id + "')\">" + TEXT.move + "</button>" : "") +
-      "<button class=\"btn btn-sm btn-secondary\" onclick=\"selectedKnowledgeNodeId='" + currentNode.id + "';addKnowledgeLeafUnderSelected()\">" + TEXT.createChild + "</button>" +
-      "<button class=\"btn btn-sm btn-secondary\" onclick=\"openAddModalForCurrentKnowledge()\">" + TEXT.createQuestion + "</button>" +
-    "</div>";
-    var sortBy = String(window.errorSortBy || "created_at") === "wrong_count" ? "wrong_count" : "created_at";
-    var sortOrder = String(window.errorSortOrder || "desc") === "asc" ? "asc" : "desc";
-    var listSortTools = mode === "list"
-      ? "<div class=\"knowledge-workspace-sort-tools\">" +
-          "<span class=\"knowledge-workspace-sort-label\">排序</span>" +
-          "<select class=\"knowledge-workspace-sort-select\" onchange=\"setErrorSortBy(this.value)\">" +
-            "<option value=\"created_at\"" + (sortBy === "created_at" ? " selected" : "") + ">创建时间</option>" +
-            "<option value=\"wrong_count\"" + (sortBy === "wrong_count" ? " selected" : "") + ">错题次数</option>" +
-          "</select>" +
-          "<button class=\"btn btn-sm btn-secondary\" type=\"button\" onclick=\"toggleErrorSortOrder()\">" + (sortOrder === "asc" ? "升序" : "降序") + "</button>" +
-        "</div>"
-      : "";
-    return "<div class=\"knowledge-workspace-shell-header\">" +
-      "<div class=\"knowledge-workspace-shell-meta\">" +
-        "<div class=\"knowledge-workspace-shell-title\">" + escapeHtml(titleText) + "</div>" +
-        pathHtml +
-        nodeActions +
-      "</div>" +
-      "<div class=\"knowledge-workspace-shell-actions\">" +
-        "<div class=\"knowledge-workspace-mode-switch\">" +
-          "<button class=\"btn btn-sm " + (mode === "list" ? "btn-primary" : "btn-secondary") + "\" onclick=\"setKnowledgeWorkspaceMode('list')\">" + TEXT.tabQuestions + "</button>" +
-          "<button class=\"btn btn-sm " + (mode === "note" ? "btn-primary" : "btn-secondary") + "\" onclick=\"setKnowledgeWorkspaceMode('note')\">" + TEXT.tabNotes + "</button>" +
-        "</div>" +
-        listSortTools +
-        (mode === "note" && isTopLevelKnowledgeNode(currentNode)
-          ? "<div class=\"knowledge-workspace-mode-switch knowledge-note-view-switch\">" +
-              "<button class=\"btn btn-sm " + (getNoteViewMode() === "current" ? "btn-primary" : "btn-secondary") + "\" onclick=\"setKnowledgeNoteViewMode('current')\">当前笔记</button>" +
-              "<button class=\"btn btn-sm " + (getNoteViewMode() === "directory" ? "btn-primary" : "btn-secondary") + "\" onclick=\"setKnowledgeNoteViewMode('directory')\">章节目录</button>" +
-            "</div>"
-          : "") +
-        "<span class=\"knowledge-workspace-count\">" + errorCount + TEXT.countSuffix + "</span>" +
-        backToRecommended +
-      "</div>" +
-      "<div class=\"knowledge-workspace-shell-stats\">" +
-        "<span class=\"knowledge-workspace-stat\">" + TEXT.directCount + directCount + "</span>" +
-        "<span class=\"knowledge-workspace-stat\">" + TEXT.linkedCount + linkedCount + "</span>" +
-      "</div>" +
-    "</div>";
+    return kwRenderWorkspaceHeader(currentNode, pathText, directCount, linkedCount, errorCount, mode, {
+      text: TEXT,
+      escapeHtml: escapeHtml,
+      hasParent: function (nodeId) { return !!findKnowledgeParent(nodeId); },
+      isTopLevelNode: isTopLevelKnowledgeNode,
+      getNoteViewMode: getNoteViewMode
+    });
   }
 
   function renderListMode(currentNode, relatedErrors) {
-    if (typeof queueVisiblePracticeSummaryLoad === "function") {
-      queueVisiblePracticeSummaryLoad(relatedErrors);
-    }
-    var body = relatedErrors.length
-      ? relatedErrors.map(function (item) { return renderCard(item); }).join("")
-      : "<div class=\"knowledge-workspace-empty\">" + TEXT.noQuestions + "</div>";
-
-    return "<div class=\"knowledge-workspace-list-wrap\">" +
-      "<div class=\"knowledge-workspace-list-head\">" + TEXT.currentQuestions + "</div>" +
-      "<div class=\"knowledge-workspace-list\">" + body + "</div>" +
-    "</div>";
+    return kwRenderListMode(relatedErrors, {
+      queueVisiblePracticeSummaryLoad: queueVisiblePracticeSummaryLoad,
+      renderCard: renderCard,
+      text: TEXT
+    });
   }
 
   function ensureKnowledgeWorkspaceListScrollable() {
-    var content = document.getElementById("notesContent");
-    if (!content) return;
-    var shell = content.querySelector(".knowledge-workspace-shell");
-    if (!shell) return;
-    var listWrap = shell.querySelector(".knowledge-workspace-list-wrap");
-    var list = shell.querySelector(".knowledge-workspace-list");
-    if (!listWrap || !list) return;
-    var shellHeader = shell.querySelector(".knowledge-workspace-shell-header");
-    var listHead = listWrap.querySelector(".knowledge-workspace-list-head");
-    listWrap.style.display = "flex";
-    listWrap.style.flexDirection = "column";
-    listWrap.style.flex = "1";
-    listWrap.style.minHeight = "0";
-    listWrap.style.overflow = "hidden";
-    listWrap.style.height = "";
-    listWrap.style.maxHeight = "";
-
-    if (shellHeader) {
-      shellHeader.style.flexShrink = "0";
-    }
-    if (listHead) {
-      listHead.style.flexShrink = "0";
-    }
-
-    list.style.flex = "1";
-    list.style.minHeight = "0";
-    list.style.height = "";
-    list.style.maxHeight = "";
-    list.style.overflowY = "auto";
-    list.style.overflowX = "hidden";
-    list.style.touchAction = "pan-y";
-    list.style.webkitOverflowScrolling = "touch";
+    kwEnsureKnowledgeWorkspaceListScrollable();
   }
 
-  var __knowledgeWorkspaceScrollListenerBound = false;
+  var __knowledgeWorkspaceScrollListener = { bound: false };
   function bindKnowledgeWorkspaceScrollListener() {
-    if (__knowledgeWorkspaceScrollListenerBound) return;
-    __knowledgeWorkspaceScrollListenerBound = true;
-    window.addEventListener("resize", function () {
-      var content = document.getElementById("notesContent");
-      if (!content || !content.classList.contains("knowledge-notes-active")) return;
-      if (getWorkspaceMode() !== "list") return;
-      ensureKnowledgeWorkspaceListScrollable();
-      setTimeout(ensureKnowledgeWorkspaceListScrollable, 80);
-    });
+    kwBindKnowledgeWorkspaceScrollListener(
+      __knowledgeWorkspaceScrollListener,
+      getWorkspaceMode,
+      ensureKnowledgeWorkspaceListScrollable
+    );
   }
 
   function renderInlineNotePreview(currentNode, noteContent) {
-    var markdown = String(noteContent || "");
-    if (!markdown.trim()) {
-      return "<div class=\"knowledge-workspace-empty\">" + TEXT.noNotes + "</div>";
-    }
-    var anchorPrefix = getKnowledgeNoteAnchorPrefix(currentNode && currentNode.id);
-    var headings = extractMdHeadings(markdown);
-    var tocHtml = renderFloatingHeadingPanel(headings, anchorPrefix);
-    var previewHtml = renderNotePreviewLayout(renderMd(markdown, { anchorPrefix: anchorPrefix }), tocHtml);
-    return "<div class=\"knowledge-inline-preview\" data-role=\"knowledge-inline-preview\">" + previewHtml + "</div>";
+    return kwRenderInlineNotePreview(currentNode, noteContent, {
+      text: TEXT,
+      getKnowledgeNoteAnchorPrefix: getKnowledgeNoteAnchorPrefix,
+      extractMdHeadings: extractMdHeadings,
+      renderFloatingHeadingPanel: renderFloatingHeadingPanel,
+      renderNotePreviewLayout: renderNotePreviewLayout,
+      renderMd: renderMd
+    });
   }
 
   function hydrateInlineNotePreview() {
-    var preview = document.getElementById("noteSplitPreview");
-    if (!preview) return;
-    requestAnimationFrame(function () {
-      syncActiveNoteToc(preview);
-      renderMathInElement(preview);
-    });
+    kwHydrateInlineNotePreview();
   }
 
   function syncKnowledgeNoteScrollFrames() {
-    var content = document.getElementById("notesContent");
-    if (!content || !content.classList.contains("knowledge-workspace-note-mode")) return;
-    var header = content.querySelector(".knowledge-workspace-shell-header");
-    var listHead = content.querySelector(".knowledge-workspace-list-head");
-    var contentRect = content.getBoundingClientRect();
-    var headerHeight = header ? header.getBoundingClientRect().height : 0;
-    var listHeadHeight = listHead ? listHead.getBoundingClientRect().height : 0;
-    var available = Math.max(360, Math.floor(contentRect.height - headerHeight - listHeadHeight - 28));
-    var px = available + "px";
-    [
-      ".knowledge-workspace-note-wrap--directory",
-      ".knowledge-directory-layout",
-      ".knowledge-directory-list",
-      ".knowledge-directory-preview-wrap",
-      ".knowledge-directory-preview",
-      ".knowledge-inline-preview",
-      ".note-preview-layout",
-      ".note-preview-layout-no-toc",
-      ".note-preview-toc",
-      ".note-preview-toc .note-toc-floating",
-      ".note-preview-article-scroll"
-    ].forEach(function (selector) {
-      Array.prototype.forEach.call(content.querySelectorAll(selector), function (el) {
-        el.style.height = px;
-        el.style.maxHeight = px;
-        el.style.minHeight = "0";
-      });
-    });
-    [
-      ".knowledge-directory-list",
-      ".note-preview-toc .note-toc-floating",
-      ".note-preview-article-scroll"
-    ].forEach(function (selector) {
-      Array.prototype.forEach.call(content.querySelectorAll(selector), function (el) {
-        el.style.overflowY = "scroll";
-        el.style.overflowX = "hidden";
-      });
-    });
+    kwSyncKnowledgeNoteScrollFrames();
   }
 
   function renderNoteMode(currentNode, noteContent) {
-    clearGlobalNoteTocDock();
-    var previewHtml = noteEditing
-      ? renderViewerFrame(currentNode.id, "noteSplitPreview")
-      : renderInlineNotePreview(currentNode, noteContent);
-
-    if (noteEditing) {
-      return "" +
-        "<div class=\"note-split-area\">" +
-          "<div class=\"note-split-editor\">" +
-            "<div class=\"note-split-label\">" + TEXT.edit +
-              "<button onclick=\"saveNoteTypeContent();noteEditing=false;renderNotesByType()\" style=\"float:right;background:#52c41a;color:#fff;border:none;border-radius:4px;padding:2px 10px;cursor:pointer;font-size:12px\">" + TEXT.done + "</button>" +
-            "</div>" +
-            "<textarea id=\"noteTypeTextarea\" class=\"note-md-textarea\" placeholder=\"# \\u89c4\\u5219\\u603b\\u7ed3&#10;## \\u6613\\u9519\\u70b9&#10;- ...&#10;&#10;## \\u884c\\u52a8\\u5efa\\u8bae&#10;- ...\" oninput=\"liveNotePreview()\">" + escapeHtml(noteContent) + "</textarea>" +
-            "<div class=\"note-btn-bar\">" +
-              "<button class=\"btn btn-primary btn-sm\" onclick=\"saveNoteTypeContent()\">" + TEXT.save + "</button>" +
-              "<span class=\"save-hint\">" + TEXT.shortcutSave + "</span>" +
-            "</div>" +
-          "</div>" +
-          "<div class=\"note-split-preview\">" +
-            "<div class=\"note-split-label\">" + TEXT.preview + "</div>" +
-            "<div class=\"note-preview-scroll note-preview-frame-scroll\" id=\"noteSplitPreview\">" + previewHtml + "</div>" +
-          "</div>" +
-        "</div>";
-    }
-
-    return "<div class=\"knowledge-workspace-note-wrap\">" +
-      "<div class=\"knowledge-workspace-list-head\">" + TEXT.currentNote + "</div>" +
-      "<div class=\"note-preview-scroll note-preview-frame-scroll\" id=\"noteSplitPreview\">" + previewHtml + "</div>" +
-    "</div>";
+    return kwRenderNoteMode(currentNode, noteContent, noteEditing, {
+      text: TEXT,
+      clearGlobalNoteTocDock: clearGlobalNoteTocDock,
+      renderViewerFrame: renderViewerFrame,
+      renderInlineNotePreview: renderInlineNotePreview,
+      escapeHtml: escapeHtml
+    });
   }
 
   function renderDirectoryMode(currentNode) {
-    clearGlobalNoteTocDock();
-    var tree = (currentNode.children || []).map(buildDirectoryTree).filter(Boolean);
-    var sections = flattenDirectoryTree(tree);
-    if (!sections.length) {
-      return "<div class=\"knowledge-workspace-note-wrap\">" +
-        "<div class=\"knowledge-workspace-list-head\">章节目录</div>" +
-        "<div class=\"knowledge-workspace-empty\">当前一级节点下还没有可浏览的子章节。</div>" +
-      "</div>";
-    }
-
-    var previewNode = getDirectoryPreviewNode(currentNode, sections);
-    var previewContent = previewNode ? normalizeKnowledgeNoteMarkdown(previewNode.contentMd) : "";
-    var previewHtml = previewNode
-      ? renderInlineNotePreview(previewNode, previewContent)
-      : "<div class=\"knowledge-workspace-empty\">请选择一个章节查看笔记。</div>";
-
-    var blocks = sections.map(function (section) {
-      var isActive = previewNode && section.nodeId === previewNode.id;
-      return "<button class=\"knowledge-directory-item" + (isActive ? " active" : "") + (section.hasContent ? "" : " is-structural") + "\" type=\"button\" style=\"padding-left:" + (14 + section.depth * 18) + "px\" onclick=\"openKnowledgeDirectoryNode('" + escapeHtml(section.nodeId) + "')\">" +
-        "<span class=\"knowledge-directory-item-title\">" + escapeHtml(section.title) + "</span>" +
-        "<span class=\"knowledge-directory-item-meta\">" + section.childCount + "题</span>" +
-      "</button>";
-    }).join("");
-
-    return "<div class=\"knowledge-workspace-note-wrap knowledge-workspace-note-wrap--directory\">" +
-      "<div class=\"knowledge-workspace-list-head\">章节目录</div>" +
-      "<div class=\"knowledge-directory-layout\">" +
-        "<div class=\"knowledge-directory-list\" id=\"knowledgeDirectoryList\">" + blocks + "</div>" +
-        "<div class=\"knowledge-directory-preview-wrap\">" +
-          "<div class=\"knowledge-directory-preview-head\">" +
-            "<div class=\"knowledge-directory-preview-title\">" + escapeHtml(previewNode ? (previewNode.title || "当前章节") : "当前章节") + "</div>" +
-            "<div class=\"knowledge-directory-preview-path\">" + escapeHtml(previewNode ? collapseKnowledgePathTitles(getKnowledgePathTitles(previewNode.id)).join(" > ") : "") + "</div>" +
-          "</div>" +
-          "<div class=\"note-preview-scroll note-preview-frame-scroll knowledge-directory-preview\" id=\"knowledgeDirectoryPreview\">" + previewHtml + "</div>" +
-        "</div>" +
-      "</div>" +
-    "</div>";
+    return kwRenderDirectoryMode(currentNode, {
+      clearGlobalNoteTocDock: clearGlobalNoteTocDock,
+      buildDirectoryTree: buildDirectoryTree,
+      flattenDirectoryTree: flattenDirectoryTree,
+      getDirectoryPreviewNode: getDirectoryPreviewNode,
+      normalizeKnowledgeNoteMarkdown: normalizeKnowledgeNoteMarkdown,
+      renderInlineNotePreview: renderInlineNotePreview,
+      escapeHtml: escapeHtml
+    });
   }
 
   function renderKnowledgeNotesViewV2() {
@@ -785,46 +437,30 @@
   }
 
   function openKnowledgeDirectoryNode(nodeId) {
-    if (!nodeId) return;
-    noteEditing = false;
-    var node = getKnowledgeNodeById(nodeId);
-    if (!node) return;
-    var targetId = nodeId;
-    if (!normalizeKnowledgeNoteMarkdown(node.contentMd).trim()) {
-      var descendants = getKnowledgeDescendantNodeIds(node)
-        .slice(1)
-        .map(function (id) { return getKnowledgeNodeById(id); })
-        .filter(function (item) { return item && normalizeKnowledgeNoteMarkdown(item.contentMd).trim(); });
-      if (descendants.length) targetId = descendants[0].id;
-    }
-    setDirectoryPreviewNodeId(targetId);
-    renderNotesByType();
+    kwOpenKnowledgeDirectoryNode(nodeId, {
+      setNoteEditing: function (value) { noteEditing = !!value; },
+      getKnowledgeNodeById: getKnowledgeNodeById,
+      getKnowledgeDescendantNodeIds: getKnowledgeDescendantNodeIds,
+      normalizeKnowledgeNoteMarkdown: normalizeKnowledgeNoteMarkdown,
+      setDirectoryPreviewNodeId: setDirectoryPreviewNodeId,
+      renderNotesByType: renderNotesByType
+    });
   }
 
   window.addEventListener("message", function (event) {
-    if (!event || event.origin !== window.location.origin) return;
-    var data = event.data || {};
-    if (data.type === "knowledge-note-viewer-size") {
-      applyNoteViewerHeight(data.role, data.height);
-      syncNotePreviewViewportHeight();
-      return;
-    }
-    if (data.type === "knowledge-note-viewer-ready") {
-      var currentNode = getCurrentKnowledgeNode();
-      syncNotePreviewViewportHeight();
-      if (currentNode) syncEmbeddedNoteViewers(currentNode, getCurrentNoteMarkdown());
-      return;
-    }
-    if (data.type === "knowledge-note-editor-close") {
-      closeEmbeddedKnowledgeNoteEditor(true);
-      return;
-    }
-    if (data.type !== "knowledge-note-saved") return;
-    noteEditing = false;
-    if (data.nodeId) selectedKnowledgeNodeId = data.nodeId;
-    renderSidebar();
-    renderNotesByType();
-    if (typeof renderNotesPanelRight === "function") renderNotesPanelRight();
+    kwHandleKnowledgeWorkspaceMessage(event, {
+      applyNoteViewerHeight: applyNoteViewerHeight,
+      syncNotePreviewViewportHeight: syncNotePreviewViewportHeight,
+      getCurrentKnowledgeNode: getCurrentKnowledgeNode,
+      syncEmbeddedNoteViewers: syncEmbeddedNoteViewers,
+      getCurrentNoteMarkdown: getCurrentNoteMarkdown,
+      closeEmbeddedKnowledgeNoteEditor: closeEmbeddedKnowledgeNoteEditor,
+      setNoteEditing: function (value) { noteEditing = !!value; },
+      setSelectedKnowledgeNodeId: function (nodeId) { selectedKnowledgeNodeId = nodeId; },
+      renderSidebar: renderSidebar,
+      renderNotesByType: renderNotesByType,
+      renderNotesPanelRight: renderNotesPanelRight
+    });
   });
 
   window.renderKnowledgeNotesViewV2 = renderKnowledgeNotesViewV2;

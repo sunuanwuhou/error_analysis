@@ -192,6 +192,37 @@ function refreshPrintModuleList() {
 function exportSelectAll(v) {
   document.querySelectorAll('.export-mod-cb').forEach(cb => cb.checked = v);
 }
+
+function exportKnowledgeTreeSnapshot() {
+  ensureKnowledgeState();
+  const roots = cloneJson(getKnowledgeRootNodes() || []);
+  const rows = [];
+  function walkTreeSnapshot(nodes, parentPath) {
+    (nodes || []).forEach(node => {
+      const path = collapseKnowledgePathTitles((parentPath || []).concat(node.title || ''));
+      rows.push({
+        id: node.id || '',
+        parentId: findKnowledgeParent(node.id)?.id || '',
+        level: Number(node.level || 0),
+        title: node.title || '',
+        path: path.join(' > ')
+      });
+      walkTreeSnapshot(node.children || [], path);
+    });
+  }
+  walkTreeSnapshot(roots, []);
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    source: 'legacy-workspace-runtime',
+    rootCount: roots.length,
+    nodeCount: rows.length,
+    roots: roots.map(node => ({ id: node.id || '', title: node.title || '' })),
+    nodes: rows
+  };
+  download(`knowledge_tree_snapshot_${today()}.json`, JSON.stringify(payload, null, 2));
+  showToast(`知识树快照已导出（${rows.length} 节点）`, 'success');
+}
+
 async function doExport() {
   if (_exportFmt === 'full') {
     await exportFullBackup();
