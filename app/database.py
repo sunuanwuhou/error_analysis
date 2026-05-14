@@ -366,6 +366,36 @@ def init_shenlun_tables() -> None:
         )
         conn.execute(
             """
+            ALTER TABLE shenlun_sources
+            ADD COLUMN IF NOT EXISTS node_id TEXT NOT NULL DEFAULT ''
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_sl_sources_user_node_updated
+            ON shenlun_sources(user_id, node_id, updated_at DESC)
+            """
+        )
+        conn.execute(
+            """
+            ALTER TABLE shenlun_sources
+            ADD COLUMN IF NOT EXISTS paper_year TEXT NOT NULL DEFAULT ''
+            """
+        )
+        conn.execute(
+            """
+            ALTER TABLE shenlun_sources
+            ADD COLUMN IF NOT EXISTS paper_province TEXT NOT NULL DEFAULT ''
+            """
+        )
+        conn.execute(
+            """
+            ALTER TABLE shenlun_sources
+            ADD COLUMN IF NOT EXISTS paper_suite_type TEXT NOT NULL DEFAULT ''
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS shenlun_attempts (
               id TEXT PRIMARY KEY,
               source_id TEXT NOT NULL REFERENCES shenlun_sources(id) ON DELETE CASCADE,

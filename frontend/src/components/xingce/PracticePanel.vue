@@ -68,7 +68,7 @@ function goStudyHome() {
 }
 
 function goShenlunWorkbench() {
-  window.location.href = '/new/shenlun/workbench'
+  window.location.href = '/new/shenlun'
 }
 
 async function logout() {

@@ -113,13 +113,20 @@ function kwEnsureKnowledgeWorkspaceListScrollable() {
 function kwBindKnowledgeWorkspaceScrollListener(stateObj, getWorkspaceMode, ensureScrollable) {
   if (!stateObj || stateObj.bound) return;
   stateObj.bound = true;
+  var resizeTimer = 0;
+  var applyScrollable = function () {
+    if (typeof ensureScrollable !== "function") return;
+    ensureScrollable();
+    setTimeout(ensureScrollable, 80);
+  };
   window.addEventListener("resize", function () {
     var content = document.getElementById("notesContent");
     if (!content || !content.classList.contains("knowledge-notes-active")) return;
     if (typeof getWorkspaceMode === "function" && getWorkspaceMode() !== "list") return;
-    if (typeof ensureScrollable === "function") {
-      ensureScrollable();
-      setTimeout(ensureScrollable, 80);
-    }
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () {
+      resizeTimer = 0;
+      applyScrollable();
+    }, 80);
   });
 }

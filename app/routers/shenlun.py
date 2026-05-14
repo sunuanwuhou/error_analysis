@@ -6,7 +6,7 @@ import re
 import secrets
 from typing import Any, Optional
 
-from fastapi import APIRouter, Cookie, HTTPException
+from fastapi import APIRouter, Cookie, HTTPException, Query
 from pydantic import BaseModel
 
 from app.core import extract_json_object, require_user
@@ -22,6 +22,14 @@ router = APIRouter(prefix="/api/shenlun", tags=["shenlun"])
 class UpsertSourcePayload(BaseModel):
     question_text_raw: str
     material_text_raw: str
+    node_id: Optional[str] = None
+    paper_year: str = ""
+    paper_province: str = ""
+    paper_suite_type: str = ""
+
+
+class PatchSourceNodePayload(BaseModel):
+    node_id: str
 
 
 class CreateAttemptPayload(BaseModel):
@@ -51,7 +59,7 @@ def _split_segments(material: str) -> list[dict[str, Any]]:
     """Split material on blank lines, filter empties."""
     raw = re.split(r"\n{2,}", material.strip())
     return [
-        {"index": i, "source_text": chunk.strip(), "my_extraction": ""}
+        {"index": i, "source_text": chunk.strip(), "my_extraction": "", "my_segment_summary": ""}
         for i, chunk in enumerate(raw)
         if chunk.strip()
     ]
@@ -63,9 +71,19 @@ def _row_to_source(row: dict[str, Any]) -> dict[str, Any]:
         "question_text_raw": row["question_text_raw"],
         "material_text_raw": row["material_text_raw"],
         "status": row["status"],
+        "node_id": str(row.get("node_id") or ""),
+        "paper_year": str(row.get("paper_year") or ""),
+        "paper_province": str(row.get("paper_province") or ""),
+        "paper_suite_type": str(row.get("paper_suite_type") or ""),
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
     }
+
+
+def _row_to_source_summary(row: dict[str, Any]) -> dict[str, Any]:
+    data = _row_to_source(row)
+    data["attempt_count"] = int(row.get("attempt_count") or 0)
+    return data
 
 
 def _row_to_attempt(row: dict[str, Any]) -> dict[str, Any]:
@@ -112,7 +130,7 @@ def _build_cc_prompt(question: str, segments: list[dict[str, Any]], final_summar
     for seg in segments:
         idx = seg["index"] + 1
         lines += [
-            f"【材料段落 {idx}】",
+            f"【段落 {idx}】",
             seg["source_text"].strip(),
             "",
             f"【用户提炼 {idx}】",
@@ -125,7 +143,7 @@ def _build_cc_prompt(question: str, segments: list[dict[str, Any]], final_summar
         (final_summary or "（未填写）").strip(),
         "",
         "══════════════════════",
-        "请返回纯 JSON，不要任何代码块标记，格式如下：",
+        "请返回纯 JSON，不要任何代码块标记；所有字符串值内如需引号请用中文直角引号「」，不要使用英文双引号嵌套。格式如下：",
         "",
         '{',
         '  "segments": [',
@@ -161,6 +179,16 @@ def _to_str_list(value: Any) -> list[str]:
     return [str(v) for v in value if v]
 
 
+def _segment_index_int(seg: dict[str, Any]) -> Optional[int]:
+    v = seg.get("segment_index")
+    if v is None:
+        return None
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return None
+
+
 def _normalize_cc_result(raw: dict[str, Any], segments: list[dict[str, Any]]) -> dict[str, Any]:
     """Ensure CC result has valid structure even if model output is partial."""
     seg_count = len(segments)
@@ -168,7 +196,10 @@ def _normalize_cc_result(raw: dict[str, Any], segments: list[dict[str, Any]]) ->
 
     normalized_segs = []
     for i in range(seg_count):
-        match = next((s for s in raw_segs if isinstance(s, dict) and s.get("segment_index") == i), None)
+        match = next(
+            (s for s in raw_segs if isinstance(s, dict) and _segment_index_int(s) == i),
+            None,
+        )
         if match is None and i < len(raw_segs) and isinstance(raw_segs[i], dict):
             match = raw_segs[i]
         if match is None:
@@ -210,6 +241,9 @@ def upsert_source(
 
     key = _source_key(payload.question_text_raw, payload.material_text_raw)
     now = utcnow().isoformat()
+    py = (payload.paper_year or "").strip()
+    pp = (payload.paper_province or "").strip()
+    pst = (payload.paper_suite_type or "").strip()
 
     with get_conn() as conn:
         existing = conn.execute(
@@ -218,34 +252,205 @@ def upsert_source(
         ).fetchone()
 
         if existing:
-            conn.execute(
-                """
-                UPDATE shenlun_sources
-                SET question_text_raw = %s,
-                    material_text_raw = %s,
-                    updated_at = %s
-                WHERE id = %s
-                """,
-                (payload.question_text_raw, payload.material_text_raw, now, existing["id"]),
-            )
+            if payload.node_id is not None:
+                conn.execute(
+                    """
+                    UPDATE shenlun_sources
+                    SET question_text_raw = %s,
+                        material_text_raw = %s,
+                        node_id = %s,
+                        paper_year = %s,
+                        paper_province = %s,
+                        paper_suite_type = %s,
+                        updated_at = %s
+                    WHERE id = %s
+                    """,
+                    (
+                        payload.question_text_raw,
+                        payload.material_text_raw,
+                        (payload.node_id or "").strip(),
+                        py,
+                        pp,
+                        pst,
+                        now,
+                        existing["id"],
+                    ),
+                )
+            else:
+                conn.execute(
+                    """
+                    UPDATE shenlun_sources
+                    SET question_text_raw = %s,
+                        material_text_raw = %s,
+                        paper_year = %s,
+                        paper_province = %s,
+                        paper_suite_type = %s,
+                        updated_at = %s
+                    WHERE id = %s
+                    """,
+                    (
+                        payload.question_text_raw,
+                        payload.material_text_raw,
+                        py,
+                        pp,
+                        pst,
+                        now,
+                        existing["id"],
+                    ),
+                )
             row = conn.execute(
                 "SELECT * FROM shenlun_sources WHERE id = %s", (existing["id"],)
             ).fetchone()
         else:
             new_id = secrets.token_hex(12)
+            node_val = (payload.node_id or "").strip()
             conn.execute(
                 """
                 INSERT INTO shenlun_sources
-                  (id, user_id, source_key, question_text_raw, material_text_raw, status, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s, 'raw_draft', %s, %s)
+                  (id, user_id, source_key, question_text_raw, material_text_raw,
+                   status, node_id, paper_year, paper_province, paper_suite_type,
+                   created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, 'raw_draft', %s, %s, %s, %s, %s, %s)
                 """,
-                (new_id, user_id, key, payload.question_text_raw, payload.material_text_raw, now, now),
+                (
+                    new_id,
+                    user_id,
+                    key,
+                    payload.question_text_raw,
+                    payload.material_text_raw,
+                    node_val,
+                    py,
+                    pp,
+                    pst,
+                    now,
+                    now,
+                ),
             )
             row = conn.execute(
                 "SELECT * FROM shenlun_sources WHERE id = %s", (new_id,)
             ).fetchone()
 
-    return _row_to_source(row)
+    return _row_to_source(dict(row))
+
+
+@router.get("/sources")
+def list_sources(
+    node_id: str = Query("", description="申论知识树节点 id；空字符串表示未分类"),
+    q: str = Query("", description="题干或套卷信息关键词搜索"),
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    user = require_user(xingce_session)
+    user_id: str = user["id"]
+
+    needle = q.strip()
+    where_extra = ""
+    params_list: list[Any] = [user_id, node_id]
+    if needle:
+        pat = f"%{needle}%"
+        where_extra = """ AND (
+          s.question_text_raw ILIKE %s OR s.material_text_raw ILIKE %s
+          OR s.paper_year ILIKE %s OR s.paper_province ILIKE %s OR s.paper_suite_type ILIKE %s
+        )"""
+        params_list.extend([pat, pat, pat, pat, pat])
+
+    sql = f"""
+            SELECT s.*,
+              (SELECT COUNT(*)::int FROM shenlun_attempts a WHERE a.source_id = s.id)
+                AS attempt_count
+            FROM shenlun_sources s
+            WHERE s.user_id = %s AND s.node_id = %s
+            {where_extra}
+            ORDER BY s.updated_at DESC
+            """
+
+    with get_conn() as conn:
+        rows = conn.execute(sql, tuple(params_list)).fetchall()
+
+    return {"items": [_row_to_source_summary(dict(r)) for r in rows]}
+
+
+@router.get("/sources/{source_id}")
+def get_source_detail(
+    source_id: str,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    user = require_user(xingce_session)
+    user_id: str = user["id"]
+
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM shenlun_sources WHERE id = %s AND user_id = %s",
+            (source_id, user_id),
+        ).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="source not found")
+
+        latest = conn.execute(
+            """
+            SELECT * FROM shenlun_attempts
+            WHERE source_id = %s AND user_id = %s
+            ORDER BY updated_at DESC
+            LIMIT 1
+            """,
+            (source_id, user_id),
+        ).fetchone()
+
+    return {
+        "source": _row_to_source(dict(row)),
+        "latest_attempt": _row_to_attempt(dict(latest)) if latest else None,
+    }
+
+
+@router.delete("/sources/{source_id}")
+def delete_source(
+    source_id: str,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    user = require_user(xingce_session)
+    user_id: str = user["id"]
+
+    with get_conn() as conn:
+        res = conn.execute(
+            "DELETE FROM shenlun_sources WHERE id = %s AND user_id = %s RETURNING id",
+            (source_id, user_id),
+        ).fetchone()
+        if not res:
+            raise HTTPException(status_code=404, detail="source not found")
+
+    return {"ok": True, "id": source_id}
+
+
+@router.patch("/sources/{source_id}")
+def patch_source_node(
+    source_id: str,
+    payload: PatchSourceNodePayload,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    user = require_user(xingce_session)
+    user_id: str = user["id"]
+    now = utcnow().isoformat()
+
+    with get_conn() as conn:
+        existing = conn.execute(
+            "SELECT id FROM shenlun_sources WHERE id = %s AND user_id = %s",
+            (source_id, user_id),
+        ).fetchone()
+        if not existing:
+            raise HTTPException(status_code=404, detail="source not found")
+
+        conn.execute(
+            """
+            UPDATE shenlun_sources
+            SET node_id = %s, updated_at = %s
+            WHERE id = %s
+            """,
+            ((payload.node_id or "").strip(), now, source_id),
+        )
+        row = conn.execute(
+            "SELECT * FROM shenlun_sources WHERE id = %s", (source_id,)
+        ).fetchone()
+
+    return _row_to_source(dict(row))
 
 
 @router.post("/attempts")
@@ -263,6 +468,18 @@ def create_attempt(
         ).fetchone()
         if not source:
             raise HTTPException(status_code=404, detail="source not found")
+
+        reopen = conn.execute(
+            """
+            SELECT * FROM shenlun_attempts
+            WHERE source_id = %s AND user_id = %s AND cc_status <> %s
+            ORDER BY updated_at DESC
+            LIMIT 1
+            """,
+            (payload.source_id, user_id, "success"),
+        ).fetchone()
+        if reopen:
+            return _row_to_attempt(dict(reopen))
 
         segments = _split_segments(source["material_text_raw"])
 
@@ -320,9 +537,16 @@ def save_attempt(
             for s in payload.segments
             if isinstance(s, dict)
         }
+        summary_map = {
+            s["index"]: s.get("my_segment_summary", "")
+            for s in payload.segments
+            if isinstance(s, dict)
+        }
         for seg in stored_segments:
             if seg["index"] in extraction_map:
                 seg["my_extraction"] = extraction_map[seg["index"]]
+            if seg["index"] in summary_map:
+                seg["my_segment_summary"] = summary_map[seg["index"]]
 
         now = utcnow().isoformat()
         conn.execute(
@@ -435,10 +659,18 @@ def get_attempt(
 
     with get_conn() as conn:
         row = conn.execute(
-            "SELECT * FROM shenlun_attempts WHERE id = %s AND user_id = %s",
-            (attempt_id, user_id),
+            """
+            SELECT a.*, s.node_id AS source_node_id
+            FROM shenlun_attempts a
+            INNER JOIN shenlun_sources s ON s.id = a.source_id AND s.user_id = %s
+            WHERE a.id = %s AND a.user_id = %s
+            """,
+            (user_id, attempt_id, user_id),
         ).fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="attempt not found")
 
-    return _row_to_attempt(row)
+    row_d = dict(row)
+    out = _row_to_attempt(row_d)
+    out["source_node_id"] = str(row_d.get("source_node_id") or "")
+    return out

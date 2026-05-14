@@ -96,7 +96,7 @@
   }
 
   function closeEmbeddedKnowledgeNoteEditor(force) {
-    kwCloseEmbeddedKnowledgeNoteEditor(force);
+    return kwCloseEmbeddedKnowledgeNoteEditor(force);
   }
 
   function collectNodeErrors(currentNode) {
@@ -457,6 +457,7 @@
       closeEmbeddedKnowledgeNoteEditor: closeEmbeddedKnowledgeNoteEditor,
       setNoteEditing: function (value) { noteEditing = !!value; },
       setSelectedKnowledgeNodeId: function (nodeId) { selectedKnowledgeNodeId = nodeId; },
+      requestWorkspaceRender: typeof requestWorkspaceRender === "function" ? requestWorkspaceRender : undefined,
       renderSidebar: renderSidebar,
       renderNotesByType: renderNotesByType,
       renderNotesPanelRight: renderNotesPanelRight
@@ -482,6 +483,7 @@
   window.setKnowledgeNoteViewMode = setKnowledgeNoteViewMode;
   window.openKnowledgeDirectoryNode = openKnowledgeDirectoryNode;
   window.openExternalKnowledgeNoteEditor = openExternalKnowledgeNoteEditor;
+  window.closeEmbeddedKnowledgeNoteEditor = closeEmbeddedKnowledgeNoteEditor;
   window.refreshKnowledgeWorkspaceCards = refreshKnowledgeWorkspaceCards;
   window.renderNotesByType = function () {
     renderKnowledgeNotesViewV2();

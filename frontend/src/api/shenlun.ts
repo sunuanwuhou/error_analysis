@@ -3,19 +3,31 @@ export interface SourceRecord {
   question_text_raw: string
   material_text_raw: string
   status: 'raw_draft' | 'formatted' | 'extracted' | 'cc_done'
+  node_id: string
+  paper_year: string
+  paper_province: string
+  paper_suite_type: string
   created_at: string
   updated_at: string
+}
+
+export interface SourceSummary extends SourceRecord {
+  attempt_count: number
 }
 
 export interface Segment {
   index: number
   source_text: string
   my_extraction: string
+  /** 当前段落内的最终归纳（与「我的提炼」分列） */
+  my_segment_summary?: string
 }
 
 export interface Attempt {
   id: string
   source_id: string
+  /** 本题所属知识点（与 Hub 列表筛选一致，刷新后用于带回正确节点） */
+  source_node_id?: string
   attempt_no: number
   segments: Segment[]
   my_final_summary: string
@@ -23,6 +35,11 @@ export interface Attempt {
   cc_result_json: CCResult | null
   created_at: string
   updated_at: string
+}
+
+export interface SourceDetailResponse {
+  source: SourceRecord
+  latest_attempt: Attempt | null
 }
 
 export interface SegmentReview {
@@ -60,7 +77,40 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const shenlunApi = {
-  upsertSource(data: { question_text_raw: string; material_text_raw: string }) {
+  listSources(nodeId: string, search?: string) {
+    const q = new URLSearchParams()
+    q.set('node_id', nodeId)
+    const s = (search ?? '').trim()
+    if (s) q.set('q', s)
+    return request<{ items: SourceSummary[] }>(`/sources?${q.toString()}`)
+  },
+
+  deleteSource(sourceId: string) {
+    return request<{ ok: boolean; id: string }>(
+      `/sources/${encodeURIComponent(sourceId)}`,
+      { method: 'DELETE' },
+    )
+  },
+
+  getSource(sourceId: string) {
+    return request<SourceDetailResponse>(`/sources/${encodeURIComponent(sourceId)}`)
+  },
+
+  patchSourceNode(sourceId: string, node_id: string) {
+    return request<SourceRecord>(`/sources/${encodeURIComponent(sourceId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ node_id }),
+    })
+  },
+
+  upsertSource(data: {
+    question_text_raw: string
+    material_text_raw: string
+    node_id?: string | null
+    paper_year?: string
+    paper_province?: string
+    paper_suite_type?: string
+  }) {
     return request<SourceRecord>('/sources', {
       method: 'POST',
       body: JSON.stringify(data),

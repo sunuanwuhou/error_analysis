@@ -107,7 +107,9 @@
 
   function canMoveKnowledgeNode(nodeId) {
     var node = getKnowledgeNodeById(nodeId);
-    return !!node && Number(node.level || 0) > 1;
+    if (!node) return false;
+    if (Number(node.level || 0) > 1) return true;
+    return !FIXED_KNOWLEDGE_ROOTS.includes(String(node.title || ""));
   }
 
   function deleteKnowledgeNode(nodeId) {

@@ -1,8 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { shenlunApi, type SourceRecord, type Attempt, type Segment } from '@/api/shenlun'
+import { shenlunApi, type Attempt, type SourceRecord, type Segment } from '@/api/shenlun'
+import { SL_DEFAULT_NODE_ID, routeQueryToNodeId } from '@/data/shenlunTree'
 
-// input → formatted → cc_prompt → done
 type WorkbenchPhase = 'input' | 'formatted' | 'cc_prompt' | 'done'
 
 function splitMaterial(text: string): string[] {
@@ -12,9 +12,20 @@ function splitMaterial(text: string): string[] {
     .filter((s) => s.length > 0)
 }
 
+function normalizeSegmentsInPlace(segs: Segment[]) {
+  for (const s of segs) {
+    if (s.my_segment_summary === undefined) s.my_segment_summary = ''
+  }
+}
+
 export const useShenlunStore = defineStore('shenlun', () => {
+  const selectedNodeId = ref<string>(SL_DEFAULT_NODE_ID)
+
   const questionText = ref('')
   const materialText = ref('')
+  const paperYear = ref('')
+  const paperProvince = ref('')
+  const paperSuiteType = ref('')
 
   const sourceRecord = ref<SourceRecord | null>(null)
   const sourceLoading = ref(false)
@@ -26,16 +37,14 @@ export const useShenlunStore = defineStore('shenlun', () => {
 
   const phase = ref<WorkbenchPhase>('input')
 
-  // CC step
-  const ccPromptText = ref('')       // generated prompt user copies
-  const ccPasteText = ref('')        // raw text user pastes back
+  const ccPromptText = ref('')
+  const ccPasteText = ref('')
   const ccPasteError = ref<string | null>(null)
   const ccPasteLoading = ref(false)
 
   let autosaveTimer: ReturnType<typeof setTimeout> | null = null
   let attemptSaveTimer: ReturnType<typeof setTimeout> | null = null
 
-  // --- computed ---
   const segments = computed<Segment[]>(() => attempt.value?.segments ?? [])
   const finalSummary = computed(() => attempt.value?.my_final_summary ?? '')
   const canGoToCC = computed(
@@ -46,7 +55,6 @@ export const useShenlunStore = defineStore('shenlun', () => {
   )
   const canSubmitPaste = computed(() => ccPasteText.value.trim().length > 10)
 
-  // --- autosave source ---
   function scheduleAutosave() {
     if (autosaveTimer) clearTimeout(autosaveTimer)
     autosaveTimer = setTimeout(() => void autosave(), 1500)
@@ -60,8 +68,15 @@ export const useShenlunStore = defineStore('shenlun', () => {
       const rec = await shenlunApi.upsertSource({
         question_text_raw: questionText.value,
         material_text_raw: materialText.value,
+        node_id: selectedNodeId.value,
+        paper_year: paperYear.value,
+        paper_province: paperProvince.value,
+        paper_suite_type: paperSuiteType.value,
       })
       sourceRecord.value = rec
+      paperYear.value = rec.paper_year ?? ''
+      paperProvince.value = rec.paper_province ?? ''
+      paperSuiteType.value = rec.paper_suite_type ?? ''
     } catch (e) {
       sourceError.value = (e as Error).message
     } finally {
@@ -69,7 +84,6 @@ export const useShenlunStore = defineStore('shenlun', () => {
     }
   }
 
-  // --- one-click format ---
   async function formatMaterial() {
     if (!questionText.value.trim() || !materialText.value.trim()) return
     try {
@@ -81,15 +95,19 @@ export const useShenlunStore = defineStore('shenlun', () => {
 
       try {
         const att = await shenlunApi.createAttempt(sourceRecord.value.id)
+        normalizeSegmentsInPlace(att.segments)
         attempt.value = att
       } catch {
-        // Client-side fallback if server unavailable
         const segs = splitMaterial(materialText.value)
         attempt.value = {
           id: `local-${Date.now()}`,
           source_id: sourceRecord.value.id,
           attempt_no: 1,
-          segments: segs.map((text, i) => ({ index: i, source_text: text, my_extraction: '' })),
+          segments: segs.map((text, i) => ({
+            index: i,
+            source_text: text,
+            my_extraction: '',
+          })),
           my_final_summary: '',
           cc_status: 'none',
           cc_result_json: null,
@@ -106,13 +124,13 @@ export const useShenlunStore = defineStore('shenlun', () => {
     }
   }
 
-  // --- extraction editing ---
   function updateExtraction(index: number, text: string) {
     if (!attempt.value) return
     attempt.value.segments[index].my_extraction = text
     scheduleAutoSaveAttempt()
   }
 
+  /** 全文最终总结一份，各段落 Tab 共用这个字段 */
   function updateFinalSummary(text: string) {
     if (!attempt.value) return
     attempt.value.my_final_summary = text
@@ -132,23 +150,20 @@ export const useShenlunStore = defineStore('shenlun', () => {
         my_final_summary: attempt.value.my_final_summary,
       })
     } catch {
-      // silent best-effort
+      //
     }
   }
 
-  // --- generate CC prompt ---
   async function generateCCPrompt() {
     if (!attempt.value) return
     try {
       attemptLoading.value = true
       attemptError.value = null
 
-      // Flush any pending saves
       if (attemptSaveTimer) clearTimeout(attemptSaveTimer)
       if (!attempt.value.id.startsWith('local-')) await saveAttemptProgress()
 
       if (attempt.value.id.startsWith('local-')) {
-        // Build prompt client-side as fallback
         ccPromptText.value = _buildLocalPrompt(
           questionText.value,
           attempt.value.segments,
@@ -169,7 +184,6 @@ export const useShenlunStore = defineStore('shenlun', () => {
     }
   }
 
-  // --- paste CC result back ---
   async function submitCCPaste(): Promise<string | null> {
     if (!attempt.value || attempt.value.id.startsWith('local-')) return null
     try {
@@ -187,10 +201,75 @@ export const useShenlunStore = defineStore('shenlun', () => {
     }
   }
 
-  // --- reset ---
+  async function bootstrapFromRoute(query: Record<string, unknown>) {
+    selectedNodeId.value = routeQueryToNodeId(query.node)
+
+    const rawSource = query.source
+    const sourceId = typeof rawSource === 'string' ? rawSource : ''
+
+    attemptError.value = null
+    ccPasteError.value = null
+
+    if (!sourceId) {
+      questionText.value = ''
+      materialText.value = ''
+      paperYear.value = ''
+      paperProvince.value = ''
+      paperSuiteType.value = ''
+      sourceRecord.value = null
+      attempt.value = null
+      phase.value = 'input'
+      ccPromptText.value = ''
+      ccPasteText.value = ''
+      return
+    }
+
+    try {
+      sourceLoading.value = true
+      const detail = await shenlunApi.getSource(sourceId)
+      sourceRecord.value = detail.source
+      questionText.value = detail.source.question_text_raw
+      materialText.value = detail.source.material_text_raw
+      paperYear.value = detail.source.paper_year ?? ''
+      paperProvince.value = detail.source.paper_province ?? ''
+      paperSuiteType.value = detail.source.paper_suite_type ?? ''
+      selectedNodeId.value =
+        detail.source.node_id !== undefined && detail.source.node_id !== null
+          ? detail.source.node_id
+          : selectedNodeId.value
+
+      const la = detail.latest_attempt
+      if (la) {
+        normalizeSegmentsInPlace(la.segments)
+        attempt.value = la
+        phase.value = 'formatted'
+      } else {
+        attempt.value = null
+        phase.value = 'input'
+      }
+      ccPromptText.value = ''
+      ccPasteText.value = ''
+    } catch (e) {
+      attemptError.value = (e as Error).message
+      questionText.value = ''
+      materialText.value = ''
+      paperYear.value = ''
+      paperProvince.value = ''
+      paperSuiteType.value = ''
+      sourceRecord.value = null
+      attempt.value = null
+      phase.value = 'input'
+    } finally {
+      sourceLoading.value = false
+    }
+  }
+
   function resetWorkbench() {
     questionText.value = ''
     materialText.value = ''
+    paperYear.value = ''
+    paperProvince.value = ''
+    paperSuiteType.value = ''
     sourceRecord.value = null
     attempt.value = null
     sourceError.value = null
@@ -204,6 +283,7 @@ export const useShenlunStore = defineStore('shenlun', () => {
   }
 
   return {
+    selectedNodeId,
     questionText,
     materialText,
     sourceRecord,
@@ -222,18 +302,18 @@ export const useShenlunStore = defineStore('shenlun', () => {
     ccPasteError,
     ccPasteLoading,
     scheduleAutosave,
+    paperYear,
+    paperProvince,
+    paperSuiteType,
     formatMaterial,
     updateExtraction,
     updateFinalSummary,
     generateCCPrompt,
     submitCCPaste,
     resetWorkbench,
+    bootstrapFromRoute,
   }
 })
-
-// ---------------------------------------------------------------------------
-// Client-side prompt builder (fallback when server is unavailable)
-// ---------------------------------------------------------------------------
 
 const _ISSUE_TAGS = '要点遗漏 / 表述空泛 / 表述过虚 / 归类有误 / 照抄原文 / 理解偏差'
 
@@ -254,7 +334,7 @@ function _buildLocalPrompt(
 
   for (const seg of segments) {
     const idx = seg.index + 1
-    lines.push(`【材料段落 ${idx}】`, seg.source_text.trim(), '')
+    lines.push(`【段落 ${idx}】`, seg.source_text.trim(), '')
     lines.push(`【用户提炼 ${idx}】`, seg.my_extraction.trim() || '（未填写）', '')
   }
 
@@ -263,7 +343,7 @@ function _buildLocalPrompt(
     finalSummary.trim() || '（未填写）',
     '',
     '══════════════════════',
-    '请返回纯 JSON，不要任何代码块标记，格式如下：',
+    '请返回纯 JSON，不要任何代码块标记；所有字符串值内如需引号请用中文直角引号「」，不要使用英文双引号嵌套。格式如下：',
     '',
     '{',
     '  "segments": [',

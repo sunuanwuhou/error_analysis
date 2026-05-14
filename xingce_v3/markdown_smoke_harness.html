@@ -68,6 +68,7 @@
       updatedAt: new Date().toISOString()
     };
     var noteImages = { niimg01: DATA_URL };
+    var closeCalls = [];
     var results = [];
 
     function addResult(name, ok, detail) {
@@ -103,6 +104,12 @@
     function renderNotesByType() {}
     function renderNotesPanelRight() {}
     function showToast() {}
+    function closeEmbeddedKnowledgeNoteEditor(force) {
+      closeCalls.push(!!force);
+      var frame = document.getElementById("editorFrame");
+      if (frame) frame.dataset.closed = "1";
+      return true;
+    }
     function noteImgId() {
       return "nitest01";
     }
@@ -130,6 +137,7 @@
     window.renderNotesByType = renderNotesByType;
     window.renderNotesPanelRight = renderNotesPanelRight;
     window.showToast = showToast;
+    window.closeEmbeddedKnowledgeNoteEditor = closeEmbeddedKnowledgeNoteEditor;
     window.noteImgId = noteImgId;
     window.setNoteImageRef = setNoteImageRef;
     window.getNoteImageRef = getNoteImageRef;
@@ -157,6 +165,8 @@
       addResult("viewer render", null, "running");
       addResult("editor preview render", null, "running");
                 addResult("editor save", null, "running");
+                addResult("editor close", null, "running");
+                addResult("editor save and close", null, "running");
                 addResult("viewer read scroll", null, "running");
 
       var viewerFrame = document.getElementById("viewerFrame");
@@ -255,6 +265,8 @@
                   var editorApi = editorFrame.contentWindow.__knowledgeNoteEditorTest;
                   if (!editorApi || typeof editorApi.setMarkdown !== "function" || typeof editorApi.save !== "function") {
                     replaceLastResult("editor save", false, "editor api missing");
+                    replaceLastResult("editor close", false, "editor api missing");
+                    replaceLastResult("editor save and close", false, "editor api missing");
                   } else {
                     editorApi.setMarkdown(smokeNode.contentMd + "\n\n保存验证");
                     await new Promise(function (resolve) { setTimeout(resolve, 500); });
@@ -263,9 +275,39 @@
                       return smokeNode.contentMd.indexOf("保存验证") >= 0;
                     }, 8000);
                     replaceLastResult("editor save", true, "content updated");
+
+                    closeCalls.length = 0;
+                    var closeBtn = editorDoc && editorDoc.getElementById("closeBtn");
+                    if (!closeBtn) {
+                      replaceLastResult("editor close", false, "close button missing");
+                    } else {
+                      closeBtn.click();
+                      await waitFor(function () { return closeCalls.length > 0; }, 8000);
+                      replaceLastResult("editor close", closeCalls[0] === true, closeCalls.join(","));
+                    }
+
+                    closeCalls.length = 0;
+                    editorApi.setMarkdown(smokeNode.contentMd + "\n\n保存并关闭验证");
+                    await new Promise(function (resolve) { setTimeout(resolve, 500); });
+                    var saveCloseBtn = editorDoc && editorDoc.getElementById("saveCloseBtn");
+                    if (!saveCloseBtn) {
+                      replaceLastResult("editor save and close", false, "save close button missing");
+                    } else {
+                      saveCloseBtn.click();
+                      await waitFor(function () {
+                        return closeCalls.length > 0 && smokeNode.contentMd.indexOf("保存并关闭验证") >= 0;
+                      }, 8000);
+                      replaceLastResult(
+                        "editor save and close",
+                        closeCalls[0] === true && smokeNode.contentMd.indexOf("保存并关闭验证") >= 0,
+                        closeCalls.join(",")
+                      );
+                    }
                   }
                 } catch (error) {
                   replaceLastResult("editor save", false, error.message || String(error));
+                  replaceLastResult("editor close", false, error.message || String(error));
+                  replaceLastResult("editor save and close", false, error.message || String(error));
                 }
 
       var passCount = results.filter(function (item) { return item.ok === true; }).length;
@@ -275,7 +317,8 @@
           pass: passCount,
           fail: failCount,
           smokeNode: smokeNode.contentMd,
-          noteImages: noteImages
+          noteImages: noteImages,
+          closeCalls: closeCalls
         }, null, 2);
       document.body.dataset.done = "1";
     }

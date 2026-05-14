@@ -23,7 +23,8 @@
     imageUploading: "\u6b63\u5728\u4e0a\u4f20\u56fe\u7247...",
     imageInserted: "\u5df2\u63d2\u5165\u56fe\u7247\u5f15\u7528\u3002",
     imageUploadFailed: "\u56fe\u7247\u4e0a\u4f20\u5931\u8d25\uff0c\u672a\u63d2\u5165\u5185\u5bb9\u3002",
-    imageBridgeMissing: "\u4e3b\u9875\u9762\u7f3a\u5c11\u56fe\u7247\u5b58\u50a8\u80fd\u529b\uff0c\u8bf7\u5237\u65b0\u5de5\u4f5c\u53f0\u540e\u91cd\u8bd5\u3002"
+    imageBridgeMissing: "\u4e3b\u9875\u9762\u7f3a\u5c11\u56fe\u7247\u5b58\u50a8\u80fd\u529b\uff0c\u8bf7\u5237\u65b0\u5de5\u4f5c\u53f0\u540e\u91cd\u8bd5\u3002",
+    editorNotReady: "\u7f16\u8f91\u5668\u5c1a\u672a\u5c31\u7eea\uff0c\u8bf7\u7a0d\u5019\u518d\u8bd5\u3002"
   };
 
   var state = {
@@ -59,27 +60,81 @@
     return null;
   }
 
+  function resolveHostApi(name) {
+    var candidates = [];
+    if (state.host) candidates.push(state.host);
+    try {
+      if (window.parent && window.parent !== window) candidates.push(window.parent);
+    } catch (e) {}
+    try {
+      if (window.opener && !window.opener.closed) candidates.push(window.opener);
+    } catch (e) {}
+    for (var i = 0; i < candidates.length; i++) {
+      var ctx = candidates[i];
+      var fn = ctx && ctx[name];
+      if (typeof fn === "function") return fn.bind(ctx);
+    }
+    return null;
+  }
+
   function notifyHost(message) {
     if (!state.host || typeof state.host.postMessage !== "function") return;
+    var targetOrigin = window.location.origin;
     try {
-      state.host.postMessage(message, window.location.origin);
+      if (state.host.location && state.host.location.origin) targetOrigin = state.host.location.origin;
+    } catch (e) {}
+    try {
+      state.host.postMessage(message, targetOrigin);
     } catch (error) {
-      console.warn("notify host failed", error);
+      try {
+        state.host.postMessage(message, "*");
+      } catch (error2) {
+        console.warn("notify host failed", error2);
+      }
+    }
+  }
+
+  function fallbackCloseEmbeddedModal() {
+    try {
+      var hostDoc = state.host && state.host.document;
+      if (!hostDoc) return false;
+      var mask = hostDoc.getElementById("knowledgeNoteEditorModal");
+      if (!mask) return false;
+      mask.classList.remove("open");
+      if (hostDoc.body) hostDoc.body.classList.remove("note-editor-modal-open");
+      return true;
+    } catch (error) {
+      console.warn("fallbackCloseEmbeddedModal failed", error);
+      return false;
+    }
+  }
+
+  function invokeEmbeddedCloseOnHost() {
+    var closeFn = resolveHostApi("closeEmbeddedKnowledgeNoteEditor");
+    if (!closeFn) return fallbackCloseEmbeddedModal();
+    try {
+      var result = closeFn(true);
+      if (result === false) return false;
+      return true;
+    } catch (error) {
+      console.warn("invokeEmbeddedCloseOnHost failed", error);
+      return fallbackCloseEmbeddedModal();
     }
   }
 
   function getCurrentNode() {
-    if (!state.host || typeof state.host.getKnowledgeNodeById !== "function" || !state.nodeId) return null;
-    return state.host.getKnowledgeNodeById(state.nodeId);
+    if (!state.nodeId) return null;
+    var fn = resolveHostApi("getKnowledgeNodeById");
+    return fn ? fn(state.nodeId) : null;
   }
 
   function getPathText() {
-    if (!state.host) return "";
-    if (
-      typeof state.host.getKnowledgePathTitles === "function" &&
-      typeof state.host.collapseKnowledgePathTitles === "function"
-    ) {
-      return state.host.collapseKnowledgePathTitles(state.host.getKnowledgePathTitles(state.nodeId)).join(" > ");
+    var pathTitles = resolveHostApi("getKnowledgePathTitles");
+    var collapse = resolveHostApi("collapseKnowledgePathTitles");
+    if (pathTitles && collapse && state.nodeId) {
+      try {
+        return collapse(pathTitles(state.nodeId)).join(" > ");
+      } catch (e) {}
     }
     var node = getCurrentNode();
     return node ? (node.title || "") : "";
@@ -96,29 +151,43 @@
   function updateHostAfterSave(markdown) {
     var node = getCurrentNode();
     if (!state.host || !node) return false;
-    if (typeof state.host.ensureKnowledgeState === "function") state.host.ensureKnowledgeState();
+    var ensureKs = resolveHostApi("ensureKnowledgeState");
+    if (ensureKs) ensureKs();
     node.contentMd = markdown;
     node.updatedAt = new Date().toISOString();
-    if (typeof state.host.ensureKnowledgeNoteRecord === "function") {
+    var ensureNote = resolveHostApi("ensureKnowledgeNoteRecord");
+    if (ensureNote) {
       try {
-        state.host.ensureKnowledgeNoteRecord(node);
+        ensureNote(node);
       } catch (error) {
         console.warn("ensureKnowledgeNoteRecord failed", error);
       }
     }
-    if (typeof state.host.saveKnowledgeState === "function") state.host.saveKnowledgeState();
-    if ("noteEditing" in state.host) state.host.noteEditing = false;
-    if ("selectedKnowledgeNodeId" in state.host) state.host.selectedKnowledgeNodeId = node.id;
-    if (typeof state.host.renderSidebar === "function") state.host.renderSidebar();
-    if (typeof state.host.renderAll === "function") state.host.renderAll();
-    if (typeof state.host.renderNotesByType === "function") state.host.renderNotesByType();
-    if (typeof state.host.renderNotesPanelRight === "function") state.host.renderNotesPanelRight();
-    if (typeof state.host.showToast === "function") state.host.showToast(TEXT.saveSuccessToast, "success");
+    var saveKs = resolveHostApi("saveKnowledgeState");
+    if (saveKs) saveKs();
+    else return false;
+    try {
+      if ("noteEditing" in state.host) state.host.noteEditing = false;
+      if ("selectedKnowledgeNodeId" in state.host) state.host.selectedKnowledgeNodeId = node.id;
+    } catch (e) {}
+    var rs = resolveHostApi("renderSidebar");
+    if (rs) rs();
+    var ra = resolveHostApi("renderAll");
+    if (ra) ra();
+    var rbt = resolveHostApi("renderNotesByType");
+    if (rbt) rbt();
+    var rpr = resolveHostApi("renderNotesPanelRight");
+    if (rpr) rpr();
+    var toast = resolveHostApi("showToast");
+    if (toast) toast(TEXT.saveSuccessToast, "success");
     return true;
   }
 
   function saveNote(closeAfterSave) {
-    if (!state.editor) return;
+    if (!state.editor) {
+      setStatus(TEXT.editorNotReady, "error");
+      return;
+    }
     var markdown = state.editor.getMarkdown();
     var updated = updateHostAfterSave(markdown);
     if (!updated) {
@@ -194,7 +263,7 @@
     }
     if (state.embed) {
       notifyHost({ type: "knowledge-note-editor-close", nodeId: state.nodeId });
-      return true;
+      return invokeEmbeddedCloseOnHost() !== false;
     }
     window.close();
     return true;
@@ -409,7 +478,7 @@
     state.embed = params.get("embed") === "1";
     state.host = getHostWindow();
 
-    if (!state.host || !state.nodeId || typeof state.host.getKnowledgeNodeById !== "function") {
+    if (!state.host || !state.nodeId || !resolveHostApi("getKnowledgeNodeById")) {
       renderUnavailable(TEXT.noHostContext);
       return;
     }

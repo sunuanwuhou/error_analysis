@@ -95,6 +95,7 @@ const UI_KEY_KNOWLEDGE_TREE_FOCUS = 'xc_ui_knowledge_tree_focus';
 let errorsTopCollapsed = false;
 let knowledgeTreeFocusMode = false;
 let knowledgeTreeSearchQuery = '';
+let knowledgeTreeSearchDebounceTimer = null;
 let appView = 'home';
 
 // 错因分组定义（每个 reason 含简介 desc）
@@ -342,14 +343,36 @@ function syncKnowledgeTreeSearchUi(){
 }
 function onKnowledgeTreeSearchInput(){
   const input = document.getElementById('knowledgeTreeSearchInput');
-  knowledgeTreeSearchQuery = input ? input.value.trim() : '';
-  renderSidebar();
+  const nextQuery = input ? input.value.trim() : '';
+  if (nextQuery === knowledgeTreeSearchQuery) return;
+  if (knowledgeTreeSearchDebounceTimer) {
+    clearTimeout(knowledgeTreeSearchDebounceTimer);
+    knowledgeTreeSearchDebounceTimer = null;
+  }
+  knowledgeTreeSearchDebounceTimer = setTimeout(() => {
+    knowledgeTreeSearchDebounceTimer = null;
+    if (knowledgeTreeSearchQuery === nextQuery) return;
+    knowledgeTreeSearchQuery = nextQuery;
+    if (typeof requestWorkspaceRender === 'function') {
+      requestWorkspaceRender({ sidebar: true, notes: false });
+    } else {
+      renderSidebar();
+    }
+  }, 120);
 }
 function clearKnowledgeTreeSearch(){
+  if (knowledgeTreeSearchDebounceTimer) {
+    clearTimeout(knowledgeTreeSearchDebounceTimer);
+    knowledgeTreeSearchDebounceTimer = null;
+  }
   knowledgeTreeSearchQuery = '';
   const input = document.getElementById('knowledgeTreeSearchInput');
   if(input) input.value = '';
-  renderSidebar();
+  if (typeof requestWorkspaceRender === 'function') {
+    requestWorkspaceRender({ sidebar: true, notes: false, immediate: true });
+  } else {
+    renderSidebar();
+  }
   if(input) input.focus();
 }
 function applyErrorsTopCollapsedState(){

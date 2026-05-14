@@ -183,7 +183,8 @@ function moveKnowledgeNodeToTarget(nodeId, targetId, opts) {
   const moveToRoot = false;
   const target = moveToRoot ? null : getKnowledgeNodeById(targetId);
   if (!node || (!moveToRoot && !target)) return false;
-  if (Number(node.level || 0) <= 1) {
+  const isFixedRoot = Number(node.level || 0) === 1 && FIXED_KNOWLEDGE_ROOTS.includes(String(node.title || ''));
+  if (isFixedRoot) {
     showToast('一级节点不支持移动', 'warning');
     return false;
   }
@@ -254,7 +255,9 @@ function moveKnowledgeNodeToTarget(nodeId, targetId, opts) {
 
 function canMoveKnowledgeNode(nodeId) {
   const node = getKnowledgeNodeById(nodeId);
-  return !!node && Number(node.level || 0) > 1;
+  if (!node) return false;
+  if (Number(node.level || 0) > 1) return true;
+  return !FIXED_KNOWLEDGE_ROOTS.includes(String(node.title || ''));
 }
 
 function moveKnowledgeNode(nodeId) {

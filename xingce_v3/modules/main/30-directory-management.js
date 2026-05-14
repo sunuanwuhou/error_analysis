@@ -64,30 +64,36 @@ function normalizeKnowledgeNodes(nodes, level) {
 }
 function ensureKnowledgeState(opts) {
   const options = opts || {};
+  const preserveTreeShape = options.preserveTreeShape === true;
+  const shouldRepairStructure = options.repair === true;
+  const shouldSyncErrors = options.syncErrors === true;
   getKnowledgeRootNodes();
   knowledgeNotes = knowledgeNotes && typeof knowledgeNotes === 'object' ? knowledgeNotes : {};
-  let changed = false;
-  const baselineApplied = typeof applyKnowledgeTreeBaselineFreeze === 'function' && applyKnowledgeTreeBaselineFreeze();
-  if (baselineApplied) {
-    changed = true;
-  } else {
-    changed = ensureFixedKnowledgeRoots();
-    if (cleanupNoisyRootNodes()) changed = true;
+  let changed = preserveTreeShape ? false : ensureFixedKnowledgeRoots();
+  if (!preserveTreeShape && shouldRepairStructure) {
+    const baselineApplied = typeof applyKnowledgeTreeBaselineFreeze === 'function' && applyKnowledgeTreeBaselineFreeze();
+    if (baselineApplied) {
+      changed = true;
+    } else if (cleanupNoisyRootNodes()) {
+      changed = true;
+    }
+    if (mergeDuplicateKnowledgeSiblings(getKnowledgeRootNodes())) changed = true;
+    if (collapseDuplicateKnowledgeWrappers(getKnowledgeRootNodes())) changed = true;
   }
-  if (mergeDuplicateKnowledgeSiblings(getKnowledgeRootNodes())) changed = true;
-  if (collapseDuplicateKnowledgeWrappers(getKnowledgeRootNodes())) changed = true;
   normalizeKnowledgeNodes(getKnowledgeRootNodes(), 1);
-  if (mergeDuplicateKnowledgeSiblings(getKnowledgeRootNodes())) changed = true;
+  if (!preserveTreeShape && shouldRepairStructure && mergeDuplicateKnowledgeSiblings(getKnowledgeRootNodes())) changed = true;
   ensureKnowledgeExpandedDefaults();
-  if (typeof resyncAllErrorKnowledgeBindings === 'function') {
-    if (resyncAllErrorKnowledgeBindings() > 0) changed = true;
-  } else {
-    errors.forEach(item => {
-      const before = String((item && item.noteNodeId) || '');
-      ensureKnowledgeBindingForError(item);
-      const after = String((item && item.noteNodeId) || '');
-      if (before !== after) changed = true;
-    });
+  if (shouldSyncErrors) {
+    if (typeof resyncAllErrorKnowledgeBindings === 'function') {
+      if (resyncAllErrorKnowledgeBindings() > 0) changed = true;
+    } else {
+      errors.forEach(item => {
+        const before = String((item && item.noteNodeId) || '');
+        ensureKnowledgeBindingForError(item);
+        const after = String((item && item.noteNodeId) || '');
+        if (before !== after) changed = true;
+      });
+    }
   }
   const allNodes = collectKnowledgeNodes();
   if ((!selectedKnowledgeNodeId || !getKnowledgeNodeById(selectedKnowledgeNodeId)) && allNodes.length > 0) {
@@ -101,7 +107,7 @@ function ensureKnowledgeState(opts) {
     saveData();
   }
   if (options.persist) {
-    saveKnowledgeState();
+    saveKnowledgeState({ preserveTreeShape });
   }
 }
 function findKnowledgeBranchForModal(createIfMissing) {

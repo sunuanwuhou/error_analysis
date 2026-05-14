@@ -122,7 +122,8 @@ function _applyFullBackup(data, mode, opts) {
   knowledgeNotes = data.knowledgeNotes || {};
   DB.set(KEY_KNOWLEDGE_TREE, JSON.stringify(knowledgeTree));
   DB.set(KEY_KNOWLEDGE_NOTES, JSON.stringify(knowledgeNotes));
-  ensureKnowledgeState({ syncErrors: true, persist: true });
+  // Full restore should preserve the cloud tree shape as-is.
+  ensureKnowledgeState({ persist: true, repair: false, syncErrors: false, preserveTreeShape: mode === 'restore' });
 
   closeModal('importModal');
   saveReveal();
@@ -218,7 +219,8 @@ function _applyFullBackup(data, mode, opts) {
   }
   DB.set(KEY_KNOWLEDGE_TREE, JSON.stringify(knowledgeTree));
   DB.set(KEY_KNOWLEDGE_NOTES, JSON.stringify(knowledgeNotes));
-  ensureKnowledgeState({ syncErrors: true, persist: true });
+  // Merge/restore follows the current local tree; avoid re-shaping the restored cloud tree here.
+  ensureKnowledgeState({ persist: true, repair: false, syncErrors: false });
 
   closeModal('importModal');
   saveReveal();
@@ -306,7 +308,8 @@ async function _applyCloudBackupStaged(data, updatedAt, opts) {
     knowledgeNotes = data.knowledgeNotes || {};
     DB.set(KEY_KNOWLEDGE_TREE, JSON.stringify(knowledgeTree));
     DB.set(KEY_KNOWLEDGE_NOTES, JSON.stringify(knowledgeNotes));
-    ensureKnowledgeState({ syncErrors: true, persist: true });
+    // Cloud full restore should keep the remote tree structure intact.
+    ensureKnowledgeState({ persist: true, repair: false, syncErrors: false, preserveTreeShape: true });
   }));
   setCloudSyncState('saving', `正在同步知识点 ${summary.knowledgeNodes || collectKnowledgeNodes().length} 个`, syncAt);
   await delayCloudRestore(0);

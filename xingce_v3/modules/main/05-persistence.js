@@ -102,9 +102,12 @@ saveNotesByType = function() {
   queuePersist(KEY_NOTE_IMAGES, noteImages);
   if (changed) markIncrementalWorkspaceChange();
 };
-saveKnowledgeState = function() {
-  mergeDuplicateKnowledgeSiblings(getKnowledgeRootNodes());
-  collapseDuplicateKnowledgeWrappers(getKnowledgeRootNodes());
+saveKnowledgeState = function(options) {
+  const opts = options || {};
+  if (!opts.preserveTreeShape) {
+    mergeDuplicateKnowledgeSiblings(getKnowledgeRootNodes());
+    collapseDuplicateKnowledgeWrappers(getKnowledgeRootNodes());
+  }
   syncKnowledgeNotesFromTree();
   const changed = syncWorkspaceOpsFromSnapshot();
   queuePersist(KEY_KNOWLEDGE_TREE, knowledgeTree);

@@ -7,7 +7,10 @@ function knmMoveKnowledgeNodeToTarget(nodeId, targetId, opts, deps) {
   var moveToRoot = false;
   var target = moveToRoot ? null : d.getKnowledgeNodeById(targetId);
   if (!node || (!moveToRoot && !target)) return false;
-  if (Number(node.level || 0) <= 1) {
+  var isFixedRoot = Number(node.level || 0) === 1
+    && Array.isArray(FIXED_KNOWLEDGE_ROOTS)
+    && FIXED_KNOWLEDGE_ROOTS.includes(String(node.title || ""));
+  if (isFixedRoot) {
     d.showToast("一级节点不支持移动", "warning");
     return false;
   }

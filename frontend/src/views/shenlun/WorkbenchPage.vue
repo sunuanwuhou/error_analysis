@@ -1,10 +1,63 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, watch, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useShenlunStore } from '@/stores/shenlunStore'
+import { shenlunNodeTitle, nodeIdToRouteQuery } from '@/data/shenlunTree'
 
 const store = useShenlunStore()
 const router = useRouter()
+const route = useRoute()
+
+const activeParagraph = ref(0)
+const currentSeg = computed(() => store.segments[activeParagraph.value] ?? null)
+
+watch(
+  () => store.segments.length,
+  (n) => {
+    if (activeParagraph.value >= n) activeParagraph.value = Math.max(0, n - 1)
+  },
+)
+
+const finalSummaryModel = computed({
+  get: () => store.finalSummary,
+  set: (v: string) => store.updateFinalSummary(v),
+})
+
+const nodeTitle = computed(() => shenlunNodeTitle(store.selectedNodeId))
+
+watch(
+  () => [route.query.node, route.query.source],
+  () => void store.bootstrapFromRoute(route.query as Record<string, unknown>),
+  { immediate: true },
+)
+
+watch(
+  () => store.sourceRecord?.id,
+  (id) => {
+    if (route.name !== 'ShenlunWorkbench') return
+    if (!id) return
+    if (route.query.source === id) return
+    void router.replace({
+      name: 'ShenlunWorkbench',
+      query: { node: nodeIdToRouteQuery(store.selectedNodeId), source: id },
+    })
+  },
+)
+
+function handleResetInput() {
+  store.resetWorkbench()
+  void router.replace({
+    name: 'ShenlunWorkbench',
+    query: { node: nodeIdToRouteQuery(store.selectedNodeId) },
+  })
+}
+
+function goHub() {
+  void router.push({
+    name: 'ShenlunHub',
+    query: { node: nodeIdToRouteQuery(store.selectedNodeId) },
+  })
+}
 
 const copied = ref(false)
 
@@ -34,12 +87,23 @@ async function handleSubmitPaste() {
     await router.push({ name: 'ShenlunResult', params: { attemptId: id } })
   }
 }
+
+function goResultReview() {
+  const id = store.attempt?.id
+  if (!id || id.startsWith('local-')) return
+  void router.push({ name: 'ShenlunResult', params: { attemptId: id } })
+}
 </script>
 
 <template>
   <div class="wb-page">
     <!-- Header -->
     <header class="wb-header">
+      <div class="wb-header-nav">
+        <button type="button" class="btn-link wb-back" @click="goHub">← 知识点首页</button>
+        <span class="wb-node-chip">{{ nodeTitle }}</span>
+      </div>
+      <div class="wb-header-main">
       <span class="wb-tag">归纳概括</span>
       <h1 class="wb-title">申论工作台</h1>
       <div class="wb-header-right">
@@ -54,10 +118,51 @@ async function handleSubmitPaste() {
           <span class="wb-step" :class="{ active: store.phase === 'cc_prompt' }">③ AI 对比</span>
         </div>
       </div>
+      </div>
     </header>
 
     <!-- ① Input phase -->
     <template v-if="store.phase === 'input'">
+      <section class="wb-section wb-paper-card">
+        <label class="wb-label">套卷信息（可选，便于日后回顾）</label>
+        <div class="wb-paper-grid">
+          <label class="wb-field">
+            <span class="wb-field-lab">年份</span>
+            <input
+              v-model="store.paperYear"
+              type="text"
+              class="wb-input"
+              placeholder="如 2024"
+              @input="store.scheduleAutosave()"
+            />
+          </label>
+          <label class="wb-field">
+            <span class="wb-field-lab">省份</span>
+            <input
+              v-model="store.paperProvince"
+              type="text"
+              class="wb-input"
+              placeholder="如 江苏"
+              @input="store.scheduleAutosave()"
+            />
+          </label>
+          <label class="wb-field">
+            <span class="wb-field-lab">试卷类型</span>
+            <input
+              v-model="store.paperSuiteType"
+              type="text"
+              class="wb-input"
+              placeholder="如 行政执法卷、申论一"
+              @input="store.scheduleAutosave()"
+            />
+          </label>
+          <div class="wb-field wb-field--readonly">
+            <span class="wb-field-lab">题型（随当前知识点）</span>
+            <span class="wb-ro-val">{{ shenlunNodeTitle(store.selectedNodeId) }}</span>
+          </div>
+        </div>
+      </section>
+
       <section class="wb-section">
         <label class="wb-label">题目</label>
         <textarea
@@ -95,42 +200,74 @@ async function handleSubmitPaste() {
       <section class="wb-section wb-section--question-preview">
         <div class="wb-q-row">
           <label class="wb-label">题目</label>
-          <button class="btn-link" @click="store.resetWorkbench()">重新输入</button>
+          <button class="btn-link" type="button" @click="handleResetInput">重新输入</button>
         </div>
         <p class="wb-question-text">{{ store.questionText }}</p>
       </section>
 
-      <div class="wb-segments">
-        <div v-for="seg in store.segments" :key="seg.index" class="wb-segment">
+      <div
+        v-if="
+          store.attempt?.cc_status === 'success' &&
+          store.attempt &&
+          !store.attempt.id.startsWith('local-')
+        "
+        class="wb-done-hint"
+      >
+        <span>本题已完成 AI 复盘。</span>
+        <button type="button" class="btn-link" @click="goResultReview">查看复盘页 →</button>
+      </div>
+
+      <div class="wb-seg-tabrail" aria-label="段落切换">
+        <div class="wb-seg-tabscroll">
+          <button
+            v-for="seg in store.segments"
+            :key="seg.index"
+            type="button"
+            class="wb-seg-tab"
+            :class="{ active: activeParagraph === seg.index }"
+            @click="activeParagraph = seg.index"
+          >
+            段落 {{ seg.index + 1 }}
+          </button>
+        </div>
+      </div>
+
+      <div v-if="currentSeg" class="wb-segments">
+        <div class="wb-segment">
           <div class="wb-segment-header">
-            <span class="wb-segment-num">材料 {{ seg.index + 1 }}</span>
+            <span class="wb-segment-num">段落 {{ currentSeg.index + 1 }}</span>
           </div>
           <div class="wb-segment-body">
             <div class="wb-material-block">
-              <p class="wb-material-text">{{ seg.source_text }}</p>
+              <p class="wb-material-text">{{ currentSeg.source_text }}</p>
             </div>
-            <div class="wb-extraction-block">
-              <label class="wb-label wb-label--small">我的提炼</label>
-              <textarea
-                :value="seg.my_extraction"
-                class="wb-textarea wb-textarea--extraction"
-                placeholder="从该段材料中提炼要点，逐条写出"
-                @input="store.updateExtraction(seg.index, ($event.target as HTMLTextAreaElement).value)"
-              />
+            <div class="wb-extraction-stack">
+              <div class="wb-extraction-block">
+                <label class="wb-label wb-label--small">我的提炼</label>
+                <textarea
+                  :value="currentSeg.my_extraction"
+                  class="wb-textarea wb-textarea--extraction"
+                  placeholder="从该段材料中提炼要点，逐条写出"
+                  @input="store.updateExtraction(currentSeg.index, ($event.target as HTMLTextAreaElement).value)"
+                />
+              </div>
+              <div class="wb-summary-block">
+                <label class="wb-label wb-label--small"
+                  >最终总结
+                  <span class="wb-inline-hint">
+                    （全文仅一份；任一段落 Tab 均可编辑，经 Pinia 与各 Tab 实时同步）
+                  </span></label
+                >
+                <textarea
+                  v-model="finalSummaryModel"
+                  class="wb-textarea wb-textarea--summary"
+                  placeholder="综合各段，写出本条题目的最终归纳结论"
+                />
+              </div>
             </div>
           </div>
         </div>
       </div>
-
-      <section class="wb-section">
-        <label class="wb-label">最终总结</label>
-        <textarea
-          :value="store.finalSummary"
-          class="wb-textarea wb-textarea--summary"
-          placeholder="综合以上各段要点，写出最终归纳答案"
-          @input="store.updateFinalSummary(($event.target as HTMLTextAreaElement).value)"
-        />
-      </section>
 
       <div class="wb-actions">
         <button
@@ -140,7 +277,9 @@ async function handleSubmitPaste() {
         >
           {{ store.attemptLoading ? '生成中…' : '生成 AI 提示词 →' }}
         </button>
-        <span v-if="!store.canGoToCC" class="wb-hint">请填写所有分段提炼和最终总结</span>
+        <span v-if="!store.canGoToCC" class="wb-hint"
+          >请写完每段「提炼」，并在任一段落 Tab 中填写「最终总结」（全文同一份，实时同步）</span
+        >
       </div>
       <p v-if="store.attemptError" class="wb-error">{{ store.attemptError }}</p>
     </template>
@@ -222,10 +361,35 @@ async function handleSubmitPaste() {
 
 .wb-header {
   display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.wb-header-nav {
+  display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 28px;
   flex-wrap: wrap;
+}
+
+.wb-node-chip {
+  font-size: 12px;
+  color: #374151;
+  background: #f3f4f6;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.wb-header-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.wb-back {
+  text-decoration: none;
 }
 
 .wb-tag {
@@ -281,6 +445,20 @@ async function handleSubmitPaste() {
   margin-bottom: 24px;
 }
 
+.wb-done-hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: -12px 0 16px;
+  padding: 10px 14px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #065f46;
+}
+
 .wb-q-row {
   display: flex;
   justify-content: space-between;
@@ -296,6 +474,11 @@ async function handleSubmitPaste() {
   margin-bottom: 8px;
 }
 .wb-label--small { font-size: 12px; color: #6b7280; margin-bottom: 6px; }
+.wb-inline-hint {
+  font-weight: 400;
+  color: #9ca3af;
+  font-size: 11px;
+}
 
 .wb-question-text {
   margin: 0;
@@ -400,8 +583,126 @@ async function handleSubmitPaste() {
   letter-spacing: 0.5px;
 }
 .wb-segment-body {
+  display: flex;
+  align-items: stretch;
+  min-height: 0;
+}
+.wb-segment-body > .wb-material-block {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.wb-extraction-stack {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  background: #fffbeb;
+  min-height: 0;
+}
+.wb-extraction-stack .wb-extraction-block,
+.wb-extraction-stack .wb-summary-block {
+  padding: 14px 16px;
+}
+.wb-extraction-stack .wb-extraction-block {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.wb-extraction-stack .wb-extraction-block .wb-textarea--extraction {
+  flex: 1 1 auto;
+  min-height: 90px;
+  resize: vertical;
+}
+.wb-extraction-stack .wb-summary-block {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px dashed #fcd34d;
+  background: #f0fdf4;
+}
+.wb-extraction-stack .wb-summary-block .wb-textarea--summary {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.wb-paper-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.wb-paper-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+@media (max-width: 560px) {
+  .wb-paper-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.wb-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+}
+.wb-field-lab {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+}
+.wb-input {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 14px;
+  font-family: inherit;
+}
+.wb-field--readonly .wb-ro-val {
+  font-size: 14px;
+  color: #1e40af;
+  font-weight: 600;
+  padding: 8px 10px;
+  background: #eff6ff;
+  border-radius: 6px;
+  border: 1px solid #bfdbfe;
+}
+
+.wb-seg-tabrail {
+  margin-bottom: 12px;
+}
+.wb-seg-tabscroll {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+.wb-seg-tab {
+  flex: 0 0 auto;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.wb-seg-tab:hover {
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+.wb-seg-tab.active {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
 }
 .wb-material-block {
   padding: 14px 16px;
@@ -415,9 +716,9 @@ async function handleSubmitPaste() {
   color: #374151;
   white-space: pre-wrap;
 }
-.wb-extraction-block {
-  padding: 14px 16px;
-  background: #fffbeb;
+.wb-extraction-stack .wb-extraction-block .wb-label,
+.wb-extraction-stack .wb-summary-block .wb-label {
+  flex-shrink: 0;
 }
 
 /* CC banner */
@@ -512,7 +813,20 @@ async function handleSubmitPaste() {
 }
 
 @media (max-width: 640px) {
-  .wb-segment-body { grid-template-columns: 1fr; }
+  .wb-segment-body {
+    flex-direction: column;
+  }
+  .wb-segment-body > .wb-material-block {
+    flex: 0 1 auto;
+  }
+  .wb-extraction-stack {
+    flex: 0 1 auto;
+  }
+  .wb-extraction-stack .wb-extraction-block .wb-textarea--extraction {
+    flex: 0 1 auto;
+    min-height: 120px;
+    max-height: none;
+  }
   .wb-material-block { border-right: none; border-bottom: 1px solid #e5e7eb; }
   .wb-header { gap: 8px; }
 }

@@ -110,25 +110,46 @@ def parse_context_json(raw: str) -> dict[str, Any]:
         return {}
     return parsed if isinstance(parsed, dict) else {}
 
+def _repair_llm_json_inner_ascii_quotes(blob: str) -> str:
+    """Turn illegal inner \"...\" inside JSON string values into 「...」 when adjacent to CJK punctuation.
+
+    Models often emit prose like 按\"做法+效果\"结构 inside a JSON string, which breaks json.loads.
+    """
+    return re.sub(
+        r'([\u4e00-\u9fff，。、；：])\s*"([^"\n]{1,200}?)"\s*(?=[\u4e00-\u9fff，。、；：\)）]|$)',
+        r"\1「\2」",
+        blob,
+    )
+
+
 def extract_json_object(text: str) -> dict[str, Any]:
     cleaned = (text or "").strip()
     if cleaned.startswith("```"):
         cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
         cleaned = re.sub(r"\s*```$", "", cleaned)
-    try:
-        parsed = json.loads(cleaned)
-        if isinstance(parsed, dict):
-            return parsed
-    except json.JSONDecodeError:
-        pass
 
-    match = re.search(r"\{[\s\S]*\}", cleaned)
-    if not match:
-        raise ValueError("model did not return JSON object")
-    parsed = json.loads(match.group(0))
-    if not isinstance(parsed, dict):
-        raise ValueError("model did not return JSON object")
-    return parsed
+    blobs: list[str] = [cleaned]
+    brace = re.search(r"\{[\s\S]*\}", cleaned)
+    if brace:
+        inner = brace.group(0)
+        if inner != cleaned:
+            blobs.append(inner)
+
+    for blob in blobs:
+        candidate = blob
+        for _ in range(5):
+            try:
+                parsed = json.loads(candidate)
+                if isinstance(parsed, dict):
+                    return parsed
+            except json.JSONDecodeError:
+                pass
+            nxt = _repair_llm_json_inner_ascii_quotes(candidate)
+            if nxt == candidate:
+                break
+            candidate = nxt
+
+    raise ValueError("model did not return JSON object")
 
 def get_minimax_settings() -> tuple[str, str]:
     api_key = os.getenv("MINIMAX_API_KEY", "").strip()

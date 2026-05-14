@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import HubPage from '@/views/shenlun/HubPage.vue'
 import WorkbenchPage from '@/views/shenlun/WorkbenchPage.vue'
 import ResultPage from '@/views/shenlun/ResultPage.vue'
 import XingceWorkspacePage from '@/views/xingce/WorkspacePage.vue'
@@ -8,7 +9,12 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      redirect: '/shenlun/workbench',
+      redirect: '/shenlun',
+    },
+    {
+      path: '/shenlun',
+      name: 'ShenlunHub',
+      component: HubPage,
     },
     {
       path: '/shenlun/workbench',

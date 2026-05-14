@@ -227,10 +227,37 @@ async function refreshLocalBackups() {
   }
 }
 
+/** Push pending incremental ops to /api/sync so server state_entities match local tree before backup reads them. */
+async function flushPendingOpsBeforeLocalBackup() {
+  if (typeof getPendingOps !== 'function' || typeof fetchJsonWithAuth !== 'function') return;
+  let pendingOps;
+  try {
+    pendingOps = getPendingOps();
+  } catch (e) {
+    console.warn('[backup] pendingOps read failed', e);
+    return;
+  }
+  if (!Array.isArray(pendingOps) || !pendingOps.length) return;
+  try {
+    await fetchJsonWithAuth('/api/sync', {
+      method: 'POST',
+      body: { ops: pendingOps }
+    });
+    try {
+      localStorage.removeItem('pendingOps');
+    } catch (e) {
+      console.warn('[backup] pendingOps clear failed', e);
+    }
+  } catch (e) {
+    console.warn('[backup] pendingOps flush failed, backup may be stale', e);
+  }
+}
+
 async function createLocalBackupByKind(kind, label, opts) {
   const options = opts || {};
   const skipRecentHours = Number(options.skipRecentHours || 0);
   const silent = !!options.silent;
+  await flushPendingOpsBeforeLocalBackup();
   const data = await fetchJsonWithAuth('/api/local-backups/create', {
     method: 'POST',
     body: {

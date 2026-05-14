@@ -1,7 +1,9 @@
 // ============================================================
 // Knowledge tree baseline freeze
 // ============================================================
-const KNOWLEDGE_TREE_BASELINE_FREEZE_ENABLED = true;
+// Disabled by default: forcing baseline remap during restore can
+// overwrite user-restored tree structure and make nodes appear missing.
+const KNOWLEDGE_TREE_BASELINE_FREEZE_ENABLED = false;
 const KNOWLEDGE_TREE_BASELINE_EXPORTED_AT = '2026-05-08T13:50:00.698Z';
 const KNOWLEDGE_TREE_BASELINE_NODES = [
   {"id":"kn_d96e4b7ddaa5","parentId":"","level":1,"title":"言语理解与表达","path":"言语理解与表达"},

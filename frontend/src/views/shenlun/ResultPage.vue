@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { shenlunApi, type Attempt, type SegmentReview } from '@/api/shenlun'
+import { nodeIdToRouteQuery } from '@/data/shenlunTree'
 
 const route = useRoute()
 const router = useRouter()
@@ -55,6 +56,24 @@ function tagClass(tag: string): string {
   if (tag.includes('空泛') || tag.includes('过虚')) return 'tag tag--vague'
   return 'tag tag--default'
 }
+
+function goWorkbench() {
+  const att = attempt.value
+  if (!att) return
+  void router.push({
+    name: 'ShenlunWorkbench',
+    query: { source: att.source_id },
+  })
+}
+
+function goHubList() {
+  const att = attempt.value
+  const nid = att?.source_node_id ?? ''
+  void router.push({
+    name: 'ShenlunHub',
+    query: { node: nodeIdToRouteQuery(nid) },
+  })
+}
 </script>
 
 <template>
@@ -77,9 +96,17 @@ function tagClass(tag: string): string {
           <span class="rp-tag">归纳概括</span>
           <span class="rp-status" :class="attempt.cc_status">{{ statusLabel }}</span>
         </div>
-        <button class="btn btn-secondary" @click="router.push({ name: 'ShenlunWorkbench' })">
-          新建练习
-        </button>
+        <div class="rp-header-actions">
+          <button type="button" class="btn btn-secondary" @click="goWorkbench">
+            ← 本题工作台
+          </button>
+          <button type="button" class="btn btn-secondary" @click="goHubList">
+            题目列表
+          </button>
+          <button type="button" class="btn btn-secondary" @click="router.push({ name: 'ShenlunHub' })">
+            新建练习
+          </button>
+        </div>
       </header>
 
       <!-- Waiting state -->
@@ -255,10 +282,18 @@ function tagClass(tag: string): string {
 
 .rp-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   margin-bottom: 24px;
   gap: 12px;
+  flex-wrap: wrap;
+}
+
+.rp-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 .rp-header-left {

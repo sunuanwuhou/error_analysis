@@ -20,13 +20,44 @@ function kwOpenKnowledgeDirectoryNode(nodeId, deps) {
   if (typeof d.renderNotesByType === "function") d.renderNotesByType();
 }
 
+var __kwResizeSyncRafId = 0;
+var __kwPendingViewerResize = { role: "", height: 0 };
+
+function kwIsKnowledgeWorkspaceMessageTrusted(event) {
+  if (!event) return false;
+  if (event.origin === window.location.origin) return true;
+  var frame = document.getElementById("knowledgeNoteEditorModalFrame");
+  if (frame && frame.contentWindow && event.source === frame.contentWindow) return true;
+  return false;
+}
+
+function kwScheduleKnowledgeViewerResizeSync(role, height, deps) {
+  var d = deps || {};
+  __kwPendingViewerResize.role = String(role || "");
+  __kwPendingViewerResize.height = Number(height || 0);
+  if (__kwResizeSyncRafId) return;
+  var flush = function () {
+    __kwResizeSyncRafId = 0;
+    if (typeof d.applyNoteViewerHeight === "function") {
+      d.applyNoteViewerHeight(__kwPendingViewerResize.role, __kwPendingViewerResize.height);
+    }
+    if (typeof d.syncNotePreviewViewportHeight === "function") {
+      d.syncNotePreviewViewportHeight();
+    }
+  };
+  if (typeof requestAnimationFrame === "function") {
+    __kwResizeSyncRafId = requestAnimationFrame(flush);
+    return;
+  }
+  __kwResizeSyncRafId = setTimeout(flush, 16);
+}
+
 function kwHandleKnowledgeWorkspaceMessage(event, deps) {
   var d = deps || {};
-  if (!event || event.origin !== window.location.origin) return;
+  if (!event || !kwIsKnowledgeWorkspaceMessageTrusted(event)) return;
   var data = event.data || {};
   if (data.type === "knowledge-note-viewer-size") {
-    if (typeof d.applyNoteViewerHeight === "function") d.applyNoteViewerHeight(data.role, data.height);
-    if (typeof d.syncNotePreviewViewportHeight === "function") d.syncNotePreviewViewportHeight();
+    kwScheduleKnowledgeViewerResizeSync(data.role, data.height, d);
     return;
   }
   if (data.type === "knowledge-note-viewer-ready") {
@@ -44,7 +75,11 @@ function kwHandleKnowledgeWorkspaceMessage(event, deps) {
   if (data.type !== "knowledge-note-saved") return;
   if (typeof d.setNoteEditing === "function") d.setNoteEditing(false);
   if (data.nodeId && typeof d.setSelectedKnowledgeNodeId === "function") d.setSelectedKnowledgeNodeId(data.nodeId);
-  if (typeof d.renderSidebar === "function") d.renderSidebar();
-  if (typeof d.renderNotesByType === "function") d.renderNotesByType();
+  if (typeof d.requestWorkspaceRender === "function") {
+    d.requestWorkspaceRender({ sidebar: true, notes: true, immediate: true });
+  } else {
+    if (typeof d.renderSidebar === "function") d.renderSidebar();
+    if (typeof d.renderNotesByType === "function") d.renderNotesByType();
+  }
   if (typeof d.renderNotesPanelRight === "function") d.renderNotesPanelRight();
 }
