@@ -13,6 +13,18 @@ export interface SourceRecord {
 
 export interface SourceSummary extends SourceRecord {
   attempt_count: number
+  /** 历史成功复盘次数（多轮） */
+  cc_success_count?: number
+  /** 最近一轮练习的批改状态（无练习时为 null） */
+  latest_cc_status?: 'none' | 'pending' | 'success' | 'failed' | null
+}
+
+export interface AttemptSummary {
+  id: string
+  attempt_no: number
+  cc_status: string
+  created_at: string
+  updated_at: string
 }
 
 export interface Segment {
@@ -61,7 +73,25 @@ export interface CCResult {
   overall_issue_tags: string[]
 }
 
+export interface HubNoteRecord {
+  node_id: string
+  body_md: string
+  updated_at: string
+}
+
 const BASE = '/api/shenlun'
+
+function formatRequestError(status: number, body: unknown): string {
+  const o = body as { detail?: unknown }
+  const d = o?.detail
+  if (typeof d === 'string' && d.trim()) return d
+  if (Array.isArray(d)) {
+    const parts = d.map((x) => (typeof x === 'object' && x && 'msg' in x ? String((x as { msg?: string }).msg) : String(x)))
+    const s = parts.filter(Boolean).join('；')
+    if (s) return s
+  }
+  return `HTTP ${status}`
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
@@ -71,7 +101,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error((err as { detail?: string }).detail ?? `HTTP ${res.status}`)
+    throw new Error(formatRequestError(res.status, err))
   }
   return res.json() as Promise<T>
 }
@@ -94,6 +124,19 @@ export const shenlunApi = {
 
   getSource(sourceId: string) {
     return request<SourceDetailResponse>(`/sources/${encodeURIComponent(sourceId)}`)
+  },
+
+  listAttemptsForSource(sourceId: string) {
+    return request<{ items: AttemptSummary[] }>(
+      `/sources/${encodeURIComponent(sourceId)}/attempts`,
+    )
+  },
+
+  deleteAttempt(attemptId: string) {
+    return request<{ ok: boolean; id: string; source_id: string }>(
+      `/attempts/${encodeURIComponent(attemptId)}`,
+      { method: 'DELETE' },
+    )
   },
 
   patchSourceNode(sourceId: string, node_id: string) {
@@ -148,5 +191,18 @@ export const shenlunApi = {
 
   getAttempt(attemptId: string) {
     return request<Attempt>(`/attempts/${attemptId}`)
+  },
+
+  getHubNote(nodeId: string) {
+    const q = new URLSearchParams()
+    q.set('node_id', nodeId)
+    return request<HubNoteRecord>(`/hub-notes?${q.toString()}`)
+  },
+
+  putHubNote(nodeId: string, body_md: string) {
+    return request<HubNoteRecord>('/hub-notes', {
+      method: 'PUT',
+      body: JSON.stringify({ node_id: nodeId, body_md }),
+    })
   },
 }

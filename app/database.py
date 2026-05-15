@@ -416,5 +416,22 @@ def init_shenlun_tables() -> None:
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_sl_attempts_user_time ON shenlun_attempts(user_id, updated_at DESC)"
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS shenlun_hub_notes (
+              user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              node_id TEXT NOT NULL DEFAULT '',
+              body_md TEXT NOT NULL DEFAULT '',
+              updated_at TEXT NOT NULL,
+              PRIMARY KEY (user_id, node_id)
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_sl_hub_notes_user_updated
+            ON shenlun_hub_notes(user_id, updated_at DESC)
+            """
+        )
         conn.commit()
 

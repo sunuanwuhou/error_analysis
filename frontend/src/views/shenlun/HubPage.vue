@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ShenlunHubNotesEditor from '@/components/shenlun/ShenlunHubNotesEditor.vue'
 import { shenlunApi, type SourceSummary } from '@/api/shenlun'
@@ -34,10 +34,33 @@ function notesStorageKey(nodeId: string): string {
   return NOTES_LS_PREFIX + (nodeId === '' ? '_uncategorized_' : nodeId)
 }
 
-/** 知识点笔记 Markdown（切换节点时已从 localStorage 换入）。 */
+/** 知识点笔记 Markdown（与 hubNotesMd 同步；以服务器为准并写回本地作缓存） */
 const hubNotesMd = ref('')
 
+let hubNotesNavChain = Promise.resolve()
+const skipHubNotesPersist = ref(false)
+type HubNotesCloudState = 'idle' | 'loading' | 'synced' | 'saving' | 'error'
+const hubNotesCloud = ref<{ status: HubNotesCloudState; detail?: string }>({
+  status: 'idle',
+})
+
 let persistHubNotesTimer: ReturnType<typeof setTimeout> | null = null
+const PERSIST_DEBOUNCE_MS = 560
+
+const hubNotesCloudLabel = computed(() => {
+  switch (hubNotesCloud.value.status) {
+    case 'loading':
+      return '正在从云端加载笔记…'
+    case 'saving':
+      return '正在保存到云端…'
+    case 'error':
+      return `云端同步失败：${hubNotesCloud.value.detail || '请检查网络或重新登录'}`
+    case 'synced':
+      return '笔记已同步账号（多设备可用）'
+    default:
+      return ''
+  }
+})
 
 function flushHubNotesToNode(nodeId: string) {
   try {
@@ -47,36 +70,123 @@ function flushHubNotesToNode(nodeId: string) {
   }
 }
 
+function clearHubNotesPersistTimer() {
+  if (persistHubNotesTimer !== null) {
+    window.clearTimeout(persistHubNotesTimer)
+    persistHubNotesTimer = null
+  }
+}
+
+function applyHubNotesFromRemote(md: string) {
+  skipHubNotesPersist.value = true
+  hubNotesMd.value = md
+  queueMicrotask(() => {
+    skipHubNotesPersist.value = false
+  })
+}
+
+async function persistHubNotesToServerNow(nodeId: string): Promise<void> {
+  flushHubNotesToNode(nodeId)
+  hubNotesCloud.value = { status: 'saving' }
+  try {
+    await shenlunApi.putHubNote(nodeId, hubNotesMd.value)
+    hubNotesCloud.value = { status: 'synced' }
+  } catch (e) {
+    hubNotesCloud.value = { status: 'error', detail: (e as Error).message }
+  }
+}
+
 function scheduleHubNotesPersist() {
+  if (skipHubNotesPersist.value) return
   const nid = selectedNodeId.value
-  if (persistHubNotesTimer !== null) window.clearTimeout(persistHubNotesTimer)
+  clearHubNotesPersistTimer()
   persistHubNotesTimer = window.setTimeout(() => {
     persistHubNotesTimer = null
-    flushHubNotesToNode(nid)
-  }, 420)
+    void (async () => {
+      flushHubNotesToNode(nid)
+      hubNotesCloud.value = { status: 'saving' }
+      try {
+        await shenlunApi.putHubNote(nid, hubNotesMd.value)
+        hubNotesCloud.value = { status: 'synced' }
+      } catch (err) {
+        hubNotesCloud.value = { status: 'error', detail: (err as Error).message }
+      }
+    })()
+  }, PERSIST_DEBOUNCE_MS)
 }
 
 watch(
   () => selectedNodeId.value,
   (id, prev) => {
-    if (persistHubNotesTimer !== null) {
-      window.clearTimeout(persistHubNotesTimer)
-      persistHubNotesTimer = null
-    }
-    if (prev !== undefined) {
-      flushHubNotesToNode(prev)
-    }
-    try {
-      hubNotesMd.value = localStorage.getItem(notesStorageKey(id)) ?? ''
-    } catch {
-      hubNotesMd.value = ''
-    }
+    hubNotesNavChain = hubNotesNavChain
+      .then(async () => {
+        clearHubNotesPersistTimer()
+
+        if (prev !== undefined) {
+          await persistHubNotesToServerNow(prev)
+        }
+
+        hubNotesCloud.value = { status: 'loading' }
+        try {
+          const remote = await shenlunApi.getHubNote(id)
+          let md = remote.body_md ?? ''
+          if (!md.trim()) {
+            try {
+              const legacy = localStorage.getItem(notesStorageKey(id)) ?? ''
+              if (legacy.trim()) {
+                md = legacy
+                await shenlunApi.putHubNote(id, md)
+              }
+            } catch {
+              /* ignore migration upload errors */
+            }
+          }
+          applyHubNotesFromRemote(md)
+          await nextTick()
+          flushHubNotesToNode(id)
+          hubNotesCloud.value = { status: 'synced' }
+        } catch (e) {
+          hubNotesCloud.value = { status: 'error', detail: (e as Error).message }
+          try {
+            applyHubNotesFromRemote(localStorage.getItem(notesStorageKey(id)) ?? '')
+          } catch {
+            applyHubNotesFromRemote('')
+          }
+        }
+      })
+      .catch(() => {})
   },
   { immediate: true },
 )
 
-watch(hubNotesMd, () => {
-  scheduleHubNotesPersist()
+watch(
+  hubNotesMd,
+  () => {
+    scheduleHubNotesPersist()
+  },
+  { flush: 'sync' },
+)
+
+function flushHubNotesBestEffort() {
+  clearHubNotesPersistTimer()
+  const nid = selectedNodeId.value
+  flushHubNotesToNode(nid)
+  void shenlunApi.putHubNote(nid, hubNotesMd.value).catch(() => {})
+}
+
+function onVisibilityFlush() {
+  if (document.visibilityState === 'hidden') flushHubNotesBestEffort()
+}
+
+onMounted(() => {
+  document.addEventListener('visibilitychange', onVisibilityFlush)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', onVisibilityFlush)
+  clearHubNotesPersistTimer()
+  flushHubNotesToNode(selectedNodeId.value)
+  void shenlunApi.putHubNote(selectedNodeId.value, hubNotesMd.value).catch(() => {})
 })
 
 const copyBlinkId = ref<string | null>(null)
@@ -228,12 +338,21 @@ function previewRowForConfirm(row: SourceSummary): string {
   return '（无题干）'
 }
 
-function statusLabel(status: string): string {
-  if (status === 'raw_draft') return '草稿'
-  if (status === 'formatted') return '提炼中'
-  if (status === 'extracted') return '已提炼'
-  if (status === 'cc_done') return '已复盘'
-  return status
+function statusLabel(row: SourceSummary): string {
+  const latest = row.latest_cc_status
+  const okN = row.cc_success_count ?? 0
+  const ac = row.attempt_count ?? 0
+  if (latest === 'success') {
+    return ac > 1 ? `已复盘 · ${ac} 轮练习` : '已复盘'
+  }
+  if (okN > 0) {
+    return `本轮进行中 · 已成功复盘 ${okN} 次`
+  }
+  if (row.status === 'raw_draft') return '草稿'
+  if (row.status === 'formatted') return '提炼中'
+  if (row.status === 'extracted') return '已提炼'
+  if (row.status === 'cc_done') return '已复盘'
+  return row.status
 }
 </script>
 
@@ -358,7 +477,7 @@ function statusLabel(status: string): string {
                 <span class="hub-row-title">{{ previewRowLead(row) }}</span>
                 <span class="hub-row-meta">
                   <template v-if="paperMetaLine(row)">{{ paperMetaLine(row) }} · </template>
-                  {{ statusLabel(row.status) }} · {{ row.attempt_count }} 次练习 ·
+                  {{ statusLabel(row) }} · {{ row.attempt_count }} 次练习 ·
                   {{ new Date(row.updated_at).toLocaleString('zh-CN', { hour12: false }) }}
                 </span>
               </div>
@@ -385,7 +504,10 @@ function statusLabel(status: string): string {
         </template>
 
         <div v-show="hubMainSection === 'notes'" class="hub-notes-pane">
-          <p class="hub-notes-hint">当前知识点的 Markdown 笔记本，自动保存在本浏览器。</p>
+          <p class="hub-notes-hint">
+            当前知识点的 Markdown 笔记本；联网、登录后自动保存到你的账号，便于多设备查看。
+            <span v-if="hubNotesCloudLabel" class="hub-notes-cloud">{{ hubNotesCloudLabel }}</span>
+          </p>
           <ShenlunHubNotesEditor
             v-if="notesEditorMounted"
             v-model="hubNotesMd"
@@ -610,6 +732,13 @@ function statusLabel(status: string): string {
   margin: 0 0 12px;
   font-size: 12px;
   color: #9ca3af;
+  line-height: 1.55;
+}
+
+.hub-notes-cloud {
+  display: block;
+  margin-top: 6px;
+  color: #6b7280;
 }
 
 .hub-toolbar {

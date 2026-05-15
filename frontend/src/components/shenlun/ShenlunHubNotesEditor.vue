@@ -101,7 +101,9 @@ function attachVditor(value: string) {
     upload: {
       max: 5 * 1024 * 1024,
       accept: 'image/png, image/jpeg, image/jpg, image/gif, image/webp, image/svg+xml, image/avif',
-      url: '',
+      // Vditor 要求 upload.url 非空才会启用上传/触发 handler；真实请求仍由下方 handler 按行测同源逻辑 POST 原始 body 到 /api/images
+      url: '/api/images',
+      withCredentials: true,
       multiple: true,
       fieldName: 'file',
       async handler(files: File[]): Promise<null> {

@@ -2,7 +2,12 @@
 import { ref, watch, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useShenlunStore } from '@/stores/shenlunStore'
-import { shenlunNodeTitle, nodeIdToRouteQuery } from '@/data/shenlunTree'
+import {
+  flattenShenlunNodes,
+  SL_TREE,
+  shenlunNodeTitle,
+  nodeIdToRouteQuery,
+} from '@/data/shenlunTree'
 
 const store = useShenlunStore()
 const router = useRouter()
@@ -24,6 +29,48 @@ const finalSummaryModel = computed({
 })
 
 const nodeTitle = computed(() => shenlunNodeTitle(store.selectedNodeId))
+
+const flatNodes = flattenShenlunNodes(SL_TREE)
+
+const canNewRound = computed(() => {
+  const rows = store.attemptSummaries
+  return rows.length > 0 && rows[0].cc_status === 'success'
+})
+
+const deletingRoundId = ref<string | null>(null)
+
+function onNodeChange(ev: Event) {
+  const v = (ev.target as HTMLSelectElement).value
+  void store.patchWorkbenchNode(v)
+}
+
+function roundStatusLabel(cc: string): string {
+  if (cc === 'success') return '已复盘'
+  if (cc === 'failed') return '失败'
+  if (cc === 'pending') return '等待中'
+  return '进行中'
+}
+
+async function handleNewRound() {
+  const ok = await store.createNewAIRound()
+  if (ok) activeParagraph.value = 0
+}
+
+async function confirmDeleteRound(row: { id: string }, ev: Event) {
+  ev.preventDefault()
+  ev.stopPropagation()
+  if (!window.confirm('确定删除这一轮练习/复盘记录？删除后不可恢复。')) return
+  deletingRoundId.value = row.id
+  try {
+    await store.deleteAttemptRecord(row.id)
+  } finally {
+    deletingRoundId.value = null
+  }
+}
+
+function openResultRound(id: string) {
+  void router.push({ name: 'ShenlunResult', params: { attemptId: id } })
+}
 
 watch(
   () => [route.query.node, route.query.source],
@@ -120,6 +167,73 @@ function goResultReview() {
       </div>
       </div>
     </header>
+
+    <section v-if="store.sourceRecord" class="wb-section wb-meta-card">
+      <div class="wb-meta-grid">
+        <label class="wb-meta-field">
+          <span class="wb-label wb-label--small">知识点归类</span>
+          <select
+            class="wb-select"
+            :value="store.selectedNodeId"
+            :disabled="store.sourceLoading"
+            @change="onNodeChange($event)"
+          >
+            <option value="">未分类</option>
+            <option v-for="opt in flatNodes" :key="opt.id" :value="opt.id">{{ opt.title }}</option>
+          </select>
+        </label>
+      </div>
+      <p v-if="store.sourceError" class="wb-error wb-error--compact">{{ store.sourceError }}</p>
+
+      <div class="wb-rounds">
+        <div class="wb-rounds-head">
+          <h3 class="wb-rounds-title">批改轮次</h3>
+          <button
+            type="button"
+            class="btn btn-secondary wb-round-new"
+            :disabled="!canNewRound || store.attemptLoading"
+            @click="handleNewRound"
+          >
+            新开一轮 AI 批改
+          </button>
+        </div>
+        <p class="wb-rounds-hint">
+          每轮单独保存；上一轮已复盘后，可在此开新一轮重新生成 AI 对比。未完成当前轮时请先提交结果或删除该轮。
+        </p>
+        <p v-if="store.attemptSummariesLoading" class="wb-muted">加载轮次…</p>
+        <ul v-else-if="store.attemptSummaries.length" class="wb-round-list">
+          <li v-for="row in store.attemptSummaries" :key="row.id" class="wb-round-row">
+            <div class="wb-round-main">
+              <span class="wb-round-no">第 {{ row.attempt_no }} 轮</span>
+              <span class="wb-round-st">{{ roundStatusLabel(row.cc_status) }}</span>
+              <span class="wb-round-time">{{
+                new Date(row.updated_at).toLocaleString('zh-CN', { hour12: false })
+              }}</span>
+              <span v-if="row.id === store.attempt?.id" class="wb-round-current">当前编辑</span>
+            </div>
+            <div class="wb-round-actions">
+              <button
+                type="button"
+                class="btn-link"
+                :disabled="row.cc_status !== 'success'"
+                @click="openResultRound(row.id)"
+              >
+                打开复盘
+              </button>
+              <button
+                type="button"
+                class="btn-link wb-round-del"
+                :disabled="deletingRoundId === row.id || store.attemptLoading"
+                @click="confirmDeleteRound(row, $event)"
+              >
+                {{ deletingRoundId === row.id ? '…' : '删除' }}
+              </button>
+            </div>
+          </li>
+        </ul>
+        <p v-else class="wb-muted">暂无练习轮次（保存题目并一键分段后出现）。</p>
+      </div>
+    </section>
 
     <!-- ① Input phase -->
     <template v-if="store.phase === 'input'">
@@ -435,6 +549,144 @@ function goResultReview() {
 .wb-step.active { background: #eff6ff; color: #2563eb; font-weight: 700; }
 .wb-step-sep { color: #d1d5db; }
 
+.wb-meta-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 14px 16px 16px;
+  background: #fafafa;
+}
+
+.wb-meta-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-end;
+}
+
+.wb-meta-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 200px;
+}
+
+.wb-select {
+  font-size: 14px;
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  color: #1f2937;
+}
+
+.wb-error--compact {
+  margin: 10px 0 0;
+  font-size: 13px;
+}
+
+.wb-rounds {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.wb-rounds-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.wb-rounds-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.wb-round-new {
+  font-size: 13px;
+  padding: 6px 12px;
+}
+
+.wb-rounds-hint {
+  margin: 8px 0 12px;
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.45;
+}
+
+.wb-muted {
+  font-size: 13px;
+  color: #9ca3af;
+  margin: 0;
+}
+
+.wb-round-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wb-round-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.wb-round-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.wb-round-no {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.wb-round-st {
+  color: #2563eb;
+  font-weight: 500;
+}
+
+.wb-round-time {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.wb-round-current {
+  font-size: 11px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.wb-round-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.wb-round-del {
+  color: #dc2626;
+}
+
 /* Sections */
 .wb-section { margin-bottom: 20px; }
 
@@ -582,46 +834,50 @@ function goResultReview() {
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+/* 双列同高：Grid 明确行高，避免 flex+textarea 固有高度不参与分配 */
 .wb-segment-body {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: stretch;
   min-height: 0;
 }
 .wb-segment-body > .wb-material-block {
-  flex: 1 1 0;
   min-width: 0;
+  min-height: 0;
 }
 .wb-extraction-stack {
-  flex: 1 1 0;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(90px, 1fr) auto;
   padding: 0;
   background: #fffbeb;
-  min-height: 0;
 }
 .wb-extraction-stack .wb-extraction-block,
 .wb-extraction-stack .wb-summary-block {
   padding: 14px 16px;
 }
 .wb-extraction-stack .wb-extraction-block {
-  flex: 1 1 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  overflow: hidden;
 }
+/* textarea 在 flex 里必须用 height:0 + flex-grow 才会占满剩余高度（否则受 min-height:auto 限制） */
 .wb-extraction-stack .wb-extraction-block .wb-textarea--extraction {
-  flex: 1 1 auto;
+  height: 0;
+  flex-grow: 1;
+  flex-shrink: 1;
   min-height: 90px;
   resize: vertical;
+  overflow: auto;
 }
 .wb-extraction-stack .wb-summary-block {
-  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   border-top: 1px dashed #fcd34d;
   background: #f0fdf4;
+  min-height: 0;
 }
 .wb-extraction-stack .wb-summary-block .wb-textarea--summary {
   min-height: 100px;
@@ -814,18 +1070,19 @@ function goResultReview() {
 
 @media (max-width: 640px) {
   .wb-segment-body {
-    flex-direction: column;
-  }
-  .wb-segment-body > .wb-material-block {
-    flex: 0 1 auto;
+    grid-template-columns: 1fr;
   }
   .wb-extraction-stack {
-    flex: 0 1 auto;
+    grid-template-rows: auto auto;
+  }
+  .wb-extraction-stack .wb-extraction-block {
+    overflow: visible;
   }
   .wb-extraction-stack .wb-extraction-block .wb-textarea--extraction {
-    flex: 0 1 auto;
+    height: auto;
+    flex-grow: 0;
+    flex-shrink: 0;
     min-height: 120px;
-    max-height: none;
   }
   .wb-material-block { border-right: none; border-bottom: 1px solid #e5e7eb; }
   .wb-header { gap: 8px; }

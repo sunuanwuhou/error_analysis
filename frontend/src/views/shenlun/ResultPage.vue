@@ -10,6 +10,7 @@ const router = useRouter()
 const attempt = ref<Attempt | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
+const deleting = ref(false)
 const activeSegmentIndex = ref(0)
 const activeTab = ref<'segments' | 'overall'>('segments')
 
@@ -74,6 +75,25 @@ function goHubList() {
     query: { node: nodeIdToRouteQuery(nid) },
   })
 }
+
+async function deleteThisRound() {
+  const att = attempt.value
+  if (!att?.id) return
+  if (!window.confirm('确定删除这一轮复盘/练习记录？删除后可在工作台查看其它轮次或重新批改。')) return
+  deleting.value = true
+  try {
+    const sid = att.source_id
+    await shenlunApi.deleteAttempt(att.id)
+    void router.replace({
+      name: 'ShenlunWorkbench',
+      query: { source: sid },
+    })
+  } catch (e) {
+    window.alert((e as Error).message)
+  } finally {
+    deleting.value = false
+  }
+}
 </script>
 
 <template>
@@ -102,6 +122,14 @@ function goHubList() {
           </button>
           <button type="button" class="btn btn-secondary" @click="goHubList">
             题目列表
+          </button>
+          <button
+            type="button"
+            class="btn rp-del"
+            :disabled="deleting"
+            @click="deleteThisRound"
+          >
+            {{ deleting ? '删除中…' : '删除本轮' }}
           </button>
           <button type="button" class="btn btn-secondary" @click="router.push({ name: 'ShenlunHub' })">
             新建练习
@@ -294,6 +322,25 @@ function goHubList() {
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
+}
+
+.rp-del {
+  font-size: 13px;
+  padding: 6px 12px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.rp-del:hover:not(:disabled) {
+  background: #fee2e2;
+}
+
+.rp-del:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .rp-header-left {

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { shenlunApi, type Attempt, type SourceRecord, type Segment } from '@/api/shenlun'
+import { shenlunApi, type Attempt, type AttemptSummary, type Segment, type SourceDetailResponse, type SourceRecord } from '@/api/shenlun'
 import { SL_DEFAULT_NODE_ID, routeQueryToNodeId } from '@/data/shenlunTree'
 
 type WorkbenchPhase = 'input' | 'formatted' | 'cc_prompt' | 'done'
@@ -42,6 +42,9 @@ export const useShenlunStore = defineStore('shenlun', () => {
   const ccPasteError = ref<string | null>(null)
   const ccPasteLoading = ref(false)
 
+  const attemptSummaries = ref<AttemptSummary[]>([])
+  const attemptSummariesLoading = ref(false)
+
   let autosaveTimer: ReturnType<typeof setTimeout> | null = null
   let attemptSaveTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -54,6 +57,43 @@ export const useShenlunStore = defineStore('shenlun', () => {
       finalSummary.value.trim().length > 0,
   )
   const canSubmitPaste = computed(() => ccPasteText.value.trim().length > 10)
+
+  function applySourceDetail(detail: SourceDetailResponse) {
+    sourceRecord.value = detail.source
+    questionText.value = detail.source.question_text_raw
+    materialText.value = detail.source.material_text_raw
+    paperYear.value = detail.source.paper_year ?? ''
+    paperProvince.value = detail.source.paper_province ?? ''
+    paperSuiteType.value = detail.source.paper_suite_type ?? ''
+    selectedNodeId.value =
+      detail.source.node_id !== undefined && detail.source.node_id !== null
+        ? detail.source.node_id
+        : selectedNodeId.value
+
+    const la = detail.latest_attempt
+    if (la) {
+      normalizeSegmentsInPlace(la.segments)
+      attempt.value = la
+      phase.value = 'formatted'
+    } else {
+      attempt.value = null
+      phase.value = 'input'
+    }
+    ccPromptText.value = ''
+    ccPasteText.value = ''
+  }
+
+  async function loadAttemptSummaries(sourceId: string) {
+    attemptSummariesLoading.value = true
+    try {
+      const res = await shenlunApi.listAttemptsForSource(sourceId)
+      attemptSummaries.value = res.items
+    } catch {
+      attemptSummaries.value = []
+    } finally {
+      attemptSummariesLoading.value = false
+    }
+  }
 
   function scheduleAutosave() {
     if (autosaveTimer) clearTimeout(autosaveTimer)
@@ -192,12 +232,75 @@ export const useShenlunStore = defineStore('shenlun', () => {
       const updated = await shenlunApi.pasteCCResult(attempt.value.id, ccPasteText.value)
       attempt.value = updated
       phase.value = 'done'
+      if (sourceRecord.value?.id) await loadAttemptSummaries(sourceRecord.value.id)
       return updated.id
     } catch (e) {
       ccPasteError.value = (e as Error).message
       return null
     } finally {
       ccPasteLoading.value = false
+    }
+  }
+
+  async function patchWorkbenchNode(nodeId: string) {
+    if (!sourceRecord.value?.id) return
+    try {
+      sourceLoading.value = true
+      sourceError.value = null
+      const rec = await shenlunApi.patchSourceNode(sourceRecord.value.id, nodeId)
+      sourceRecord.value = rec
+      selectedNodeId.value = rec.node_id ?? ''
+    } catch (e) {
+      sourceError.value = (e as Error).message
+    } finally {
+      sourceLoading.value = false
+    }
+  }
+
+  async function createNewAIRound(): Promise<boolean> {
+    if (!sourceRecord.value?.id || attempt.value?.id.startsWith('local-')) return false
+    const summaries = attemptSummaries.value
+    const latestCcStatus =
+      summaries.length > 0 ? summaries[0].cc_status : attempt.value?.cc_status ?? ''
+    if (!latestCcStatus) return false
+    if (latestCcStatus !== 'success') {
+      attemptError.value =
+        '当前最近一轮尚未完成复盘，请先提交 AI 结果，或在该轮记录上点「删除」后再开新轮。'
+      return false
+    }
+
+    attemptError.value = null
+    try {
+      attemptLoading.value = true
+      await shenlunApi.createAttempt(sourceRecord.value.id)
+      const detail = await shenlunApi.getSource(sourceRecord.value.id)
+      applySourceDetail(detail)
+      await loadAttemptSummaries(sourceRecord.value.id)
+      return true
+    } catch (e) {
+      attemptError.value = (e as Error).message
+      return false
+    } finally {
+      attemptLoading.value = false
+    }
+  }
+
+  async function deleteAttemptRecord(attemptId: string): Promise<boolean> {
+    const sid = sourceRecord.value?.id
+    if (!sid) return false
+    try {
+      attemptLoading.value = true
+      attemptError.value = null
+      await shenlunApi.deleteAttempt(attemptId)
+      const detail = await shenlunApi.getSource(sid)
+      applySourceDetail(detail)
+      await loadAttemptSummaries(sid)
+      return true
+    } catch (e) {
+      attemptError.value = (e as Error).message
+      return false
+    } finally {
+      attemptLoading.value = false
     }
   }
 
@@ -221,34 +324,15 @@ export const useShenlunStore = defineStore('shenlun', () => {
       phase.value = 'input'
       ccPromptText.value = ''
       ccPasteText.value = ''
+      attemptSummaries.value = []
       return
     }
 
     try {
       sourceLoading.value = true
       const detail = await shenlunApi.getSource(sourceId)
-      sourceRecord.value = detail.source
-      questionText.value = detail.source.question_text_raw
-      materialText.value = detail.source.material_text_raw
-      paperYear.value = detail.source.paper_year ?? ''
-      paperProvince.value = detail.source.paper_province ?? ''
-      paperSuiteType.value = detail.source.paper_suite_type ?? ''
-      selectedNodeId.value =
-        detail.source.node_id !== undefined && detail.source.node_id !== null
-          ? detail.source.node_id
-          : selectedNodeId.value
-
-      const la = detail.latest_attempt
-      if (la) {
-        normalizeSegmentsInPlace(la.segments)
-        attempt.value = la
-        phase.value = 'formatted'
-      } else {
-        attempt.value = null
-        phase.value = 'input'
-      }
-      ccPromptText.value = ''
-      ccPasteText.value = ''
+      applySourceDetail(detail)
+      await loadAttemptSummaries(sourceId)
     } catch (e) {
       attemptError.value = (e as Error).message
       questionText.value = ''
@@ -259,6 +343,7 @@ export const useShenlunStore = defineStore('shenlun', () => {
       sourceRecord.value = null
       attempt.value = null
       phase.value = 'input'
+      attemptSummaries.value = []
     } finally {
       sourceLoading.value = false
     }
@@ -278,6 +363,7 @@ export const useShenlunStore = defineStore('shenlun', () => {
     ccPasteText.value = ''
     ccPasteError.value = null
     phase.value = 'input'
+    attemptSummaries.value = []
     if (autosaveTimer) clearTimeout(autosaveTimer)
     if (attemptSaveTimer) clearTimeout(attemptSaveTimer)
   }
@@ -312,6 +398,11 @@ export const useShenlunStore = defineStore('shenlun', () => {
     submitCCPaste,
     resetWorkbench,
     bootstrapFromRoute,
+    attemptSummaries,
+    attemptSummariesLoading,
+    patchWorkbenchNode,
+    createNewAIRound,
+    deleteAttemptRecord,
   }
 })
 

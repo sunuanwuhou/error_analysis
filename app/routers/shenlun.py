@@ -45,6 +45,12 @@ class PasteCCResultPayload(BaseModel):
     cc_raw: str  # Raw text/JSON pasted back from the AI
 
 
+class HubNotePutPayload(BaseModel):
+    """申论 Hub 知识点 Markdown 笔记（按 user + node 一行）。"""
+    node_id: str = ""
+    body_md: str = ""
+
+
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
@@ -83,7 +89,43 @@ def _row_to_source(row: dict[str, Any]) -> dict[str, Any]:
 def _row_to_source_summary(row: dict[str, Any]) -> dict[str, Any]:
     data = _row_to_source(row)
     data["attempt_count"] = int(row.get("attempt_count") or 0)
+    data["cc_success_count"] = int(row.get("cc_success_count") or 0)
+    data["latest_cc_status"] = row.get("latest_cc_status") or None
     return data
+
+
+def _recompute_source_status_after_attempt_change(conn: Any, source_id: str) -> None:
+    """Keep shenlun_sources.status in sync with remaining attempts (multi-round)."""
+    now = utcnow().isoformat()
+    cnt_row = conn.execute(
+        "SELECT COUNT(*)::int AS c FROM shenlun_attempts WHERE source_id = %s",
+        (source_id,),
+    ).fetchone()
+    n = int(cnt_row["c"] if cnt_row else 0)
+    if n == 0:
+        conn.execute(
+            "UPDATE shenlun_sources SET status = 'raw_draft', updated_at = %s WHERE id = %s",
+            (now, source_id),
+        )
+        return
+
+    latest = conn.execute(
+        """
+        SELECT cc_status FROM shenlun_attempts
+        WHERE source_id = %s
+        ORDER BY updated_at DESC
+        LIMIT 1
+        """,
+        (source_id,),
+    ).fetchone()
+
+    cc = str(latest["cc_status"]) if latest else "none"
+    next_status = "cc_done" if cc == "success" else "formatted"
+
+    conn.execute(
+        "UPDATE shenlun_sources SET status = %s, updated_at = %s WHERE id = %s",
+        (next_status, now, source_id),
+    )
 
 
 def _row_to_attempt(row: dict[str, Any]) -> dict[str, Any]:
@@ -228,6 +270,70 @@ def _normalize_cc_result(raw: dict[str, Any], segments: list[dict[str, Any]]) ->
 # Routes
 # ---------------------------------------------------------------------------
 
+@router.get("/hub-notes")
+def get_hub_note(
+    node_id: str = Query("", description="与题目列表相同：空串表示未分类"),
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    user = require_user(xingce_session)
+    user_id: str = user["id"]
+    nid = (node_id or "").strip()
+
+    with get_conn() as conn:
+        row = conn.execute(
+            """
+            SELECT node_id, body_md, updated_at FROM shenlun_hub_notes
+            WHERE user_id = %s AND node_id = %s
+            """,
+            (user_id, nid),
+        ).fetchone()
+
+    if not row:
+        return {"node_id": nid, "body_md": "", "updated_at": ""}
+    return {
+        "node_id": str(row["node_id"]),
+        "body_md": str(row["body_md"] or ""),
+        "updated_at": str(row["updated_at"] or ""),
+    }
+
+
+@router.put("/hub-notes")
+def put_hub_note(
+    payload: HubNotePutPayload,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    user = require_user(xingce_session)
+    user_id: str = user["id"]
+    nid = (payload.node_id or "").strip()
+    body = payload.body_md if isinstance(payload.body_md, str) else ""
+    now = utcnow().isoformat()
+
+    with get_conn() as conn:
+        conn.execute(
+            """
+            INSERT INTO shenlun_hub_notes (user_id, node_id, body_md, updated_at)
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (user_id, node_id) DO UPDATE SET
+              body_md = EXCLUDED.body_md,
+              updated_at = EXCLUDED.updated_at
+            """,
+            (user_id, nid, body, now),
+        )
+        row = conn.execute(
+            """
+            SELECT node_id, body_md, updated_at FROM shenlun_hub_notes
+            WHERE user_id = %s AND node_id = %s
+            """,
+            (user_id, nid),
+        ).fetchone()
+
+    return {
+        "node_id": str(row["node_id"]),
+        "body_md": str(row["body_md"] or ""),
+        "updated_at": str(row["updated_at"] or ""),
+    }
+
+
 @router.post("/sources")
 def upsert_source(
     payload: UpsertSourcePayload,
@@ -356,7 +462,13 @@ def list_sources(
     sql = f"""
             SELECT s.*,
               (SELECT COUNT(*)::int FROM shenlun_attempts a WHERE a.source_id = s.id)
-                AS attempt_count
+                AS attempt_count,
+              (SELECT COUNT(*)::int FROM shenlun_attempts a
+                 WHERE a.source_id = s.id AND a.cc_status = 'success')
+                AS cc_success_count,
+              (SELECT a.cc_status FROM shenlun_attempts a
+                 WHERE a.source_id = s.id ORDER BY a.updated_at DESC LIMIT 1)
+                AS latest_cc_status
             FROM shenlun_sources s
             WHERE s.user_id = %s AND s.node_id = %s
             {where_extra}
@@ -399,6 +511,37 @@ def get_source_detail(
         "source": _row_to_source(dict(row)),
         "latest_attempt": _row_to_attempt(dict(latest)) if latest else None,
     }
+
+
+@router.get("/sources/{source_id}/attempts")
+def list_attempts_for_source(
+    source_id: str,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    """Lightweight history for workbench: rounds, status, timestamps."""
+    user = require_user(xingce_session)
+    user_id: str = user["id"]
+
+    with get_conn() as conn:
+        owned = conn.execute(
+            "SELECT id FROM shenlun_sources WHERE id = %s AND user_id = %s",
+            (source_id, user_id),
+        ).fetchone()
+        if not owned:
+            raise HTTPException(status_code=404, detail="source not found")
+
+        rows = conn.execute(
+            """
+            SELECT id, attempt_no, cc_status, created_at, updated_at
+            FROM shenlun_attempts
+            WHERE source_id = %s AND user_id = %s
+            ORDER BY updated_at DESC
+            """,
+            (source_id, user_id),
+        ).fetchall()
+
+    items = [dict(r) for r in rows]
+    return {"items": items}
 
 
 @router.delete("/sources/{source_id}")
@@ -564,6 +707,33 @@ def save_attempt(
         ).fetchone()
 
     return _row_to_attempt(row)
+
+
+@router.delete("/attempts/{attempt_id}")
+def delete_attempt(
+    attempt_id: str,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    """Remove one practice round; recomputes shenlun_sources.status for list/workbench."""
+    user = require_user(xingce_session)
+    user_id: str = user["id"]
+
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT source_id FROM shenlun_attempts WHERE id = %s AND user_id = %s",
+            (attempt_id, user_id),
+        ).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="attempt not found")
+        source_id = str(row["source_id"])
+
+        conn.execute(
+            "DELETE FROM shenlun_attempts WHERE id = %s AND user_id = %s",
+            (attempt_id, user_id),
+        )
+        _recompute_source_status_after_attempt_change(conn, source_id)
+
+    return {"ok": True, "id": attempt_id, "source_id": source_id}
 
 
 @router.get("/attempts/{attempt_id}/cc-prompt")
