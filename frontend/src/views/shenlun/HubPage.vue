@@ -47,19 +47,78 @@ const hubNotesCloud = ref<{ status: HubNotesCloudState; detail?: string }>({
 let persistHubNotesTimer: ReturnType<typeof setTimeout> | null = null
 const PERSIST_DEBOUNCE_MS = 560
 
-const hubNotesCloudLabel = computed(() => {
-  switch (hubNotesCloud.value.status) {
-    case 'loading':
-      return '正在从云端加载笔记…'
-    case 'saving':
-      return '正在保存到云端…'
-    case 'error':
-      return `云端同步失败：${hubNotesCloud.value.detail || '请检查网络或重新登录'}`
-    case 'synced':
-      return '笔记已同步账号（多设备可用）'
-    default:
-      return ''
+/** 服务器返回的上一版保存时间（ISO），用于向用户展示「确实已写入云端」 */
+const hubNotesLastServerAt = ref('')
+/** 防抖等待中：已编辑但尚未发起 PUT */
+const hubNotesDebounceActive = ref(false)
+
+function applyHubNoteSavedMeta(r: { updated_at?: string }) {
+  const u = (r.updated_at ?? '').trim()
+  if (u) hubNotesLastServerAt.value = u
+}
+
+function formatHubSavedAt(iso: string): string {
+  const s = iso.trim()
+  if (!s) return ''
+  const d = new Date(s)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleString('zh-CN', { hour12: false })
+}
+
+const hubNotesBadgeText = computed(() => {
+  const st = hubNotesCloud.value.status
+  if (st === 'idle' || st === 'loading') return '正在加载笔记本…'
+  if (st === 'error') return '云端保存失败'
+  if (st === 'saving') return '正在保存到云端…'
+  if (st === 'synced' && hubNotesDebounceActive.value) return '有改动：将自动保存'
+  if (st === 'synced') return '已保存到云端（账号）'
+  return '申论笔记'
+})
+
+const hubNotesBadgeClass = computed(() => {
+  const st = hubNotesCloud.value.status
+  return {
+    'hub-notes-badge': true,
+    'hub-notes-badge--loading': st === 'idle' || st === 'loading',
+    'hub-notes-badge--saving': st === 'saving',
+    'hub-notes-badge--error': st === 'error',
+    'hub-notes-badge--pending': st === 'synced' && hubNotesDebounceActive.value,
+    'hub-notes-badge--ok': st === 'synced' && !hubNotesDebounceActive.value,
   }
+})
+
+const hubNotesSubHint = computed(() => {
+  const st = hubNotesCloud.value.status
+  if (st === 'error') {
+    return (
+      hubNotesCloud.value.detail ||
+      '请检查网络后点「重试保存」，或重新登录后再试。'
+    )
+  }
+  if (st === 'idle' || st === 'loading') {
+    return '正在连接服务器并读取当前知识点的笔记本…'
+  }
+  if (st === 'saving') {
+    return '正在向服务器写入，请稍候…'
+  }
+  const saved = formatHubSavedAt(hubNotesLastServerAt.value)
+  if (st === 'synced' && saved) {
+    return `云端记录时间：${saved}（换设备登录同一账号可继续编辑）`
+  }
+  if (st === 'synced') {
+    return '编辑后约 1 秒内自动上传；切换知识点、切走标签或关闭页面前也会再保存一次。'
+  }
+  return ''
+})
+
+/** 「笔记」标签上的小点：有未上传改动 / 正在保存 / 失败时提醒 */
+const hubNotesTabMarkerClass = computed(() => {
+  const st = hubNotesCloud.value.status
+  if (st === 'error') return 'hub-tab-marker hub-tab-marker--error'
+  if (st === 'saving' || (st === 'synced' && hubNotesDebounceActive.value)) {
+    return 'hub-tab-marker hub-tab-marker--pending'
+  }
+  return ''
 })
 
 function flushHubNotesToNode(nodeId: string) {
@@ -75,6 +134,7 @@ function clearHubNotesPersistTimer() {
     window.clearTimeout(persistHubNotesTimer)
     persistHubNotesTimer = null
   }
+  hubNotesDebounceActive.value = false
 }
 
 function applyHubNotesFromRemote(md: string) {
@@ -89,7 +149,8 @@ async function persistHubNotesToServerNow(nodeId: string): Promise<void> {
   flushHubNotesToNode(nodeId)
   hubNotesCloud.value = { status: 'saving' }
   try {
-    await shenlunApi.putHubNote(nodeId, hubNotesMd.value)
+    const r = await shenlunApi.putHubNote(nodeId, hubNotesMd.value)
+    applyHubNoteSavedMeta(r)
     hubNotesCloud.value = { status: 'synced' }
   } catch (e) {
     hubNotesCloud.value = { status: 'error', detail: (e as Error).message }
@@ -100,13 +161,16 @@ function scheduleHubNotesPersist() {
   if (skipHubNotesPersist.value) return
   const nid = selectedNodeId.value
   clearHubNotesPersistTimer()
+  hubNotesDebounceActive.value = true
   persistHubNotesTimer = window.setTimeout(() => {
     persistHubNotesTimer = null
+    hubNotesDebounceActive.value = false
     void (async () => {
       flushHubNotesToNode(nid)
       hubNotesCloud.value = { status: 'saving' }
       try {
-        await shenlunApi.putHubNote(nid, hubNotesMd.value)
+        const r = await shenlunApi.putHubNote(nid, hubNotesMd.value)
+        applyHubNoteSavedMeta(r)
         hubNotesCloud.value = { status: 'synced' }
       } catch (err) {
         hubNotesCloud.value = { status: 'error', detail: (err as Error).message }
@@ -127,15 +191,18 @@ watch(
         }
 
         hubNotesCloud.value = { status: 'loading' }
+        hubNotesLastServerAt.value = ''
         try {
           const remote = await shenlunApi.getHubNote(id)
+          applyHubNoteSavedMeta(remote)
           let md = remote.body_md ?? ''
           if (!md.trim()) {
             try {
               const legacy = localStorage.getItem(notesStorageKey(id)) ?? ''
               if (legacy.trim()) {
                 md = legacy
-                await shenlunApi.putHubNote(id, md)
+                const up = await shenlunApi.putHubNote(id, md)
+                applyHubNoteSavedMeta(up)
               }
             } catch {
               /* ignore migration upload errors */
@@ -167,11 +234,30 @@ watch(
   { flush: 'sync' },
 )
 
+async function retryHubNotesSave() {
+  const nid = selectedNodeId.value
+  hubNotesCloud.value = { status: 'saving' }
+  flushHubNotesToNode(nid)
+  try {
+    const r = await shenlunApi.putHubNote(nid, hubNotesMd.value)
+    applyHubNoteSavedMeta(r)
+    hubNotesCloud.value = { status: 'synced' }
+  } catch (e) {
+    hubNotesCloud.value = { status: 'error', detail: (e as Error).message }
+  }
+}
+
 function flushHubNotesBestEffort() {
   clearHubNotesPersistTimer()
   const nid = selectedNodeId.value
   flushHubNotesToNode(nid)
-  void shenlunApi.putHubNote(nid, hubNotesMd.value).catch(() => {})
+  void shenlunApi
+    .putHubNote(nid, hubNotesMd.value)
+    .then((r) => {
+      applyHubNoteSavedMeta(r)
+      hubNotesCloud.value = { status: 'synced' }
+    })
+    .catch(() => {})
 }
 
 function onVisibilityFlush() {
@@ -186,7 +272,10 @@ onBeforeUnmount(() => {
   document.removeEventListener('visibilitychange', onVisibilityFlush)
   clearHubNotesPersistTimer()
   flushHubNotesToNode(selectedNodeId.value)
-  void shenlunApi.putHubNote(selectedNodeId.value, hubNotesMd.value).catch(() => {})
+  void shenlunApi
+    .putHubNote(selectedNodeId.value, hubNotesMd.value)
+    .then((r) => applyHubNoteSavedMeta(r))
+    .catch(() => {})
 })
 
 const copyBlinkId = ref<string | null>(null)
@@ -448,13 +537,23 @@ function statusLabel(row: SourceSummary): string {
           </button>
           <button
             type="button"
-            class="hub-tab"
+            class="hub-tab hub-tab--with-marker"
             :class="{ active: hubMainSection === 'notes' }"
             role="tab"
             :aria-selected="hubMainSection === 'notes'"
             @click="hubMainSection = 'notes'"
           >
             笔记
+            <span
+              v-if="hubNotesTabMarkerClass"
+              class="hub-tab-marker-wrap"
+              title="笔记本同步状态提醒"
+              aria-hidden="true"
+            >
+              <span class="hub-tab-marker-ring">
+                <span :class="hubNotesTabMarkerClass" />
+              </span>
+            </span>
           </button>
         </div>
 
@@ -504,10 +603,25 @@ function statusLabel(row: SourceSummary): string {
         </template>
 
         <div v-show="hubMainSection === 'notes'" class="hub-notes-pane">
-          <p class="hub-notes-hint">
-            当前知识点的 Markdown 笔记本；联网、登录后自动保存到你的账号，便于多设备查看。
-            <span v-if="hubNotesCloudLabel" class="hub-notes-cloud">{{ hubNotesCloudLabel }}</span>
-          </p>
+          <div
+            class="hub-notes-savebar"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            <div class="hub-notes-savebar-top">
+              <span :class="hubNotesBadgeClass">{{ hubNotesBadgeText }}</span>
+              <button
+                v-if="hubNotesCloud.status === 'error'"
+                type="button"
+                class="hub-notes-retry"
+                @click="retryHubNotesSave"
+              >
+                重试保存
+              </button>
+            </div>
+            <p v-if="hubNotesSubHint" class="hub-notes-savebar-sub">{{ hubNotesSubHint }}</p>
+          </div>
           <ShenlunHubNotesEditor
             v-if="notesEditorMounted"
             v-model="hubNotesMd"
@@ -724,21 +838,144 @@ function statusLabel(row: SourceSummary): string {
   box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
 }
 
+.hub-tab--with-marker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hub-tab-marker-wrap {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 2px;
+}
+
+.hub-tab-marker-ring {
+  display: flex;
+  width: 14px;
+  height: 14px;
+  align-items: center;
+  justify-content: center;
+}
+
+.hub-tab-marker {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.hub-tab-marker--pending {
+  background: #f59e0b;
+  box-shadow: 0 0 0 2px rgb(251 191 36 / 0.4);
+  animation: hubNotesDotPulse 1.15s ease-in-out infinite;
+}
+
+.hub-tab-marker--error {
+  background: #ef4444;
+  box-shadow: 0 0 0 2px rgb(252 165 165 / 0.55);
+}
+
+@keyframes hubNotesDotPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.85;
+  }
+}
+
 .hub-notes-pane {
   margin-top: 4px;
 }
 
-.hub-notes-hint {
-  margin: 0 0 12px;
-  font-size: 12px;
-  color: #9ca3af;
-  line-height: 1.55;
+.hub-notes-savebar {
+  border: 1px solid #bfdbfe;
+  background: linear-gradient(180deg, #eff6ff 0%, #f8fafc 100%);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  box-shadow: 0 1px 3px rgb(37 99 235 / 0.06);
 }
 
-.hub-notes-cloud {
-  display: block;
-  margin-top: 6px;
-  color: #6b7280;
+.hub-notes-savebar-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.hub-notes-badge {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+
+.hub-notes-badge--loading {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.hub-notes-badge--saving {
+  background: #dbeafe;
+  color: #1e40af;
+  animation: hubNotesBadgeGlow 1.1s ease-in-out infinite;
+}
+
+.hub-notes-badge--pending {
+  background: rgb(254 243 199);
+  color: #b45309;
+  border: 1px solid rgb(251 191 36);
+}
+
+.hub-notes-badge--ok {
+  background: rgb(209 250 229);
+  color: #047857;
+  border: 1px solid rgb(110 231 183);
+}
+
+.hub-notes-badge--error {
+  background: rgb(254 226 226);
+  color: #b91c1c;
+  border: 1px solid rgb(248 113 113);
+}
+
+@keyframes hubNotesBadgeGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(59 130 246 / 0.25);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgb(59 130 246 / 0);
+  }
+}
+
+.hub-notes-savebar-sub {
+  margin: 10px 0 0;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #4b5563;
+}
+
+.hub-notes-retry {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1d4ed8;
+  background: #fff;
+  border: 1px solid #93c5fd;
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.hub-notes-retry:hover {
+  background: #eff6ff;
 }
 
 .hub-toolbar {
