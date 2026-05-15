@@ -64,6 +64,9 @@ def create_app() -> FastAPI:
     if _new_assets_dir.exists():
         app.mount("/new/assets", StaticFiles(directory=str(_new_assets_dir)), name="new-assets")
 
+    # Shell bootstrap without ?v=: avoid long-lived CDN/browser caches (portal & registry must update with deploy).
+    _v51_boot_asset_names = frozenset({"v53-bootstrap.js", "module-registry.js"})
+
     @app.middleware("http")
     async def disable_static_cache_for_local_debug(request: Request, call_next):
         response = await call_next(request)
@@ -76,6 +79,10 @@ def create_app() -> FastAPI:
         if path.startswith("/assets/") or path.startswith("/v51-static/assets/"):
             if path.endswith("legacy-app.bundle.manifest.json"):
                 response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+                response.headers["Pragma"] = "no-cache"
+                response.headers["Expires"] = "0"
+            elif path.startswith("/v51-static/assets/") and path.rsplit("/", 1)[-1] in _v51_boot_asset_names:
+                response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, s-maxage=0"
                 response.headers["Pragma"] = "no-cache"
                 response.headers["Expires"] = "0"
             elif has_asset_version:

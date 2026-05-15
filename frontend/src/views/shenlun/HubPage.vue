@@ -452,9 +452,12 @@ function statusLabel(row: SourceSummary): string {
         <h1 class="hub-title">申论工作台</h1>
         <p class="hub-sub">先选知识点，再查看已有练习或新建录入。</p>
       </div>
-      <nav class="hub-nav">
-        <a href="/" class="hub-link">学习首页</a>
-        <router-link :to="{ name: 'XingceWorkspace' }" class="hub-link">行测工作台</router-link>
+      <nav class="hub-nav hub-nav-wrap">
+        <a href="/" class="hub-module-hero-btn">
+          <span class="hmh-main">模块首页</span>
+          <span class="hmh-sub">门户切换</span>
+        </a>
+        <router-link :to="{ name: 'XingceWorkspace' }" class="hub-link hub-link-accent">行测工作台</router-link>
       </nav>
     </header>
 
@@ -665,17 +668,74 @@ function statusLabel(row: SourceSummary): string {
 .hub-nav {
   display: flex;
   gap: 12px;
+  align-items: stretch;
+}
+
+.hub-nav-wrap {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.hub-module-hero-btn {
+  display: inline-flex;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 10px 22px;
+  min-height: 48px;
+  border-radius: 14px;
+  text-decoration: none;
+  border: 1px solid rgb(129 140 248);
+  background: linear-gradient(135deg, #4338ca 0%, #4f46e5 45%, #7c3aed 100%);
+  color: #fff;
+  box-shadow: 0 10px 26px rgb(79 70 229 / 0.35);
+  transition: filter 0.14s ease, transform 0.12s ease;
+}
+
+.hub-module-hero-btn:hover {
+  filter: brightness(1.06);
+}
+
+.hub-module-hero-btn:active {
+  transform: scale(0.99);
+}
+
+.hmh-main {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  line-height: 1.2;
+  text-shadow: 0 1px 0 rgb(0 0 0 / 0.18);
+}
+
+.hmh-sub {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.92;
 }
 
 .hub-link {
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 700;
   color: #2563eb;
   text-decoration: none;
+  align-self: center;
+  padding: 8px 4px;
 }
 
-.hub-link:hover {
-  text-decoration: underline;
+.hub-link-accent {
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  border-radius: 10px;
+  padding: 10px 16px;
+  color: #1d4ed8;
+}
+
+.hub-link-accent:hover {
+  text-decoration: none;
+  background: #dbeafe;
+  border-color: #93c5fd;
 }
 
 .hub-shell {
@@ -687,6 +747,24 @@ function statusLabel(row: SourceSummary): string {
 @media (max-width: 760px) {
   .hub-shell {
     grid-template-columns: 1fr;
+  }
+
+  .hub-nav-wrap {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+  }
+
+  .hub-module-hero-btn {
+    width: 100%;
+    min-height: 54px;
+  }
+
+  .hub-link-accent {
+    text-align: center;
+    width: 100%;
+    box-sizing: border-box;
   }
 }
 

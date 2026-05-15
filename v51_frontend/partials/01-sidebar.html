@@ -4,8 +4,14 @@
 <div class="runtime-badge" data-mode="unknown" id="runtimeBadge">Runtime: unknown</div>
 </div>
 <div class="sidebar-tools">
-<div class="sidebar-tools-row workspace-entry-row">
-<button class="btn btn-secondary" data-onclick="switchAppView('home')" id="sidebarHomeBtn" type="button">学习首页</button>
+<div class="sidebar-tools-row sidebar-module-portal-slot">
+<button class="btn btn-module-portal-hero" data-onclick="window.location.href='/'" id="sidebarModuleHomeBtn" type="button">
+<span class="btn-module-portal-main">模块首页</span>
+<span class="btn-module-portal-sub">选择行测 / 申论模块</span>
+</button>
+</div>
+<div class="sidebar-tools-row workspace-entry-row workspace-submodule-row">
+<button class="btn btn-secondary" data-onclick="switchAppView('home')" id="sidebarHomeBtn" type="button">行测首页</button>
 <button class="btn btn-secondary" data-onclick="window.location.href='/new/shenlun'" type="button">申论工作台</button>
 </div>
 <div class="sidebar-tools-row">

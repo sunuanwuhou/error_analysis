@@ -63,7 +63,7 @@ const emit = defineEmits<{
   openTypeRules: []
 }>()
 
-function goStudyHome() {
+function goModuleHome() {
   window.location.href = '/'
 }
 
@@ -82,9 +82,12 @@ async function logout() {
 
 <template>
   <div class="pp quiz-block">
-    <div class="pp-top-tabs">
-      <button type="button" class="pp-tab" @click="goStudyHome">学习首页</button>
-      <button type="button" class="pp-tab" @click="goShenlunWorkbench">申论工作台</button>
+    <div class="pp-portal-block">
+      <button type="button" class="pp-module-hero" @click="goModuleHome">
+        <span class="pp-module-hero-main">模块首页</span>
+        <span class="pp-module-hero-sub">点击进入 · 门户选行测 / 申论</span>
+      </button>
+      <button type="button" class="pp-shenlun-pill" @click="goShenlunWorkbench">申论工作台 →</button>
     </div>
 
     <div class="pp-actions">
@@ -176,20 +179,68 @@ async function logout() {
   gap: 10px;
 }
 
-.pp-top-tabs {
+.pp-portal-block {
   display: flex;
-  gap: 6px;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.pp-tab {
-  flex: 1;
-  border: 1px solid #d9dee5;
-  background: #fff;
-  color: #475569;
-  border-radius: 8px;
-  font-size: 12px;
-  padding: 6px 0;
+.pp-module-hero {
+  width: 100%;
+  border: none;
+  border-radius: 14px;
+  padding: 12px 14px;
+  min-height: 52px;
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: linear-gradient(135deg, #4338ca 0%, #4f46e5 42%, #7c3aed 100%);
+  color: #fff;
+  font: inherit;
+  box-shadow: 0 8px 22px rgb(79 70 229 / 0.35);
+  transition: filter 0.14s ease, transform 0.12s ease;
+}
+
+.pp-module-hero:hover {
+  filter: brightness(1.06);
+}
+
+.pp-module-hero:active {
+  transform: scale(0.99);
+}
+
+.pp-module-hero-main {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-shadow: 0 1px 0 rgb(0 0 0 / 0.2);
+}
+
+.pp-module-hero-sub {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.95;
+}
+
+.pp-shenlun-pill {
+  align-self: stretch;
+  min-height: 38px;
+  border: 1px solid #cbd5e1;
+  background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
+  color: #0f766e;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.pp-shenlun-pill:hover {
+  border-color: #14b8a6;
+  background: #f0fdfa;
 }
 
 .pp-actions {

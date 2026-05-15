@@ -3,13 +3,15 @@ import HubPage from '@/views/shenlun/HubPage.vue'
 import WorkbenchPage from '@/views/shenlun/WorkbenchPage.vue'
 import ResultPage from '@/views/shenlun/ResultPage.vue'
 import XingceWorkspacePage from '@/views/xingce/WorkspacePage.vue'
+import ModulePortalPage from '@/views/ModulePortalPage.vue'
 
 const router = createRouter({
   history: createWebHistory('/new/'),
   routes: [
     {
       path: '/',
-      redirect: '/shenlun',
+      name: 'ModulePortal',
+      component: ModulePortalPage,
     },
     {
       path: '/shenlun',

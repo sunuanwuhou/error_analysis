@@ -252,11 +252,60 @@ async function loadV53FeatureModules() {
 
 window.__v53EnsureLegacyModalBundleLoaded = ensureLegacyModalBundleLoaded;
 
+/** 与 Vue 侧边栏一致：优先新版申论 SPA，服务端在未启用新前端时会回落到 `/shenlun` */
+const PORTAL_SHENLUN_TARGET = '/new/shenlun';
+
+function showXingceLoadingPlaceholder() {
+  const bootRoot = document.getElementById('v53Boot');
+  if (!bootRoot) return;
+  bootRoot.innerHTML = `
+    <div class="v53-boot-card">
+      <div class="v53-boot-title">行测工作台</div>
+      <div class="v53-boot-sub">正在加载工作台…</div>
+    </div>`;
+}
+
+/**
+ * 主入口 `/`：先展示模块门户，再加载行测壳；申论直接离开本页。
+ */
+function gateModulePortal() {
+  const bootRoot = document.getElementById('v53Boot');
+  if (!bootRoot) {
+    return Promise.resolve();
+  }
+  bootRoot.innerHTML = `
+    <div class="v53-boot-card v53-portal-card">
+      <div class="v53-boot-title">Ashore</div>
+      <div class="v53-boot-sub">请选择要进入的模块</div>
+      <div class="v53-portal-actions">
+        <button type="button" class="v53-portal-btn v53-portal-btn--xingce" data-portal-choice="xingce">行测</button>
+        <button type="button" class="v53-portal-btn v53-portal-btn--shenlun" data-portal-choice="shenlun">申论</button>
+      </div>
+      <p class="v53-portal-hint">每次打开首页都会先来到这里；工作台内可随时切换到另一个模块。</p>
+    </div>`;
+  return new Promise((resolve) => {
+    const onPick = (ev) => {
+      const btn = ev.target && ev.target.closest && ev.target.closest('[data-portal-choice]');
+      if (!btn) return;
+      const choice = btn.getAttribute('data-portal-choice');
+      if (choice === 'shenlun') {
+        window.location.href = PORTAL_SHENLUN_TARGET;
+        return;
+      }
+      bootRoot.removeEventListener('click', onPick);
+      showXingceLoadingPlaceholder();
+      resolve();
+    };
+    bootRoot.addEventListener('click', onPick);
+  });
+}
+
 (async () => {
   try {
     await loadScript(withVersion('/v51-static/assets/module-registry.js'));
     const registry = window.V53ModuleRegistry || {};
     (registry.deferredActions || []).forEach(installDeferredAction);
+    await gateModulePortal();
     await injectPartials();
     scheduleDeferredPartialsLoad();
     await loadScript(withVersion((registry.bootScripts || [])[0] || '/assets/modules/mathjax-config.js'));

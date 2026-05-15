@@ -109,7 +109,19 @@ def migration_frontend_spa(path: str, xingce_session: Optional[str] = Cookie(def
     user = get_user_by_token(xingce_session)
     if not user:
         return _redirect_login_with_cookie_cleanup()
-    return _serve_new_frontend_or_fallback()
+    if _new_frontend_ready():
+        return FileResponse(
+            FRONTEND_DIST_INDEX_PATH,
+            headers={
+                "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            },
+        )
+    trimmed = (path or "").strip().strip("/")
+    if trimmed == "shenlun" or trimmed.startswith("shenlun/"):
+        return RedirectResponse(url="/shenlun", status_code=302)
+    return RedirectResponse(url="/", status_code=302)
 
 @router.get("/login")
 def login_page(request: Request, xingce_session: Optional[str] = Cookie(default=None)) -> Response:

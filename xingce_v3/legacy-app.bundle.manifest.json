@@ -1,8 +1,8 @@
 {
-  "built_at": "2026-05-14T14:02:29Z",
+  "built_at": "2026-05-15T09:32:49Z",
   "css_bundle": {
     "path": "xingce_v3/styles/legacy-app.bundle.css",
-    "sha256": "2c781fb3da61498d24adae04ccada684ac9f22a4824ea67cf729c757b162e3e1",
+    "sha256": "9665a43c416d9b21fb9d0d821136b9c85bb6add672e449e05d45f2732db61d94",
     "sources": [
       "styles/main/00-base-reset.css",
       "styles/main/01-sidebar.css",
@@ -45,7 +45,7 @@
   },
   "js_bundle": {
     "path": "xingce_v3/modules/legacy-app.bundle.js",
-    "sha256": "5b8618929c9509d1f00c6e46cb92cb24ee19657469dc87f77cafd353794b69f2",
+    "sha256": "a1c11b8f2cf90da93f35f715d7e3dca348bf9de3d8f18c26faf3177f2a7ac638",
     "sources": [
       "modules/main/00-event-dispatcher.js",
       "modules/main/state/01a-reason-utils.js",
@@ -180,7 +180,7 @@
   "v51_partials": {
     "core": {
       "path": "v51_frontend/partials.bundle.html",
-      "sha256": "a67b91a5bec1a4011d33bb645f3d52c498247eac70d2ab689a63d38ebf8a3f63"
+      "sha256": "1e0f2ba6e26c89fe77cd96ed36cc25534d9029305f543c85fd3c3c549dca555b"
     },
     "deferred": {
       "path": "v51_frontend/deferred-partials.bundle.html",
@@ -190,7 +190,7 @@
   "js_view_bundles": {
     "home": {
       "path": "xingce_v3/modules/legacy-app.home.bundle.js",
-      "sha256": "b2dbe9a5518cac4a3fb58760064c4edba7bab266c93f3a74188b1d15ee72cb27",
+      "sha256": "468cc6912791f529ddb25e4b33166903802533af589a136542da338534fa2acf",
       "sources": [
         "modules/main/00-event-dispatcher.js",
         "modules/main/state/01a-reason-utils.js",
@@ -245,7 +245,7 @@
     },
     "workspace": {
       "path": "xingce_v3/modules/legacy-app.workspace.bundle.js",
-      "sha256": "6394b4a393decc6f0c2e83bf1cca5d95a224c4181d7995b620edfde256a68497",
+      "sha256": "2ef92293b99708854b24e022abc80d2c6ffd750d96f5fc32255e926057b6135d",
       "sources": [
         "modules/main/10-notes-panel.js",
         "modules/main/11-typed-note-tree.js",
@@ -294,7 +294,7 @@
     },
     "modal": {
       "path": "xingce_v3/modules/legacy-app.modal.bundle.js",
-      "sha256": "0e6d5fa6f208c69dd32a6c793c32ee1ff896c6904472d19e76eb9ee51a3f85b7",
+      "sha256": "0261ad5f2ba3047ff849da88ba18b47902a2bff1c9326342e5bb46f75616fab4",
       "sources": [
         "modules/main/06-ai-workbench.js",
         "modules/main/image/07a-image-value-utils.js",
@@ -344,7 +344,7 @@
     },
     "bootstrap": {
       "path": "xingce_v3/modules/legacy-app.bootstrap.bundle.js",
-      "sha256": "af33ded3ea746e6e4a7aa28a8c9a9c2968281e1561c13f8ace3e76f692517562",
+      "sha256": "309448f23eeeb4a27439219ecaeccf34e939f753f47d75e75b5207aa83329ef6",
       "sources": [
         "modules/main/99-bootstrap.js"
       ]
