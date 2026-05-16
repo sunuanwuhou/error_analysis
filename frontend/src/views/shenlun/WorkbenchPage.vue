@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRouter, useRoute } from 'vue-router'
 import { useShenlunStore } from '@/stores/shenlunStore'
 import {
@@ -10,6 +11,7 @@ import {
 } from '@/data/shenlunTree'
 
 const store = useShenlunStore()
+const { fenbiReferenceText, ccPromptDisplayText, ccPasteText } = storeToRefs(store)
 const router = useRouter()
 const route = useRoute()
 
@@ -118,7 +120,7 @@ async function handleGeneratePrompt() {
 
 async function copyPrompt() {
   try {
-    await navigator.clipboard.writeText(store.ccPromptText)
+    await navigator.clipboard.writeText(ccPromptDisplayText.value)
     copied.value = true
     setTimeout(() => (copied.value = false), 2000)
   } catch {
@@ -402,7 +404,23 @@ function goResultReview() {
     <template v-else-if="store.phase === 'cc_prompt'">
       <div class="cc-banner">
         <p class="cc-banner-title">第三步：复制提示词 → 粘贴到 AI → 把结果粘回来</p>
-        <p class="cc-banner-sub">推荐使用 Claude、ChatGPT 或 DeepSeek，将下面的提示词完整复制后粘贴进去。</p>
+        <p class="cc-banner-sub">
+          使用 Claude / ChatGPT / DeepSeek：<strong>选填粉笔范文</strong>后点「复制全部」，提示词末尾会自动带上【参考范文】供 AI 对照点评。
+        </p>
+        <div class="cc-fenbi-embed">
+          <label class="cc-fenbi-embed-label" for="cc-fenbi-textarea">
+            粉笔等参考答案 <span class="wb-optional-tag">（选填）</span>
+          </label>
+          <p class="cc-fenbi-hint cc-fenbi-hint--embed">
+            留空与原来一致；填写后合并进下方提示词与「复制全部」，无需再手搓拼接。
+          </p>
+          <textarea
+            id="cc-fenbi-textarea"
+            v-model="fenbiReferenceText"
+            class="wb-textarea wb-textarea--fenbi"
+            placeholder="可选：粘贴粉笔等机构给出的本题参考答案或要点…"
+          />
+        </div>
       </div>
 
       <!-- Prompt box -->
@@ -416,7 +434,7 @@ function goResultReview() {
         <textarea
           id="cc-prompt-textarea"
           class="wb-textarea wb-textarea--prompt"
-          :value="store.ccPromptText"
+          :value="ccPromptDisplayText"
           readonly
         />
       </section>
@@ -425,7 +443,7 @@ function goResultReview() {
       <section class="wb-section">
         <label class="wb-label">AI 的回复（把 JSON 粘贴到这里）</label>
         <textarea
-          v-model="store.ccPasteText"
+          v-model="ccPasteText"
           class="wb-textarea wb-textarea--paste"
           placeholder='粘贴 AI 返回的 JSON，例如：
 {
@@ -995,6 +1013,56 @@ function goResultReview() {
   margin: 0;
   font-size: 13px;
   color: #3b82f6;
+}
+
+.cc-fenbi-embed {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(30, 64, 175, 0.06);
+}
+
+.cc-fenbi-embed-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e3a8a;
+  margin-bottom: 4px;
+}
+
+.cc-fenbi-hint--embed {
+  margin: 0 0 8px;
+}
+
+.cc-fenbi-embed .wb-textarea--fenbi {
+  min-height: 88px;
+  margin-bottom: 0;
+}
+
+.wb-optional-tag {
+  font-weight: 500;
+  color: #9ca3af;
+  font-size: 12px;
+  margin-left: 4px;
+}
+
+.cc-fenbi-hint {
+  margin: -4px 0 10px;
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.45;
+}
+
+.wb-textarea--fenbi {
+  min-height: 100px;
+  background: #faf5ff;
+  border-color: #e9d5ff;
+}
+.wb-textarea--fenbi:focus {
+  border-color: #a855f7;
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.12);
 }
 
 .cc-label-row {

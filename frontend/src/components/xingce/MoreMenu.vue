@@ -52,6 +52,42 @@ function exportJson() {
   URL.revokeObjectURL(url)
 }
 
+function exportKnowledgeTreeSnapshot() {
+  open.value = false
+  type Row = { id: string; parentId: string; level: number; title: string; path: string }
+  const rows: Row[] = []
+  function walk(nodes: KnowledgeNode[], parentPath: string[]) {
+    for (const node of nodes) {
+      const pathTitles = [...parentPath, String(node.title || '')]
+      rows.push({
+        id: String(node.id || ''),
+        parentId: node.parentId ? String(node.parentId) : '',
+        level: Number(node.level || 0),
+        title: String(node.title || ''),
+        path: pathTitles.filter(Boolean).join(' > '),
+      })
+      const kids = node.children
+      if (kids?.length) walk(kids as KnowledgeNode[], pathTitles)
+    }
+  }
+  walk(store.knowledgeTree, [])
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    source: 'vue-xingce-workspace',
+    rootCount: store.knowledgeTree.length,
+    nodeCount: rows.length,
+    roots: store.knowledgeTree.map(n => ({ id: n.id, title: n.title })),
+    nodes: rows,
+  }
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `knowledge_tree_snapshot_${new Date().toISOString().slice(0, 10)}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 async function cloudSave() {
   open.value = false
   await store.flushSave()
@@ -150,34 +186,33 @@ function openStats() {
 </script>
 
 <template>
-  <div class="mm">
-    <button ref="btnRef" class="mm-btn" @click="toggle">更多 ▾</button>
+  <div ref="btnRef" class="more-menu" :class="{ open }">
+    <button type="button" class="btn btn-secondary" @click="toggle">更多</button>
 
-    <div v-if="open" ref="menuRef" class="mm-dropdown">
-      <button class="mm-item" @click="() => { open = false; emit('openImport') }">导入错题</button>
-      <button class="mm-item" @click="() => { open = false; emit('randomNote') }">随机笔记</button>
-      <button class="mm-item" @click="exportJson">导出</button>
-      <button class="mm-item" @click="() => { open = false; showLocalBackups = true }">备份数据列表</button>
-      <button class="mm-item" @click="cloudFullSave">从本地到云端全量</button>
-      <button class="mm-item" @click="cloudFullLoad">全量从云端同步（覆盖本地）</button>
-      <button class="mm-item" @click="sendToCC">发给CC</button>
-      <button class="mm-item" @click="openMarkdownNote">Markdown备注（专业）</button>
-      <button class="mm-item" @click="() => { open = false; emit('openHistory') }">学习历史</button>
-      <button class="mm-item" @click="() => { open = false; emit('openTypeRules') }">题型规则</button>
-      <button class="mm-item" @click="openStats">学习统计</button>
-      <button class="mm-item" @click="printList">打印</button>
-      <hr class="mm-sep" />
-      <details class="mm-adv">
+    <div ref="menuRef" class="more-menu-panel">
+      <button type="button" class="btn btn-secondary" @click="() => { open = false; emit('openImport') }">导入错题</button>
+      <button type="button" class="btn btn-secondary" @click="() => { open = false; emit('randomNote') }">随机笔记</button>
+      <button type="button" class="btn btn-secondary" @click="exportJson">导出</button>
+      <button type="button" class="btn btn-secondary" @click="exportKnowledgeTreeSnapshot">导出知识树快照</button>
+      <button type="button" class="btn btn-secondary" @click="() => { open = false; showLocalBackups = true }">备份数据列表</button>
+      <button type="button" class="btn btn-secondary" @click="cloudFullSave">从本地到云端全量</button>
+      <button type="button" class="btn btn-secondary" @click="cloudFullLoad">全量从云端同步（覆盖本地）</button>
+      <button type="button" class="btn btn-secondary" @click="sendToCC">发给CC</button>
+      <button type="button" class="btn btn-secondary" @click="openMarkdownNote">Markdown备注（专业）</button>
+      <button type="button" class="btn btn-secondary" @click="() => { open = false; emit('openHistory') }">学习历史</button>
+      <button type="button" class="btn btn-secondary" @click="() => { open = false; emit('openTypeRules') }">题型规则</button>
+      <button type="button" class="btn btn-secondary" @click="openStats">学习统计</button>
+      <button type="button" class="btn btn-secondary" @click="printList">打印</button>
+      <details class="more-menu-advanced">
         <summary>高级数据</summary>
-        <div class="mm-adv-body">
-          <button class="mm-item" @click="clearCurrentModuleErrors">清空当前模块</button>
-          <button class="mm-item" @click="clearAllErrors">清空全部错题</button>
-          <button class="mm-item" @click="resetAllStudyData">重置全部学习数据</button>
+        <div class="more-menu-advanced-body">
+          <button type="button" class="btn btn-secondary" @click="clearCurrentModuleErrors">清空当前模块</button>
+          <button type="button" class="btn btn-secondary" @click="clearAllErrors">清空全部错题</button>
+          <button type="button" class="btn btn-secondary" @click="resetAllStudyData">重置全部学习数据</button>
         </div>
       </details>
-      <hr class="mm-sep" />
-      <button class="mm-item" @click="cloudSave">Cloud Save（增量）</button>
-      <button class="mm-item" @click="cloudLoad">Cloud Load（增量）</button>
+      <button type="button" class="btn btn-secondary" @click="cloudSave">Cloud Save（增量）</button>
+      <button type="button" class="btn btn-secondary" @click="cloudLoad">Cloud Load（增量）</button>
     </div>
   </div>
 
@@ -186,51 +221,23 @@ function openStats() {
 </template>
 
 <style scoped>
-.mm { position: relative; }
-
-.mm-btn {
+.more-menu {
+  position: relative;
+  flex: 1;
+}
+.more-menu-advanced {
+  padding: 2px 6px;
   font-size: 12px;
-  padding: 3px 10px;
-  border-radius: 4px;
-  border: 1px solid #e2e8f0;
-  background: #fff;
-  color: #475569;
+  color: #64748b;
+}
+.more-menu-advanced summary {
   cursor: pointer;
-  white-space: nowrap;
+  user-select: none;
 }
-.mm-btn:hover { background: #f8fafc; }
-
-.mm-dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  box-shadow: 0 8px 30px rgba(0,0,0,.12);
-  min-width: 140px;
-  z-index: 500;
-  padding: 4px;
+.more-menu-advanced-body {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
-
-.mm-item {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 7px 12px;
-  border: none;
-  background: none;
-  font-size: 13px;
-  color: #334155;
-  cursor: pointer;
-  border-radius: 5px;
-  white-space: nowrap;
-}
-.mm-item:hover { background: #f1f5f9; }
-
-.mm-sep { border: none; border-top: 1px solid #f1f5f9; margin: 4px 0; }
-
-.mm-adv { padding: 2px 6px; font-size: 12px; color: #64748b; }
-.mm-adv summary { cursor: pointer; user-select: none; }
-.mm-adv-body { margin-top: 4px; display: flex; flex-direction: column; gap: 2px; }
 </style>

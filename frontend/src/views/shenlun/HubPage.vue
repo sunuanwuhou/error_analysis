@@ -10,6 +10,7 @@ import {
   nodeIdToRouteQuery,
   SL_UNCATEGORIZED_ROUTE,
 } from '@/data/shenlunTree'
+import { savePortalLastModule } from '@/lib/portalPrefs'
 
 const route = useRoute()
 const router = useRouter()
@@ -265,6 +266,7 @@ function onVisibilityFlush() {
 }
 
 onMounted(() => {
+  savePortalLastModule('shenlun')
   document.addEventListener('visibilitychange', onVisibilityFlush)
 })
 
@@ -453,7 +455,7 @@ function statusLabel(row: SourceSummary): string {
         <p class="hub-sub">先选知识点，再查看已有练习或新建录入。</p>
       </div>
       <nav class="hub-nav hub-nav-wrap">
-        <a href="/" class="hub-module-hero-btn">
+        <a href="/?portal=1" class="hub-module-hero-btn">
           <span class="hmh-main">模块首页</span>
           <span class="hmh-sub">门户切换</span>
         </a>
@@ -637,9 +639,11 @@ function statusLabel(row: SourceSummary): string {
 
 <style scoped>
 .hub-page {
-  max-width: 1080px;
-  margin: 0 auto;
-  padding: 28px 18px 64px;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 28px clamp(12px, 2.5vw, 22px) 64px;
+  box-sizing: border-box;
   font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Segoe UI', sans-serif;
   color: #1a1a2e;
 }
@@ -740,8 +744,9 @@ function statusLabel(row: SourceSummary): string {
 
 .hub-shell {
   display: grid;
-  grid-template-columns: minmax(220px, 280px) 1fr;
-  gap: 24px;
+  grid-template-columns: minmax(200px, min(280px, 26vw)) minmax(0, 1fr);
+  gap: clamp(14px, 2vw, 24px);
+  min-width: 0;
 }
 
 @media (max-width: 760px) {
@@ -872,8 +877,10 @@ function statusLabel(row: SourceSummary): string {
 .hub-main {
   border: 1px solid #e5e7eb;
   border-radius: 10px;
-  padding: 18px 20px 24px;
+  padding: 18px clamp(12px, 1.8vw, 20px) 24px;
   background: #fff;
+  min-width: 0;
+  overflow-x: clip;
 }
 
 .hub-main-head {
@@ -968,6 +975,7 @@ function statusLabel(row: SourceSummary): string {
 
 .hub-notes-pane {
   margin-top: 4px;
+  min-width: 0;
 }
 
 .hub-notes-savebar {

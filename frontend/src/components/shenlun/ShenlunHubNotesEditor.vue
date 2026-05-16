@@ -201,16 +201,81 @@ onBeforeUnmount(() => {
 <style scoped>
 .sdn-wrap {
   width: 100%;
-  overflow: visible;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.sdn-vditor {
+  width: 100%;
+  min-width: 0;
 }
 
 .sdn-vditor :deep(.vditor) {
+  width: 100% !important;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   border-radius: 8px;
   border-color: #e5e7eb;
+}
+
+.sdn-vditor :deep(.vditor-toolbar) {
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+
+.sdn-vditor :deep(.vditor-content) {
+  min-width: 0;
+}
+
+.sdn-vditor :deep(.vditor-outline) {
+  flex-shrink: 0;
+  width: min(250px, 32vw);
+  box-sizing: border-box;
 }
 
 .sdn-vditor :deep(.vditor-reset) {
   font-size: 15px;
   line-height: 1.7;
+}
+
+/* 宽内容在编辑器内滚动/收缩，避免撑出整页横向滚动 */
+.sdn-vditor :deep(.vditor-ir pre.vditor-reset),
+.sdn-vditor :deep(.vditor-preview > .vditor-reset) {
+  overflow-x: auto;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.sdn-vditor :deep(.vditor-content img:not(.emoji)) {
+  max-width: 100%;
+  height: auto;
+  vertical-align: middle;
+}
+
+.sdn-vditor :deep(.vditor-content table) {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  box-sizing: border-box;
+}
+
+.sdn-vditor :deep(.vditor-content mjx-container) {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.sdn-vditor :deep(.vditor-content pre),
+.sdn-vditor :deep(.vditor-content .hljs) {
+  max-width: 100%;
+  overflow-x: auto;
+  box-sizing: border-box;
+}
+
+.sdn-vditor :deep(.vditor-content a) {
+  overflow-wrap: anywhere;
 }
 </style>

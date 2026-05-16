@@ -18,6 +18,20 @@ function normalizeSegmentsInPlace(segs: Segment[]) {
   }
 }
 
+/** 选填的粉笔等机构参考答案，附在复制给 AI 的提示词末尾 */
+function buildFenbiPromptSuffix(fenbi: string): string {
+  const t = fenbi.trim()
+  if (!t) return ''
+  return [
+    '',
+    '══════════════════════',
+    '【参考范文】以下为用户提供的培训机构参考答案（如粉笔），仅作对照标杆：请结合材料与「用户提炼/最终总结」对比点评，指出与用户作答相比的异同；不要大段照抄该参考。',
+    t,
+    '══════════════════════',
+    '',
+  ].join('\n')
+}
+
 export const useShenlunStore = defineStore('shenlun', () => {
   const selectedNodeId = ref<string>(SL_DEFAULT_NODE_ID)
 
@@ -38,6 +52,8 @@ export const useShenlunStore = defineStore('shenlun', () => {
   const phase = ref<WorkbenchPhase>('input')
 
   const ccPromptText = ref('')
+  /** 第三步选填：粉笔等参考答案，写入后与 ccPromptText 合并展示/复制 */
+  const fenbiReferenceText = ref('')
   const ccPasteText = ref('')
   const ccPasteError = ref<string | null>(null)
   const ccPasteLoading = ref(false)
@@ -57,6 +73,12 @@ export const useShenlunStore = defineStore('shenlun', () => {
       finalSummary.value.trim().length > 0,
   )
   const canSubmitPaste = computed(() => ccPasteText.value.trim().length > 10)
+
+  const ccPromptDisplayText = computed(() => {
+    const base = ccPromptText.value
+    const suf = buildFenbiPromptSuffix(fenbiReferenceText.value)
+    return suf ? `${base}${suf}` : base
+  })
 
   function applySourceDetail(detail: SourceDetailResponse) {
     sourceRecord.value = detail.source
@@ -80,6 +102,7 @@ export const useShenlunStore = defineStore('shenlun', () => {
       phase.value = 'input'
     }
     ccPromptText.value = ''
+    fenbiReferenceText.value = ''
     ccPasteText.value = ''
   }
 
@@ -323,6 +346,7 @@ export const useShenlunStore = defineStore('shenlun', () => {
       attempt.value = null
       phase.value = 'input'
       ccPromptText.value = ''
+      fenbiReferenceText.value = ''
       ccPasteText.value = ''
       attemptSummaries.value = []
       return
@@ -360,6 +384,7 @@ export const useShenlunStore = defineStore('shenlun', () => {
     sourceError.value = null
     attemptError.value = null
     ccPromptText.value = ''
+    fenbiReferenceText.value = ''
     ccPasteText.value = ''
     ccPasteError.value = null
     phase.value = 'input'
@@ -384,6 +409,8 @@ export const useShenlunStore = defineStore('shenlun', () => {
     canGoToCC,
     canSubmitPaste,
     ccPromptText,
+    ccPromptDisplayText,
+    fenbiReferenceText,
     ccPasteText,
     ccPasteError,
     ccPasteLoading,

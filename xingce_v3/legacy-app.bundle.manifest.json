@@ -1,8 +1,8 @@
 {
-  "built_at": "2026-05-15T09:32:49Z",
+  "built_at": "2026-05-16T13:57:16Z",
   "css_bundle": {
     "path": "xingce_v3/styles/legacy-app.bundle.css",
-    "sha256": "9665a43c416d9b21fb9d0d821136b9c85bb6add672e449e05d45f2732db61d94",
+    "sha256": "60498c1398f74e4f0f4422dcf5fbaf97639ace2122fd8b49df631e068d2f71f5",
     "sources": [
       "styles/main/00-base-reset.css",
       "styles/main/01-sidebar.css",
@@ -45,7 +45,7 @@
   },
   "js_bundle": {
     "path": "xingce_v3/modules/legacy-app.bundle.js",
-    "sha256": "a1c11b8f2cf90da93f35f715d7e3dca348bf9de3d8f18c26faf3177f2a7ac638",
+    "sha256": "7fb56902c0df95505415ac048b363f048bdd3a33f5c3fa79ab6fbe592fddfb27",
     "sources": [
       "modules/main/00-event-dispatcher.js",
       "modules/main/state/01a-reason-utils.js",
@@ -190,7 +190,7 @@
   "js_view_bundles": {
     "home": {
       "path": "xingce_v3/modules/legacy-app.home.bundle.js",
-      "sha256": "468cc6912791f529ddb25e4b33166903802533af589a136542da338534fa2acf",
+      "sha256": "b0b69e5a4016d58aef5f54f9b98826bd7aca23c3baf8dfa77491561e10a7d52b",
       "sources": [
         "modules/main/00-event-dispatcher.js",
         "modules/main/state/01a-reason-utils.js",
@@ -245,7 +245,7 @@
     },
     "workspace": {
       "path": "xingce_v3/modules/legacy-app.workspace.bundle.js",
-      "sha256": "2ef92293b99708854b24e022abc80d2c6ffd750d96f5fc32255e926057b6135d",
+      "sha256": "362b98c426605f8a35c1870c31978a6a669446bf43b8d5f511e864f1b1bf91c7",
       "sources": [
         "modules/main/10-notes-panel.js",
         "modules/main/11-typed-note-tree.js",
@@ -294,7 +294,7 @@
     },
     "modal": {
       "path": "xingce_v3/modules/legacy-app.modal.bundle.js",
-      "sha256": "0261ad5f2ba3047ff849da88ba18b47902a2bff1c9326342e5bb46f75616fab4",
+      "sha256": "410f040eed4a0449c6d6d81a16132a9125100ff75b9fc8f8f38d96fb56735632",
       "sources": [
         "modules/main/06-ai-workbench.js",
         "modules/main/image/07a-image-value-utils.js",
@@ -344,7 +344,7 @@
     },
     "bootstrap": {
       "path": "xingce_v3/modules/legacy-app.bootstrap.bundle.js",
-      "sha256": "309448f23eeeb4a27439219ecaeccf34e939f753f47d75e75b5207aa83329ef6",
+      "sha256": "ab05d03c83a22b9848513787a8b1bc4167be55f8ffbf8e1d0a235024269e9bc1",
       "sources": [
         "modules/main/99-bootstrap.js"
       ]

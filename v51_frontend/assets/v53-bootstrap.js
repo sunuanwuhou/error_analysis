@@ -254,6 +254,31 @@ window.__v53EnsureLegacyModalBundleLoaded = ensureLegacyModalBundleLoaded;
 
 /** 与 Vue 侧边栏一致：优先新版申论 SPA，服务端在未启用新前端时会回落到 `/shenlun` */
 const PORTAL_SHENLUN_TARGET = '/new/shenlun';
+/** 与 `frontend/src/lib/portalPrefs.ts` 保持一致 */
+const PORTAL_LAST_MODULE_KEY = 'v53.portal.lastModule';
+
+function readLastPortalModule() {
+  try {
+    const v = localStorage.getItem(PORTAL_LAST_MODULE_KEY);
+    if (v === 'xingce' || v === 'shenlun') return v;
+  } catch (_) { /* ignore */ }
+  return null;
+}
+
+function saveLastPortalModule(choice) {
+  try {
+    localStorage.setItem(PORTAL_LAST_MODULE_KEY, choice);
+  } catch (_) { /* ignore */ }
+}
+
+/** `/?portal=1`：始终展示选择页（与侧栏「模块首页」一致），避免无法切换模块 */
+function shouldForcePortal() {
+  try {
+    const p = (new URLSearchParams(window.location.search || '').get('portal') || '').toLowerCase();
+    if (p === '1' || p === 'true' || p === 'yes') return true;
+  } catch (_) { /* ignore */ }
+  return false;
+}
 
 function showXingceLoadingPlaceholder() {
   const bootRoot = document.getElementById('v53Boot');
@@ -273,6 +298,17 @@ function gateModulePortal() {
   if (!bootRoot) {
     return Promise.resolve();
   }
+  if (!shouldForcePortal()) {
+    const last = readLastPortalModule();
+    if (last === 'shenlun') {
+      window.location.replace(PORTAL_SHENLUN_TARGET);
+      return new Promise(() => {});
+    }
+    if (last === 'xingce') {
+      showXingceLoadingPlaceholder();
+      return Promise.resolve();
+    }
+  }
   bootRoot.innerHTML = `
     <div class="v53-boot-card v53-portal-card">
       <div class="v53-boot-title">Ashore</div>
@@ -281,13 +317,14 @@ function gateModulePortal() {
         <button type="button" class="v53-portal-btn v53-portal-btn--xingce" data-portal-choice="xingce">行测</button>
         <button type="button" class="v53-portal-btn v53-portal-btn--shenlun" data-portal-choice="shenlun">申论</button>
       </div>
-      <p class="v53-portal-hint">每次打开首页都会先来到这里；工作台内可随时切换到另一个模块。</p>
+      <p class="v53-portal-hint">会记住你上次选择的模块；刷新后直接进入。需要手动切换时点侧栏「模块首页」。</p>
     </div>`;
   return new Promise((resolve) => {
     const onPick = (ev) => {
       const btn = ev.target && ev.target.closest && ev.target.closest('[data-portal-choice]');
       if (!btn) return;
       const choice = btn.getAttribute('data-portal-choice');
+      saveLastPortalModule(choice);
       if (choice === 'shenlun') {
         window.location.href = PORTAL_SHENLUN_TARGET;
         return;

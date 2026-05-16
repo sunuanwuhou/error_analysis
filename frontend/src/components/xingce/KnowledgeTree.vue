@@ -3,6 +3,14 @@ import { computed, onMounted } from 'vue'
 import { useXingceStore } from '@/stores/xingceStore'
 import KnowledgeTreeNode from './KnowledgeTreeNode.vue'
 
+withDefaults(
+  defineProps<{
+    /** 侧栏外层已提供 `sidebar-tree-toolbar` 时置为 true */
+    hideToolbar?: boolean
+  }>(),
+  { hideToolbar: false },
+)
+
 const store = useXingceStore()
 
 const searchKw = computed({
@@ -49,8 +57,7 @@ onMounted(() => {
 
 <template>
   <div class="kt">
-    <!-- 工具栏 -->
-    <div class="kt-toolbar">
+    <div v-if="!hideToolbar" class="kt-toolbar">
       <div class="kt-search-wrap">
         <input
           v-model="searchKw"
@@ -61,17 +68,19 @@ onMounted(() => {
         <button
           v-if="searchKw"
           class="kt-search-clear"
+          type="button"
           @click="clearSearch"
         >×</button>
       </div>
       <button
+        type="button"
         class="kt-focus-btn"
         :class="{ active: focusMode }"
         :title="focusMode ? '退出专注树模式' : '进入专注树模式'"
         @click="focusMode = !focusMode"
       >{{ focusMode ? '退出专注' : '专注树' }}</button>
     </div>
-    <div class="kt-search-meta">{{ searchMetaText }}</div>
+    <div v-if="!hideToolbar" class="kt-search-meta">{{ searchMetaText }}</div>
 
     <!-- 当前节点筛选提示 -->
     <div v-if="hasActiveNode" class="kt-active-hint">

@@ -1,0 +1,37 @@
+{
+  "timestamp": "2026-05-05T01:09:25.595Z",
+  "loginAttempted": true,
+  "expected": {
+    "diagnose": 7,
+    "all": 310,
+    "search": 82
+  },
+  "apiProbe": {
+    "total": 310,
+    "diag": 7,
+    "stages": {
+      "": 299,
+      "diagnosing": 7,
+      "review_ready": 4
+    }
+  },
+  "new": {
+    "diagnose": {
+      "filtered": 7,
+      "total": 310
+    },
+    "all": {
+      "filtered": 310,
+      "total": 310
+    },
+    "search": {
+      "filtered": 82,
+      "total": 310
+    }
+  },
+  "match": {
+    "diagnose": true,
+    "all": true,
+    "search": true
+  }
+}

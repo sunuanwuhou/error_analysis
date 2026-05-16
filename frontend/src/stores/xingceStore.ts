@@ -347,6 +347,10 @@ export const useXingceStore = defineStore('xingce', () => {
   const dateTo = ref('')
   const searchQuery = ref('')
 
+  /** 与 legacy `15-filters.js` errorSortBy / errorSortOrder 对齐 */
+  const errorSortBy = ref<'created_at' | 'wrong_count'>('created_at')
+  const errorSortOrder = ref<'asc' | 'desc'>('desc')
+
   // ── 知识树 UI 状态 ──────────────────────────────────────────────────────────
   const knowledgeExpandedIds = ref<Set<string>>(new Set())
   const knowledgeTreeSearch = ref('')
@@ -454,6 +458,69 @@ export const useXingceStore = defineStore('xingce', () => {
     return n?.title ? String(n.title) : null
   }
 
+  function toSortableTimestamp(raw: unknown): number {
+    if (!raw) return 0
+    const ts = Date.parse(String(raw))
+    return Number.isFinite(ts) ? ts : 0
+  }
+
+  function getErrorCreatedTimestamp(e: ErrorEntry): number {
+    return (
+      toSortableTimestamp(e.createdAt)
+      || toSortableTimestamp(e.addDate)
+      || toSortableTimestamp(e.updatedAt)
+      || 0
+    )
+  }
+
+  function getErrorWrongCountForSort(e: ErrorEntry): number {
+    const sum = practiceSummaries.value[e.id]
+    const fromSum = Number(sum?.recentWrongCount ?? sum?.wrongCount ?? NaN)
+    if (Number.isFinite(fromSum) && fromSum > 0) return fromSum
+    const rec = e as Record<string, unknown>
+    const direct = Number(rec.recentWrongCount ?? rec.wrongCount ?? 0)
+    return Number.isFinite(direct) && direct > 0 ? direct : 0
+  }
+
+  /** 与 legacy `sortFilteredErrors` 一致（含 wrong_count 打破平局规则） */
+  function sortFilteredErrorsList(list: ErrorEntry[]): ErrorEntry[] {
+    const sortBy = errorSortBy.value
+    const order = errorSortOrder.value
+    const orderSign = order === 'asc' ? 1 : -1
+    const decorated = list.map((item, index) => ({ item, index }))
+    decorated.sort((a, b) => {
+      let cmp = 0
+      if (sortBy === 'wrong_count') {
+        const aWrong = getErrorWrongCountForSort(a.item)
+        const bWrong = getErrorWrongCountForSort(b.item)
+        cmp = (aWrong - bWrong) * orderSign
+        if (cmp !== 0) return cmp
+        cmp = (getErrorCreatedTimestamp(a.item) - getErrorCreatedTimestamp(b.item)) * -1
+        if (cmp !== 0) return cmp
+      } else {
+        cmp = (getErrorCreatedTimestamp(a.item) - getErrorCreatedTimestamp(b.item)) * orderSign
+        if (cmp !== 0) return cmp
+      }
+      return a.index - b.index
+    })
+    return decorated.map(d => d.item)
+  }
+
+  function setErrorSortBy(next: string) {
+    errorSortBy.value = String(next || '').trim() === 'wrong_count' ? 'wrong_count' : 'created_at'
+    if (errorSortBy.value === 'wrong_count' && !errorSortOrder.value) {
+      errorSortOrder.value = 'desc'
+    }
+  }
+
+  function toggleErrorSortOrder(explicit?: 'asc' | 'desc') {
+    if (explicit === 'asc' || explicit === 'desc') {
+      errorSortOrder.value = explicit
+    } else {
+      errorSortOrder.value = errorSortOrder.value === 'desc' ? 'asc' : 'desc'
+    }
+  }
+
   /** 侧栏 / 头图共用的活跃筛选条（可点除） */
   const activeFilterCrumbs = computed(() => {
     const crumbs: { key: string; label: string }[] = []
@@ -537,7 +604,7 @@ export const useXingceStore = defineStore('xingce', () => {
       })
     }
 
-    return list
+    return sortFilteredErrorsList([...list])
   })
 
   /** 与旧版 `renderStats(list)` 一致：基于当前可见列表 */
@@ -1122,6 +1189,10 @@ export const useXingceStore = defineStore('xingce', () => {
     dateFrom,
     dateTo,
     searchQuery,
+    errorSortBy,
+    errorSortOrder,
+    setErrorSortBy,
+    toggleErrorSortOrder,
     // 知识树 UI
     knowledgeExpandedIds,
     knowledgeTreeSearch,

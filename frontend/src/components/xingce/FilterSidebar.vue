@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useXingceStore } from '@/stores/xingceStore'
 import KnowledgeTree from './KnowledgeTree.vue'
 
@@ -22,124 +22,162 @@ const STATUS_OPTIONS = [
 const advancedOpen = ref(false)
 const reasonOpen = ref(false)
 const dateOpen = ref(false)
+
+const searchMetaText = computed(() => {
+  if (!store.hasKnowledgeSearch()) return '支持按节点名和路径搜索'
+  const count = store.visibleKnowledgeNodeCount
+  return count > 0 ? `命中 ${count} 个节点` : '未找到匹配节点'
+})
+
+function clearTreeSearch() {
+  store.knowledgeTreeSearch = ''
+}
 </script>
 
 <template>
-  <aside class="fs">
-    <button v-if="!store.knowledgeFocusMode" class="fs-advanced-toggle" @click="advancedOpen = !advancedOpen">
-      <span>高级筛选</span>
-      <span>{{ advancedOpen ? '▾' : '▸' }}</span>
-    </button>
+  <template v-if="!store.knowledgeFocusMode">
+    <div class="xc-vue-fs-advanced">
+      <button type="button" class="fs-advanced-toggle" @click="advancedOpen = !advancedOpen">
+        <span>高级筛选</span>
+        <span>{{ advancedOpen ? '▾' : '▸' }}</span>
+      </button>
 
-    <div v-if="!store.knowledgeFocusMode && advancedOpen" class="fs-advanced-panel">
-      <div v-if="store.activeFilterCrumbs.length" class="fs-breadcrumb">
-        <span class="fs-bc-label">当前</span>
-        <span
-          v-for="c in store.activeFilterCrumbs"
-          :key="c.key + c.label"
-          class="fs-bc-chip"
-        >
-          {{ c.label }}
-          <button
-            type="button"
-            class="fs-bc-remove"
-            :title="'移除：' + c.label"
-            aria-label="移除筛选"
-            @click="store.removeFilterCrumb(c.key)"
-          >×</button>
-        </span>
+      <div v-if="advancedOpen" class="fs-advanced-panel">
+        <div v-if="store.activeFilterCrumbs.length" class="fs-breadcrumb">
+          <span class="fs-bc-label">当前</span>
+          <span
+            v-for="c in store.activeFilterCrumbs"
+            :key="c.key + c.label"
+            class="fs-bc-chip"
+          >
+            {{ c.label }}
+            <button
+              type="button"
+              class="fs-bc-remove"
+              :title="'移除：' + c.label"
+              aria-label="移除筛选"
+              @click="store.removeFilterCrumb(c.key)"
+            >×</button>
+          </span>
+        </div>
+
+        <div class="fs-section">
+          <input
+            v-model="store.searchQuery"
+            class="fs-search"
+            placeholder="搜索题目…（空格 = AND）"
+            type="search"
+          />
+        </div>
+
+        <div class="fs-section">
+          <div class="fs-label">任务阶段</div>
+          <div class="fs-chip-row">
+            <button
+              v-for="opt in TASK_OPTIONS"
+              :key="opt.value"
+              type="button"
+              class="fs-chip"
+              :class="{ active: store.taskFilter === opt.value }"
+              @click="store.setTaskFilter(opt.value)"
+            >
+              {{ opt.label }}
+              <span class="fs-chip-badge">
+                <template v-if="opt.value === 'all'">{{ store.errors.length }}</template>
+                <template v-else>{{ store.taskCounts[opt.value] }}</template>
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div class="fs-section">
+          <div class="fs-label">状态</div>
+          <div class="fs-chip-row">
+            <button
+              v-for="opt in STATUS_OPTIONS"
+              :key="opt.value"
+              type="button"
+              class="fs-chip"
+              :class="{ active: store.statusFilter === opt.value }"
+              @click="store.setStatusFilter(opt.value)"
+            >{{ opt.label }}</button>
+          </div>
+        </div>
+
+        <div v-if="store.reasonOptions.length > 0" class="fs-section">
+          <button type="button" class="fs-collapse-header" @click="reasonOpen = !reasonOpen">
+            <span class="fs-label" style="margin:0">错因</span>
+            <span class="fs-collapse-arrow">{{ reasonOpen ? '▾' : '▸' }}</span>
+            <span v-if="store.reasonFilter" class="fs-active-dot" />
+          </button>
+          <div v-if="reasonOpen" class="fs-reason-list">
+            <button
+              v-for="item in store.reasonOptions.slice(0, 20)"
+              :key="item.reason"
+              type="button"
+              class="fs-reason-item"
+              :class="{ active: store.reasonFilter === item.reason }"
+              @click="store.toggleReasonFilter(item.reason)"
+            >
+              <span class="fs-reason-label">{{ item.reason }}</span>
+              <span class="fs-reason-count">{{ item.count }}</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="fs-section">
+          <button type="button" class="fs-collapse-header" @click="dateOpen = !dateOpen">
+            <span class="fs-label" style="margin:0">加入日期</span>
+            <span class="fs-collapse-arrow">{{ dateOpen ? '▾' : '▸' }}</span>
+            <span v-if="store.dateFrom || store.dateTo" class="fs-active-dot" />
+          </button>
+          <div v-if="dateOpen" class="fs-date-row">
+            <input v-model="store.dateFrom" class="fs-date-input" type="date" title="起始日期" />
+            <span class="fs-date-sep">–</span>
+            <input v-model="store.dateTo" class="fs-date-input" type="date" title="结束日期" />
+          </div>
+        </div>
       </div>
+    </div>
+  </template>
 
-      <div class="fs-section">
+  <div class="sidebar-tree-toolbar">
+    <div class="sidebar-tree-toolbar-row">
+      <div class="sidebar-tree-search">
+        <span class="search-icon">搜索</span>
         <input
-          v-model="store.searchQuery"
-          class="fs-search"
-          placeholder="搜索题目…（空格 = AND）"
+          v-model="store.knowledgeTreeSearch"
           type="search"
+          placeholder="搜索知识树节点..."
+          autocomplete="off"
         />
+        <button
+          v-if="store.knowledgeTreeSearch"
+          type="button"
+          class="search-clear"
+          aria-label="清空知识树搜索"
+          @click="clearTreeSearch"
+        >×</button>
       </div>
-
-      <div class="fs-section">
-        <div class="fs-label">任务阶段</div>
-        <div class="fs-chip-row">
-          <button
-            v-for="opt in TASK_OPTIONS"
-            :key="opt.value"
-            class="fs-chip"
-            :class="{ active: store.taskFilter === opt.value }"
-            @click="store.setTaskFilter(opt.value)"
-          >
-            {{ opt.label }}
-            <span class="fs-chip-badge">
-              <template v-if="opt.value === 'all'">{{ store.errors.length }}</template>
-              <template v-else>{{ store.taskCounts[opt.value] }}</template>
-            </span>
-          </button>
-        </div>
-      </div>
-
-      <div class="fs-section">
-        <div class="fs-label">状态</div>
-        <div class="fs-chip-row">
-          <button
-            v-for="opt in STATUS_OPTIONS"
-            :key="opt.value"
-            class="fs-chip"
-            :class="{ active: store.statusFilter === opt.value }"
-            @click="store.setStatusFilter(opt.value)"
-          >{{ opt.label }}</button>
-        </div>
-      </div>
-
-      <div v-if="store.reasonOptions.length > 0" class="fs-section">
-        <button class="fs-collapse-header" @click="reasonOpen = !reasonOpen">
-          <span class="fs-label" style="margin:0">错因</span>
-          <span class="fs-collapse-arrow">{{ reasonOpen ? '▾' : '▸' }}</span>
-          <span v-if="store.reasonFilter" class="fs-active-dot" />
-        </button>
-        <div v-if="reasonOpen" class="fs-reason-list">
-          <button
-            v-for="item in store.reasonOptions.slice(0, 20)"
-            :key="item.reason"
-            class="fs-reason-item"
-            :class="{ active: store.reasonFilter === item.reason }"
-            @click="store.toggleReasonFilter(item.reason)"
-          >
-            <span class="fs-reason-label">{{ item.reason }}</span>
-            <span class="fs-reason-count">{{ item.count }}</span>
-          </button>
-        </div>
-      </div>
-
-      <div class="fs-section">
-        <button class="fs-collapse-header" @click="dateOpen = !dateOpen">
-          <span class="fs-label" style="margin:0">加入日期</span>
-          <span class="fs-collapse-arrow">{{ dateOpen ? '▾' : '▸' }}</span>
-          <span v-if="store.dateFrom || store.dateTo" class="fs-active-dot" />
-        </button>
-        <div v-if="dateOpen" class="fs-date-row">
-          <input v-model="store.dateFrom" class="fs-date-input" type="date" title="起始日期" />
-          <span class="fs-date-sep">–</span>
-          <input v-model="store.dateTo" class="fs-date-input" type="date" title="结束日期" />
-        </div>
-      </div>
+      <button
+        type="button"
+        class="btn btn-secondary"
+        @click="store.knowledgeFocusMode = !store.knowledgeFocusMode"
+      >
+        {{ store.knowledgeFocusMode ? '退出专注' : '专注树' }}
+      </button>
     </div>
+    <div class="sidebar-tree-search-meta">{{ searchMetaText }}</div>
+  </div>
 
-    <div class="fs-section fs-tree-section">
-      <div class="fs-label">知识树</div>
-      <KnowledgeTree />
-    </div>
-  </aside>
+  <div class="nav-scroll">
+    <KnowledgeTree hide-toolbar />
+  </div>
 </template>
 
 <style scoped>
-.fs {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
+.xc-vue-fs-advanced {
+  flex-shrink: 0;
 }
 .fs-advanced-toggle {
   display: flex;

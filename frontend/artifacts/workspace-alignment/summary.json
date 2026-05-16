@@ -1,0 +1,22 @@
+{
+  "timestamp": "2026-05-05T03:01:46.851Z",
+  "loginAttempted": true,
+  "steps": [
+    {
+      "name": "old-workspace",
+      "file": "E:\\IdeaProject\\git\\xingce_v3_lab\\frontend\\artifacts\\workspace-alignment\\old-workspace.png"
+    },
+    {
+      "name": "new-tab-notes-default",
+      "file": "E:\\IdeaProject\\git\\xingce_v3_lab\\frontend\\artifacts\\workspace-alignment\\new-workspace-tab-notes.png"
+    },
+    {
+      "name": "new-tab-errors",
+      "file": "E:\\IdeaProject\\git\\xingce_v3_lab\\frontend\\artifacts\\workspace-alignment\\new-workspace-tab-errors.png"
+    },
+    {
+      "name": "new-tab-notes-again",
+      "file": "E:\\IdeaProject\\git\\xingce_v3_lab\\frontend\\artifacts\\workspace-alignment\\new-workspace-tab-notes-after-toggle.png"
+    }
+  ]
+}

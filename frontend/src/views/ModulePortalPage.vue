@@ -1,5 +1,21 @@
 <script setup lang="ts">
-import { RouterLink } from 'vue-router'
+import { onBeforeMount } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { readPortalLastModule, savePortalLastModule } from '@/lib/portalPrefs'
+
+const router = useRouter()
+const route = useRoute()
+
+onBeforeMount(() => {
+  const p = route.query.portal
+  if (p === '1' || p === 'true') return
+  const last = readPortalLastModule()
+  if (last === 'xingce') {
+    void router.replace({ name: 'XingceWorkspace' })
+  } else if (last === 'shenlun') {
+    void router.replace({ name: 'ShenlunHub' })
+  }
+})
 </script>
 
 <template>
@@ -9,16 +25,27 @@ import { RouterLink } from 'vue-router'
       <h1 class="module-portal-title">选择模块</h1>
       <p class="module-portal-desc">请先选择要进入的模块，再回到对应工作台开始学习。</p>
       <div class="module-portal-actions">
-        <RouterLink class="portal-tile portal-tile--xingce" :to="{ name: 'XingceWorkspace' }">
+        <RouterLink
+          class="portal-tile portal-tile--xingce"
+          :to="{ name: 'XingceWorkspace' }"
+          @click="savePortalLastModule('xingce')"
+        >
           <span class="portal-tile-label">行测</span>
           <span class="portal-tile-sub">知识树、练习与错题本</span>
         </RouterLink>
-        <RouterLink class="portal-tile portal-tile--shenlun" :to="{ name: 'ShenlunHub' }">
+        <RouterLink
+          class="portal-tile portal-tile--shenlun"
+          :to="{ name: 'ShenlunHub' }"
+          @click="savePortalLastModule('shenlun')"
+        >
           <span class="portal-tile-label">申论</span>
           <span class="portal-tile-sub">知识树选题、笔记与工作台</span>
         </RouterLink>
       </div>
-      <p class="module-portal-note">工作台内可随时切换到另一个模块。</p>
+      <p class="module-portal-note">
+        会记住上次选择；需要切换模块时请打开选择页（例如 legacy 侧栏「模块首页」，或访问
+        <code>/new/?portal=1</code>）。
+      </p>
     </div>
   </div>
 </template>

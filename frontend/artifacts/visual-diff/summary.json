@@ -1,0 +1,28 @@
+{
+  "timestamp": "2026-05-05T12:15:09",
+  "output_dir": "E:\\IdeaProject\\git\\xingce_v3_lab\\frontend\\artifacts\\visual-diff",
+  "files": [
+    "new-01-workspace-notes-tab.png",
+    "new-02-sidebar.png",
+    "new-03-practice-panel.png",
+    "new-04-cloud.png",
+    "new-05-more-menu.png",
+    "new-06-knowledge-tree.png",
+    "new-08-notes-panel.png",
+    "new-09-errors-tab.png",
+    "new-10-errors-panel.png",
+    "new-11-batch-mode.png",
+    "old-01-home.png",
+    "old-02-workspace-notes-tab.png",
+    "old-03-workspace-full.png",
+    "old-04-sidebar.png",
+    "old-05-quiz-block.png",
+    "old-06-cloud.png",
+    "old-07-more-menu.png",
+    "old-08-knowledge-tree.png",
+    "old-09-errors-tab.png",
+    "old-10-errors-area.png",
+    "old-12-batch-mode.png",
+    "old-13-notes-area.png"
+  ]
+}
