@@ -85,7 +85,7 @@ python scripts/package_release.py --mode full --name error_analysis_docs_patch_f
 Result:
 
 Intentionally not used as the final delivery artifact.
-The packaging guard correctly stopped the build because the repo still contains pre-existing `#U...` escaped filenames under non-patch areas such as `knowledge_sources/` and `converter/output/`.
+The packaging guard correctly stopped the build because the repo still contains pre-existing `#U...` escaped filenames under non-patch areas such as `knowledge_sources/` and `tools/converter/output/`.
 
 ### 7. Final patch archive creation
 

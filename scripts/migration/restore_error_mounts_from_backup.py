@@ -6,10 +6,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from app.database import get_conn
-from app.schemas import LocalBackupCreatePayload
-from app.services.backup_service import create_local_backup_response
-from app.services.workspace_entity_service import invalidate_workspace_snapshot_cache
+from backend.database import get_conn
+from backend.schemas import LocalBackupCreatePayload
+from backend.services.backup_service import create_local_backup_response
+from backend.services.workspace_entity_service import invalidate_workspace_snapshot_cache
 
 
 MOUNT_FIELDS = [

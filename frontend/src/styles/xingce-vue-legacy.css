@@ -191,6 +191,8 @@
   justify-content: center;
   gap: 6px;
   transition: 0.2s;
+  text-decoration: none;
+  box-sizing: border-box;
 }
 
 .xc-vue-legacy .quiz-btn:hover {
@@ -214,6 +216,11 @@
 .xc-vue-legacy .quiz-btn.random-note {
   margin-top: 6px;
   background: linear-gradient(135deg, #16a34a, #15803d);
+}
+
+.xc-vue-legacy .quiz-btn.suite-bank {
+  margin-top: 6px;
+  background: linear-gradient(135deg, #7c3aed, #5b21b6);
 }
 
 .xc-vue-legacy .quiz-btn.review-queue {

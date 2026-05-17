@@ -29,7 +29,7 @@ $env:XINGCE_RUNTIME_MODE = "local"
 $env:XINGCE_RUNTIME_LABEL = "Local Python / 127.0.0.1:8000"
 
 $proc = Start-Process -FilePath $python `
-  -ArgumentList "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "$port" `
+  -ArgumentList "-m", "uvicorn", "backend.main:app", "--host", "127.0.0.1", "--port", "$port" `
   -WorkingDirectory $projectRoot `
   -PassThru
 

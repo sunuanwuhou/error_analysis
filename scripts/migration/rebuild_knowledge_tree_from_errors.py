@@ -7,9 +7,9 @@ import uuid
 from dataclasses import dataclass
 from typing import Any
 
-from app.database import get_conn
-from app.security import utcnow
-from app.services.workspace_entity_service import invalidate_workspace_snapshot_cache
+from backend.database import get_conn
+from backend.security import utcnow
+from backend.services.workspace_entity_service import invalidate_workspace_snapshot_cache
 
 
 def _clean_text(value: Any) -> str:

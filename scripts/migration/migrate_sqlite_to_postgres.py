@@ -7,9 +7,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from app.core import replace_workspace_entities_from_snapshot
-from app.database import get_conn
-from app.security import utcnow
+from backend.core import replace_workspace_entities_from_snapshot
+from backend.database import get_conn
+from backend.security import utcnow
 
 
 BASE_DIR = Path(__file__).resolve().parents[2]

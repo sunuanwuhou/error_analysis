@@ -4,7 +4,7 @@ param(
     [string]$Hostname = "erroranaly.qzz.io",
     [string]$TunnelName = "erroranaly-qzz-io",
     [string]$Service = "http://app:8000",
-    [string]$TokenPemPath = (Join-Path $PSScriptRoot "..\cloudflared\token.pem")
+    [string]$TokenPemPath = (Join-Path $PSScriptRoot "..\ops\cloudflared\token.pem")
 )
 
 function Get-ArgoTokenPayload {

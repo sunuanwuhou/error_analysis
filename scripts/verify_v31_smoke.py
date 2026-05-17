@@ -13,8 +13,8 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from app.database import init_db
-from app.security import create_user_account
+from backend.database import init_db
+from backend.security import create_user_account
 
 
 BASE = "http://127.0.0.1:8000"

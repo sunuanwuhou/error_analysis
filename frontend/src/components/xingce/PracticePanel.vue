@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import { useXingceStore } from '@/stores/xingceStore'
 import { xingceApi } from '@/api/xingce'
 import MoreMenu from './MoreMenu.vue'
@@ -181,6 +182,9 @@ async function logout() {
       <button type="button" class="quiz-btn random-note" @click="emit('startRandomNote')">
         <span>随机笔记</span>
       </button>
+      <RouterLink class="quiz-btn suite-bank" :to="{ name: 'XingceSuiteBank' }">
+        <span>套卷练习</span>
+      </RouterLink>
       <p v-if="store.errors.length !== fullBadge" style="margin:4px 0 0;font-size:10px;color:#94a3b8;text-align:center;line-height:1.35">
         全库共 {{ store.errors.length }} 题，全量练习为未掌握题
       </p>

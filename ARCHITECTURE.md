@@ -7,17 +7,19 @@ This repository keeps one active product path and a small set of legacy/runtime 
 | Path | Status | Responsibility | Change Rule |
 | --- | --- | --- | --- |
 | `frontend/` | Target primary (migration in progress) | Main Vue frontend target for new user-facing product work. | New frontend features, routes, state, and UI modules go here; production root routing is still legacy until migration cutover. |
-| `app/routers/` | Active backend protocol layer | FastAPI route definitions, request/response validation, auth dependencies, and exception mapping. | Keep thin. Business logic should move into `app/services/`. |
-| `app/services/` | Active backend business layer | Reusable backend workflows and domain logic called by routers. | Add or extend services when router logic grows beyond protocol handling. |
-| `app/database.py`, `app/schemas.py`, `app/security.py`, `app/config.py` | Active backend support | Database access, schemas, security helpers, and runtime configuration. | Keep shared behavior here when it is not route-specific business logic. |
-| `xingce_v3/` | Legacy | Existing legacy frontend and compatibility surface. | Bug fixes and migration adapters only. No new product modules. |
-| `v51_frontend/` | Legacy | Older frontend implementation/reference. | Bug fixes and migration references only. No new product modules. |
-| `converter/src/`, `converter/tools/` | Tooling | Source conversion scripts and helper tools. | Keep generated output outside source history. |
-| `converter/output/` | Generated | Conversion results, previews, samples, and local artifacts. | Do not add new generated files to Git. |
+| `backend/routers/` | Active backend protocol layer | FastAPI route definitions, request/response validation, auth dependencies, and exception mapping. | Keep thin. Business logic should move into `backend/services/`. |
+| `backend/services/` | Active backend business layer | Reusable backend workflows and domain logic called by routers. | Add or extend services when router logic grows beyond protocol handling. |
+| `backend/database.py`, `backend/schemas.py`, `backend/security.py`, `backend/config.py` | Active backend support | Database access, schemas, security helpers, and runtime configuration. | Keep shared behavior here when it is not route-specific business logic. |
+| `legacy/xingce_v3/` | Legacy | Existing legacy frontend and compatibility surface. | Bug fixes and migration adapters only. No new product modules. |
+| `legacy/v51_frontend/` | Legacy | Older frontend implementation/reference shell. | Bug fixes and migration references only. No new product modules. |
+| `tools/converter/src/`, `tools/converter/tools/` | Tooling | Source conversion scripts and helper tools. | Keep generated output outside source history. |
+| `tools/converter/output/` | Generated | Conversion results, previews, samples, and local artifacts. | Do not add new generated files to Git. |
+| `tools/suite_bank/` | Tooling | Word 套卷导入、调试与健康检查脚本（需配合容器内 `backend`）。 | 改导入逻辑后需按 `AGENTS.md` 重建 `app` 镜像。 |
+| `scripts/diagnostics/` | Ad-hoc | 本地库表/数据分析小脚本（非生产路径）。 | 不依赖 Docker 入口；勿把密钥写入仓库。 |
 | `docs/` | Active documentation | Current project rules, scope, release gate, handoff, runbook, and roadmap docs. | Keep docs grouped by `docs/active/`, `docs/ops/`, `docs/roadmap/`, `docs/archive/`; update `docs/INDEX.md` after major doc changes. |
 | `docs/archive/` | Historical documentation | Phase plans, completed rollout notes, old optimization writeups, and frozen delivery records. | Read-only by default; append only when archiving closed milestones. |
 | `scripts/check/`, `scripts/release/`, `scripts/migration/` | Script domains | Quality checks, release packaging helpers, and migration utilities grouped by responsibility. | Keep compatibility wrappers under `scripts/*.py`; new scripts should land in a domain folder first. |
-| `data/`, `runtime/`, `cloudflared/` | Local runtime | Local databases, runtime state, and tunnel files. | Ignored; do not commit runtime state. |
+| `data/`, `runtime/`, `ops/cloudflared/`, legacy `cloudflared/` dir | Local runtime | Local databases, runtime state, and tunnel tokens. | Ignored; do not commit runtime state. Prefer `ops/cloudflared/token.pem`. |
 | `.idea/`, `.vscode/` | Local editor state | Developer machine/editor configuration. | Ignore workspace state. Commit only intentionally shared editor recommendations. |
 
 ## Entry Contract

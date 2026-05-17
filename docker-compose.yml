@@ -24,6 +24,8 @@ services:
     volumes:
       - ./data:/app/data
       - ./runtime:/app/runtime
+      # Word 套卷源文件（只读）；导入脚本默认路径 word版本/...
+      - ./word版本:/app/word版本:ro
     restart: unless-stopped
 
   postgres:

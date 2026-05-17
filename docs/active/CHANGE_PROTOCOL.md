@@ -53,15 +53,15 @@ When a request is about a visible page or UI behavior, verify the active fronten
 
 Required checks:
 
-1. confirm page ownership first: `legacy (xingce_v3/*)` vs `vue (frontend/src/*)`
+1. confirm page ownership first: `legacy (legacy/xingce_v3/*)` vs `vue (frontend/src/*)`
 2. match at least one visible page marker text from user screenshot/description to code search results
 3. confirm route/entry chain for current runtime before touching files
 4. include a short "target confirmation" note in the work update before implementation
 
 Default entry reminder for current runtime:
 
-1. `/` -> `v51_frontend/index.html`
-2. bootstrap -> `xingce_v3/legacy-app.bundle.manifest.json`
+1. `/` -> `legacy/v51_frontend/index.html`
+2. bootstrap -> `legacy/xingce_v3/legacy-app.bundle.manifest.json`
 3. manifest -> split legacy bundles (`legacy-app.*.bundle.js`)
 
 Stop rule:

@@ -1,5 +1,5 @@
-from app.schemas import LocalBackupRestorePayload
-from app.services.backup_service import restore_local_backup_response
+from backend.schemas import LocalBackupRestorePayload
+from backend.services.backup_service import restore_local_backup_response
 
 
 def main() -> None:

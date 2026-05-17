@@ -30,7 +30,7 @@ This repository is WSL-first on Windows.
 
 1. After any code change that can affect runtime behavior, you MUST rebuild/redeploy the app container before claiming the change is live.
 2. This is especially mandatory for:
-   - frontend CSS/JS/HTML changes under `xingce_v3/`
+   - frontend CSS/JS/HTML changes under `legacy/xingce_v3/`
    - bundle or manifest changes
    - FastAPI static asset serving changes
    - Python backend code changes
@@ -45,7 +45,7 @@ This repository is WSL-first on Windows.
 ## Full Sync Build Rule (Mandatory)
 
 1. For any frontend runtime behavior change (especially knowledge tree, persistence, sync, and sidebar rendering), you MUST perform a full legacy asset rebuild before redeploy:
-   - `powershell -ExecutionPolicy Bypass -File .\scripts\wsl.ps1 -Action sh -Cmd "cd /mnt/e/IdeaProject/git/xingce_v3_lab && python3 scripts/release/build_legacy_assets.py"`
+   - `powershell -ExecutionPolicy Bypass -File .\scripts\wsl.ps1 -Action sh -Cmd "cd /mnt/e/IdeaProject/git/xingce_v3_lab && python3 scripts/build_legacy_assets.py"`
 2. After rebuild, you MUST redeploy the app container:
    - `powershell -ExecutionPolicy Bypass -File .\scripts\wsl.ps1 -Action up -Service app`
 3. After redeploy, you MUST verify served assets contain expected markers from the fix (not just file timestamps), at least on:

@@ -24,7 +24,7 @@ These files are now the repository source of truth for project goals, current ph
 `frontend/` is the target primary frontend entry for new product work.
 
 - New user-facing features, routes, and frontend state should land in `frontend/`.
-- `xingce_v3/` and `v51_frontend/` are legacy surfaces. They are kept for bug fixes, compatibility, fallback pages, and migration references only.
+- `legacy/xingce_v3/` and `legacy/v51_frontend/` are legacy surfaces. They are kept for bug fixes, compatibility, fallback pages, and migration references only.
 - Legacy frontend directories should not grow new product modules unless a migration plan explicitly moves that work back into `frontend/`.
 - Current runtime fact: `/` still serves the legacy shell during migration; this repository is not yet cut over to `frontend/` as runtime entry.
 
@@ -134,7 +134,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\wsl.ps1 -Action smoke
 Run arbitrary WSL command in project root:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\wsl.ps1 -Action sh -Cmd "docker compose exec -T app python -m py_compile app/main.py"
+powershell -ExecutionPolicy Bypass -File .\scripts\wsl.ps1 -Action sh -Cmd "docker compose exec -T app python -m py_compile backend/main.py"
 ```
 
 Optional fallback only:
@@ -162,6 +162,8 @@ Repair/bootstrap script:
 powershell -ExecutionPolicy Bypass -File .\scripts\bind-cloudflare-domain.ps1
 ```
 
+By default this script expects the tunnel PEM at **`ops/cloudflared/token.pem`** (create the folder and move/copy your PEM from an older **`cloudflared/`** checkout if needed).
+
 Temporary quick tunnel:
 
 ```powershell
@@ -170,12 +172,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start-quick-tunnel-docker.ps1
 
 ## Verification
 
+Ad-hoc database inspection scripts (optional, local): `scripts/diagnostics/` (`analyze_db.py`, `query_db.py`, etc.).
+
 Useful checks:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\wsl.ps1 -Action sh -Cmd "docker compose exec -T app python -m py_compile app/main.py"
+powershell -ExecutionPolicy Bypass -File .\scripts\wsl.ps1 -Action sh -Cmd "docker compose exec -T app python -m py_compile backend/main.py"
 powershell -ExecutionPolicy Bypass -File .\scripts\wsl.ps1 -Action smoke
-powershell -ExecutionPolicy Bypass -File .\scripts\wsl.ps1 -Action sh -Cmd "docker compose exec -T app python scripts/check_repo_layout.py"
+powershell -ExecutionPolicy Bypass -File .\scripts\wsl.ps1 -Action sh -Cmd "docker compose exec -T app python scripts/check/check_repo_layout.py"
 powershell -ExecutionPolicy Bypass -File .\scripts\wsl.ps1 -Action up
 ```
 

@@ -12,8 +12,8 @@ Legacy entry policy:
 
 - `/legacy` is soft-deprecated and now always redirects to `/`
 - active web entry is `/` only
-- authenticated `/` currently serves `v51_frontend/index.html`, not `xingce_v3/xingce_v3.html`
-- the shell then loads `v51_frontend/assets/v53-bootstrap.js`, which reads `/assets/legacy-app.bundle.manifest.json`
+- authenticated `/` currently serves `legacy/v51_frontend/index.html`, not `legacy/xingce_v3/xingce_v3.html`
+- the shell then loads `legacy/v51_frontend/assets/v53-bootstrap.js`, which reads `/assets/legacy-app.bundle.manifest.json`
 - the manifest normally points to split bundles: `legacy-app.home.bundle.js`, `legacy-app.workspace.bundle.js`, `legacy-app.modal.bundle.js`, and `legacy-app.bootstrap.bundle.js`
 
 Do not assume `localhost`, `127.0.0.1`, Docker port mappings, and the public domain share one browser-local state.  
@@ -65,8 +65,8 @@ The login page is intentionally simplified and no longer shows the current domai
 
 When running with Docker, changes under these paths require rebuilding the app container:
 
-- `app/`
-- `xingce_v3/`
+- `backend/`
+- `legacy/`
 - `scripts/`
 
 Command:
@@ -96,7 +96,7 @@ Required rule:
 
 Practical reminder:
 
-- if the user is on `/`, the shell still depends on `v51_frontend` plus `/assets` from `xingce_v3`
+- if the user is on `/`, the shell still depends on `legacy/v51_frontend` plus `/assets` from `legacy/xingce_v3`
 - changing only one side of that chain does not count as delivery
 - if the user is looking at the Docker-served app, rebuild the container before asking them to verify
 
@@ -171,15 +171,15 @@ Acceptance check:
 
 ## Legacy Bundle Refresh Rule
 
-When debugging the active shell (`v51_frontend/index.html` + `v53-bootstrap.js` + manifest-driven split bundles), use this fixed sequence after restart or hotfix:
+When debugging the active shell (`legacy/v51_frontend/index.html` + `v53-bootstrap.js` + manifest-driven split bundles), use this fixed sequence after restart or hotfix:
 
-1. update `xingce_v3/legacy-app.bundle.manifest.json` -> `built_at` to current UTC time
+1. update `legacy/xingce_v3/legacy-app.bundle.manifest.json` -> `built_at` to current UTC time
 2. sync updated bundles plus manifest to runtime:
-   - `xingce_v3/modules/legacy-app.home.bundle.js`
-   - `xingce_v3/modules/legacy-app.workspace.bundle.js`
-   - `xingce_v3/modules/legacy-app.modal.bundle.js`
-   - `xingce_v3/modules/legacy-app.bootstrap.bundle.js`
-   - `xingce_v3/legacy-app.bundle.manifest.json`
+   - `legacy/xingce_v3/modules/legacy-app.home.bundle.js`
+   - `legacy/xingce_v3/modules/legacy-app.workspace.bundle.js`
+   - `legacy/xingce_v3/modules/legacy-app.modal.bundle.js`
+   - `legacy/xingce_v3/modules/legacy-app.bootstrap.bundle.js`
+   - `legacy/xingce_v3/legacy-app.bundle.manifest.json`
 3. restart app runtime through WSL
 4. verify `/assets/legacy-app.bundle.manifest.json` returns the new `built_at`
 5. hard refresh browser (`Ctrl + F5`) before judging whether fix is live

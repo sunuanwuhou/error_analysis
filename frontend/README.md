@@ -10,5 +10,5 @@ Current state:
 Rules:
 
 - new frontend feature work should go here
-- legacy directories (`xingce_v3/`, `v51_frontend/`) are bugfix/compatibility only
+- legacy directories (`legacy/xingce_v3/`, `legacy/v51_frontend/`) are bugfix/compatibility only
 - do not claim migration cutover in docs until routing actually switches

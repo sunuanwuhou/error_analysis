@@ -26,8 +26,10 @@ EXCLUDE_RELATIVE_PATHS = {
     Path('data/xingce.db'),
 }
 RUNTIME_INCLUDE_PREFIXES = (
-    Path('app'),
-    Path('xingce_v3'),
+    Path('backend'),
+    Path('legacy/xingce_v3'),
+    Path('legacy/v51_frontend'),
+    Path('tools/suite_bank'),
     Path('docs'),
 )
 RUNTIME_INCLUDE_FILES = {
@@ -87,7 +89,7 @@ def run_step(command: list[str], label: str) -> None:
 
 def compile_python_sources() -> None:
     print('==> Python compileall check')
-    ok = compileall.compile_dir(ROOT / 'app', quiet=1)
+    ok = compileall.compile_dir(ROOT / 'backend', quiet=1)
     ok = compileall.compile_dir(ROOT / 'scripts', quiet=1) and ok
     if not ok:
         raise RuntimeError('compileall check failed')
@@ -103,11 +105,11 @@ def file_sha256(path: Path) -> str:
 
 def build_release_manifest(archive_path: Path, files: list[Path], mode: str) -> dict[str, object]:
     key_files = [
-        Path('xingce_v3/xingce_v3.html'),
-        Path('xingce_v3/styles/legacy-app.bundle.css'),
-        Path('xingce_v3/modules/legacy-app.bundle.js'),
-        Path('app/main.py'),
-        Path('app/core.py'),
+        Path('legacy/xingce_v3/xingce_v3.html'),
+        Path('legacy/xingce_v3/styles/legacy-app.bundle.css'),
+        Path('legacy/xingce_v3/modules/legacy-app.bundle.js'),
+    Path('backend/main.py'),
+    Path('backend/core.py'),
         Path('scripts/build_legacy_assets.py'),
         Path('scripts/check_legacy_entry.py'),
         Path('scripts/check_router_layout.py'),
@@ -137,7 +139,7 @@ def build_release_manifest(archive_path: Path, files: list[Path], mode: str) -> 
             'scripts/check_legacy_entry.py',
             'scripts/check_router_layout.py',
             'scripts/smoke_test_legacy_app.py',
-            'compileall app/ scripts/',
+            'compileall backend/ scripts/',
             'source-path suspicious-name check',
             'archive UTF-8 name self-check',
         ],

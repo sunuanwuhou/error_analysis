@@ -12,8 +12,8 @@ import importlib.util
 import re
 
 ROOT = Path(__file__).resolve().parents[2]
-XINGCE = ROOT / 'xingce_v3'
-V51_FRONTEND = ROOT / 'v51_frontend'
+XINGCE = ROOT / 'legacy' / 'xingce_v3'
+V51_FRONTEND = ROOT / 'legacy' / 'v51_frontend'
 CONFIG_PATH = Path(__file__).resolve().with_name('legacy_assets_config.py')
 _CONFIG_SPEC = importlib.util.spec_from_file_location('legacy_assets_config', CONFIG_PATH)
 if _CONFIG_SPEC is None or _CONFIG_SPEC.loader is None:

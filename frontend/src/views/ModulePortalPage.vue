@@ -25,14 +25,21 @@ onBeforeMount(() => {
       <h1 class="module-portal-title">选择模块</h1>
       <p class="module-portal-desc">请先选择要进入的模块，再回到对应工作台开始学习。</p>
       <div class="module-portal-actions">
-        <RouterLink
-          class="portal-tile portal-tile--xingce"
-          :to="{ name: 'XingceWorkspace' }"
-          @click="savePortalLastModule('xingce')"
-        >
-          <span class="portal-tile-label">行测</span>
-          <span class="portal-tile-sub">知识树、练习与错题本</span>
-        </RouterLink>
+        <div class="portal-tile portal-tile--xingce">
+          <RouterLink
+            class="portal-tile-main"
+            :to="{ name: 'XingceWorkspace' }"
+            @click="savePortalLastModule('xingce')"
+          >
+            <span class="portal-tile-label">行测</span>
+            <span class="portal-tile-sub">知识树、练习与错题本</span>
+          </RouterLink>
+          <RouterLink
+            class="portal-inline-link"
+            :to="{ name: 'XingceSuiteBank' }"
+            @click="savePortalLastModule('xingce')"
+          >套卷题库</RouterLink>
+        </div>
         <RouterLink
           class="portal-tile portal-tile--shenlun"
           :to="{ name: 'ShenlunHub' }"
@@ -107,7 +114,8 @@ onBeforeMount(() => {
 
 .portal-tile {
   display: block;
-  padding: 16px 18px;
+  padding: 0;
+  border: none;
   border-radius: 16px;
   text-decoration: none;
   color: #fff;
@@ -117,6 +125,13 @@ onBeforeMount(() => {
     filter 0.14s ease,
     box-shadow 0.14s ease;
   box-sizing: border-box;
+}
+
+.portal-tile-main {
+  display: block;
+  padding: 16px 18px 12px;
+  color: inherit;
+  text-decoration: none;
 }
 
 .portal-tile:hover {
@@ -133,8 +148,7 @@ onBeforeMount(() => {
 }
 
 .portal-tile--shenlun {
-  background: linear-gradient(135deg, #059669 0%, #047857 52%, #065f46 100%);
-  box-shadow: 0 12px 32px rgb(5 150 105 / 0.35);
+  padding: 16px 18px;
 }
 
 .portal-tile-label {
@@ -151,6 +165,17 @@ onBeforeMount(() => {
   font-weight: 500;
   opacity: 0.92;
   line-height: 1.5;
+}
+
+.portal-inline-link {
+  display: block;
+  padding: 12px 18px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  border-top: 1px solid rgba(255, 255, 255, 0.25);
 }
 
 .module-portal-note {

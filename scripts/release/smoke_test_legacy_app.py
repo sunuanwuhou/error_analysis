@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.config import DB_PATH
+from backend.config import DB_PATH
 
 
 def find_free_port() -> int:
@@ -72,7 +72,7 @@ def request_text(opener, url: str):
 
 
 def ensure_test_user(username: str, password: str) -> None:
-    from app.security import create_user_account
+    from backend.security import create_user_account
 
     try:
         create_user_account(username, password)
@@ -97,7 +97,7 @@ def main() -> None:
     if DB_PATH.exists():
         shutil.copy2(DB_PATH, db_backup_path)
     server = subprocess.Popen(
-        [sys.executable, '-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', str(port)],
+        [sys.executable, '-m', 'uvicorn', 'backend.main:app', '--host', '127.0.0.1', '--port', str(port)],
         cwd=ROOT,
         env=env,
         stdout=subprocess.PIPE,

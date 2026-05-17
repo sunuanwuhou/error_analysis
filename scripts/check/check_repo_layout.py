@@ -22,25 +22,25 @@ REQUIRED_ACTIVE_DOCS = (
     "MODULE_BOUNDARIES.md",
 )
 LEGACY_ALLOWED_NEW_PREFIXES = (
-    "xingce_v3/modules/main/workspace/",
-    "xingce_v3/modules/main/modal/",
-    "xingce_v3/modules/main/knowledge/",
-    "xingce_v3/modules/main/persistence/",
+    "legacy/xingce_v3/modules/main/workspace/",
+    "legacy/xingce_v3/modules/main/modal/",
+    "legacy/xingce_v3/modules/main/knowledge/",
+    "legacy/xingce_v3/modules/main/persistence/",
 )
 RUNTIME_TRACKED_PATTERNS = [
     "data/**",
     "runtime/**",
-    "cloudflared/**",
+    "ops/cloudflared/**",
     "**/__pycache__/**",
     "**/*.pyc",
     "app/data.db",
 ]
 RUNTIME_AFFECTING_PREFIXES = (
-    "app/",
+    "backend/",
     "frontend/",
-    "xingce_v3/",
-    "v51_frontend/",
+    "legacy/",
     "scripts/",
+    "tools/",
 )
 REQUIRED_DOC_TOUCH_FOR_RUNTIME_CHANGE = (
     "docs/active/DEVLOG.md",
@@ -97,7 +97,7 @@ def main() -> int:
     if not frontend_src.exists() or not frontend_entry.exists():
         errors.append("frontend primary entry is incomplete: expected frontend/src/main.ts")
 
-    tracked_converter_output = _list_tracked("converter/output")
+    tracked_converter_output = _list_tracked("tools/converter/output")
     if tracked_converter_output:
         errors.append(
             "generated converter output is tracked in git:\n  - " + "\n  - ".join(tracked_converter_output)
@@ -139,7 +139,7 @@ def main() -> int:
         legacy_added = [
             path
             for path in added_files
-            if (path.startswith("xingce_v3/") or path.startswith("v51_frontend/"))
+            if (path.startswith("legacy/xingce_v3/") or path.startswith("legacy/v51_frontend/"))
             and not path.startswith(LEGACY_ALLOWED_NEW_PREFIXES)
         ]
         if legacy_added:

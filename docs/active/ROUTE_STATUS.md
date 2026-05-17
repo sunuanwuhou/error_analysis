@@ -13,7 +13,7 @@ It is the source-of-truth for runtime route behavior and should be updated when 
 
 1. `/`  
    - authenticated app entry
-   - serves `v51_frontend/index.html`
+   - serves `legacy/v51_frontend/index.html`
 2. `/login`  
    - unauthenticated login entry
 3. `/health`  
@@ -44,16 +44,16 @@ Behavior:
 
 #### Active
 
-1. `/assets/*` -> serves `xingce_v3/`
-2. `/v51-static/*` -> serves `v51_frontend/`
+1. `/assets/*` -> serves `legacy/xingce_v3/`
+2. `/v51-static/*` -> serves `legacy/v51_frontend/`
 
 #### Runtime contract
 
-`/` -> `v51_frontend/index.html` -> `/v51-static/assets/v53-bootstrap.js` -> `/assets/legacy-app.bundle.manifest.json` -> split legacy bundles under `/assets/modules/*.bundle.js`.
+`/` -> `legacy/v51_frontend/index.html` -> `/v51-static/assets/v53-bootstrap.js` -> `/assets/legacy-app.bundle.manifest.json` -> split legacy bundles under `/assets/modules/*.bundle.js`.
 
 ## API route status
 
-All routes under included routers in `app.main` are active:
+All routes under included routers in `backend.main` are active:
 
 1. auth: `/api/auth/*`, `/api/me`
 2. backup: `/api/backup*`, `/api/local-backups*`, `/api/origin-status`

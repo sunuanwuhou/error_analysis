@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { computed, ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useXingceStore } from '@/stores/xingceStore'
 import PracticePanel from '@/components/xingce/PracticePanel.vue'
 import FilterSidebar from '@/components/xingce/FilterSidebar.vue'
@@ -15,6 +16,8 @@ import { savePortalLastModule } from '@/lib/portalPrefs'
 import '@/styles/xingce-vue-legacy.css'
 
 const store = useXingceStore()
+const router = useRouter()
+const route = useRoute()
 const quizMode = ref<'daily' | 'full' | 'review' | 'retrain' | null>(null)
 const showAddModal = ref(false)
 const showImportModal = ref(false)
@@ -97,6 +100,41 @@ function onPickNote(nodeId: string) {
   store.setActiveNode(nodeId)
   mainTab.value = 'notes'
   showGlobalSearch.value = false
+}
+
+function qsOne(v: unknown): string {
+  if (typeof v === 'string') return v
+  if (Array.isArray(v) && v[0]) return String(v[0])
+  return ''
+}
+
+function consumeSuiteGlobalSearchHandoff() {
+  if (store.loading) return
+  const errId = qsOne(route.query.gsPickError)
+  const noteId = qsOne(route.query.gsPickNote)
+  if (!errId && !noteId) return
+  const q = { ...route.query }
+  delete q.gsPickError
+  delete q.gsPickNote
+  void router.replace({ path: route.path, query: q })
+  if (errId) onPickQuestion(errId)
+  else onPickNote(noteId)
+}
+
+watch(
+  () => [store.loading, route.query.gsPickError, route.query.gsPickNote] as const,
+  consumeSuiteGlobalSearchHandoff,
+  { flush: 'post' },
+)
+
+function onPickSuite(paperId: string, questionId: string) {
+  showGlobalSearch.value = false
+  const q: Record<string, string> = { paper: paperId }
+  if (questionId) q.qid = questionId
+  void router.push({
+    name: 'XingceSuiteBank',
+    query: q,
+  })
 }
 </script>
 
@@ -206,6 +244,7 @@ function onPickNote(nodeId: string) {
       @close="showGlobalSearch = false"
       @pick-question="onPickQuestion"
       @pick-note="onPickNote"
+      @pick-suite="onPickSuite"
     />
     <QuizModal v-if="quizMode" :mode="quizMode" @close="quizMode = null" />
     <AddErrorModal v-if="showAddModal" @close="showAddModal = false" @added="() => {}" />

@@ -16,19 +16,20 @@ SKIP_DIRS = {
     '.venv',
     '__pycache__',
     'cloudflared',
-    'converter/output',
+    'ops/cloudflared',
+    'tools/converter/output',
     'data',
     'dist',
     'dist-ssr',
     'knowledge_sources',
     'node_modules',
     'runtime',
-    'v51_frontend',
-    'xingce_v3/vendor',
+    'legacy/v51_frontend',
+    'legacy/xingce_v3/vendor',
 }
 
 SKIP_FILES = {
-    'xingce_v3/modules/legacy-app.bundle.js',
+    'legacy/xingce_v3/modules/legacy-app.bundle.js',
 }
 
 BINARY_EXTENSIONS = {

@@ -8,9 +8,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 TARGETS = {
-    'xingce_v3/modules/main/05-persistence.js',
-    'xingce_v3/modules/main/30-directory-management.js',
-    'xingce_v3/modules/main/36-tab-coordination.js',
+    'legacy/xingce_v3/modules/main/05-persistence.js',
+    'legacy/xingce_v3/modules/main/30-directory-management.js',
+    'legacy/xingce_v3/modules/main/36-tab-coordination.js',
 }
 
 

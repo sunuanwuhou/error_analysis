@@ -3,6 +3,7 @@ import HubPage from '@/views/shenlun/HubPage.vue'
 import WorkbenchPage from '@/views/shenlun/WorkbenchPage.vue'
 import ResultPage from '@/views/shenlun/ResultPage.vue'
 import XingceWorkspacePage from '@/views/xingce/WorkspacePage.vue'
+import SuiteBankPage from '@/views/xingce/SuiteBankPage.vue'
 import ModulePortalPage from '@/views/ModulePortalPage.vue'
 
 const router = createRouter({
@@ -32,6 +33,11 @@ const router = createRouter({
       path: '/xingce/workspace',
       name: 'XingceWorkspace',
       component: XingceWorkspacePage,
+    },
+    {
+      path: '/xingce/suite',
+      name: 'XingceSuiteBank',
+      component: SuiteBankPage,
     },
   ],
 })

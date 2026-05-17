@@ -18,10 +18,11 @@ RUN apt-get update \
 COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
-COPY app /app/app
+COPY backend /app/backend
 COPY scripts /app/scripts
-COPY xingce_v3 /app/xingce_v3
-COPY v51_frontend /app/v51_frontend
+COPY tools /app/tools
+COPY legacy/xingce_v3 /app/legacy/xingce_v3
+COPY legacy/v51_frontend /app/legacy/v51_frontend
 
 # Copy pre-built Vue frontend (built by wsl.ps1 deploy/up before docker build)
 COPY frontend/dist /app/frontend/dist
@@ -30,4 +31,4 @@ RUN python /app/scripts/build_legacy_assets.py
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

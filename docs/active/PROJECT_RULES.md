@@ -30,7 +30,7 @@ Priority order:
 
 1. one commit should focus on one intent only (feature, fix, refactor, docs, or build artifact refresh)
 2. avoid mixed commits that bundle frontend, backend, docs, and generated assets together without a clear reason
-3. generated legacy bundles (`xingce_v3/modules/legacy-app*.js`, `xingce_v3/styles/legacy-app.bundle.css`, manifest) should be committed in a dedicated `chore(build)` style commit whenever possible
+3. generated legacy bundles (`legacy/xingce_v3/modules/legacy-app*.js`, `legacy/xingce_v3/styles/legacy-app.bundle.css`, manifest) should be committed in a dedicated `chore(build)` style commit whenever possible
 4. avoid catch-all commit messages such as "commit all pending changes" or "sync latest changes"
 5. if a behavior change requires a rebuild commit, submit code-change commit first, then the rebuild-assets commit
 
@@ -105,11 +105,11 @@ Each delivery must explicitly include one of:
 
 ## Frontend cache-bust rule
 
-When the active runtime is the current shell (`v51_frontend/index.html` -> `v53-bootstrap.js` -> `legacy-app.bundle.manifest.json` -> split legacy bundles), runtime restart alone is not enough to prove frontend changes are live.
+When the active runtime is the current shell (`legacy/v51_frontend/index.html` -> `v53-bootstrap.js` -> `legacy-app.bundle.manifest.json` -> split legacy bundles), runtime restart alone is not enough to prove frontend changes are live.
 
-Required rule after any user-visible change in the served legacy assets under `xingce_v3/modules/` or `xingce_v3/styles/`:
+Required rule after any user-visible change in the served legacy assets under `legacy/xingce_v3/modules/` or `legacy/xingce_v3/styles/`:
 
-1. bump `xingce_v3/legacy-app.bundle.manifest.json` field `built_at`
+1. bump `legacy/xingce_v3/legacy-app.bundle.manifest.json` field `built_at`
 2. deploy updated split bundles and manifest to the runtime that serves the target URL
 3. verify the served manifest `built_at` is the new value
 4. then ask for browser hard refresh (`Ctrl + F5`) and continue verification
@@ -137,13 +137,13 @@ This rule exists because `/assets` is served from files inside the running conta
 
 Current active authenticated entry:
 
-1. `/` returns `v51_frontend/index.html`
-2. `v51_frontend/assets/v53-bootstrap.js` loads `xingce_v3/legacy-app.bundle.manifest.json`
+1. `/` returns `legacy/v51_frontend/index.html`
+2. `legacy/v51_frontend/assets/v53-bootstrap.js` loads `legacy-app.bundle.manifest.json` (mounted from `legacy/xingce_v3/` at `/assets/`)
 3. the manifest points the browser to `legacy-app.home/workspace/modal/bootstrap.bundle.js`
 
 Working rules:
 
-1. do not assume `xingce_v3/xingce_v3.html` is the active root page for logged-in users
+1. do not assume `legacy/xingce_v3/xingce_v3.html` is the active root page for logged-in users
 2. do not patch only the monolithic `legacy-app.bundle.js` and assume the live shell will use it
 3. before frontend debugging, confirm which served bundle the active page actually loads
 4. if a legacy fallback path still exists, document it explicitly instead of treating it as the main runtime
@@ -154,7 +154,7 @@ For page-level UI requests, target ownership must be confirmed before implementa
 
 Mandatory order:
 
-1. decide target stack explicitly: `legacy (xingce_v3/*)` or `vue (frontend/src/*)`
+1. decide target stack explicitly: `legacy (legacy/xingce_v3/*)` or `vue (frontend/src/*)`
 2. use at least one visible page marker text from the request (or screenshot) to map to candidate files
 3. verify the runtime entry chain points to the stack being edited
 4. only then start code changes

@@ -6,7 +6,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any
 
-from app.database import get_conn
+from backend.database import get_conn
 
 
 @dataclass

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from app.database import get_conn
+from backend.database import get_conn
 
 
 USER_ID = "5759eb632cf113d6b9b47edd"

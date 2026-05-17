@@ -1,5 +1,28 @@
 # DEVLOG
 
+## 2026-05-17 - tooling split: `tools/suite_bank/`, `scripts/diagnostics/`
+
+### Summary
+
+- **`scripts/suite_bank/`** → **`tools/suite_bank/`**（Word 套卷导入与运维脚本；容器内路径 **`/app/tools/suite_bank`**）。**`Dockerfile`** 增加 **`COPY tools /app/tools`**（仍通过 **`.dockerignore`** 排除 **`tools/converter/`** 以减少构建上下文）。
+- 根目录零散 **`analyze_db*.py` / `query_db.py` / `docker_analyze.py` / `test_db.py`** → **`scripts/diagnostics/`**（仅本地诊断，不参与默认镜像行为）。
+
+### Docs updated
+
+1. `docs/active/DEVLOG.md` (this entry)
+2. `docs/active/SUITE_BANK_WORD_IMPORT_RULES.md`, `ARCHITECTURE.md`, `ops/README.md`
+
+## 2026-05-17 - repository layout: backend/, legacy/, tools/
+
+### Summary
+
+Structural-only reorg for clarity: **`app/` → `backend/`** (FastAPI package + uvicorn **`backend.main:app`**); **`xingce_v3/`** and **`v51_frontend/`** moved under **`legacy/`** with config/static mounts updated; **`converter/`** moved to **`tools/converter/`**. Runtime URLs unchanged. Cloudflare token path for scripts defaults to **`ops/cloudflared/token.pem`** (`cloudflared/` at repo root remains gitignored for any legacy local copies).
+
+### Docs updated
+
+1. `docs/active/DEVLOG.md` (this entry)
+2. `ARCHITECTURE.md`, `README.md`, `AGENTS.md`, `docs/active/SUITE_BANK_WORD_IMPORT_RULES.md`, `docs/active/ROUTE_STATUS.md`, `docs/active/PROJECT_RULES.md`, `docs/active/ROUTE_STATUS.md`, `docs/active/PROJECT_RULES.md`
+
 ## 2026-05-05 - prevent frontend target misalignment before UI changes
 
 ### Goal
