@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useXingceStore } from '@/stores/xingceStore'
-import NotesPanel from './NotesPanel.vue'
+import KnowledgeWorkspacePanel from './KnowledgeWorkspacePanel.vue'
 
 const store = useXingceStore()
-const notesPanelRef = ref<InstanceType<typeof NotesPanel> | null>(null)
+const workspaceRef = ref<InstanceType<typeof KnowledgeWorkspacePanel> | null>(null)
+const notesLayoutMode = ref<'list' | 'note'>('note')
 
 const emit = defineEmits<{
   openImport: []
   openGlobalSearch: []
+  openAddForNode: [nodeId: string]
 }>()
 
 function onClearNotes() {
@@ -22,7 +24,7 @@ function onDeleteKnowledgeNode() {
 }
 
 function enterNoteEdit() {
-  notesPanelRef.value?.startEdit()
+  workspaceRef.value?.startEdit()
 }
 
 defineExpose({ enterNoteEdit })
@@ -47,8 +49,21 @@ defineExpose({ enterNoteEdit })
         <button type="button" class="btn btn-secondary" @click="onClearNotes">清空</button>
       </div>
     </div>
-    <div class="notes-content">
-      <NotesPanel ref="notesPanelRef" />
+    <div
+      id="notesContent"
+      class="notes-content knowledge-notes-active"
+      :class="{
+        'knowledge-workspace-list-mode': notesLayoutMode === 'list',
+        'knowledge-workspace-note-mode': notesLayoutMode === 'note',
+      }"
+    >
+      <KnowledgeWorkspacePanel
+        ref="workspaceRef"
+        @layout-mode="notesLayoutMode = $event"
+        @open-import="emit('openImport')"
+        @open-global-search="emit('openGlobalSearch')"
+        @open-add-for-node="emit('openAddForNode', $event)"
+      />
     </div>
   </div>
 </template>
@@ -61,9 +76,11 @@ defineExpose({ enterNoteEdit })
 .del-node:not(:disabled):hover {
   background: #fef2f2;
 }
-.notes-content :deep(.np) {
-  border-radius: 8px;
+.notes-content {
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 </style>

@@ -31,6 +31,8 @@ function resetQuizSession() {
   quizAnswers = [];
   quizSkipped = new Set();
   resetQuizPauseState();
+  const quizModal = document.getElementById('quizModal');
+  if (quizModal) quizModal.classList.remove('quiz-modal--note-practice');
   const titleEl = document.getElementById('quizTitleText');
   const progressEl = document.getElementById('quizProgress');
   const fillEl = document.getElementById('quizProgFill');

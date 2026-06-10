@@ -25,6 +25,11 @@ EXPECTED_ROUTES: dict[tuple[str, str], str] = {
     ('POST', '/api/auth/login'): 'backend.routers.auth.login',
     ('POST', '/api/auth/logout'): 'backend.routers.auth.logout',
     ('GET', '/api/me'): 'backend.routers.auth.me',
+    ('GET', '/api/admin/users'): 'backend.routers.admin.admin_list_users',
+    ('POST', '/api/admin/users'): 'backend.routers.admin.admin_create_user',
+    ('PUT', '/api/admin/users/{user_id}/modules'): 'backend.routers.admin.admin_update_user_modules',
+    ('PATCH', '/api/admin/users/{user_id}/password'): 'backend.routers.admin.admin_reset_password',
+    ('PATCH', '/api/admin/users/{user_id}/active'): 'backend.routers.admin.admin_update_active',
     ('GET', '/api/backup'): 'backend.routers.backup.get_backup',
     ('PUT', '/api/backup'): 'backend.routers.backup.put_backup',
     ('POST', '/api/backup/chunk/init'): 'backend.routers.backup.init_backup_chunk_upload',
@@ -69,7 +74,10 @@ EXPECTED_ROUTES: dict[tuple[str, str], str] = {
     ('GET', '/api/suite-bank/papers'): 'backend.routers.suite_bank.api_suite_bank_papers',
     ('GET', '/api/suite-bank/papers/{paper_id}'): 'backend.routers.suite_bank.api_suite_bank_paper_detail',
     ('GET', '/api/suite-bank/search'): 'backend.routers.suite_bank.api_suite_bank_search',
+    ('GET', '/api/suite-bank/bank-drill/meta'): 'backend.routers.suite_bank.api_suite_bank_bank_drill_meta',
+    ('POST', '/api/suite-bank/bank-drill/start'): 'backend.routers.suite_bank.api_suite_bank_bank_drill_start',
     ('POST', '/api/suite-bank/practice-records'): 'backend.routers.suite_bank.api_suite_bank_practice_record_post',
+    ('PUT', '/api/suite-bank/practice-records/sync'): 'backend.routers.suite_bank.api_suite_bank_practice_record_sync',
     ('GET', '/api/suite-bank/practice-records'): 'backend.routers.suite_bank.api_suite_bank_practice_record_list',
 }
 

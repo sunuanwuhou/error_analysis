@@ -347,6 +347,30 @@ def _collect_practiced_today_keys(
         if question_id:
             practiced_question_ids.add(question_id)
 
+    with get_conn() as conn:
+        session_row = conn.execute(
+            "SELECT id FROM today_training_sessions WHERE user_id=? AND session_date=? LIMIT 1",
+            (user_id, today_str),
+        ).fetchone()
+        if session_row:
+            session_id = str(session_row["id"] or "").strip()
+            if session_id:
+                item_rows = conn.execute(
+                    """
+                    SELECT error_id, question_id
+                    FROM today_training_session_items
+                    WHERE session_id=? AND user_id=? AND status <> 'pending'
+                    """,
+                    (session_id, user_id),
+                ).fetchall()
+                for row in item_rows:
+                    error_id = str(row["error_id"] or "").strip()
+                    question_id = str(row["question_id"] or "").strip()
+                    if error_id:
+                        practiced_error_ids.add(error_id)
+                    if question_id:
+                        practiced_question_ids.add(question_id)
+
     return practiced_error_ids, practiced_question_ids
 
 
@@ -390,6 +414,7 @@ def build_practice_daily_response(user_id: str, limit: int = 30) -> dict[str, An
         behavior_map,
         [dict(row) for row in attempt_rows],
         max(1, min(limit, 30)),
+        shuffle_seed=today_str,
     )
     insights = build_practice_insights(filtered_errors, behavior_map, daily_limit=max(1, min(limit, 30)), review_limit=min(max(limit // 2, 4), 8))
     flow = build_flow_workbench(filtered_errors, behavior_map, limit=min(max(limit // 2, 4), 8))

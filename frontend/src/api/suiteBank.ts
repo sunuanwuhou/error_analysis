@@ -18,6 +18,9 @@ export interface SuiteQuestionRow {
   type_label?: string
   img_data?: string
   meta?: Record<string, unknown>
+  major_module?: string
+  paper_title?: string
+  paper_folder?: string
 }
 
 export interface SuitePaperDetail {
@@ -66,11 +69,15 @@ export interface SuitePracticeRecordRow {
   paper_folder: string
   mode: string
   created_at: string
+  updated_at?: string
   duration_sec: number
   correct_count: number
   wrong_count: number
   unanswered_count: number
   submitted_count: number
+  practice_subtype?: string
+  record_status?: string
+  client_session_id?: string
   payload: Record<string, unknown>
 }
 
@@ -110,6 +117,14 @@ export interface SuitePracticeRecordPostBody {
   unanswered_count: number
   submitted_count: number
   items: SuitePracticeItemPayload[]
+  practice_subtype?: string
+  client_session_id?: string
+  record_status?: 'in_progress' | 'completed'
+  bank_drill_session_id?: string
+  bank_drill_exam_track?: string
+  bank_drill_years?: number[]
+  bank_drill_major_module?: string
+  bank_drill_requested_count?: number
 }
 
 export const suiteBankApi = {
@@ -133,9 +148,28 @@ export const suiteBankApi = {
     return postJson<{ id: string; ok: boolean }>('/api/suite-bank/practice-records', body)
   },
 
-  async listPracticeRecords(limit = 50, paperId?: string): Promise<SuitePracticeRecordRow[]> {
+  async syncPracticeRecord(body: SuitePracticeRecordPostBody): Promise<{ id: string; ok: boolean }> {
+    const res = await fetch('/api/suite-bank/practice-records/sync', {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (res.status === 401) {
+      window.location.href = '/login.html'
+      throw new Error('unauthorized')
+    }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    return res.json() as Promise<{ id: string; ok: boolean }>
+  },
+
+  async listPracticeRecords(
+    limit = 50,
+    opts?: { paperId?: string; practiceSubtype?: 'paper_exam' | 'bank_module_drill' },
+  ): Promise<SuitePracticeRecordRow[]> {
     const q = new URLSearchParams({ limit: String(limit) })
-    if (paperId) q.set('paper_id', paperId)
+    if (opts?.paperId) q.set('paper_id', opts.paperId)
+    if (opts?.practiceSubtype) q.set('practice_subtype', opts.practiceSubtype)
     const data = await getJson<{ records: SuitePracticeRecordRow[] }>(
       `/api/suite-bank/practice-records?${q.toString()}`,
     )

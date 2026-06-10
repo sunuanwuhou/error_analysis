@@ -223,6 +223,11 @@
   background: linear-gradient(135deg, #7c3aed, #5b21b6);
 }
 
+.xc-vue-legacy .quiz-btn.bank-drill {
+  margin-top: 6px;
+  background: linear-gradient(135deg, #db2777, #9d174d);
+}
+
 .xc-vue-legacy .quiz-btn.review-queue {
   margin-top: 6px;
   background: linear-gradient(135deg, #f97316, #c2410c);

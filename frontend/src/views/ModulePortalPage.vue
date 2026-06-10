@@ -1,19 +1,50 @@
 <script setup lang="ts">
-import { onBeforeMount } from 'vue'
+import { onMounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { fetchMe, hasModule } from '@/api/authMe'
 import { readPortalLastModule, savePortalLastModule } from '@/lib/portalPrefs'
+import type { MeUser, PortalModuleKey } from '@/lib/modules'
 
 const router = useRouter()
 const route = useRoute()
+const loading = ref(true)
+const me = ref<MeUser | null>(null)
 
-onBeforeMount(() => {
+function can(key: PortalModuleKey) {
+  return hasModule(me.value || undefined, key)
+}
+
+async function maybeAutoEnter() {
   const p = route.query.portal
   if (p === '1' || p === 'true') return
   const last = readPortalLastModule()
+  if (!last || !can(last)) return
   if (last === 'xingce') {
-    void router.replace({ name: 'XingceWorkspace' })
-  } else if (last === 'shenlun') {
-    void router.replace({ name: 'ShenlunHub' })
+    window.location.replace('/')
+    return
+  }
+  if (last === 'shenlun') {
+    await router.replace({ name: 'ShenlunHub' })
+    return
+  }
+  if (last === 'xingce_suite') {
+    await router.replace({ name: 'XingceSuiteBank' })
+  } else if (last === 'xingce_bank_drill') {
+    await router.replace({ name: 'XingceBankDrill' })
+  }
+}
+
+onMounted(async () => {
+  try {
+    const res = await fetchMe()
+    if (!res.authenticated || !res.user) {
+      window.location.href = '/login.html'
+      return
+    }
+    me.value = res.user
+    await maybeAutoEnter()
+  } finally {
+    loading.value = false
   }
 })
 </script>
@@ -23,24 +54,38 @@ onBeforeMount(() => {
     <div class="module-portal-card">
       <div class="module-portal-brand">Ashore</div>
       <h1 class="module-portal-title">选择模块</h1>
-      <p class="module-portal-desc">请先选择要进入的模块，再回到对应工作台开始学习。</p>
-      <div class="module-portal-actions">
-        <div class="portal-tile portal-tile--xingce">
-          <RouterLink
-            class="portal-tile-main"
-            :to="{ name: 'XingceWorkspace' }"
-            @click="savePortalLastModule('xingce')"
-          >
-            <span class="portal-tile-label">行测</span>
-            <span class="portal-tile-sub">知识树、练习与错题本</span>
-          </RouterLink>
-          <RouterLink
-            class="portal-inline-link"
-            :to="{ name: 'XingceSuiteBank' }"
-            @click="savePortalLastModule('xingce')"
-          >套卷题库</RouterLink>
-        </div>
+      <p v-if="loading" class="module-portal-desc">正在加载权限…</p>
+      <p v-else class="module-portal-desc">请先选择要进入的模块，再回到对应工作台开始学习。</p>
+      <div v-if="!loading" class="module-portal-actions">
+        <a
+          v-if="can('xingce')"
+          class="portal-tile portal-tile--xingce"
+          href="/"
+          @click="savePortalLastModule('xingce')"
+        >
+          <span class="portal-tile-label">行测</span>
+          <span class="portal-tile-sub">知识树、练习与错题本（旧版工作台）</span>
+        </a>
         <RouterLink
+          v-if="can('xingce_suite')"
+          class="portal-tile portal-tile--suite"
+          :to="{ name: 'XingceSuiteBank' }"
+          @click="savePortalLastModule('xingce_suite')"
+        >
+          <span class="portal-tile-label">套卷练习</span>
+          <span class="portal-tile-sub">真题套卷、计时与交卷</span>
+        </RouterLink>
+        <RouterLink
+          v-if="can('xingce_bank_drill')"
+          class="portal-tile portal-tile--bank-drill"
+          :to="{ name: 'XingceBankDrill' }"
+          @click="savePortalLastModule('xingce_bank_drill')"
+        >
+          <span class="portal-tile-label">套卷模块练</span>
+          <span class="portal-tile-sub">广东全库 · 五大模块随机抽题</span>
+        </RouterLink>
+        <RouterLink
+          v-if="can('shenlun')"
           class="portal-tile portal-tile--shenlun"
           :to="{ name: 'ShenlunHub' }"
           @click="savePortalLastModule('shenlun')"
@@ -48,10 +93,21 @@ onBeforeMount(() => {
           <span class="portal-tile-label">申论</span>
           <span class="portal-tile-sub">知识树选题、笔记与工作台</span>
         </RouterLink>
+        <RouterLink
+          v-if="me?.is_super_admin"
+          class="portal-tile portal-tile--admin"
+          :to="{ name: 'AdminUsers' }"
+        >
+          <span class="portal-tile-label">系统管理</span>
+          <span class="portal-tile-sub">分配账号与模块权限</span>
+        </RouterLink>
       </div>
-      <p class="module-portal-note">
-        会记住上次选择；需要切换模块时请打开选择页（例如 legacy 侧栏「模块首页」，或访问
-        <code>/new/?portal=1</code>）。
+      <p v-if="!loading && me && !me.modules?.length && !me.is_super_admin" class="module-portal-note module-portal-note--warn">
+        当前账号尚未分配模块权限，请联系管理员。
+      </p>
+      <p v-else class="module-portal-note">
+        会记住上次选择；需要切换模块时请打开选择页（侧栏「模块首页」，或访问
+        <code>/new/?portal=1</code>、<code>/?portal=1</code>）。
       </p>
     </div>
   </div>
@@ -127,13 +183,6 @@ onBeforeMount(() => {
   box-sizing: border-box;
 }
 
-.portal-tile-main {
-  display: block;
-  padding: 16px 18px 12px;
-  color: inherit;
-  text-decoration: none;
-}
-
 .portal-tile:hover {
   filter: brightness(1.06);
 }
@@ -143,12 +192,33 @@ onBeforeMount(() => {
 }
 
 .portal-tile--xingce {
+  padding: 16px 18px;
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 52%, #1e40af 100%);
   box-shadow: 0 12px 32px rgb(37 99 235 / 0.38);
 }
 
+.portal-tile--suite {
+  padding: 16px 18px;
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 52%, #5b21b6 100%);
+  box-shadow: 0 12px 32px rgb(124 58 237 / 0.38);
+}
+
+.portal-tile--bank-drill {
+  padding: 16px 18px;
+  background: linear-gradient(135deg, #db2777 0%, #be185d 52%, #9d174d 100%);
+  box-shadow: 0 12px 32px rgb(219 39 119 / 0.35);
+}
+
 .portal-tile--shenlun {
   padding: 16px 18px;
+  background: linear-gradient(135deg, #059669 0%, #047857 52%, #065f46 100%);
+  box-shadow: 0 12px 32px rgb(5 150 105 / 0.35);
+}
+
+.portal-tile--admin {
+  padding: 16px 18px;
+  background: linear-gradient(135deg, #d97706 0%, #b45309 52%, #92400e 100%);
+  box-shadow: 0 12px 32px rgb(217 119 6 / 0.35);
 }
 
 .portal-tile-label {
@@ -167,21 +237,14 @@ onBeforeMount(() => {
   line-height: 1.5;
 }
 
-.portal-inline-link {
-  display: block;
-  padding: 12px 18px 16px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #fff;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  border-top: 1px solid rgba(255, 255, 255, 0.25);
-}
-
 .module-portal-note {
   margin: 20px 0 0;
   font-size: 12px;
   color: #9ca3af;
   line-height: 1.55;
+}
+
+.module-portal-note--warn {
+  color: #b45309;
 }
 </style>

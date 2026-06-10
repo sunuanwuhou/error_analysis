@@ -73,14 +73,6 @@ function goModuleHome() {
   window.location.href = '/?portal=1'
 }
 
-function goStudyHome() {
-  window.location.href = '/'
-}
-
-function goShenlunWorkbench() {
-  window.location.href = '/new/shenlun'
-}
-
 async function logout() {
   if (!confirm('确定退出登录？')) return
   try {
@@ -98,11 +90,6 @@ async function logout() {
           <span class="btn-module-portal-main">模块首页</span>
           <span class="btn-module-portal-sub">选择行测 / 申论模块</span>
         </button>
-      </div>
-      <div class="sidebar-tools-row workspace-entry-row workspace-submodule-row">
-        <button type="button" class="btn btn-secondary" disabled>行测工作台</button>
-        <button type="button" class="btn btn-secondary" @click="goStudyHome">学习首页</button>
-        <button type="button" class="btn btn-secondary" @click="goShenlunWorkbench">申论工作台</button>
       </div>
       <div class="sidebar-tools-row">
         <button type="button" class="btn btn-primary" @click="emit('openAdd')">+ 添加</button>
@@ -158,7 +145,7 @@ async function logout() {
         <span class="badge">{{ dailyBadge }}</span>
       </button>
       <button type="button" class="quiz-btn full-practice" @click="emit('startQuiz', 'full')">
-        <span>全量练习</span>
+        <span>随机一个模块出题</span>
         <span class="badge">{{ fullBadge }}</span>
       </button>
       <button
@@ -182,8 +169,8 @@ async function logout() {
       <button type="button" class="quiz-btn random-note" @click="emit('startRandomNote')">
         <span>随机笔记</span>
       </button>
-      <RouterLink class="quiz-btn suite-bank" :to="{ name: 'XingceSuiteBank' }">
-        <span>套卷练习</span>
+      <RouterLink class="quiz-btn bank-drill" :to="{ name: 'XingceBankDrill' }">
+        <span>模块随机练</span>
       </RouterLink>
       <p v-if="store.errors.length !== fullBadge" style="margin:4px 0 0;font-size:10px;color:#94a3b8;text-align:center;line-height:1.35">
         全库共 {{ store.errors.length }} 题，全量练习为未掌握题

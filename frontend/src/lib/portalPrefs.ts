@@ -1,12 +1,12 @@
 /** 与 legacy `v53-bootstrap.js` 使用同一键，保证 `/` 与 `/new/` 行为一致 */
 export const PORTAL_LAST_MODULE_KEY = 'v53.portal.lastModule'
 
-export type PortalModuleChoice = 'xingce' | 'shenlun'
+export type PortalModuleChoice = 'xingce' | 'xingce_suite' | 'xingce_bank_drill' | 'shenlun'
 
 export function readPortalLastModule(): PortalModuleChoice | null {
   try {
     const v = localStorage.getItem(PORTAL_LAST_MODULE_KEY)
-    if (v === 'xingce' || v === 'shenlun') return v
+    if (v === 'xingce' || v === 'xingce_suite' || v === 'xingce_bank_drill' || v === 'shenlun') return v
   } catch {
     /* ignore */
   }

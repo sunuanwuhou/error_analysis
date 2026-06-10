@@ -1,30 +1,7 @@
 <div class="main-area">
 <div class="toast-stack" id="toastStack"></div>
 
-<div class="app-view app-view-home active" id="homeView">
-<div class="home-shell">
-<div class="home-shell-header">
-<div>
-<div class="home-shell-kicker">行测首页</div>
-<h2>先决定今天做什么，再进入工作台执行</h2>
-<div class="home-shell-sub">首页负责调度任务、弱点和必看笔记；进入工作台后再录题、看错题和写笔记。需要先换科目或回到系统入口时，点下面大紫钮「模块首页」。</div>
-</div>
-</div>
-<div class="home-shell-module-slot">
-<button class="btn btn-module-portal-hero" data-onclick="window.location.href='/'" type="button">
-<span class="btn-module-portal-main">模块首页</span>
-<span class="btn-module-portal-sub">点击进入 · 门户选择「行测 / 申论」</span>
-</button>
-</div>
-<div class="home-shell-actions home-shell-actions-quick">
-<button class="btn btn-secondary" data-onclick="window.location.href='/new/shenlun'" type="button">申论工作台</button>
-<button class="btn btn-primary" data-onclick="openWorkspaceQuickAdd()">继续录题</button>
-</div>
-<div id="homeDashboardContent"></div>
-</div>
-</div>
-
-<div class="app-view app-view-workspace" id="workspaceView">
+<div class="app-view app-view-workspace active" id="workspaceView">
 <div class="tab-content hidden" id="tabContentErrors" aria-hidden="true">
 <div class="errors-area">
 <div class="errors-header">

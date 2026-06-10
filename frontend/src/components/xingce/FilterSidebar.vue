@@ -19,9 +19,50 @@ const STATUS_OPTIONS = [
   { value: 'mastered', label: '已掌握' },
 ] as const
 
+const MODULE_ORDER = ['言语理解与表达', '判断推理', '数量关系', '资料分析', '常识判断', '其他']
+
 const advancedOpen = ref(false)
+const moduleOpen = ref(true)
 const reasonOpen = ref(false)
 const dateOpen = ref(false)
+
+const moduleTypesDisplay = computed(() => {
+  const counts = store.totalCountByType
+  const keys = Object.keys(counts)
+  const ordered = [
+    ...MODULE_ORDER.filter(t => keys.includes(t)),
+    ...keys.filter(k => !MODULE_ORDER.includes(k)).sort((a, b) => a.localeCompare(b, 'zh-CN')),
+  ]
+  return ordered.map(type => ({ type, count: counts[type] ?? 0 }))
+})
+
+const moduleSubtypeOptions = computed(() => {
+  if (!store.activeType) return []
+  const seen = new Set<string>()
+  for (const e of store.errors) {
+    if (e.type !== store.activeType) continue
+    const st = String(e.subtype || '').trim()
+    if (st) seen.add(st)
+  }
+  return [...seen].sort((a, b) => a.localeCompare(b, 'zh-CN'))
+})
+
+const moduleSubSubtypeOptions = computed(() => {
+  if (!store.activeType || !store.activeSubtype) return []
+  const seen = new Set<string>()
+  for (const e of store.errors) {
+    if (e.type !== store.activeType) continue
+    if (String(e.subtype || '').trim() !== store.activeSubtype) continue
+    const s2 = String(e.subSubtype || '').trim()
+    if (s2) seen.add(s2)
+  }
+  return [...seen].sort((a, b) => a.localeCompare(b, 'zh-CN'))
+})
+
+function toggleModuleType(t: string) {
+  if (store.activeType === t) store.clearModuleFilters()
+  else store.setActiveType(t)
+}
 
 const searchMetaText = computed(() => {
   if (!store.hasKnowledgeSearch()) return '支持按节点名和路径搜索'
@@ -36,6 +77,84 @@ function clearTreeSearch() {
 
 <template>
   <template v-if="!store.knowledgeFocusMode">
+    <div class="xc-vue-fs-module">
+      <button type="button" class="fs-module-toggle" @click="moduleOpen = !moduleOpen">
+        <span>题型模块</span>
+        <span>{{ moduleOpen ? '▾' : '▸' }}</span>
+      </button>
+      <div v-if="moduleOpen" class="fs-module-panel">
+        <div class="fs-chip-row">
+          <button
+            type="button"
+            class="fs-chip"
+            :class="{ active: !store.activeType }"
+            @click="store.clearModuleFilters()"
+          >
+            全部题型
+          </button>
+        </div>
+        <div class="fs-chip-row">
+          <button
+            v-for="row in moduleTypesDisplay"
+            :key="row.type"
+            type="button"
+            class="fs-chip"
+            :class="{ active: store.activeType === row.type }"
+            @click="toggleModuleType(row.type)"
+          >
+            {{ row.type }}
+            <span class="fs-chip-badge">{{ row.count }}</span>
+          </button>
+        </div>
+        <template v-if="store.activeType">
+          <div class="fs-label" style="margin-top:6px">二级模块</div>
+          <div class="fs-chip-row">
+            <button
+              type="button"
+              class="fs-chip"
+              :class="{ active: !store.activeSubtype }"
+              @click="store.setActiveSubtype(null)"
+            >
+              全部二级
+            </button>
+            <button
+              v-for="st in moduleSubtypeOptions"
+              :key="st"
+              type="button"
+              class="fs-chip"
+              :class="{ active: store.activeSubtype === st }"
+              @click="store.setActiveSubtype(st)"
+            >
+              {{ st }}
+            </button>
+          </div>
+        </template>
+        <template v-if="store.activeType && store.activeSubtype && moduleSubSubtypeOptions.length">
+          <div class="fs-label" style="margin-top:6px">三级模块</div>
+          <div class="fs-chip-row">
+            <button
+              type="button"
+              class="fs-chip"
+              :class="{ active: !store.activeSubSubtype }"
+              @click="store.setActiveSubSubtype(null)"
+            >
+              全部三级
+            </button>
+            <button
+              v-for="s2 in moduleSubSubtypeOptions"
+              :key="s2"
+              type="button"
+              class="fs-chip"
+              :class="{ active: store.activeSubSubtype === s2 }"
+              @click="store.setActiveSubSubtype(s2)"
+            >
+              {{ s2 }}
+            </button>
+          </div>
+        </template>
+      </div>
+    </div>
+
     <div class="xc-vue-fs-advanced">
       <button type="button" class="fs-advanced-toggle" @click="advancedOpen = !advancedOpen">
         <span>高级筛选</span>
@@ -176,6 +295,34 @@ function clearTreeSearch() {
 </template>
 
 <style scoped>
+.xc-vue-fs-module {
+  flex-shrink: 0;
+  margin-bottom: 8px;
+}
+.fs-module-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  border: 1px solid #dbe1ea;
+  background: #fff;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.fs-module-panel {
+  margin-top: 6px;
+  border: 1px solid #e5eaf1;
+  background: #fafbfd;
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 .xc-vue-fs-advanced {
   flex-shrink: 0;
 }

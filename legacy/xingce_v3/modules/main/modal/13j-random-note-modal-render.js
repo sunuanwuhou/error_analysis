@@ -19,12 +19,47 @@ function ensureRandomNoteReviewModal() {
   return mask;
 }
 
+function _renderRandomNoteModeButton(mode, label) {
+  const active = randomNoteQueueMode === mode;
+  const style = active
+    ? 'background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd'
+    : 'background:#fff;color:#64748b;border:1px solid #e2e8f0';
+  return `<button class="btn btn-secondary" type="button" style="padding:4px 12px;font-size:12px;${style}" onclick="setRandomNoteQueueMode('${mode}')">${label}</button>`;
+}
+
+function _renderRandomNoteRootFilter() {
+  const options = (typeof getRandomNoteRootFilterOptions === 'function')
+    ? getRandomNoteRootFilterOptions()
+    : [];
+  const optionHtml = [
+    '<option value="">全部模块</option>',
+    ...options.map(item => `<option value="${escapeAttrStr(item.id)}"${String(randomNoteRootFilter || '') === item.id ? ' selected' : ''}>${escapeHtml(item.title)}</option>`),
+  ].join('');
+  return `<select class="btn btn-secondary" style="padding:4px 10px;font-size:12px;min-width:140px" onchange="setRandomNoteRootFilter(this.value)">${optionHtml}</select>`;
+}
+
 function renderRandomNoteReview() {
   ensureRandomNoteReviewModal();
   const body = document.getElementById('randomNoteReviewBody');
   if (!body) return;
+  const todayReviewedCount = (typeof getRandomNoteTodayReviewedCount === 'function')
+    ? getRandomNoteTodayReviewedCount()
+    : 0;
+  const controlsHtml = `
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span style="font-size:12px;color:#64748b">排序模式</span>
+        ${_renderRandomNoteModeButton('weighted', '加权随机')}
+        ${_renderRandomNoteModeButton('priority', '按优先级')}
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        ${_renderRandomNoteRootFilter()}
+        <span style="font-size:12px;padding:3px 10px;border-radius:999px;background:#f0fdf4;color:#166534;border:1px solid #bbf7d0">今日已复习 ${todayReviewedCount} 条</span>
+      </div>
+    </div>
+  `;
   if (!randomNoteReviewQueue.length || randomNoteReviewIndex < 0 || randomNoteReviewIndex >= randomNoteReviewQueue.length) {
-    body.innerHTML = '<div class="home-note-item"><strong>暂无可复习笔记</strong><span>请先在知识点下补充笔记内容。</span></div>';
+    body.innerHTML = `${controlsHtml}<div class="home-note-item"><strong>暂无可复习笔记</strong><span>请先在知识点下补充笔记内容，或调整模块筛选。</span></div>`;
     return;
   }
   const item = randomNoteReviewQueue[randomNoteReviewIndex];
@@ -55,13 +90,20 @@ function renderRandomNoteReview() {
     ? (Number.isFinite(liveViewGapDays) ? _formatGapDays(liveViewGapDays) : '未知')
     : '从未';
   const whyText = `距上次编辑 ${editGapText}，距上次查看 ${viewGapText}`;
+  const scoreText = Number(item.score || 0).toFixed(1);
+  const errorCount = (typeof getRandomNoteErrorCount === 'function')
+    ? getRandomNoteErrorCount(item.nodeId)
+    : 0;
   const canPrev = randomNoteReviewIndex > 0;
   const canNext = randomNoteReviewIndex < randomNoteReviewQueue.length - 1;
   body.innerHTML = `
+    ${controlsHtml}
     <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <span class="knowledge-tree-count">${randomNoteReviewIndex + 1} / ${randomNoteReviewQueue.length}</span>
         <span style="font-size:12px;padding:3px 10px;border-radius:999px;background:#fff7e6;color:#ad6800;border:1px solid #ffd591">${escapeHtml(whyText)}</span>
+        <span style="font-size:12px;padding:3px 10px;border-radius:999px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe">优先级 ${escapeHtml(scoreText)}</span>
+        <span style="font-size:12px;padding:3px 10px;border-radius:999px;background:#fef2f2;color:#b91c1c;border:1px solid #fecaca">错题 ${errorCount} 道</span>
       </div>
       <div style="font-size:12px;color:#888">最后编辑：${escapeHtml(_formatIsoTime(liveUpdatedAt))} · 上次查看：${escapeHtml(liveLastViewedAt ? _formatIsoTime(liveLastViewedAt) : '从未')}</div>
     </div>
@@ -76,7 +118,9 @@ function renderRandomNoteReview() {
       <button class="btn btn-secondary" type="button" onclick="randomNoteReviewPrev()" ${canPrev ? '' : 'disabled'}>上一个</button>
       <button class="btn btn-secondary" type="button" onclick="randomNoteReviewNext()" ${canNext ? '' : 'disabled'}>下一个</button>
       <button class="btn btn-secondary" type="button" onclick="randomNoteReviewShuffle()">换一条</button>
+      <button class="btn btn-secondary" type="button" onclick="randomNoteReviewSkip()">跳过</button>
       <button class="btn btn-secondary" type="button" onclick="startRandomNoteHighValuePractice(5)">练高价值错题(5题)</button>
+      <button class="btn btn-secondary" type="button" onclick="startRandomNoteAllPractice(10)">练全部错题(10题)</button>
       <button class="btn btn-primary" type="button" onclick="openRandomNoteInWorkspace()">打开到知识树</button>
     </div>
   `;

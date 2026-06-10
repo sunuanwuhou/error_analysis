@@ -152,15 +152,22 @@ async function sendToCC() {
 
 function clearCurrentModuleErrors() {
   open.value = false
-  const ids = store.filteredErrors.map(e => e.id)
-  if (!ids.length) return
-  if (!confirm(`清空当前筛选内 ${ids.length} 条错题？`)) return
-  store.clearErrorsByFilter(ids)
+  const scope = store.resolveClearModuleScope()
+  if (!scope) {
+    window.alert('请先选择知识点或题型，或使用状态 / 错因 / 搜索 / 日期筛选后再清空（仅有任务阶段筛选时不能清空范围）。')
+    return
+  }
+  if (!scope.ids.length) {
+    window.alert(`在「${scope.label}」下没有可清空的错题`)
+    return
+  }
+  if (!confirm(`确定删除「${scope.label}」内的 ${scope.ids.length} 条错题？不可撤销。`)) return
+  store.clearErrorsByFilter(scope.ids)
 }
 
 function clearAllErrors() {
   open.value = false
-  if (!confirm('清空全部错题？该操作不可恢复。')) return
+  if (!confirm('清空全部标准错题？Claude bank 等非 error 条目将保留。此操作不可恢复。')) return
   store.clearAllErrors()
 }
 

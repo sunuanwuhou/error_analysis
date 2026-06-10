@@ -69,6 +69,7 @@ const KEY_KNOWLEDGE_TREE = 'xc_knowledge_tree';
 const KEY_KNOWLEDGE_NOTES = 'xc_knowledge_notes';
 let notesByType = {}; // { type: {title,content,children:{subtype:{title,content,children:{sub2:{title,content,children:{}}}}}}}
 let notesPanelOpen = true;
+let globalNote = '';
 let globalNoteEditing = false; // 笔记编辑模式状态
 let noteEditing = false;    // 笔记是否处于编辑模式（默认预览）
 let knowledgeTree = null;
@@ -96,7 +97,7 @@ let errorsTopCollapsed = false;
 let knowledgeTreeFocusMode = false;
 let knowledgeTreeSearchQuery = '';
 let knowledgeTreeSearchDebounceTimer = null;
-let appView = 'home';
+let appView = 'workspace';
 
 // 错因分组定义（每个 reason 含简介 desc）
 const REASON_GROUPS = [

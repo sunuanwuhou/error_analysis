@@ -180,7 +180,7 @@ function returnToRecommendedNotes() {
   _recommendedNotesReturnEnabled = false;
   window.__recommendedNotesReturnEnabled = false;
   if (typeof switchAppView === 'function') {
-    switchAppView('home');
+    switchAppView('workspace');
   }
   setTimeout(() => {
     openRecommendedNotesModal();

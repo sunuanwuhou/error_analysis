@@ -83,11 +83,13 @@ def login(
     response.delete_cookie(SESSION_COOKIE, path="/")
     with get_conn() as conn:
         user = conn.execute(
-            "SELECT id, username, password_hash FROM users WHERE username = ?",
+            "SELECT id, username, password_hash, is_active FROM users WHERE username = ?",
             (payload.username.strip(),),
         ).fetchone()
         if not user or not verify_password(payload.password, user["password_hash"]):
             raise HTTPException(status_code=401, detail="invalid credentials")
+        if int(user.get("is_active") if user.get("is_active") is not None else 1) != 1:
+            raise HTTPException(status_code=403, detail="account_disabled")
 
     token, _ = issue_session(user["id"])
     response.set_cookie(
@@ -98,7 +100,15 @@ def login(
         secure=request_is_secure(request),
         max_age=SESSION_TTL_DAYS * 24 * 3600,
     )
-    return {"ok": True, "user": {"id": user["id"], "username": user["username"]}}
+    from backend.services.user_access_service import enrich_user_row
+
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT id, username, role, is_active FROM users WHERE id = ?",
+            (user["id"],),
+        ).fetchone()
+    profile = enrich_user_row(dict(row)) if row else {"id": user["id"], "username": user["username"]}
+    return {"ok": True, "user": profile}
 
 @router.post("/api/auth/logout")
 def logout(response: Response, xingce_session: Optional[str] = Cookie(default=None)) -> dict[str, Any]:

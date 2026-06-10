@@ -56,23 +56,44 @@ def create_user_account(username: str, password: str) -> dict[str, str]:
         if existing:
             raise ValueError("username already exists")
 
+        now = utcnow().isoformat()
         conn.execute(
-            "INSERT INTO users(id, username, password_hash, created_at) VALUES (?, ?, ?, ?)",
-            (user_id, normalized_username, hash_password(password), utcnow().isoformat()),
+            """
+            INSERT INTO users(id, username, password_hash, created_at, role, is_active, updated_at)
+            VALUES (?, ?, ?, ?, 'user', 1, ?)
+            """,
+            (user_id, normalized_username, hash_password(password), now, now),
         )
         conn.commit()
 
-    return {"id": user_id, "username": normalized_username}
+    from backend.services.user_access_service import set_user_module_grants
+    from backend.user_access import DEFAULT_NEW_USER_MODULES
+
+    set_user_module_grants(user_id, list(DEFAULT_NEW_USER_MODULES), "")
+    return enrich_user_after_create(user_id, normalized_username)
+
+
+def enrich_user_after_create(user_id: str, username: str) -> dict[str, Any]:
+    from backend.services.user_access_service import enrich_user_row
+
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT id, username, role, is_active FROM users WHERE id = ?",
+            (user_id,),
+        ).fetchone()
+    return enrich_user_row(dict(row)) if row else {"id": user_id, "username": username}
 
 
 def get_user_by_token(token: Optional[str]) -> Optional[dict[str, Any]]:
     if not token:
         return None
 
+    from backend.services.user_access_service import enrich_user_row
+
     with get_conn() as conn:
         row = conn.execute(
             """
-            SELECT u.id, u.username, s.expires_at
+            SELECT u.id, u.username, u.role, u.is_active, s.expires_at
             FROM sessions s
             JOIN users u ON u.id = s.user_id
             WHERE s.token = ?
@@ -89,7 +110,10 @@ def get_user_by_token(token: Optional[str]) -> Optional[dict[str, Any]]:
             conn.commit()
             return None
 
-        return {"id": row["id"], "username": row["username"]}
+        if int(row.get("is_active") if row.get("is_active") is not None else 1) != 1:
+            return None
+
+        return enrich_user_row(dict(row))
 
 
 def issue_session(user_id: str) -> tuple[str, str]:

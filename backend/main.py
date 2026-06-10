@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from backend.config import FRONTEND_DIST_DIR, LEGACY_XINGCE_DIR, V51_STATIC_DIR
 from backend.core import on_startup
 from backend.database import close_pool
-from backend.routers import ai, auth, backup, images, knowledge, practice, shenlun, sync, suite_bank, web
+from backend.routers import admin, ai, auth, backup, images, knowledge, practice, shenlun, sync, suite_bank, web
 
 
 def _parse_csv_env(value: str) -> list[str]:
@@ -108,7 +108,7 @@ def create_app() -> FastAPI:
 
     app.add_event_handler("startup", on_startup)
     app.add_event_handler("shutdown", close_pool)
-    for router_module in (web, auth, backup, ai, images, sync, practice, knowledge, shenlun, suite_bank):
+    for router_module in (web, auth, admin, backup, ai, images, sync, practice, knowledge, shenlun, suite_bank):
         app.include_router(router_module.router)
     return app
 

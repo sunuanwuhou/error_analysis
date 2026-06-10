@@ -40,15 +40,35 @@ def extract_type_label(tail: str) -> str:
 
 _SECTION_PREFIXES: tuple[str, ...] = tuple(
     sorted(
-        ("言语理解与表达", "数理能力", "判断推理", "常识判断", "资料分析", "常识"),
+        (
+            "言语理解与表达",
+            "数理能力",
+            "判断推理",
+            "常识判断",
+            "资料分析",
+            "常识",
+            # 广东等多套卷写「数量关系」或大标题「第一部分　数量关系」，原先未收录会导致小题 section_heading 落空、题库模块统计为 0
+            "数量关系",
+        ),
         key=len,
         reverse=True,
     )
 )
 
+# 篇章标题行（非仅能 startswith「数量关系」，常见前缀「第×部分」）
+_SECTION_QUANT_TITLE_RE = re.compile(r"^(?:第[一二三四五六七八九十百千零〇\d]+部分\s*)?数量关系")
+
 
 def _starts_known_section(line: str) -> bool:
-    return any(line.startswith(p) for p in _SECTION_PREFIXES)
+    s = line.strip()
+    if any(s.startswith(p) for p in _SECTION_PREFIXES):
+        return True
+    # 「第一部分　数量关系」「数量关系（共10题）」等独立标题行
+    if _SECTION_QUANT_TITLE_RE.match(s):
+        return True
+    if "数量关系" in s and len(s) <= 56:
+        return True
+    return False
 
 
 def infer_section_heading(question_no: int, active_intro_line: str) -> str:
@@ -58,6 +78,8 @@ def infer_section_heading(question_no: int, active_intro_line: str) -> str:
         if "数字推理与数学运算" in intro:
             return "数字推理" if question_no <= 5 else "数学运算"
         return "数理能力"
+    if _SECTION_QUANT_TITLE_RE.match(intro) or (intro.startswith("数量关系") or ("数量关系" in intro and len(intro) <= 56)):
+        return "数量关系"
     if intro.startswith("言语理解与表达"):
         return "言语理解与表达"
     if intro.startswith("判断推理"):

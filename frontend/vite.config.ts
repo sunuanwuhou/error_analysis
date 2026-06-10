@@ -10,5 +10,7 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+    // Prefer TS/Vue sources over stale compiled .js siblings under src/
+    extensions: ['.mjs', '.mts', '.ts', '.tsx', '.vue', '.jsx', '.js', '.json'],
   },
 })

@@ -66,9 +66,24 @@ body:not(.v51-shell-loading) .v53-boot { display:none; }
   box-shadow: 0 10px 26px rgb(37 99 235 / 0.35);
 }
 
+.v53-portal-btn--suite {
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 55%, #5b21b6 100%);
+  box-shadow: 0 10px 26px rgb(124 58 237 / 0.34);
+}
+
+.v53-portal-btn--bank-drill {
+  background: linear-gradient(135deg, #db2777 0%, #be185d 55%, #9d174d 100%);
+  box-shadow: 0 10px 26px rgb(219 39 119 / 0.33);
+}
+
 .v53-portal-btn--shenlun {
   background: linear-gradient(135deg, #059669 0%, #047857 55%, #065f46 100%);
   box-shadow: 0 10px 26px rgb(5 150 105 / 0.33);
+}
+
+.v53-portal-btn--admin {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 55%, #92400e 100%);
+  box-shadow: 0 10px 26px rgb(217 119 6 / 0.33);
 }
 
 .v53-portal-hint {
@@ -76,6 +91,10 @@ body:not(.v51-shell-loading) .v53-boot { display:none; }
   font-size: 12px;
   color: #9ca3af;
   line-height: 1.55;
+}
+
+.v53-portal-hint--warn {
+  color: #b45309;
 }
 
 .v53-mobile-topbar,

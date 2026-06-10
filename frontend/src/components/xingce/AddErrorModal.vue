@@ -3,6 +3,10 @@ import { reactive, ref, computed } from 'vue'
 import { useXingceStore } from '@/stores/xingceStore'
 import type { KnowledgeNode } from '@/api/xingce'
 
+const props = defineProps<{
+  initialNoteNodeId?: string
+}>()
+
 const emit = defineEmits<{ close: []; added: [] }>()
 const store = useXingceStore()
 
@@ -28,7 +32,7 @@ const form = reactive({
   status: 'focus' as 'focus' | 'review' | 'mastered',
   actualDurationSec: '' as string | number,
   targetDurationSec: '' as string | number,
-  noteNodeId: '',
+  noteNodeId: props.initialNoteNodeId || '',
 })
 
 const submitting = ref(false)

@@ -1,6 +1,25 @@
 // ============================================================
 // Workspace view and tab switching helpers
 // ============================================================
+function _showTabLoadingOverlay(msg) {
+  const target = document.getElementById('tabContentNotes');
+  if (!target) return;
+  target.classList.add('active');
+  let el = document.getElementById('_wsTabLoadingOverlay');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = '_wsTabLoadingOverlay';
+    el.style.cssText = 'position:absolute;top:0;left:0;right:0;padding:24px;color:#64748b;font-size:13px;line-height:1.8;background:var(--bg,#fff);z-index:2';
+    target.style.position = 'relative';
+    target.appendChild(el);
+  }
+  el.textContent = msg;
+}
+
+function _removeTabLoadingOverlay() {
+  const el = document.getElementById('_wsTabLoadingOverlay');
+  if (el) el.remove();
+}
 function getTypeCounts() {
   const typeCounts = {};
   errors.forEach(e => {
@@ -24,15 +43,10 @@ function groupByType(displayData) {
 }
 
 function syncAppViewChrome() {
-  document.body.classList.toggle('app-view-home', appView === 'home');
   document.body.classList.toggle('app-view-workspace', appView === 'workspace');
-  const homeView = document.getElementById('homeView');
   const workspaceView = document.getElementById('workspaceView');
-  const sidebarHomeBtn = document.getElementById('sidebarHomeBtn');
   const sidebarWorkspaceBtn = document.getElementById('sidebarWorkspaceBtn');
-  if (homeView) homeView.classList.toggle('active', appView === 'home');
   if (workspaceView) workspaceView.classList.toggle('active', appView === 'workspace');
-  if (sidebarHomeBtn) sidebarHomeBtn.classList.toggle('active', appView === 'home');
   if (sidebarWorkspaceBtn) sidebarWorkspaceBtn.classList.toggle('active', appView === 'workspace');
 }
 
@@ -45,22 +59,27 @@ function isWorkspaceRuntimeReady() {
 function ensureWorkspaceRuntimeReady() {
   if (isWorkspaceRuntimeReady()) return Promise.resolve(true);
   const loader = (typeof window !== 'undefined') ? window.ensureLegacyWorkspaceBundleLoaded : null;
-  if (typeof loader !== 'function') return Promise.resolve(false);
-  return loader()
-    .then(() => isWorkspaceRuntimeReady())
-    .catch((error) => {
+  const loadPromise = typeof loader === 'function' ? loader() : Promise.resolve();
+  return loadPromise
+    .then(() => new Promise(function(resolve) {
+      if (isWorkspaceRuntimeReady()) return resolve(true);
+      var ticks = 0;
+      function check() {
+        if (isWorkspaceRuntimeReady()) return resolve(true);
+        if (ticks++ > 50) return resolve(false);
+        setTimeout(check, 100);
+      }
+      setTimeout(check, 80);
+    }))
+    .catch(function(error) {
       console.warn('workspace bundle load failed', error);
       return false;
     });
 }
 
 function switchAppView(nextView, opts) {
-  appView = nextView === 'workspace' ? 'workspace' : 'home';
+  appView = 'workspace';
   syncAppViewChrome();
-  if (appView === 'home') {
-    if (typeof renderHomeDashboard === 'function') renderHomeDashboard();
-    return;
-  }
   ensureWorkspaceRuntimeReady().then((ready) => {
     if (!ready) return;
     switchTab('notes');
@@ -117,13 +136,10 @@ function switchTab(tabName) {
     appView = 'workspace';
   }
   if (!isWorkspaceRuntimeReady()) {
-    const target = document.getElementById('tabContentNotes');
-    if (target) {
-      target.innerHTML = '<div style="padding:24px;color:#64748b;font-size:13px;line-height:1.8">Loading workspace bundle. This usually takes only a moment.</div>';
-      target.classList.add('active');
-    }
+    _showTabLoadingOverlay('Loading workspace bundle. This usually takes only a moment.');
     syncAppViewChrome();
     ensureWorkspaceRuntimeReady().then((ready) => {
+      _removeTabLoadingOverlay();
       if (!ready) {
         if (typeof showToast === 'function') showToast('工作区加载失败，请刷新后重试', 'error');
         return;
@@ -135,13 +151,16 @@ function switchTab(tabName) {
   if (typeof hasFullWorkspaceDataLoaded === 'function'
       && typeof ensureFullWorkspaceDataLoaded === 'function'
       && !hasFullWorkspaceDataLoaded()) {
-    const target = document.getElementById('tabContentNotes');
-    if (target) {
-      target.innerHTML = '<div style="padding:24px;color:#64748b;font-size:13px;line-height:1.8">Loading the full workspace data. This usually takes only a moment.</div>';
-      target.classList.add('active');
-    }
+    _showTabLoadingOverlay('Loading the full workspace data. This usually takes only a moment.');
     syncAppViewChrome();
-    ensureFullWorkspaceDataLoaded().then(() => switchTab(activeTab));
+    ensureFullWorkspaceDataLoaded()
+      .then(() => { _removeTabLoadingOverlay(); switchTab(activeTab); })
+      .catch((err) => {
+        _removeTabLoadingOverlay();
+        console.error('full workspace data load failed', err);
+        fullDataLoading = false;
+        if (typeof showToast === 'function') showToast('工作区数据加载失败，请刷新后重试', 'error');
+      });
     return;
   }
   syncAppViewChrome();

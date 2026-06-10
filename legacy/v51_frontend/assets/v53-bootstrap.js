@@ -194,6 +194,8 @@ async function loadLegacyModules() {
     await loadScript(withVersion(`/assets/${workspaceBundlePath}`, version));
     await loadScript(withVersion(`/assets/${bootstrapBundlePath}`, version));
     scheduleDeferredLegacyModalLoad();
+    // Workspace bundle is now fully executed; ensure workspace view is active.
+    if (typeof window.switchAppView === 'function') window.switchAppView('workspace');
     return;
   }
   const bundlePath = toPublicAssetPath(manifest?.js_bundle?.path || '');
@@ -258,15 +260,36 @@ async function loadV53FeatureModules() {
 
 window.__v53EnsureLegacyModalBundleLoaded = ensureLegacyModalBundleLoaded;
 
-/** 与 Vue 侧边栏一致：优先新版申论 SPA，服务端在未启用新前端时会回落到 `/shenlun` */
+/** 申论与套卷/模块练一致，走 `/new/...` Vue 子应用（与 `portalPrefs` 一致） */
 const PORTAL_SHENLUN_TARGET = '/new/shenlun';
+const PORTAL_XINGCE_SUITE_TARGET = '/new/xingce/suite';
+const PORTAL_XINGCE_BANK_DRILL_TARGET = '/new/xingce/bank-drill';
+const PORTAL_ADMIN_TARGET = '/new/admin';
 /** 与 `frontend/src/lib/portalPrefs.ts` 保持一致 */
 const PORTAL_LAST_MODULE_KEY = 'v53.portal.lastModule';
+
+async function fetchPortalMe() {
+  try {
+    const res = await fetch('/api/me', { credentials: 'include' });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data || !data.authenticated || !data.user) return null;
+    return data.user;
+  } catch (_) {
+    return null;
+  }
+}
+
+function portalUserHasModule(user, key) {
+  if (!user) return false;
+  if (user.is_super_admin) return true;
+  return Array.isArray(user.modules) && user.modules.includes(key);
+}
 
 function readLastPortalModule() {
   try {
     const v = localStorage.getItem(PORTAL_LAST_MODULE_KEY);
-    if (v === 'xingce' || v === 'shenlun') return v;
+    if (v === 'xingce' || v === 'xingce_suite' || v === 'xingce_bank_drill' || v === 'shenlun') return v;
   } catch (_) { /* ignore */ }
   return null;
 }
@@ -277,7 +300,7 @@ function saveLastPortalModule(choice) {
   } catch (_) { /* ignore */ }
 }
 
-/** `/?portal=1`：始终展示选择页（与侧栏「模块首页」一致），避免无法切换模块 */
+/** `/?portal=1`：始终展示模块选择页（与侧栏「模块首页」一致），避免无法切换模块 */
 function shouldForcePortal() {
   try {
     const p = (new URLSearchParams(window.location.search || '').get('portal') || '').toLowerCase();
@@ -299,40 +322,85 @@ function showXingceLoadingPlaceholder() {
 /**
  * 主入口 `/`：先展示模块门户，再加载行测壳；申论直接离开本页。
  */
-function gateModulePortal() {
+function renderPortalButtons(user) {
+  const parts = [];
+  if (portalUserHasModule(user, 'xingce')) {
+    parts.push('<button type="button" class="v53-portal-btn v53-portal-btn--xingce" data-portal-choice="xingce">行测</button>');
+  }
+  if (portalUserHasModule(user, 'xingce_suite')) {
+    parts.push('<button type="button" class="v53-portal-btn v53-portal-btn--suite" data-portal-choice="xingce_suite">套卷练习</button>');
+  }
+  if (portalUserHasModule(user, 'xingce_bank_drill')) {
+    parts.push('<button type="button" class="v53-portal-btn v53-portal-btn--bank-drill" data-portal-choice="xingce_bank_drill">套卷模块练</button>');
+  }
+  if (portalUserHasModule(user, 'shenlun')) {
+    parts.push('<button type="button" class="v53-portal-btn v53-portal-btn--shenlun" data-portal-choice="shenlun">申论</button>');
+  }
+  if (user && user.is_super_admin) {
+    parts.push('<button type="button" class="v53-portal-btn v53-portal-btn--admin" data-portal-choice="admin">系统管理</button>');
+  }
+  return parts.join('');
+}
+
+async function gateModulePortal() {
   const bootRoot = document.getElementById('v53Boot');
   if (!bootRoot) {
-    return Promise.resolve();
+    return;
+  }
+  const me = await fetchPortalMe();
+  if (!me) {
+    window.location.replace('/login.html');
+    return new Promise(() => {});
   }
   if (!shouldForcePortal()) {
     const last = readLastPortalModule();
-    if (last === 'shenlun') {
+    if (last && portalUserHasModule(me, last) && last === 'shenlun') {
       window.location.replace(PORTAL_SHENLUN_TARGET);
       return new Promise(() => {});
     }
-    if (last === 'xingce') {
+    if (last && portalUserHasModule(me, last) && last === 'xingce_suite') {
+      window.location.replace(PORTAL_XINGCE_SUITE_TARGET);
+      return new Promise(() => {});
+    }
+    if (last && portalUserHasModule(me, last) && last === 'xingce_bank_drill') {
+      window.location.replace(PORTAL_XINGCE_BANK_DRILL_TARGET);
+      return new Promise(() => {});
+    }
+    if (last && portalUserHasModule(me, last) && last === 'xingce') {
       showXingceLoadingPlaceholder();
-      return Promise.resolve();
+      return;
     }
   }
   bootRoot.innerHTML = `
     <div class="v53-boot-card v53-portal-card">
       <div class="v53-boot-title">Ashore</div>
       <div class="v53-boot-sub">请选择要进入的模块</div>
-      <div class="v53-portal-actions">
-        <button type="button" class="v53-portal-btn v53-portal-btn--xingce" data-portal-choice="xingce">行测</button>
-        <button type="button" class="v53-portal-btn v53-portal-btn--shenlun" data-portal-choice="shenlun">申论</button>
-      </div>
-      <p class="v53-portal-hint">会记住你上次选择的模块；刷新后直接进入。需要手动切换时点侧栏「模块首页」。</p>
+      <div class="v53-portal-actions">${renderPortalButtons(me)}</div>
+      ${!me.is_super_admin && (!me.modules || !me.modules.length)
+    ? '<p class="v53-portal-hint v53-portal-hint--warn">当前账号尚未分配模块权限，请联系管理员。</p>'
+    : '<p class="v53-portal-hint">会记住你上次选择的模块；刷新后直接进入。需要手动切换时点侧栏「模块首页」。</p>'}
     </div>`;
   return new Promise((resolve) => {
     const onPick = (ev) => {
       const btn = ev.target && ev.target.closest && ev.target.closest('[data-portal-choice]');
       if (!btn) return;
       const choice = btn.getAttribute('data-portal-choice');
+      if (choice === 'admin') {
+        window.location.href = PORTAL_ADMIN_TARGET;
+        return;
+      }
+      if (!portalUserHasModule(me, choice)) return;
       saveLastPortalModule(choice);
       if (choice === 'shenlun') {
         window.location.href = PORTAL_SHENLUN_TARGET;
+        return;
+      }
+      if (choice === 'xingce_suite') {
+        window.location.href = PORTAL_XINGCE_SUITE_TARGET;
+        return;
+      }
+      if (choice === 'xingce_bank_drill') {
+        window.location.href = PORTAL_XINGCE_BANK_DRILL_TARGET;
         return;
       }
       bootRoot.removeEventListener('click', onPick);

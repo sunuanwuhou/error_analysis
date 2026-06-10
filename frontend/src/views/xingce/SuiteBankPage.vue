@@ -1,14 +1,30 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import type { SuitePaperRow, SuitePracticeItemPayload, SuitePracticeRecordRow, SuiteQuestionRow } from '@/api/suiteBank'
+import { useRoute, useRouter, RouterLink } from 'vue-router'
+import type { SuitePaperRow, SuitePracticeItemPayload, SuiteQuestionRow } from '@/api/suiteBank'
 import { suiteBankApi } from '@/api/suiteBank'
 import GlobalSearchModal from '@/components/xingce/GlobalSearchModal.vue'
+import SuitePracticeRecordsDialog from '@/components/xingce/SuitePracticeRecordsDialog.vue'
+import {
+  clearCloudSessionId,
+  getOrCreateCloudSessionId,
+  registerSuitePracticeCloudSync,
+  scheduleSuitePracticeCloudSync,
+  unregisterSuitePracticeCloudSync,
+  flushSuitePracticeCloudSync,
+} from '@/lib/suitePracticeCloudSync'
 
 type ExamChoice = 'province' | 'unified' | 'other'
 
 const router = useRouter()
 const route = useRoute()
+
+/** Router query 可能是 string | string[]，重复参数时直接 String(query) 会变成 "a,b"，导致误判模式 */
+function firstQueryValue(v: unknown): string {
+  if (v == null) return ''
+  if (Array.isArray(v)) return String(v[0] ?? '').trim()
+  return String(v).trim()
+}
 
 const showGlobalSearch = ref(false)
 const loading = ref(true)
@@ -26,19 +42,29 @@ const questions = ref<SuiteQuestionRow[]>([])
 const qIdx = ref(0)
 
 /** 每题作答状态（答题卡着色 / 往返题目保留选项） */
-type QuizSlot = { picked: string | null; revealed: boolean }
+type QuizSlot = {
+  picked: string | null
+  revealed: boolean
+  /** 做题模式：明确「不会做」 */
+  skipped?: boolean
+  /** 做题模式：无选项题已确认 */
+  blankDone?: boolean
+  /** 做题模式：历史草稿字段（曾用于多选翻题门槛，已废弃） */
+  lockedIn?: boolean
+}
 const quizSlots = ref<QuizSlot[]>([])
 const sheetExpanded = ref(true)
 const booted = ref(false)
 
-/** preview：随时「看答案」；exam：粉笔式须「提交本题 / 不会做」后才能看批改与解析 */
+/** preview：随时「看答案」；exam：整场不交卷不批改，整体交卷后统一揭晓 */
 const sessionPracticeMode = ref<'preview' | 'exam'>('preview')
+const examSheetSubmitted = ref(false)
 const examRecordSaved = ref(false)
 const quizPaperId = ref('')
 const quizPaperFolder = ref('')
 const showPracticeRecords = ref(false)
-const practiceRecords = ref<SuitePracticeRecordRow[]>([])
-const practiceRecordsLoading = ref(false)
+const practiceRecordsDialogRef = ref<InstanceType<typeof SuitePracticeRecordsDialog> | null>(null)
+const cloudClientSessionId = ref('')
 const draftListRev = ref(0)
 
 /** 做题模式草稿（未交卷），按套卷 id 存 sessionStorage */
@@ -101,7 +127,7 @@ function startExamTimerDisplay() {
 }
 
 function toggleExamPause() {
-  if (sessionPracticeMode.value !== 'exam') return
+  if (sessionPracticeMode.value !== 'exam' || examSheetSubmitted.value) return
   if (examTimerPaused.value) {
     examTimerPaused.value = false
     examSegmentStartedAt.value = Date.now()
@@ -114,7 +140,10 @@ function toggleExamPause() {
 
 function examHasMeaningfulProgress(): boolean {
   return (
-    quizSlots.value.some(s => !!(s?.picked?.trim?.() || s?.revealed)) ||
+    quizSlots.value.some(
+      s =>
+        !!(s?.picked?.trim?.() || s?.skipped || s?.blankDone || s?.lockedIn || s?.revealed),
+    ) ||
     qIdx.value > 0 ||
     mergeRunningSegmentIntoAccum() > 3000
   )
@@ -167,7 +196,7 @@ function stashCurrentExamBeforeNavigation() {
 }
 
 function tryRestoreExamDraft(paperId: string, focusQid?: string | null): boolean {
-  if (String(route.query.examNew || '') === '1') {
+  if (firstQueryValue(route.query.examNew) === '1') {
     clearExamDraftForPaper(paperId)
     return false
   }
@@ -177,7 +206,13 @@ function tryRestoreExamDraft(paperId: string, focusQid?: string | null): boolean
     const draft = JSON.parse(raw) as ExamDraftV1
     if (draft?.v !== 1 || draft.paperId !== paperId || draft.questionCount !== questions.value.length)
       return false
-    quizSlots.value = (draft.slots || []).slice(0, questions.value.length)
+    quizSlots.value = (draft.slots || []).slice(0, questions.value.length).map(s => ({
+      picked: s?.picked ?? null,
+      revealed: false,
+      skipped: !!s?.skipped,
+      blankDone: !!s?.blankDone,
+      lockedIn: !!s?.lockedIn,
+    }))
     while (quizSlots.value.length < questions.value.length)
       quizSlots.value.push({ picked: null, revealed: false })
     qIdx.value = Math.min(Math.max(0, draft.qIdx || 0), Math.max(0, questions.value.length - 1))
@@ -216,7 +251,11 @@ const draftSummaries = computed((): DraftSummaryRow[] => {
       seen.add(key)
       const draft = JSON.parse(raw) as ExamDraftV1
       if (draft?.v !== 1 || !draft.paperId) continue
-      const answered = draft.slots?.filter(s => s?.revealed).length ?? 0
+      const answered =
+        draft.slots?.filter(
+          s =>
+            !!(s?.skipped || s?.blankDone || s?.lockedIn || String(s?.picked || '').trim()),
+        ).length ?? 0
       rows.push({
         paperId: draft.paperId,
         title: draft.paperTitle || '未命名',
@@ -359,7 +398,13 @@ const stemImageSrc = computed(() => {
 const currentPicked = computed(() => quizSlots.value[qIdx.value]?.picked ?? null)
 const currentRevealed = computed(() => quizSlots.value[qIdx.value]?.revealed ?? false)
 
-/** Word 导出填空常为一段空白：将连续空格标成下划线便于辨认 */
+/** 当前题：选项对错色、参考答案、解析（预览=点「看答案」后；做题=整场交卷后） */
+const gradingVisibleForCurrent = computed(() => {
+  if (sessionPracticeMode.value === 'preview') return currentRevealed.value
+  if (sessionPracticeMode.value === 'exam') return examSheetSubmitted.value
+  return false
+})
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, '&amp;')
@@ -450,16 +495,21 @@ function sheetCellClass(i: number): Record<string, boolean> {
   const ansKey = canonicalAnswerKey(String(q?.answer || ''))
   const pickKey = canonicalPickKey(slot?.picked ?? null)
   const cur = i === qIdx.value
-  const revealed = !!slot?.revealed
+
+  let graded = false
+  const m = sessionPracticeMode.value
+  if (m === 'exam') graded = !!(slot?.revealed && examSheetSubmitted.value)
+  else if (m === 'preview') graded = !!slot?.revealed
+
   const hasPick = !!pickKey
   const correct = ansKey !== '' && ansKey === pickKey
   const wrong = hasPick && ansKey !== pickKey
   return {
     'is-current': cur,
-    'is-touched': !revealed && hasPick,
-    'is-right': revealed && correct && hasPick,
-    'is-wrong': revealed && wrong,
-    'is-skip': revealed && !hasPick,
+    'is-touched': !graded && hasPick,
+    'is-right': graded && correct && hasPick,
+    'is-wrong': graded && wrong,
+    'is-skip': graded && !hasPick,
   }
 }
 
@@ -475,17 +525,6 @@ const optionLines = computed(() => {
 
 /** 本题是否有可选项行（导入失败时可为空——须允许先做不卡「下一题」） */
 const currentHasOptions = computed(() => optionLines.value.length > 0)
-
-/** 做题模式下需先提交本题才能翻题的条件：有可选项但未批改 */
-const examNextLocked = computed(
-  () => sessionPracticeMode.value === 'exam' && currentHasOptions.value && !currentRevealed.value,
-)
-
-const quizNextFooterLabel = computed(() => {
-  if (sessionPracticeMode.value !== 'exam') return '下一题'
-  if (questions.value.length && qIdx.value >= questions.value.length - 1) return '交卷'
-  return '下一题'
-})
 
 function letterForLine(line: string, oi: number): string {
   const plain = stripInlineMarkup(line)
@@ -535,6 +574,46 @@ function isMultiSelectAnswer(answerRaw: string): boolean {
 
 const currentIsMulti = computed(() => isMultiSelectAnswer(String(currentQ.value?.answer ?? '')))
 
+function getOptionLineCount(q: SuiteQuestionRow | null): number {
+  const raw = String(q?.options ?? '').trim()
+  if (!raw) return 0
+  return raw.split(/\n|\|/).map(s => s.trim()).filter(Boolean).length
+}
+
+function slotExamReady(slot: QuizSlot | undefined, q: SuiteQuestionRow | null): boolean {
+  if (!slot) return false
+  if (slot.skipped || slot.blankDone) return true
+  const oc = getOptionLineCount(q)
+  if (oc === 0) return !!slot.blankDone
+  const pickTrim = String(slot.picked || '').trim()
+  if (!pickTrim) return false
+  return true
+}
+
+const currentExamSlotReady = computed(() => {
+  if (sessionPracticeMode.value !== 'exam' || examSheetSubmitted.value) return true
+  return slotExamReady(quizSlots.value[qIdx.value], currentQ.value)
+})
+
+const examNextLocked = computed(
+  () => sessionPracticeMode.value === 'exam' && !examSheetSubmitted.value && !currentExamSlotReady.value,
+)
+
+const footerNextBlocked = computed(() => {
+  if (sessionPracticeMode.value === 'exam' && examSheetSubmitted.value && questions.value.length) {
+    return qIdx.value >= questions.value.length - 1
+  }
+  return examNextLocked.value
+})
+
+const quizNextFooterLabel = computed(() => {
+  if (sessionPracticeMode.value !== 'exam') return '下一题'
+  if (examSheetSubmitted.value && questions.value.length && qIdx.value >= questions.value.length - 1)
+    return '已是最后一题'
+  if (questions.value.length && qIdx.value >= questions.value.length - 1) return '交卷'
+  return '下一题'
+})
+
 const analysisExamHtml = computed(() => {
   const s = String(currentQ.value?.analysis || '').trim()
   if (!s) return ''
@@ -543,7 +622,7 @@ const analysisExamHtml = computed(() => {
 
 function optionButtonClass(line: string, oi: number): Record<string, boolean> {
   const letter = letterForLine(line, oi)
-  const rev = currentRevealed.value
+  const rev = gradingVisibleForCurrent.value
   const ansLetters = parseAnswerLetters(String(currentQ.value?.answer || ''))
   const pickedLetters = parseAnswerLetters(currentPicked.value || '')
   const inAns = ansLetters.includes(letter)
@@ -582,77 +661,110 @@ async function boot() {
   }
 }
 
+function buildExamPracticeStats(): {
+  items: SuitePracticeItemPayload[]
+  correctCount: number
+  wrongCount: number
+  unansweredCount: number
+  submittedCount: number
+} {
+  const items: SuitePracticeItemPayload[] = []
+  let correctCount = 0
+  let wrongCount = 0
+  let unansweredCount = 0
+  const submittedCount = questions.value.length
+
+  for (let i = 0; i < questions.value.length; i++) {
+    const slot = quizSlots.value[i]
+    const qrow = questions.value[i]
+    const oc = getOptionLineCount(qrow)
+    const pickTrim = String(slot?.picked || '').trim()
+    const explicitSkip = !!slot?.skipped
+    const blankAck = !!slot?.blankDone
+
+    const unansweredRow = !explicitSkip && (oc > 0 ? !pickTrim : !blankAck)
+    const skippedForApi = explicitSkip || unansweredRow
+
+    const ak = canonicalAnswerKey(String(qrow?.answer || ''))
+    let rowCorrect = false
+    if (!skippedForApi && pickTrim) {
+      const pk = canonicalPickKey(slot.picked)
+      rowCorrect = ak !== '' && ak === pk
+    }
+
+    if (skippedForApi) unansweredCount += 1
+    else if (rowCorrect) correctCount += 1
+    else wrongCount += 1
+
+    items.push({
+      question_id: String(qrow.id),
+      question_no: String(qrow.question_no || ''),
+      picked: skippedForApi ? null : slot?.picked ?? null,
+      answer: String(qrow.answer || ''),
+      correct: rowCorrect && !skippedForApi && !!pickTrim,
+      skipped: skippedForApi,
+    })
+  }
+
+  return { items, correctCount, wrongCount, unansweredCount, submittedCount }
+}
+
+function buildPaperExamCloudBody(recordStatus: 'in_progress' | 'completed') {
+  if (sessionPracticeMode.value !== 'exam' || !quizPaperId.value || !questions.value.length) return null
+  if (!cloudClientSessionId.value) return null
+  const { items, correctCount, wrongCount, unansweredCount, submittedCount } = buildExamPracticeStats()
+  const durationSec = Math.max(0, Math.floor(mergeRunningSegmentIntoAccum() / 1000))
+  return {
+    paper_id: quizPaperId.value,
+    paper_title: activePaperTitle.value || '',
+    paper_folder: quizPaperFolder.value || '',
+    mode: 'exam' as const,
+    duration_sec: durationSec,
+    correct_count: correctCount,
+    wrong_count: wrongCount,
+    unanswered_count: unansweredCount,
+    submitted_count: submittedCount,
+    items,
+    practice_subtype: 'paper_exam' as const,
+    client_session_id: cloudClientSessionId.value,
+    record_status: recordStatus,
+  }
+}
+
+function startPaperExamCloudSync() {
+  registerSuitePracticeCloudSync(() => buildPaperExamCloudBody('in_progress'))
+}
+
+function stopPaperExamCloudSync() {
+  unregisterSuitePracticeCloudSync()
+}
+
 async function persistExamPracticeRecord(): Promise<void> {
   if (examRecordSaved.value || sessionPracticeMode.value !== 'exam') return
   if (!quizPaperId.value || !questions.value.length) return
-  const anyReveal = quizSlots.value.some(s => s.revealed)
-  if (!anyReveal) return
   try {
-    const items: SuitePracticeItemPayload[] = []
-    let correctCount = 0
-    let wrongCount = 0
-    let unansweredCount = 0
-    let submittedCount = 0
-    for (let i = 0; i < questions.value.length; i++) {
-      const slot = quizSlots.value[i]
-      const qrow = questions.value[i]
-      if (!slot?.revealed) continue
-      submittedCount += 1
-      const skipped = !String(slot.picked || '').trim()
-      const ak = canonicalAnswerKey(String(qrow?.answer || ''))
-      let rowCorrect = false
-      if (!skipped) {
-        const pk = canonicalPickKey(slot.picked)
-        rowCorrect = ak !== '' && ak === pk
-      }
-      if (skipped) unansweredCount += 1
-      else if (rowCorrect) correctCount += 1
-      else wrongCount += 1
-      items.push({
-        question_id: String(qrow.id),
-        question_no: String(qrow.question_no || ''),
-        picked: skipped ? null : slot.picked,
-        answer: String(qrow.answer || ''),
-        correct: rowCorrect && !skipped,
-        skipped,
-      })
-    }
-    const durationSec = Math.max(0, Math.floor(mergeRunningSegmentIntoAccum() / 1000))
-    await suiteBankApi.appendPracticeRecord({
-      paper_id: quizPaperId.value,
-      paper_title: activePaperTitle.value || '',
-      paper_folder: quizPaperFolder.value || '',
-      mode: 'exam',
-      duration_sec: durationSec,
-      correct_count: correctCount,
-      wrong_count: wrongCount,
-      unanswered_count: unansweredCount,
-      submitted_count: submittedCount,
-      items,
-    })
+    const body = buildPaperExamCloudBody('completed')
+    if (!body) return
+    await suiteBankApi.appendPracticeRecord(body)
     examRecordSaved.value = true
     clearExamDraftForPaper(quizPaperId.value)
+    clearCloudSessionId(quizPaperId.value)
+    stopPaperExamCloudSync()
     void refreshPracticeRecords()
-  } catch {
-    /* ignore */
+  } catch (e) {
+    window.alert(
+      `做题记录未写入服务器：${String((e as Error)?.message || e)}。请先登录后再交卷；本场答题仍可在本页回看。`,
+    )
   }
 }
 
 async function refreshPracticeRecords() {
-  practiceRecordsLoading.value = true
-  try {
-    practiceRecords.value = await suiteBankApi.listPracticeRecords(60)
-  } catch {
-    practiceRecords.value = []
-  } finally {
-    practiceRecordsLoading.value = false
-  }
+  await practiceRecordsDialogRef.value?.refresh()
 }
 
-async function openPracticeRecordsModal() {
+function openPracticeRecordsModal() {
   draftListRev.value++
   showPracticeRecords.value = true
-  await refreshPracticeRecords()
 }
 
 function discardExamDraft(pid: string) {
@@ -662,9 +774,11 @@ function discardExamDraft(pid: string) {
 
 async function loadQuiz(paperId: string, focusQid?: string | null) {
   stashCurrentExamBeforeNavigation()
+  stopPaperExamCloudSync()
   examRecordSaved.value = false
-  const incomingMode =
-    String(route.query.suiteMode || '').toLowerCase() === 'exam' ? 'exam' : 'preview'
+  examSheetSubmitted.value = false
+  const suiteModeQ = firstQueryValue(route.query.suiteMode).toLowerCase()
+  const incomingMode: 'preview' | 'exam' = suiteModeQ === 'exam' ? 'exam' : 'preview'
   sessionPracticeMode.value = incomingMode
 
   loadErr.value = ''
@@ -697,10 +811,19 @@ async function loadQuiz(paperId: string, focusQid?: string | null) {
       examSegmentStartedAt.value = 0
       examTimerPaused.value = false
     }
-    if (incomingMode === 'exam' && String(route.query.examNew || '') === '1') {
+    if (incomingMode === 'exam' && firstQueryValue(route.query.examNew) === '1') {
       const qrest = { ...route.query }
       delete (qrest as Record<string, unknown>).examNew
       await router.replace({ name: route.name ?? 'XingceSuiteBank', query: qrest })
+    }
+    if (incomingMode === 'exam') {
+      const forceNew = firstQueryValue(route.query.examNew) === '1'
+      cloudClientSessionId.value = getOrCreateCloudSessionId(paperId, forceNew)
+      startPaperExamCloudSync()
+      scheduleSuitePracticeCloudSync(true)
+    } else {
+      cloudClientSessionId.value = ''
+      stopPaperExamCloudSync()
     }
   } catch (e) {
     loadErr.value = String((e as Error).message || e)
@@ -718,7 +841,7 @@ function goPaper(
   if (selectedYear.value) q.year = selectedYear.value
   q.paper = paperId
   if (focusQid) q.qid = String(focusQid)
-  if (suiteModeChoice === 'exam') q.suiteMode = 'exam'
+  q.suiteMode = suiteModeChoice
   if (suiteModeChoice === 'exam' && opts?.examNew) q.examNew = '1'
   void router.push({ name: 'XingceSuiteBank', query: q })
 }
@@ -728,21 +851,44 @@ function resumeDraftExam(paperId: string) {
   goPaper(paperId, null, 'exam')
 }
 
+function revealAllExamSlots() {
+  quizSlots.value.forEach(s => {
+    if (s) s.revealed = true
+  })
+}
+
+function countExamUnanswered(): number {
+  let n = 0
+  for (let i = 0; i < questions.value.length; i++) {
+    if (!slotExamReady(quizSlots.value[i], questions.value[i])) n++
+  }
+  return n
+}
+
 async function confirmSubmitExamSheet() {
-  if (sessionPracticeMode.value !== 'exam' || examRecordSaved.value) return
+  if (sessionPracticeMode.value !== 'exam' || examRecordSaved.value || examSheetSubmitted.value) return
   if (!quizPaperId.value || !questions.value.length) return
-  if (!quizSlots.value.some(s => s.revealed)) {
-    window.alert('尚未批改任何题目，无法交卷（可先作答或退出将保留草稿）。')
+
+  const touched = quizSlots.value.some(
+    s => !!(s.skipped || s.blankDone || String(s.picked || '').trim()),
+  )
+  if (!touched) {
+    window.alert('尚未作答任何题目，无法交卷。')
     return
   }
-  const remain = quizSlots.value.filter(s => !s.revealed).length
+
+  const remain = countExamUnanswered()
   if (remain && !window.confirm(`还有 ${remain} 题未完成，将以未作答记入记录。确定交卷？`)) return
-  if (!remain && !window.confirm('确定交卷？')) return
+  if (!remain && !window.confirm('确定交卷？交卷后可查看参考答案与解析。')) return
+
   examActiveMsAccum.value = mergeRunningSegmentIntoAccum()
   examSegmentStartedAt.value = Date.now()
   examTimerPaused.value = true
+
+  examSheetSubmitted.value = true
+  revealAllExamSlots()
+
   await persistExamPracticeRecord()
-  void backToList()
 }
 
 async function backToList() {
@@ -750,16 +896,11 @@ async function backToList() {
   const wasExam = sessionPracticeMode.value === 'exam' && !examRecordSaved.value
   const pid = quizPaperId.value
   if (wasExam && pid && questions.value.length) {
-    const allRevealed =
-      quizSlots.value.length === questions.value.length &&
-      quizSlots.value.length > 0 &&
-      quizSlots.value.every(s => s.revealed)
-    if (allRevealed) {
-      await persistExamPracticeRecord()
-    } else {
-      saveExamDraftToStorage()
-    }
+    saveExamDraftToStorage()
+    await flushSuitePracticeCloudSync()
   }
+  stopPaperExamCloudSync()
+  cloudClientSessionId.value = ''
   mode.value = 'list'
   questions.value = []
   quizSlots.value = []
@@ -771,21 +912,22 @@ async function backToList() {
   examActiveMsAccum.value = 0
   examSegmentStartedAt.value = 0
   examTimerPaused.value = false
+  examSheetSubmitted.value = false
   syncListQuery()
 }
 
 function pickLetter(L: string) {
   const slot = quizSlots.value[qIdx.value]
-  if (!slot || slot.revealed) return
+  if (!slot || slot.revealed || examSheetSubmitted.value) return
   const ansRaw = String(currentQ.value?.answer || '')
   if (!isMultiSelectAnswer(ansRaw)) {
     slot.picked = L
-    // 做题模式单选题：点击选项视为提交本题并翻到下一题（与常见机考做题流一致）
-    if (sessionPracticeMode.value === 'exam' && currentHasOptions.value) {
-      slot.revealed = true
-      nextTick(() => {
-        nextQuestion()
-      })
+    if (
+      sessionPracticeMode.value === 'exam' &&
+      !examSheetSubmitted.value &&
+      getOptionLineCount(currentQ.value) > 0
+    ) {
+      nextTick(() => nextQuestion())
     }
     return
   }
@@ -804,29 +946,30 @@ function showAnswer() {
 }
 
 function submitExamQuestion() {
-  if (sessionPracticeMode.value !== 'exam') return
+  if (sessionPracticeMode.value !== 'exam' || examSheetSubmitted.value) return
   const slot = quizSlots.value[qIdx.value]
   if (!slot || slot.revealed) return
-  if (currentHasOptions.value && !String(slot.picked || '').trim()) {
-    window.alert('请选择选项后再提交，或使用下方「不会做」。')
-    return
-  }
-  slot.revealed = true
+  if (currentHasOptions.value) return
+  slot.blankDone = true
 }
 
 function skipExamQuestion() {
-  if (sessionPracticeMode.value !== 'exam') return
+  if (sessionPracticeMode.value !== 'exam' || examSheetSubmitted.value) return
   const slot = quizSlots.value[qIdx.value]
   if (!slot || slot.revealed) return
   slot.picked = null
-  slot.revealed = true
+  slot.skipped = true
+  slot.lockedIn = false
+  slot.blankDone = false
 }
 
 function nextQuestion() {
   if (examNextLocked.value) return
   if (qIdx.value + 1 >= questions.value.length) {
-    if (sessionPracticeMode.value === 'exam') void confirmSubmitExamSheet()
-    else if (window.confirm('已是最后一题，返回套卷列表？')) void backToList()
+    if (sessionPracticeMode.value === 'exam' && !examSheetSubmitted.value) void confirmSubmitExamSheet()
+    else if (sessionPracticeMode.value !== 'exam') {
+      if (window.confirm('已是最后一题，返回套卷列表？')) void backToList()
+    }
     return
   }
   qIdx.value += 1
@@ -834,35 +977,15 @@ function nextQuestion() {
 
 /** 「下一题/交卷」：避免禁用态静默无反馈，并统一入口方便以后埋点 */
 function handleFooterNext() {
-  if (examNextLocked.value) {
-    window.alert(
-      currentHasOptions.value
-        ? '请先完成本题：单选题直接点选项即翻题；多选题选好后点「提交本题」，或直接点「不会做」。本题无选项时点「本题无选项，继续」。'
-        : '请先点「本题无选项，继续」再翻题。',
-    )
+  if (footerNextBlocked.value) {
+    if (examNextLocked.value) {
+      window.alert(
+        '请先完成本题：有选项时选好选项后点「下一题」即可；亦可点「不会做」。无选项题点「本题无选项，继续」。',
+      )
+    }
     return
   }
   nextQuestion()
-}
-
-function formatPracticeRecordAt(iso: string): string {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleString('zh-CN', { hour12: false })
-}
-
-function formatPracticeDuration(sec: number): string {
-  const s = Math.max(0, Math.floor(sec || 0))
-  const m = Math.floor(s / 60)
-  const r = s % 60
-  if (m >= 60) {
-    const h = Math.floor(m / 60)
-    const rm = m % 60
-    return `${h}时${rm}分${r}秒`
-  }
-  if (m) return `${m}分${r}秒`
-  return `${r}秒`
 }
 
 function applyExamYearFromRoute() {
@@ -896,8 +1019,20 @@ onBeforeUnmount(() => {
     !examRecordSaved.value
   ) {
     saveExamDraftToStorage()
+    void flushSuitePracticeCloudSync()
   }
+  stopPaperExamCloudSync()
 })
+
+watch(
+  () => [quizSlots.value, qIdx.value, examActiveMsAccum.value, examTimerPaused.value],
+  () => {
+    if (sessionPracticeMode.value === 'exam' && !examRecordSaved.value && !examSheetSubmitted.value) {
+      scheduleSuitePracticeCloudSync()
+    }
+  },
+  { deep: true },
+)
 
 watch(
   () => route.query,
@@ -914,11 +1049,11 @@ watch(
 )
 
 function goWorkspace() {
-  void router.push({ name: 'XingceWorkspace' })
+  window.location.href = '/'
 }
 
 function goPortal() {
-  void router.push({ name: 'ModulePortal', query: { portal: '1' } })
+  window.location.href = '/?portal=1'
 }
 
 function onGlobalKeydown(e: KeyboardEvent) {
@@ -933,14 +1068,14 @@ function onGlobalPickSuite(paperId: string, questionId: string) {
   goPaper(paperId, questionId || null, 'preview')
 }
 
-function onGlobalPickQuestion(id: string) {
+function onGlobalPickQuestion(_id: string) {
   showGlobalSearch.value = false
-  void router.push({ name: 'XingceWorkspace', query: { gsPickError: id } })
+  window.location.href = '/'
 }
 
-function onGlobalPickNote(nodeId: string) {
+function onGlobalPickNote(_nodeId: string) {
   showGlobalSearch.value = false
-  void router.push({ name: 'XingceWorkspace', query: { gsPickNote: nodeId } })
+  window.location.href = '/'
 }
 </script>
 
@@ -965,6 +1100,7 @@ function onGlobalPickNote(nodeId: string) {
             全局搜索
           </button>
           <button type="button" class="btn btn-secondary" @click="goWorkspace">行测工作台</button>
+          <RouterLink class="btn btn-secondary" :to="{ name: 'XingceBankDrill' }">套卷模块练</RouterLink>
           <button type="button" class="btn btn-ghost" @click="goPortal">模块首页</button>
         </div>
       </div>
@@ -1073,12 +1209,21 @@ function onGlobalPickNote(nodeId: string) {
     <div v-else class="sb-quiz">
       <h2 class="sb-quiz-title">{{ activePaperTitle }}</h2>
       <div
-        v-if="sessionPracticeMode === 'exam'"
+        v-if="sessionPracticeMode === 'exam' && !examSheetSubmitted"
         class="sb-exam-hint"
       >
-        <strong>做题模式：</strong>单选题点选项即批改并跳到下一题；多选题请先选好后点「提交本题」或使用「不会做」后再点「下一题」。无选项题干点「本题无选项，继续」。退出未交卷时草稿可在「做题记录」里继续。
+        <strong>做题模式：</strong>整场不交卷不显示参考答案与解析；全部做完后点「交卷」统一揭晓并记入做题记录。单选题点选项即记录并跳到下一题；多选题选好选项后直接点「下一题」即可，亦可点「不会做」。无选项题点「本题无选项，继续」。中途退出可在「做题记录」继续草稿。
       </div>
-      <div v-if="sessionPracticeMode === 'exam'" class="sb-exam-toolbar">
+      <div
+        v-if="sessionPracticeMode === 'exam' && examSheetSubmitted"
+        class="sb-exam-done-banner"
+      >
+        <strong>已交卷。</strong>以下为参考答案与解析，可通过答题卡回看任意题目。
+        <button type="button" class="btn btn-secondary sb-exam-done-back" @click="backToList">
+          返回套卷列表
+        </button>
+      </div>
+      <div v-if="sessionPracticeMode === 'exam' && !examSheetSubmitted" class="sb-exam-toolbar">
         <span class="sb-exam-clock" aria-live="polite">{{ examClockText }}</span>
         <button type="button" class="btn btn-secondary sb-exam-pause" @click="toggleExamPause">
           {{ examTimerPaused ? '继续计时' : '暂停' }}
@@ -1119,35 +1264,27 @@ function onGlobalPickNote(nodeId: string) {
         </button>
       </div>
       <div v-else-if="currentQ" class="sb-no-opt">（未识别到选项行，仅看题干）</div>
-      <div v-if="currentRevealed && currentQ?.answer" class="sb-answer">
+      <div v-if="gradingVisibleForCurrent && currentQ?.answer" class="sb-answer">
         参考答案：<strong>{{ currentQ.answer }}</strong>
       </div>
-      <div v-if="currentRevealed && currentQ?.analysis" class="sb-analysis-wrap">
+      <div v-if="gradingVisibleForCurrent && currentQ?.analysis" class="sb-analysis-wrap">
         <div class="sb-analysis-label">解析</div>
         <!-- eslint-disable-next-line vue/no-v-html -->
         <div class="sb-analysis-body" v-html="analysisExamHtml"></div>
       </div>
       <div class="sb-bar">
-        <template v-if="sessionPracticeMode === 'exam'">
+        <template v-if="sessionPracticeMode === 'exam' && !examSheetSubmitted">
           <button
-            v-if="!currentRevealed && currentHasOptions"
+            v-if="!currentHasOptions"
             type="button"
             class="btn btn-primary"
-            @click="submitExamQuestion"
-          >
-            提交本题
-          </button>
-          <button
-            v-if="!currentRevealed && !currentHasOptions"
-            type="button"
-            class="btn btn-primary"
-            title="本题未识别选项行时可提交后继续"
+            title="本题未识别选项行时可确认后继续"
             @click="submitExamQuestion"
           >
             本题无选项，继续
           </button>
           <button
-            v-if="!currentRevealed && currentHasOptions"
+            v-if="currentHasOptions"
             type="button"
             class="btn btn-secondary"
             @click="skipExamQuestion"
@@ -1161,8 +1298,14 @@ function onGlobalPickNote(nodeId: string) {
         <button
           type="button"
           class="btn btn-primary sb-footer-next"
-          :class="{ 'sb-footer-next--blocked': examNextLocked }"
-          :title="examNextLocked ? '请先提交本题、不会做或无选项题的「本题无选项，继续」' : ''"
+          :class="{ 'sb-footer-next--blocked': footerNextBlocked }"
+          :title="
+            footerNextBlocked
+              ? examNextLocked
+                ? '请先完成本题作答（见上方说明）'
+                : ''
+              : ''
+          "
           @click="handleFooterNext"
         >
           {{ quizNextFooterLabel }}
@@ -1202,79 +1345,34 @@ function onGlobalPickNote(nodeId: string) {
       @pick-suite="onGlobalPickSuite"
     />
 
-    <Teleport to="body">
-      <div
-        v-if="showPracticeRecords"
-        class="sb-pr-modal-overlay"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="sb-pr-title"
-      >
-        <div class="sb-pr-backdrop" @click="showPracticeRecords = false" />
-        <div class="sb-pr-panel">
-          <div class="sb-pr-head">
-            <h2 id="sb-pr-title" class="sb-pr-title">做题记录</h2>
-            <button type="button" class="btn btn-ghost sb-pr-close" @click="showPracticeRecords = false">
-              关闭
-            </button>
-          </div>
-          <div class="sb-pr-body">
-            <section v-if="draftSummaries.length" class="sb-pr-drafts">
-              <h3 class="sb-pr-section-head">未完成（本地草稿）</h3>
-              <p class="sb-pr-section-hint">保存在本浏览器；换设备不可用。列表点「重做」会从第一题新开并清空该套草稿。</p>
-              <ul class="sb-pr-draft-list">
-                <li v-for="d in draftSummaries" :key="d.paperId" class="sb-pr-draft-row">
-                  <div class="sb-pr-draft-meta">
-                    <div class="sb-pr-paper">{{ d.title }}</div>
-                    <div class="sb-pr-folder">{{ d.folder || '—' }} · 已批改 {{ d.answered }} / {{ d.total }}</div>
-                  </div>
-                  <div class="sb-pr-draft-actions">
-                    <button type="button" class="btn btn-primary sb-mini" @click="resumeDraftExam(d.paperId)">
-                      继续做题
-                    </button>
-                    <button type="button" class="btn btn-secondary sb-mini" @click="discardExamDraft(d.paperId)">
-                      删除草稿
-                    </button>
-                  </div>
-                </li>
-              </ul>
-            </section>
-            <section class="sb-pr-history">
-              <h3 class="sb-pr-section-head">交卷存档</h3>
-              <p v-if="practiceRecordsLoading" class="sb-pr-muted">加载中…</p>
-              <template v-else>
-                <div v-if="practiceRecords.length" class="sb-pr-table-wrap">
-                  <table class="sb-pr-table">
-                    <thead>
-                      <tr>
-                        <th>时间</th>
-                        <th>套卷</th>
-                        <th>结果</th>
-                        <th>用时</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-for="rec in practiceRecords" :key="rec.id">
-                        <td>{{ formatPracticeRecordAt(rec.created_at) }}</td>
-                        <td>
-                          <div class="sb-pr-paper">{{ rec.paper_title || rec.paper_id }}</div>
-                          <div class="sb-pr-folder">{{ rec.paper_folder }}</div>
-                        </td>
-                        <td>
-                          ✓ {{ rec.correct_count }}　✗ {{ rec.wrong_count }}　⊙ {{ rec.unanswered_count }}
-                        </td>
-                        <td>{{ formatPracticeDuration(rec.duration_sec) }}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                <p v-else class="sb-pr-muted">暂无已交卷记录。做题模式下确认交卷或用完全部小题返回列表成功后，会记入此处。</p>
-              </template>
-            </section>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <SuitePracticeRecordsDialog
+      ref="practiceRecordsDialogRef"
+      v-model:open="showPracticeRecords"
+      initial-tab="paper"
+    >
+      <template #prepend>
+        <section v-if="draftSummaries.length" class="sb-pr-drafts">
+          <h3 class="sb-pr-section-head">未完成（本地草稿）</h3>
+          <p class="sb-pr-section-hint">保存在本浏览器；换设备不可用。列表点「重做」会从第一题新开并清空该套草稿。</p>
+          <ul class="sb-pr-draft-list">
+            <li v-for="d in draftSummaries" :key="d.paperId" class="sb-pr-draft-row">
+              <div class="sb-pr-draft-meta">
+                <div class="sb-pr-paper">{{ d.title }}</div>
+                <div class="sb-pr-folder">{{ d.folder || '—' }} · 已作答 {{ d.answered }} / {{ d.total }}</div>
+              </div>
+              <div class="sb-pr-draft-actions">
+                <button type="button" class="btn btn-primary sb-mini" @click="resumeDraftExam(d.paperId)">
+                  继续做题
+                </button>
+                <button type="button" class="btn btn-secondary sb-mini" @click="discardExamDraft(d.paperId)">
+                  删除草稿
+                </button>
+              </div>
+            </li>
+          </ul>
+        </section>
+      </template>
+    </SuitePracticeRecordsDialog>
   </div>
 </template>
 
@@ -1762,6 +1860,23 @@ function onGlobalPickNote(nodeId: string) {
   padding: 10px 12px;
   margin-bottom: 10px;
 }
+.sb-exam-done-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #bbf7d0;
+  background: #ecfdf5;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #166534;
+}
+.sb-exam-done-back {
+  margin-left: auto;
+}
 .sb-exam-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -1838,151 +1953,5 @@ function onGlobalPickNote(nodeId: string) {
 }
 .btn-ghost {
   background: transparent;
-}
-</style>
-
-<style>
-/* Teleport → body（脱离 scoped），做题记录遮罩 */
-.sb-pr-modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 20000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  box-sizing: border-box;
-}
-.sb-pr-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.45);
-}
-.sb-pr-panel {
-  position: relative;
-  z-index: 1;
-  width: min(640px, 100%);
-  max-height: min(80vh, 720px);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  border-radius: 16px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.2);
-}
-.sb-pr-body {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 0 0 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.sb-pr-section-head {
-  margin: 0 0 6px;
-  font-size: 13px;
-  font-weight: 800;
-  color: #475569;
-  text-transform: none;
-}
-.sb-pr-section-hint {
-  margin: 0 0 10px;
-  font-size: 12px;
-  line-height: 1.55;
-  color: #94a3b8;
-}
-.sb-pr-drafts {
-  padding: 14px 18px 0;
-}
-.sb-pr-draft-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.sb-pr-draft-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
-}
-.sb-pr-draft-meta {
-  flex: 1;
-  min-width: 140px;
-}
-.sb-pr-draft-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-end;
-}
-.sb-pr-history .sb-pr-section-head {
-  margin: 0 18px 8px;
-}
-.sb-pr-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 18px;
-  border-bottom: 1px solid #f1f5f9;
-}
-.sb-pr-title {
-  margin: 0;
-  font-size: 17px;
-  font-weight: 800;
-  color: #0f172a;
-}
-.sb-pr-close {
-  font-size: 13px !important;
-}
-.sb-pr-muted {
-  padding: 8px 18px 14px;
-  font-size: 13px;
-  color: #64748b;
-  margin: 0;
-}
-.sb-pr-table-wrap {
-  overflow: auto;
-  flex: 1;
-}
-.sb-pr-history .sb-pr-table-wrap {
-  padding: 0 18px 14px;
-}
-.sb-pr-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-.sb-pr-table th,
-.sb-pr-table td {
-  text-align: left;
-  padding: 10px 14px;
-  border-bottom: 1px solid #f1f5f9;
-  vertical-align: top;
-}
-.sb-pr-table th {
-  background: #f8fafc;
-  color: #64748b;
-  font-weight: 700;
-  font-size: 12px;
-}
-.sb-pr-paper {
-  font-weight: 600;
-  color: #0f172a;
-}
-.sb-pr-folder {
-  margin-top: 4px;
-  font-size: 11px;
-  color: #94a3b8;
 }
 </style>

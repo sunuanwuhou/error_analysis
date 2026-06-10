@@ -59,13 +59,18 @@ async function ensureFullWorkspaceDataLoaded() {
   if (fullWorkspaceDataPromise) return fullWorkspaceDataPromise;
   fullDataLoading = true;
   fullWorkspaceDataPromise = (async () => {
-    await loadFullErrorsFromDb();
-    await migrateIntegerIds();
-    setErrorSyncSnapshot();
-    if (typeof syncNotesWithErrors === 'function') syncNotesWithErrors();
-    refreshSidebarErrorsAndNotesPanels();
-    if (typeof renderHomeDashboard === 'function') renderHomeDashboard();
-    return true;
+    try {
+      await loadFullErrorsFromDb();
+      await migrateIntegerIds();
+      setErrorSyncSnapshot();
+      if (typeof syncNotesWithErrors === 'function') syncNotesWithErrors();
+      refreshSidebarErrorsAndNotesPanels();
+      return true;
+    } catch (err) {
+      fullDataLoading = false;
+      console.error('[ensureFullWorkspaceDataLoaded] failed', err);
+      throw err;
+    }
   })().finally(() => {
     fullWorkspaceDataPromise = null;
   });

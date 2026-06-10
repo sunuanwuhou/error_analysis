@@ -65,7 +65,7 @@ function scheduleWorkspaceWarmup() {
   if (typeof hasFullWorkspaceDataLoaded === 'function' && !hasFullWorkspaceDataLoaded()) return;
   if (typeof getErrorEntries === 'function' && getErrorEntries().length >= 800) return;
   const run = () => {
-    if (appView !== 'home') return;
+    if (appView !== 'workspace') return;
     try {
       renderAll();
       renderNotesByType();
@@ -212,7 +212,7 @@ if (typeof window !== 'undefined') {
   if (typeof ensureCloudFullBackupMenuButton === 'function') ensureCloudFullBackupMenuButton();
   if (typeof ensureCloudFullRestoreMenuButton === 'function') ensureCloudFullRestoreMenuButton();
   if (typeof syncAppViewChrome === 'function') syncAppViewChrome();
-  if (typeof renderHomeDashboard === 'function') renderHomeDashboard();
+  if (typeof switchAppView === 'function') switchAppView('workspace');
   refreshRuntimeBadge().catch(() => {});
   refreshCloudSession().catch(() => {});
   if (deferErrorsOnStartup && typeof scheduleDeferredFullWorkspaceLoad === 'function') {

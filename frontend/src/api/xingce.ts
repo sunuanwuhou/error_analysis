@@ -228,8 +228,10 @@ export const xingceApi = {
     return opsToSnapshot(res.ops)
   },
 
-  /** 推送单条或多条 op（upsert/delete） */
-  push(ops: Omit<SyncOp, 'id' | 'created_at'>[]): Promise<{ ok: boolean }> {
+  /** 推送单条或多条 op（upsert/delete，payload 可省略） */
+  push(
+    ops: Array<{ op_type: string; entity_id: string; payload?: unknown; id?: string; created_at?: string }>,
+  ): Promise<{ ok: boolean }> {
     return request('/api/sync', {
       method: 'POST',
       body: JSON.stringify({ ops }),

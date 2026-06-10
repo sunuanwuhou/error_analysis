@@ -24,6 +24,7 @@ This file is the source-of-truth navigation entry for `docs/`.
 | `docs/active/MODULE_BOUNDARIES.md` | active | core | 2026-04-18 |
 | `docs/active/SHENLUN_WORKBENCH_DIRECTION.md` | active | product | 2026-04-27 |
 | `docs/active/SUITE_BANK_WORD_IMPORT_RULES.md` | active | xingce | 2026-05-17 |
+| `docs/active/XINGCE_WORKSPACE_PARITY_GAPS.md` | active | xingce | 2026-05-18 |
 
 ## Ops
 

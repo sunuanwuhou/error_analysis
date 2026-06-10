@@ -296,6 +296,6 @@ window.openWorkspaceQuickAdd = openWorkspaceQuickAdd;
 window.switchTab = switchTab;
 setTimeout(() => {
   syncAppViewChrome();
-  if (appView === 'home' && typeof renderHomeDashboard === 'function') renderHomeDashboard();
+  if (appView === 'workspace' && typeof switchTab === 'function') switchTab('notes');
 }, 0);
 

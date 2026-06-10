@@ -11,8 +11,21 @@ from typing import Any
 
 from backend.database import get_conn
 from backend.security import utcnow
+from backend.services.suite_bank_drill import (
+    BANK_DRILL_PAPER_ID,
+    infer_exam_track,
+    infer_exam_year,
+    infer_major_module_for_question_row,
+    infer_region,
+    repair_question_meta_section_for_major_module,
+)
 
 _LOGGER = logging.getLogger(__name__)
+
+SUITE_PRACTICE_SUBTYPE_PAPER = "paper_exam"
+SUITE_PRACTICE_SUBTYPE_MODULE = "bank_module_drill"
+SUITE_RECORD_STATUS_IN_PROGRESS = "in_progress"
+SUITE_RECORD_STATUS_COMPLETED = "completed"
 
 
 def normalize_suite_folder(folder: str) -> str:
@@ -205,7 +218,7 @@ def get_paper_questions(paper_id: str) -> dict[str, Any] | None:
         paper = dict(prow)
         qrows = conn.execute(
             """
-            SELECT id, seq_no, question_no, stem, options, answer, analysis, type_label, img_data, meta_json
+            SELECT id, seq_no, question_no, stem, options, answer, analysis, type_label, img_data, meta_json, major_module
             FROM suite_questions
             WHERE paper_id = %s
             ORDER BY seq_no
@@ -252,6 +265,9 @@ def replace_paper_bundle(
     meta_out = dict(meta or {})
     meta_out["dedupe_key"] = dedupe_key
     meta_json = json.dumps(meta_out, ensure_ascii=False)
+    region = infer_region(folder, source_rel_path)
+    exam_track = infer_exam_track(folder, source_rel_path, title)
+    exam_year = infer_exam_year(title, source_rel_path, folder)
 
     with get_conn() as conn:
         conn.execute(
@@ -260,18 +276,30 @@ def replace_paper_bundle(
         )
         conn.execute(
             """
-            INSERT INTO suite_papers (id, source_rel_path, title, folder, created_at, meta_json, dedupe_key)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO suite_papers (
+              id, source_rel_path, title, folder, created_at, meta_json, dedupe_key,
+              region, exam_track, exam_year
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
-            (paper_id, source_rel_path, title, folder, now, meta_json, dedupe_key),
+            (paper_id, source_rel_path, title, folder, now, meta_json, dedupe_key, region, exam_track, exam_year),
         )
         for q in questions:
+            meta_q = q.get("meta") if isinstance(q.get("meta"), dict) else {}
+            major_mod = str(q.get("major_module") or "").strip()
+            if not major_mod:
+                major_mod = infer_major_module_for_question_row(
+                    meta_q,
+                    str(q.get("type_label") or ""),
+                    str((meta_q.get("label") if isinstance(meta_q.get("label"), str) else "") or ""),
+                )
+            meta_ins = repair_question_meta_section_for_major_module(meta_q, major_mod)
             conn.execute(
                 """
                 INSERT INTO suite_questions (
                   id, paper_id, seq_no, question_no, stem, options, answer, analysis,
-                  type_label, img_data, meta_json
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                  type_label, img_data, meta_json, major_module
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     q["id"],
@@ -284,45 +312,235 @@ def replace_paper_bundle(
                     str(q.get("analysis") or ""),
                     str(q.get("type_label") or ""),
                     str(q.get("img_data") or ""),
-                    json.dumps(q.get("meta") or {}, ensure_ascii=False),
+                    json.dumps(meta_ins, ensure_ascii=False),
+                    major_mod,
                 ),
             )
 
 
-def append_suite_practice_record(user_id: str, *, body: dict[str, Any]) -> str:
-    """Persist one 做题 session summary (exam mode). payload_json mirrors body including items[]."""
-    rid = "spr_" + uuid.uuid4().hex[:26]
+def migrate_suite_practice_records_schema() -> None:
+    """套卷做题记录：子类型、云端会话 id、进行中状态（幂等）."""
+    with get_conn() as conn:
+        conn.execute(
+            "ALTER TABLE suite_practice_records ADD COLUMN IF NOT EXISTS practice_subtype TEXT NOT NULL DEFAULT ''"
+        )
+        conn.execute(
+            "ALTER TABLE suite_practice_records ADD COLUMN IF NOT EXISTS record_status TEXT NOT NULL DEFAULT ''"
+        )
+        conn.execute(
+            "ALTER TABLE suite_practice_records ADD COLUMN IF NOT EXISTS client_session_id TEXT NOT NULL DEFAULT ''"
+        )
+        conn.execute(
+            "ALTER TABLE suite_practice_records ADD COLUMN IF NOT EXISTS updated_at TEXT NOT NULL DEFAULT ''"
+        )
+        try:
+            conn.execute(
+                """
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_suite_practice_user_client_sess
+                ON suite_practice_records(user_id, client_session_id)
+                WHERE client_session_id <> ''
+                """
+            )
+        except Exception as ex:
+            _LOGGER.warning("suite practice client_session index: %s", ex)
+        try:
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_suite_practice_user_subtype
+                ON suite_practice_records(user_id, practice_subtype, updated_at DESC)
+                """
+            )
+        except Exception as ex:
+            _LOGGER.warning("suite practice subtype index: %s", ex)
+
+        rows = conn.execute(
+            "SELECT id, paper_id, payload_json, created_at, practice_subtype, record_status, updated_at FROM suite_practice_records"
+        ).fetchall()
+        for r in rows:
+            d = dict(r)
+            rid = str(d["id"])
+            pid = str(d.get("paper_id") or "")
+            subtype = str(d.get("practice_subtype") or "").strip()
+            status = str(d.get("record_status") or "").strip()
+            updated = str(d.get("updated_at") or "").strip()
+            created = str(d.get("created_at") or "")
+            if not subtype or not status or not updated:
+                extra: dict[str, Any] = {}
+                raw_p = d.get("payload_json")
+                if raw_p:
+                    try:
+                        extra = json.loads(str(raw_p))
+                    except json.JSONDecodeError:
+                        extra = {}
+                if not subtype:
+                    subtype = str(extra.get("practice_subtype") or "").strip()
+                    if not subtype:
+                        subtype = (
+                            SUITE_PRACTICE_SUBTYPE_MODULE
+                            if pid == BANK_DRILL_PAPER_ID
+                            else SUITE_PRACTICE_SUBTYPE_PAPER
+                        )
+                if not status:
+                    status = str(extra.get("record_status") or "").strip() or SUITE_RECORD_STATUS_COMPLETED
+                if not updated:
+                    updated = str(extra.get("updated_at") or created or utcnow().isoformat())
+                conn.execute(
+                    """
+                    UPDATE suite_practice_records
+                    SET practice_subtype = %s, record_status = %s, updated_at = %s
+                    WHERE id = %s
+                    """,
+                    (subtype, status, updated, rid),
+                )
+        conn.commit()
+
+
+def normalize_practice_subtype(body: dict[str, Any]) -> str:
+    raw = str(body.get("practice_subtype") or "").strip()
+    if raw in (SUITE_PRACTICE_SUBTYPE_PAPER, SUITE_PRACTICE_SUBTYPE_MODULE):
+        return raw
+    pid = str(body.get("paper_id") or "").strip()
+    if pid == BANK_DRILL_PAPER_ID:
+        return SUITE_PRACTICE_SUBTYPE_MODULE
+    return SUITE_PRACTICE_SUBTYPE_PAPER
+
+
+def normalize_record_status(body: dict[str, Any]) -> str:
+    raw = str(body.get("record_status") or "").strip()
+    if raw == SUITE_RECORD_STATUS_IN_PROGRESS:
+        return SUITE_RECORD_STATUS_IN_PROGRESS
+    return SUITE_RECORD_STATUS_COMPLETED
+
+
+def _practice_row_to_api(d: dict[str, Any]) -> dict[str, Any]:
+    if d.get("payload_json"):
+        try:
+            d["payload"] = json.loads(str(d["payload_json"]))
+        except json.JSONDecodeError:
+            d["payload"] = {}
+    else:
+        d["payload"] = {}
+    del d["payload_json"]
+    subtype = str(d.get("practice_subtype") or "").strip()
+    if not subtype:
+        subtype = str(d.get("payload", {}).get("practice_subtype") or "").strip()
+    if not subtype:
+        subtype = (
+            SUITE_PRACTICE_SUBTYPE_MODULE
+            if str(d.get("paper_id") or "") == BANK_DRILL_PAPER_ID
+            else SUITE_PRACTICE_SUBTYPE_PAPER
+        )
+    d["practice_subtype"] = subtype
+    status = str(d.get("record_status") or "").strip()
+    if not status:
+        status = str(d.get("payload", {}).get("record_status") or SUITE_RECORD_STATUS_COMPLETED)
+    d["record_status"] = status
+    return d
+
+
+def upsert_suite_practice_record(user_id: str, *, body: dict[str, Any]) -> str:
+    """按 client_session_id 幂等写入；进行中/已完成均可，用于定时云端同步."""
     now = utcnow().isoformat()
+    client_sid = str(body.get("client_session_id") or "").strip()
+    subtype = normalize_practice_subtype(body)
+    status = normalize_record_status(body)
     items = body.get("items") or []
     payload_out = dict(body)
     payload_out["items"] = items
+    payload_out["practice_subtype"] = subtype
+    payload_out["record_status"] = status
+    payload_out["updated_at"] = now
     payload_json = json.dumps(payload_out, ensure_ascii=False)
+
     with get_conn() as conn:
+        existing_id: str | None = None
+        if client_sid:
+            row = conn.execute(
+                """
+                SELECT id FROM suite_practice_records
+                WHERE user_id = %s AND client_session_id = %s
+                LIMIT 1
+                """,
+                (user_id, client_sid),
+            ).fetchone()
+            if row:
+                existing_id = str(dict(row)["id"])
+
+        vals = (
+            str(body.get("paper_id") or ""),
+            str(body.get("paper_title") or ""),
+            str(body.get("paper_folder") or ""),
+            str(body.get("mode") or "exam"),
+            int(body.get("duration_sec") or 0),
+            int(body.get("correct_count") or 0),
+            int(body.get("wrong_count") or 0),
+            int(body.get("unanswered_count") or 0),
+            int(body.get("submitted_count") or 0),
+            payload_json,
+            subtype,
+            status,
+            client_sid,
+            now,
+        )
+
+        if existing_id:
+            conn.execute(
+                """
+                UPDATE suite_practice_records SET
+                  paper_id = %s, paper_title = %s, paper_folder = %s, mode = %s,
+                  duration_sec = %s, correct_count = %s, wrong_count = %s,
+                  unanswered_count = %s, submitted_count = %s, payload_json = %s,
+                  practice_subtype = %s, record_status = %s, client_session_id = %s, updated_at = %s
+                WHERE id = %s AND user_id = %s
+                """,
+                (*vals, existing_id, user_id),
+            )
+            conn.commit()
+            return existing_id
+
+        rid = "spr_" + uuid.uuid4().hex[:26]
         conn.execute(
             """
             INSERT INTO suite_practice_records (
               id, user_id, paper_id, paper_title, paper_folder, mode,
               created_at, duration_sec, correct_count, wrong_count, unanswered_count,
-              submitted_count, payload_json
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+              submitted_count, payload_json, practice_subtype, record_status,
+              client_session_id, updated_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
             (
                 rid,
                 user_id,
-                str(body.get("paper_id") or ""),
-                str(body.get("paper_title") or ""),
-                str(body.get("paper_folder") or ""),
-                str(body.get("mode") or "exam"),
+                vals[0],
+                vals[1],
+                vals[2],
+                vals[3],
                 now,
-                int(body.get("duration_sec") or 0),
-                int(body.get("correct_count") or 0),
-                int(body.get("wrong_count") or 0),
-                int(body.get("unanswered_count") or 0),
-                int(body.get("submitted_count") or 0),
-                payload_json,
+                vals[4],
+                vals[5],
+                vals[6],
+                vals[7],
+                vals[8],
+                vals[9],
+                vals[10],
+                vals[11],
+                client_sid,
+                now,
             ),
         )
-    return rid
+        conn.commit()
+        return rid
+
+
+def append_suite_practice_record(user_id: str, *, body: dict[str, Any]) -> str:
+    """交卷存档：有 client_session_id 则更新同一会话，否则新建."""
+    body = dict(body)
+    if not str(body.get("record_status") or "").strip():
+        body["record_status"] = SUITE_RECORD_STATUS_COMPLETED
+    client_sid = str(body.get("client_session_id") or "").strip()
+    if client_sid:
+        return upsert_suite_practice_record(user_id, body=body)
+    return upsert_suite_practice_record(user_id, body=body)
 
 
 def list_suite_practice_records(
@@ -330,46 +548,32 @@ def list_suite_practice_records(
     *,
     limit: int = 40,
     paper_id: str | None = None,
+    practice_subtype: str | None = None,
 ) -> list[dict[str, Any]]:
     lim = max(1, min(int(limit), 200))
+    subtype = str(practice_subtype or "").strip()
     with get_conn() as conn:
+        clauses = ["user_id = %s"]
+        params: list[Any] = [user_id]
         if paper_id and str(paper_id).strip():
-            rows = conn.execute(
-                """
-                SELECT id, paper_id, paper_title, paper_folder, mode, created_at,
-                       duration_sec, correct_count, wrong_count, unanswered_count,
-                       submitted_count, payload_json
-                FROM suite_practice_records
-                WHERE user_id = %s AND paper_id = %s
-                ORDER BY created_at DESC
-                LIMIT %s
-                """,
-                (user_id, str(paper_id).strip(), lim),
-            ).fetchall()
-        else:
-            rows = conn.execute(
-                """
-                SELECT id, paper_id, paper_title, paper_folder, mode, created_at,
-                       duration_sec, correct_count, wrong_count, unanswered_count,
-                       submitted_count, payload_json
-                FROM suite_practice_records
-                WHERE user_id = %s
-                ORDER BY created_at DESC
-                LIMIT %s
-                """,
-                (user_id, lim),
-            ).fetchall()
-    out = []
-    for r in rows:
-        d = dict(r)
-        if d.get("payload_json"):
-            try:
-                extra = json.loads(str(d["payload_json"]))
-                d["payload"] = extra
-            except json.JSONDecodeError:
-                d["payload"] = {}
-        else:
-            d["payload"] = {}
-        del d["payload_json"]
-        out.append(d)
-    return out
+            clauses.append("paper_id = %s")
+            params.append(str(paper_id).strip())
+        if subtype in (SUITE_PRACTICE_SUBTYPE_PAPER, SUITE_PRACTICE_SUBTYPE_MODULE):
+            clauses.append("practice_subtype = %s")
+            params.append(subtype)
+        where = " AND ".join(clauses)
+        params.append(lim)
+        rows = conn.execute(
+            f"""
+            SELECT id, paper_id, paper_title, paper_folder, mode, created_at,
+                   duration_sec, correct_count, wrong_count, unanswered_count,
+                   submitted_count, payload_json, practice_subtype, record_status,
+                   client_session_id, updated_at
+            FROM suite_practice_records
+            WHERE {where}
+            ORDER BY COALESCE(NULLIF(updated_at, ''), created_at) DESC
+            LIMIT %s
+            """,
+            tuple(params),
+        ).fetchall()
+    return [_practice_row_to_api(dict(r)) for r in rows]

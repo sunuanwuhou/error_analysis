@@ -209,3 +209,40 @@ class SuitePracticeRecordPayload(BaseModel):
     unanswered_count: int = Field(ge=0, le=9999)
     submitted_count: int = Field(ge=0, le=9999)
     items: list[SuitePracticeItemPayload] = Field(default_factory=list)
+    #: paper_exam | bank_module_drill；缺省由 paper_id 推断
+    practice_subtype: Optional[str] = Field(default=None, max_length=48)
+    #: 云端会话 id，同一 id 多次 POST 为更新（定时同步 / 交卷）
+    client_session_id: Optional[str] = Field(default=None, max_length=80)
+    #: in_progress 进行中快照；completed 交卷存档
+    record_status: Optional[str] = Field(default=None, max_length=24)
+    #: bank_module_drill 时必填，用于服务端校验抽题范围
+    bank_drill_session_id: Optional[str] = Field(default=None, max_length=80)
+    bank_drill_exam_track: Optional[str] = Field(default=None, max_length=32)
+    bank_drill_years: Optional[list[int]] = None
+    bank_drill_major_module: Optional[str] = Field(default=None, max_length=32)
+    bank_drill_requested_count: Optional[int] = Field(default=None, ge=0, le=500)
+
+
+class BankDrillStartPayload(BaseModel):
+    exam_track: str = Field(min_length=4, max_length=32, description="provincial | unified")
+    major_module: str = Field(min_length=3, max_length=32)
+    count: int = Field(default=10, ge=1, le=80)
+    years: Optional[list[int]] = None
+
+
+class AdminCreateUserPayload(BaseModel):
+    username: str = Field(min_length=2, max_length=32)
+    password: str = Field(min_length=6, max_length=128)
+    modules: list[str] = Field(default_factory=list)
+
+
+class AdminUpdateUserModulesPayload(BaseModel):
+    modules: list[str] = Field(default_factory=list)
+
+
+class AdminResetPasswordPayload(BaseModel):
+    password: str = Field(min_length=6, max_length=128)
+
+
+class AdminUpdateUserActivePayload(BaseModel):
+    is_active: bool

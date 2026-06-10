@@ -148,7 +148,13 @@ def _create_today_session(user_id: str, today: str, limit: int, cfg: TodaySessio
         limit=max(len(errors) * 6, 240),
     )
     attempt_rows = _fetch_attempt_rows(user_id, error_ids=error_ids, question_ids=question_ids, limit=max(len(errors) * 10, 300))
-    queue = build_today_training_queue(errors, behavior_map, attempt_rows, _normalize_limit(limit, cfg))
+    queue = build_today_training_queue(
+        errors,
+        behavior_map,
+        attempt_rows,
+        _normalize_limit(limit, cfg),
+        shuffle_seed=today,
+    )
     now = utcnow().isoformat()
     session_id = secrets.token_hex(12)
     with get_conn() as conn:
@@ -205,7 +211,7 @@ def _create_today_session(user_id: str, today: str, limit: int, cfg: TodaySessio
     return _serialize_session(session_row, items)
 
 
-def _build_today_queue(user_id: str, limit: int) -> list[dict[str, Any]]:
+def _build_today_queue(user_id: str, limit: int, *, exclude_error_ids: set[str] | None = None) -> list[dict[str, Any]]:
     errors = get_backup_errors(user_id)
     error_ids, question_ids = _collect_attempt_filter_ids(errors)
     behavior_map = read_attempt_behavior_map(
@@ -215,7 +221,14 @@ def _build_today_queue(user_id: str, limit: int) -> list[dict[str, Any]]:
         limit=max(len(errors) * 6, 240),
     )
     attempt_rows = _fetch_attempt_rows(user_id, error_ids=error_ids, question_ids=question_ids, limit=max(len(errors) * 10, 300))
-    return build_today_training_queue(errors, behavior_map, attempt_rows, limit)
+    return build_today_training_queue(
+        errors,
+        behavior_map,
+        attempt_rows,
+        limit,
+        exclude_error_ids=exclude_error_ids,
+        shuffle_seed=utcnow().date().isoformat(),
+    )
 
 
 def _expand_today_session(user_id: str, row: dict[str, Any], target_limit: int) -> dict[str, Any]:
@@ -226,7 +239,7 @@ def _expand_today_session(user_id: str, row: dict[str, Any], target_limit: int) 
     existing_error_ids = {str(item.get("error_id") or "").strip() for item in items if str(item.get("error_id") or "").strip()}
     if len(items) >= target_limit:
         return row
-    queue = _build_today_queue(user_id, target_limit)
+    queue = _build_today_queue(user_id, target_limit, exclude_error_ids=existing_error_ids)
     extra_items = [item for item in queue if str(item.get("id") or "").strip() not in existing_error_ids]
     now = utcnow().isoformat()
     seq_no = len(items)
@@ -273,14 +286,15 @@ def start_or_resume_today_session(user_id: str, limit: int | None = None) -> dic
     row = _get_today_session_row(user_id, today)
     if not row:
         return _create_today_session(user_id, today, target_limit, cfg)
+    items = _load_session_items(str(row.get("id") or ""))
     current_total = int(row.get("total_count") or 0)
     current_completed = int(row.get("completed_count") or 0)
     if str(row.get("status") or "") in {"in_progress", "paused"} and current_total < target_limit:
-        if current_completed == 0:
+        if current_completed == 0 and not items:
             return _create_today_session(user_id, today, target_limit, cfg)
         row = _expand_today_session(user_id, row, target_limit)
-    items = _load_session_items(str(row.get("id") or ""))
-    if str(row.get("status") or "") == "done":
+        items = _load_session_items(str(row.get("id") or ""))
+    elif str(row.get("status") or "") == "done":
         return _serialize_session(row, items)
     now = utcnow().isoformat()
     with get_conn() as conn:

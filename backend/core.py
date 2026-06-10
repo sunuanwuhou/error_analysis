@@ -103,6 +103,21 @@ def require_user(token: Optional[str]) -> dict[str, Any]:
         raise HTTPException(status_code=401, detail="unauthorized")
     return user
 
+
+def require_super_admin(token: Optional[str]) -> dict[str, Any]:
+    user = require_user(token)
+    if not user.get("is_super_admin"):
+        raise HTTPException(status_code=403, detail="forbidden")
+    return user
+
+
+def require_module(token: Optional[str], module_key: str) -> dict[str, Any]:
+    user = require_user(token)
+    modules = user.get("modules") or []
+    if module_key not in modules:
+        raise HTTPException(status_code=403, detail="module_forbidden")
+    return user
+
 def parse_context_json(raw: str) -> dict[str, Any]:
     if not raw:
         return {}

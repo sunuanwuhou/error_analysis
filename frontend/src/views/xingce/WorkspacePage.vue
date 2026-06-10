@@ -12,14 +12,17 @@ import AddErrorModal from '@/components/xingce/AddErrorModal.vue'
 import ImportModal from '@/components/xingce/ImportModal.vue'
 import HistoryModal from '@/components/xingce/HistoryModal.vue'
 import TypeRulesModal from '@/components/xingce/TypeRulesModal.vue'
+import WorkspaceMobileChrome from '@/components/xingce/WorkspaceMobileChrome.vue'
 import { savePortalLastModule } from '@/lib/portalPrefs'
 import '@/styles/xingce-vue-legacy.css'
+import '@/styles/xingce-knowledge-workspace.css'
 
 const store = useXingceStore()
 const router = useRouter()
 const route = useRoute()
 const quizMode = ref<'daily' | 'full' | 'review' | 'retrain' | null>(null)
 const showAddModal = ref(false)
+const addModalNoteNodeId = ref<string | undefined>(undefined)
 const showImportModal = ref(false)
 const showGlobalSearch = ref(false)
 const showHistoryModal = ref(false)
@@ -28,6 +31,7 @@ const notesWorkspaceRef = ref<InstanceType<typeof NotesWorkspacePanel> | null>(n
 
 /** 与旧版 `switchTab` 默认一致：工作区先展示「学习笔记」 */
 const mainTab = ref<'notes' | 'errors'>('notes')
+const mobileSidebarOpen = ref(false)
 
 const runtimeMode = computed(() => {
   if (typeof window === 'undefined') return 'unknown'
@@ -61,7 +65,30 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', onGlobalKeydown)
+  document.body.classList.remove('xc-mobile-sidebar-open')
 })
+
+watch(mobileSidebarOpen, (open) => {
+  document.body.classList.toggle('xc-mobile-sidebar-open', open)
+}, { immediate: true })
+
+function toggleMobileSidebar() {
+  mobileSidebarOpen.value = !mobileSidebarOpen.value
+}
+
+function closeMobileSidebar() {
+  mobileSidebarOpen.value = false
+}
+
+function setMainTab(tab: 'notes' | 'errors') {
+  mainTab.value = tab
+  closeMobileSidebar()
+}
+
+function startMobileReview() {
+  closeMobileSidebar()
+  quizMode.value = 'daily'
+}
 
 function onPickQuestion(id: string) {
   showGlobalSearch.value = false
@@ -80,7 +107,14 @@ function onStartRandomNote() {
   const withNotes = store.knowledgeNodes.filter((n) => {
     const md = String(n.contentMd ?? '').trim()
     const nt = String(n.noteContent ?? '').trim()
-    return !!(md || nt)
+    if (md || nt) return true
+    const fromNotes = (store.notesByType as Record<string, unknown>)[n.id]
+    if (typeof fromNotes === 'string' && fromNotes.trim()) return true
+    if (fromNotes && typeof fromNotes === 'object') {
+      const v = (fromNotes as Record<string, unknown>).content
+      if (typeof v === 'string' && v.trim()) return true
+    }
+    return false
   })
   if (!withNotes.length) {
     window.alert('暂无笔记内容')
@@ -94,6 +128,16 @@ function onStartRandomNote() {
 function onOpenMarkdownEditor() {
   mainTab.value = 'notes'
   nextTick(() => notesWorkspaceRef.value?.enterNoteEdit())
+}
+
+function openAddModal(nodeId?: string) {
+  addModalNoteNodeId.value = nodeId
+  showAddModal.value = true
+}
+
+function closeAddModal() {
+  showAddModal.value = false
+  addModalNoteNodeId.value = undefined
 }
 
 function onPickNote(nodeId: string) {
@@ -129,7 +173,7 @@ watch(
 
 function onPickSuite(paperId: string, questionId: string) {
   showGlobalSearch.value = false
-  const q: Record<string, string> = { paper: paperId }
+  const q: Record<string, string> = { paper: paperId, suiteMode: 'preview' }
   if (questionId) q.qid = questionId
   void router.push({
     name: 'XingceSuiteBank',
@@ -139,7 +183,7 @@ function onPickSuite(paperId: string, questionId: string) {
 </script>
 
 <template>
-  <div class="xc-vue-legacy">
+  <div class="xc-vue-legacy xc-workspace">
     <div v-if="store.loading" class="xc-loading">
       <div class="xc-spinner" />
       <p>加载数据中…</p>
@@ -151,18 +195,28 @@ function onPickSuite(paperId: string, questionId: string) {
     </div>
 
     <template v-else>
+      <WorkspaceMobileChrome
+        :main-tab="mainTab"
+        :sidebar-open="mobileSidebarOpen"
+        @toggle-sidebar="toggleMobileSidebar"
+        @close-sidebar="closeMobileSidebar"
+        @set-tab="setMainTab"
+        @open-add="openAddModal()"
+        @start-review="startMobileReview"
+      />
+
       <aside
         class="sidebar"
         :class="{ 'is-tree-focus': store.knowledgeFocusMode }"
       >
         <div class="sidebar-logo">
-          <div>Ashore</div>
+          <div class="wsb-title">Ashore</div>
           <div class="runtime-badge" :data-mode="runtimeMode">Runtime: {{ runtimeLabel }}</div>
         </div>
         <PracticePanel
           @start-quiz="(mode) => { quizMode = mode }"
           @start-random-note="onStartRandomNote"
-          @open-add="showAddModal = true"
+          @open-add="openAddModal()"
           @open-import="showImportModal = true"
           @open-markdown-editor="onOpenMarkdownEditor"
           @open-history="showHistoryModal = true"
@@ -179,7 +233,7 @@ function onPickSuite(paperId: string, questionId: string) {
               class="tab-btn"
               data-testid="workspace-tab-notes"
               :class="{ active: mainTab === 'notes' }"
-              @click="mainTab = 'notes'"
+              @click="setMainTab('notes')"
             >
               学习笔记
             </button>
@@ -188,7 +242,7 @@ function onPickSuite(paperId: string, questionId: string) {
               class="tab-btn"
               data-testid="workspace-tab-errors"
               :class="{ active: mainTab === 'errors' }"
-              @click="mainTab = 'errors'"
+              @click="setMainTab('errors')"
             >
               错题列表
             </button>
@@ -225,6 +279,7 @@ function onPickSuite(paperId: string, questionId: string) {
                 ref="notesWorkspaceRef"
                 @open-import="showImportModal = true"
                 @open-global-search="showGlobalSearch = true"
+                @open-add-for-node="openAddModal"
               />
             </div>
             <div
@@ -247,7 +302,12 @@ function onPickSuite(paperId: string, questionId: string) {
       @pick-suite="onPickSuite"
     />
     <QuizModal v-if="quizMode" :mode="quizMode" @close="quizMode = null" />
-    <AddErrorModal v-if="showAddModal" @close="showAddModal = false" @added="() => {}" />
+    <AddErrorModal
+      v-if="showAddModal"
+      :initial-note-node-id="addModalNoteNodeId"
+      @close="closeAddModal"
+      @added="closeAddModal"
+    />
     <ImportModal v-if="showImportModal" @close="showImportModal = false" @imported="() => {}" />
 
     <HistoryModal v-if="showHistoryModal" @close="showHistoryModal = false" />

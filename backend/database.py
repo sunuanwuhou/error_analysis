@@ -343,6 +343,46 @@ def init_db() -> None:
             """
         )
         conn.commit()
+        init_user_access_tables()
+
+
+def init_user_access_tables() -> None:
+    with get_conn() as conn:
+        conn.execute(
+            """
+            ALTER TABLE users
+            ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user'
+            """
+        )
+        conn.execute(
+            """
+            ALTER TABLE users
+            ADD COLUMN IF NOT EXISTS is_active INTEGER NOT NULL DEFAULT 1
+            """
+        )
+        conn.execute(
+            """
+            ALTER TABLE users
+            ADD COLUMN IF NOT EXISTS updated_at TEXT NOT NULL DEFAULT ''
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS user_module_grants (
+              user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              module_key TEXT NOT NULL,
+              granted_at TEXT NOT NULL,
+              granted_by TEXT NOT NULL DEFAULT '',
+              PRIMARY KEY (user_id, module_key)
+            )
+            """
+        )
+        conn.commit()
+
+    from backend.services.user_access_service import backfill_legacy_user_grants, ensure_wesly_super_admin
+
+    ensure_wesly_super_admin()
+    backfill_legacy_user_grants()
 
 
 def init_shenlun_tables() -> None:
@@ -499,7 +539,69 @@ def init_suite_bank_tables() -> None:
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_suite_practice_user_paper ON suite_practice_records(user_id, paper_id)"
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS suite_bank_drill_history (
+              user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              question_id TEXT NOT NULL REFERENCES suite_questions(id) ON DELETE CASCADE,
+              first_source_type TEXT NOT NULL DEFAULT '',
+              last_source_type TEXT NOT NULL DEFAULT '',
+              first_used_at TEXT NOT NULL DEFAULT '',
+              last_used_at TEXT NOT NULL DEFAULT '',
+              exam_track TEXT NOT NULL DEFAULT '',
+              major_module TEXT NOT NULL DEFAULT '',
+              years_json TEXT NOT NULL DEFAULT '[]',
+              created_at TEXT NOT NULL DEFAULT '',
+              updated_at TEXT NOT NULL DEFAULT '',
+              PRIMARY KEY (user_id, question_id)
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS suite_bank_drill_exports (
+              id TEXT PRIMARY KEY,
+              user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              file_name TEXT NOT NULL DEFAULT '',
+              exam_track TEXT NOT NULL DEFAULT '',
+              years_csv TEXT NOT NULL DEFAULT '',
+              modules_csv TEXT NOT NULL DEFAULT '',
+              count INTEGER NOT NULL DEFAULT 0,
+              question_ids_json TEXT NOT NULL DEFAULT '[]',
+              title_text TEXT NOT NULL DEFAULT '',
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_suite_drill_hist_user_time
+            ON suite_bank_drill_history(user_id, updated_at DESC)
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_suite_drill_hist_user_track_module
+            ON suite_bank_drill_history(user_id, exam_track, major_module, updated_at DESC)
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_suite_drill_exports_user_time
+            ON suite_bank_drill_exports(user_id, updated_at DESC)
+            """
+        )
         conn.commit()
-    from backend.services.suite_bank_service import migrate_suite_papers_schema
+    from backend.services.suite_bank_drill import (
+        migrate_suite_drill_columns,
+        migrate_suite_drill_exports,
+        migrate_suite_drill_history,
+    )
+    from backend.services.suite_bank_service import migrate_suite_papers_schema, migrate_suite_practice_records_schema
 
     migrate_suite_papers_schema()
+    migrate_suite_drill_columns()
+    migrate_suite_practice_records_schema()
+    migrate_suite_drill_history()
+    migrate_suite_drill_exports()

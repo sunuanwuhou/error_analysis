@@ -339,6 +339,9 @@ export const useXingceStore = defineStore('xingce', () => {
 
   // ── 筛选状态 ────────────────────────────────────────────────────────────────
   const activeType = ref<string | null>(null)
+  /** 对齐 legacy `typeFilter` subtype / subSubtype（与知识节点 AND） */
+  const activeSubtype = ref<string | null>(null)
+  const activeSubSubtype = ref<string | null>(null)
   const activeNodeId = ref<string | null>(null)
   const statusFilter = ref<'all' | 'focus' | 'review' | 'mastered'>('all')
   const taskFilter = ref<'all' | 'diagnose' | 'review_ready' | 'retrain'>('all')
@@ -355,6 +358,22 @@ export const useXingceStore = defineStore('xingce', () => {
   const knowledgeExpandedIds = ref<Set<string>>(new Set())
   const knowledgeTreeSearch = ref('')
   const knowledgeFocusMode = ref(false)
+
+  /** 待推送的 tombstone（对齐 legacy `recordOp(..._delete)`，避免服务端幽灵实体） */
+  type PendingSyncDeleteOp =
+    | 'error_delete'
+    | 'knowledge_node_delete'
+    | 'note_type_delete'
+    | 'note_image_delete'
+  const pendingSyncDeletes = ref<Map<string, { op_type: PendingSyncDeleteOp; entity_id: string }>>(new Map())
+
+  function queueSyncDelete(opType: PendingSyncDeleteOp, entityId: string) {
+    const eid = String(entityId || '').trim()
+    if (!eid) return
+    const next = new Map(pendingSyncDeletes.value)
+    next.set(`${opType}:${eid}`, { op_type: opType, entity_id: eid })
+    pendingSyncDeletes.value = next
+  }
 
   // ── 计算属性 ────────────────────────────────────────────────────────────────
   const knowledgeTree = computed(() => buildTree(knowledgeNodes.value))
@@ -458,6 +477,18 @@ export const useXingceStore = defineStore('xingce', () => {
     return n?.title ? String(n.title) : null
   }
 
+  /** 与 legacy `normalizeEntryKind` / `isErrorEntry` 对齐（清空题库时保留 Claude bank） */
+  function normalizeWorkspaceEntryKind(raw: unknown, fallback: 'error' | 'claude_bank'): 'error' | 'claude_bank' {
+    if (raw === 'claude_bank') return 'claude_bank'
+    if (raw === 'error') return 'error'
+    return fallback === 'claude_bank' ? 'claude_bank' : 'error'
+  }
+
+  function isWorkspaceErrorEntry(e: ErrorEntry): boolean {
+    const rec = e as Record<string, unknown>
+    return normalizeWorkspaceEntryKind(rec.entryKind, 'error') === 'error'
+  }
+
   function toSortableTimestamp(raw: unknown): number {
     if (!raw) return 0
     const ts = Date.parse(String(raw))
@@ -526,6 +557,11 @@ export const useXingceStore = defineStore('xingce', () => {
     const crumbs: { key: string; label: string }[] = []
     const nt = nodeTitleById(activeNodeId.value)
     if (nt) crumbs.push({ key: 'node', label: nt })
+    if (activeType.value) {
+      crumbs.push({ key: 'moduleType', label: `大类: ${activeType.value}` })
+      if (activeSubtype.value) crumbs.push({ key: 'moduleSubtype', label: `二级: ${activeSubtype.value}` })
+      if (activeSubSubtype.value) crumbs.push({ key: 'moduleSubSubtype', label: `三级: ${activeSubSubtype.value}` })
+    }
     if (taskFilter.value !== 'all') {
       const tmap: Record<string, string> = {
         diagnose: '待判因',
@@ -566,13 +602,23 @@ export const useXingceStore = defineStore('xingce', () => {
       })
     }
 
-    // 知识节点筛选（含子孙）
+    // 知识节点筛选（含子孙）— 与 legacy `getFiltered` 一致：可与题型筛选 AND
     if (activeNodeId.value) {
       const node = findNodeInTree(knowledgeTree.value, activeNodeId.value)
       const ids = node ? new Set(collectDescendantIds(node)) : new Set([activeNodeId.value])
       list = list.filter(e => e.noteNodeId != null && ids.has(e.noteNodeId))
-    } else if (activeType.value) {
-      list = list.filter(e => e.type === activeType.value)
+    }
+    if (activeType.value) {
+      const t = activeType.value
+      list = list.filter(e => e.type === t)
+      if (activeSubtype.value) {
+        const st = activeSubtype.value
+        list = list.filter(e => String(e.subtype || '').trim() === st)
+      }
+      if (activeSubSubtype.value) {
+        const s2 = activeSubSubtype.value
+        list = list.filter(e => String(e.subSubtype || '').trim() === s2)
+      }
     }
 
     if (statusFilter.value !== 'all') {
@@ -606,6 +652,56 @@ export const useXingceStore = defineStore('xingce', () => {
 
     return sortFilteredErrorsList([...list])
   })
+
+  /**
+   * 「清空当前模块」作用域：对齐 legacy `36a-workspace-data-actions.js` → `resolveCurrentErrorScope`。
+   * 注意：仅任务阶段筛选时 legacy 返回 null，不能只凭 taskFilter 清空。
+   */
+  function resolveClearModuleScope(): { label: string; ids: string[] } | null {
+    if (activeNodeId.value) {
+      const node = findNodeInTree(knowledgeTree.value, activeNodeId.value)
+      const nodeIds = node ? new Set(collectDescendantIds(node)) : new Set([activeNodeId.value])
+      const matched = errors.value.filter(e => {
+        const nid = String(e.noteNodeId || '')
+        return !!nid && nodeIds.has(nid)
+      })
+      const title = nodeTitleById(activeNodeId.value) || '当前知识范围'
+      return {
+        label: `知识点「${title}」及其下级`,
+        ids: matched.map(e => e.id),
+      }
+    }
+    if (activeType.value) {
+      let matched = errors.value.filter(e => e.type === activeType.value)
+      if (activeSubtype.value) {
+        const st = activeSubtype.value
+        matched = matched.filter(e => String(e.subtype || '').trim() === st)
+      }
+      if (activeSubSubtype.value) {
+        const s2 = activeSubSubtype.value
+        matched = matched.filter(e => String(e.subSubtype || '').trim() === s2)
+      }
+      const parts = [activeType.value, activeSubtype.value, activeSubSubtype.value].filter(Boolean)
+      return {
+        label: `题型「${parts.join(' › ')}」`,
+        ids: matched.map(e => e.id),
+      }
+    }
+    const sq = searchQuery.value.trim()
+    if (
+      statusFilter.value !== 'all' ||
+      reasonFilter.value ||
+      sq ||
+      dateFrom.value ||
+      dateTo.value
+    ) {
+      return {
+        label: '当前筛选结果',
+        ids: filteredErrors.value.map(e => e.id),
+      }
+    }
+    return null
+  }
 
   /** 与旧版 `renderStats(list)` 一致：基于当前可见列表 */
   const errorListStats = computed(() => {
@@ -698,7 +794,24 @@ export const useXingceStore = defineStore('xingce', () => {
     if (saving.value) return
     saving.value = true
     try {
+      const tombstones = [...pendingSyncDeletes.value.values()].map(d => ({
+        op_type: d.op_type,
+        entity_id: d.entity_id,
+        payload: {},
+      }))
+      const syncTs = new Date().toISOString()
+      const noteTypeOps = Object.entries(notesByType.value).map(([key, value]) => ({
+        op_type: 'note_type_upsert' as const,
+        entity_id: key,
+        payload: { key, value, updatedAt: syncTs },
+      }))
+      const noteImageOps = Object.entries(noteImages.value).map(([key, data]) => ({
+        op_type: 'note_image_upsert' as const,
+        entity_id: key,
+        payload: { id: key, data, updatedAt: syncTs },
+      }))
       const ops = [
+        ...tombstones,
         ...errors.value.map(e => ({
           op_type: 'error_upsert' as const,
           entity_id: e.id,
@@ -709,8 +822,11 @@ export const useXingceStore = defineStore('xingce', () => {
           entity_id: n.id,
           payload: n,
         })),
+        ...noteTypeOps,
+        ...noteImageOps,
       ]
       await xingceApi.push(ops)
+      pendingSyncDeletes.value = new Map()
       lastSavedAt.value = new Date().toISOString()
     } catch (e) {
       console.error('xingce save failed', e)
@@ -727,6 +843,7 @@ export const useXingceStore = defineStore('xingce', () => {
   }
 
   function deleteError(id: string) {
+    queueSyncDelete('error_delete', id)
     errors.value = errors.value.filter(e => e.id !== id)
     scheduleSave()
   }
@@ -787,6 +904,7 @@ export const useXingceStore = defineStore('xingce', () => {
     if (!n) return
     if (!confirm(`删除选中的 ${n} 题？不可撤销。`)) return
     const rm = new Set(batchSelectedIds.value)
+    for (const id of rm) queueSyncDelete('error_delete', id)
     errors.value = errors.value.filter(e => !rm.has(e.id))
     batchSelectedIds.value = []
     batchMode.value = false
@@ -819,6 +937,7 @@ export const useXingceStore = defineStore('xingce', () => {
         return
       }
     }
+    queueSyncDelete('knowledge_node_delete', nodeId)
     knowledgeNodes.value = knowledgeNodes.value.filter(n => n.id !== nodeId)
     if (knowledgeExpandedIds.value.has(nodeId)) {
       knowledgeExpandedIds.value.delete(nodeId)
@@ -919,6 +1038,8 @@ export const useXingceStore = defineStore('xingce', () => {
         : 'all'
     statusFilter.value = 'all'
     activeType.value = null
+    activeSubtype.value = null
+    activeSubSubtype.value = null
     activeNodeId.value = null
     reasonFilter.value = null
     searchQuery.value = ''
@@ -931,6 +1052,8 @@ export const useXingceStore = defineStore('xingce', () => {
     taskFilter.value = 'all'
     statusFilter.value = s
     activeType.value = null
+    activeSubtype.value = null
+    activeSubSubtype.value = null
     activeNodeId.value = null
   }
 
@@ -966,20 +1089,51 @@ export const useXingceStore = defineStore('xingce', () => {
     }
     if (key === 'search') {
       searchQuery.value = ''
+      return
     }
+    if (key === 'moduleType') {
+      clearModuleFilters()
+      return
+    }
+    if (key === 'moduleSubtype') {
+      activeSubSubtype.value = null
+      activeSubtype.value = null
+      return
+    }
+    if (key === 'moduleSubSubtype') {
+      activeSubSubtype.value = null
+      return
+    }
+  }
+
+  function clearModuleFilters() {
+    activeType.value = null
+    activeSubtype.value = null
+    activeSubSubtype.value = null
   }
 
   function setActiveType(type: string | null) {
     taskFilter.value = 'all'
     activeType.value = type
-    activeNodeId.value = null
+    activeSubtype.value = null
+    activeSubSubtype.value = null
   }
 
-  /** 选中知识节点时对齐旧版大类筛选（清空任务视角）；取消选中时不重置任务筛选 */
+  function setActiveSubtype(subtype: string | null) {
+    if (subtype != null && !activeType.value) return
+    activeSubtype.value = subtype
+    activeSubSubtype.value = null
+  }
+
+  function setActiveSubSubtype(subSubtype: string | null) {
+    if (subSubtype != null && !activeSubtype.value) return
+    activeSubSubtype.value = subSubtype
+  }
+
+  /** 选中知识节点：与题型筛选 AND（对齐 legacy `getFiltered` 多条件叠加） */
   function setActiveNode(nodeId: string | null) {
     if (nodeId) taskFilter.value = 'all'
     activeNodeId.value = nodeId
-    activeType.value = null
   }
 
   function toggleKnowledgeNode(id: string) {
@@ -1061,12 +1215,15 @@ export const useXingceStore = defineStore('xingce', () => {
   function clearErrorsByFilter(ids: string[]) {
     if (!ids.length) return
     const drop = new Set(ids)
+    for (const id of drop) queueSyncDelete('error_delete', id)
     errors.value = errors.value.filter(e => !drop.has(e.id))
     scheduleSave()
   }
 
   function clearAllErrors() {
-    errors.value = []
+    const victims = errors.value.filter(e => isWorkspaceErrorEntry(e))
+    for (const e of victims) queueSyncDelete('error_delete', e.id)
+    errors.value = errors.value.filter(e => !isWorkspaceErrorEntry(e))
     scheduleSave()
   }
 
@@ -1082,6 +1239,24 @@ export const useXingceStore = defineStore('xingce', () => {
   }
 
   function replaceWorkspaceSnapshot(nextErrors: ErrorEntry[], nextNodes: KnowledgeNode[]) {
+    for (const key of Object.keys(notesByType.value)) {
+      queueSyncDelete('note_type_delete', key)
+    }
+    for (const key of Object.keys(noteImages.value)) {
+      queueSyncDelete('note_image_delete', key)
+    }
+    notesByType.value = {}
+    noteImages.value = {}
+    const prevE = new Set(errors.value.map(e => e.id))
+    const prevN = new Set(knowledgeNodes.value.map(n => n.id))
+    const nextE = new Set(nextErrors.map(e => e.id))
+    const nextN = new Set(nextNodes.map(n => n.id))
+    for (const id of prevE) {
+      if (!nextE.has(id)) queueSyncDelete('error_delete', id)
+    }
+    for (const id of prevN) {
+      if (!nextN.has(id)) queueSyncDelete('knowledge_node_delete', id)
+    }
     errors.value = nextErrors
     knowledgeNodes.value = nextNodes
     scheduleSave()
@@ -1139,10 +1314,76 @@ export const useXingceStore = defineStore('xingce', () => {
     return newEntry
   }
 
+  function getKnowledgeNodeInTree(nodeId: string | null | undefined): KnowledgeNode | null {
+    if (!nodeId) return null
+    return findNodeInTree(knowledgeTree.value, nodeId)
+  }
+
+  function isTopLevelKnowledgeNode(node: KnowledgeNode | null | undefined): boolean {
+    if (!node) return false
+    return !node.parentId
+  }
+
+  function countErrorsForKnowledgeNode(nodeId: string, includeDescendants: boolean): number {
+    if (!nodeId) return 0
+    if (!includeDescendants) {
+      return errors.value.filter(e => e.noteNodeId === nodeId).length
+    }
+    const node = findNodeInTree(knowledgeTree.value, nodeId)
+    if (!node) return 0
+    const ids = new Set(collectDescendantIds(node))
+    ids.add(nodeId)
+    return errors.value.filter(e => e.noteNodeId && ids.has(e.noteNodeId)).length
+  }
+
+  /** 对齐 legacy `collectNodeErrors`：当前筛选下节点及子孙挂载错题 */
+  function collectErrorsForKnowledgeNode(node: KnowledgeNode | null): ErrorEntry[] {
+    if (!node) return []
+    const ids = new Set(collectDescendantIds(node))
+    ids.add(node.id)
+    return filteredErrors.value.filter(e => e.noteNodeId && ids.has(e.noteNodeId))
+  }
+
+  function createKnowledgeChildNode(parentId: string, title: string): KnowledgeNode | null {
+    const parent = knowledgeNodes.value.find(n => n.id === parentId)
+    if (!parent) return null
+    const t = title.trim()
+    if (!t) {
+      window.alert('标题不能为空')
+      return null
+    }
+    const dup = knowledgeNodes.value.find(
+      n => n.parentId === parentId && String(n.title || '').trim() === t,
+    )
+    if (dup) {
+      window.alert('同级已存在同名节点，请先重命名后再创建')
+      return null
+    }
+    const level = Number(parent.level || 0) + 1
+    const newNode: KnowledgeNode = {
+      id: crypto.randomUUID(),
+      parentId,
+      title: t,
+      level,
+      contentMd: '',
+      updatedAt: new Date().toISOString(),
+    }
+    knowledgeNodes.value = [...knowledgeNodes.value, newNode]
+    expandKnowledgeNode(parentId)
+    scheduleSave()
+    return newNode
+  }
+
   function clearActiveKnowledgeNote() {
     if (!activeNodeId.value) return
     const id = activeNodeId.value
     if (!confirm('清空当前知识点的笔记内容？此操作不可撤销。')) return
+    if (Object.prototype.hasOwnProperty.call(notesByType.value, id)) {
+      queueSyncDelete('note_type_delete', id)
+      const nt = { ...notesByType.value }
+      delete nt[id]
+      notesByType.value = nt
+    }
     const next = knowledgeNodes.value.map(n => {
       if (n.id !== id) return n
       const rec = { ...n } as Record<string, unknown>
@@ -1151,11 +1392,13 @@ export const useXingceStore = defineStore('xingce', () => {
       return rec as unknown as KnowledgeNode
     })
     knowledgeNodes.value = next
-    void flushSave()
+    scheduleSave()
   }
 
   function clearFilters() {
     activeType.value = null
+    activeSubtype.value = null
+    activeSubSubtype.value = null
     activeNodeId.value = null
     statusFilter.value = 'all'
     taskFilter.value = 'all'
@@ -1182,6 +1425,8 @@ export const useXingceStore = defineStore('xingce', () => {
     batchSelectedIds,
     // 筛选
     activeType,
+    activeSubtype,
+    activeSubSubtype,
     activeNodeId,
     statusFilter,
     taskFilter,
@@ -1213,6 +1458,7 @@ export const useXingceStore = defineStore('xingce', () => {
     loadPracticePanel,
     loadMe,
     eligibleFullPracticeCount,
+    resolveClearModuleScope,
     clearErrorsByFilter,
     clearAllErrors,
     resetAllStudyFields,
@@ -1247,11 +1493,19 @@ export const useXingceStore = defineStore('xingce', () => {
     batchApplyNoteNode,
     batchDeleteSelectedErrors,
     setActiveType,
+    setActiveSubtype,
+    setActiveSubSubtype,
+    clearModuleFilters,
     setActiveNode,
     toggleKnowledgeNode,
     expandKnowledgeNode,
     hasKnowledgeSearch,
     getNodePathText,
+    getKnowledgeNodeInTree,
+    isTopLevelKnowledgeNode,
+    countErrorsForKnowledgeNode,
+    collectErrorsForKnowledgeNode,
+    createKnowledgeChildNode,
     isNodeSearchMatch,
     isNodeVisibleBySearch,
     loadKnowledgeExpandedState,

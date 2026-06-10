@@ -70,6 +70,8 @@ def shenlun_root(xingce_session: Optional[str] = Cookie(default=None)) -> Respon
     user = get_user_by_token(xingce_session)
     if not user:
         return _redirect_login_with_cookie_cleanup()
+    if _new_frontend_ready():
+        return RedirectResponse(url="/new/shenlun", status_code=302)
     return FileResponse(
         SHENLUN_HTML_PATH,
         headers={

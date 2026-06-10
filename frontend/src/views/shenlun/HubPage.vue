@@ -459,7 +459,7 @@ function statusLabel(row: SourceSummary): string {
           <span class="hmh-main">模块首页</span>
           <span class="hmh-sub">门户切换</span>
         </a>
-        <router-link :to="{ name: 'XingceWorkspace' }" class="hub-link hub-link-accent">行测工作台</router-link>
+        <a href="/" class="hub-link hub-link-accent">行测工作台</a>
       </nav>
     </header>
 

@@ -7,6 +7,9 @@ const RANDOM_NOTE_RECENT_VIEW_DOWN_WEIGHT = 0.2;
 const RANDOM_NOTE_RECENT_VIEW_DAYS = 1;
 let randomNoteReviewQueue = [];
 let randomNoteReviewIndex = -1;
+let randomNoteQueueMode = 'weighted';
+let randomNoteRootFilter = '';
+let randomNoteSkipSet = new Set();
 
 function _toValidDate(value) {
   const d = new Date(String(value || ''));
@@ -63,11 +66,18 @@ function _hasMeaningfulNoteContent(contentMd, title) {
   return true;
 }
 
-function _collectRandomNoteCandidates() {
+function _getRandomNoteRoots() {
   if (typeof ensureKnowledgeState === 'function') ensureKnowledgeState();
-  const roots = (typeof getKnowledgeRootNodes === 'function')
+  return (typeof getKnowledgeRootNodes === 'function')
     ? (getKnowledgeRootNodes() || [])
     : ((knowledgeTree && knowledgeTree.roots) || []);
+}
+
+function _collectRandomNoteCandidates(rootId) {
+  const roots = _getRandomNoteRoots();
+  const scopedRoots = String(rootId || randomNoteRootFilter || '').trim()
+    ? roots.filter(node => String(node && node.id || '') === String(rootId || randomNoteRootFilter || '').trim())
+    : roots;
   const candidates = [];
   const walk = (nodes) => {
     (nodes || []).forEach(node => {
@@ -95,12 +105,33 @@ function _collectRandomNoteCandidates() {
       walk(node.children || []);
     });
   };
-  walk(roots);
+  walk(scopedRoots);
   return candidates;
 }
 
 function getRandomNoteReviewCandidateCount() {
   return _collectRandomNoteCandidates().length;
+}
+
+function getRandomNoteTodayReviewedCount() {
+  const todayKey = (typeof today === 'function') ? today() : new Date().toISOString().split('T')[0];
+  return Object.values(noteReviewTracking || {}).filter((item) => {
+    if (!item || typeof item !== 'object') return false;
+    return String(item.lastViewedDate || '') === todayKey
+      && String(item.lastSource || '') === 'random_note_review';
+  }).length;
+}
+
+function getRandomNoteErrorCount(nodeId) {
+  if (!nodeId || typeof _collectErrorsForRandomNotePractice !== 'function') return 0;
+  return _collectErrorsForRandomNotePractice(nodeId).length;
+}
+
+function getRandomNoteRootFilterOptions() {
+  return _getRandomNoteRoots().map(node => ({
+    id: String(node && node.id || ''),
+    title: String((node && node.title) || '未命名模块'),
+  })).filter(item => item.id);
 }
 
 function _pickWeightedIndex(pool) {
@@ -114,8 +145,37 @@ function _pickWeightedIndex(pool) {
   return pool.length - 1;
 }
 
-function _buildRandomNoteReviewQueue(excludeNodeId) {
-  const source = _collectRandomNoteCandidates().filter(item => item.nodeId && item.nodeId !== String(excludeNodeId || ''));
+function _shuffleArray(items) {
+  const list = (items || []).slice();
+  for (let i = list.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = list[i];
+    list[i] = list[j];
+    list[j] = tmp;
+  }
+  return list;
+}
+
+function _buildRandomNoteReviewQueue(excludeNodeId, options) {
+  const opts = options || {};
+  const rootId = String(opts.rootId != null ? opts.rootId : randomNoteRootFilter || '');
+  const mode = String(opts.mode || randomNoteQueueMode || 'weighted');
+  const skipIds = opts.skipIds || randomNoteSkipSet;
+  const source = _collectRandomNoteCandidates(rootId).filter((item) => {
+    if (!item.nodeId) return false;
+    if (item.nodeId === String(excludeNodeId || '')) return false;
+    if (skipIds && typeof skipIds.has === 'function' && skipIds.has(item.nodeId)) return false;
+    return true;
+  });
+  if (!source.length) return [];
+  if (mode === 'priority') {
+    return source.slice().sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      const ta = String(a.updatedAt || '');
+      const tb = String(b.updatedAt || '');
+      return tb.localeCompare(ta);
+    });
+  }
   const pool = source.slice();
   const queue = [];
   while (pool.length) {
@@ -124,4 +184,14 @@ function _buildRandomNoteReviewQueue(excludeNodeId) {
     queue.push(picked);
   }
   return queue;
+}
+
+function rebuildRandomNoteReviewQueue(options) {
+  const opts = options || {};
+  const current = randomNoteReviewQueue[randomNoteReviewIndex];
+  const excludeNodeId = opts.excludeNodeId != null ? opts.excludeNodeId : (current && current.nodeId);
+  const queue = _buildRandomNoteReviewQueue(excludeNodeId, opts);
+  randomNoteReviewQueue = queue;
+  randomNoteReviewIndex = queue.length ? 0 : -1;
+  return queue.length;
 }

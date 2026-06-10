@@ -18,14 +18,10 @@
 </div>
 <div class="sidebar-tools">
 <div class="sidebar-tools-row sidebar-module-portal-slot">
-<button class="btn btn-module-portal-hero" data-onclick="window.location.href='/'" id="sidebarModuleHomeBtn" type="button">
+<button class="btn btn-module-portal-hero" data-onclick="window.location.href='/?portal=1'" id="sidebarModuleHomeBtn" type="button">
 <span class="btn-module-portal-main">模块首页</span>
 <span class="btn-module-portal-sub">选择行测 / 申论模块</span>
 </button>
-</div>
-<div class="sidebar-tools-row workspace-entry-row workspace-submodule-row">
-<button class="btn btn-secondary" data-onclick="switchAppView('home')" id="sidebarHomeBtn" type="button">行测首页</button>
-<button class="btn btn-secondary" data-onclick="window.location.href='/new/shenlun'" type="button">申论工作台</button>
 </div>
 <div class="sidebar-tools-row">
 <button class="btn btn-primary" data-onclick="openQuickAddModal()">+ 添加</button>
@@ -84,9 +80,6 @@
 <button class="quiz-btn" data-onclick="startRandomNoteReview()" id="randomNoteBtn" style="margin-top:6px;background:linear-gradient(135deg,#16a34a,#15803d)">
 <span>随机笔记</span>
 </button>
-<button class="quiz-btn" data-onclick="window.location.href='/new/xingce/suite'" id="suiteBankBtn" style="margin-top:6px;background:linear-gradient(135deg,#7c3aed,#5b21b6)" type="button">
-<span>套卷练习</span>
-</button>
 <div class="today-progress">
 <div class="prog-label"><span>今日进度</span><span id="progText">0/0</span></div>
 <div class="prog-bar-bg"><div class="prog-bar-fill" id="progFill" style="width:0%"></div></div>
@@ -110,30 +103,7 @@
 <div class="main-area">
 <div class="toast-stack" id="toastStack"></div>
 
-<div class="app-view app-view-home active" id="homeView">
-<div class="home-shell">
-<div class="home-shell-header">
-<div>
-<div class="home-shell-kicker">行测首页</div>
-<h2>先决定今天做什么，再进入工作台执行</h2>
-<div class="home-shell-sub">首页负责调度任务、弱点和必看笔记；进入工作台后再录题、看错题和写笔记。需要先换科目或回到系统入口时，点下面大紫钮「模块首页」。</div>
-</div>
-</div>
-<div class="home-shell-module-slot">
-<button class="btn btn-module-portal-hero" data-onclick="window.location.href='/'" type="button">
-<span class="btn-module-portal-main">模块首页</span>
-<span class="btn-module-portal-sub">点击进入 · 门户选择「行测 / 申论」</span>
-</button>
-</div>
-<div class="home-shell-actions home-shell-actions-quick">
-<button class="btn btn-secondary" data-onclick="window.location.href='/new/shenlun'" type="button">申论工作台</button>
-<button class="btn btn-primary" data-onclick="openWorkspaceQuickAdd()">继续录题</button>
-</div>
-<div id="homeDashboardContent"></div>
-</div>
-</div>
-
-<div class="app-view app-view-workspace" id="workspaceView">
+<div class="app-view app-view-workspace active" id="workspaceView">
 <div class="tab-content hidden" id="tabContentErrors" aria-hidden="true">
 <div class="errors-area">
 <div class="errors-header">

@@ -2,6 +2,8 @@
 
 > 路径：旧版 `/` + 工作区视图；新版 `/new/xingce/workspace`  
 
+**未对齐清单（代码对照、持续更新）**：见 [`XINGCE_WORKSPACE_PARITY_GAPS.md`](./XINGCE_WORKSPACE_PARITY_GAPS.md)。
+
 ## 当前使用策略（2026-05-05）
 
 - **日常以旧版为主**：本地默认仍走 **`http://127.0.0.1:8080/`**（或当前部署下的根路径工作区），**不切换默认入口**。  

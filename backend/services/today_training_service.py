@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
@@ -70,6 +71,11 @@ def _error_key(error: dict[str, Any]) -> str:
     return str(error.get("id") or error.get("questionId") or "").strip()
 
 
+def _daily_shuffle_key(error_id: str, seed: str) -> float:
+    digest = hashlib.sha256(f"{seed}:{error_id}".encode("utf-8")).hexdigest()
+    return int(digest[:12], 16) / float(16**12)
+
+
 def _key_from_attempt_row(row: dict[str, Any]) -> str:
     return str(row.get("error_id") or row.get("question_id") or "").strip()
 
@@ -80,9 +86,14 @@ def build_today_training_queue(
     attempt_rows: list[dict[str, Any]],
     limit: int,
     config: TodayTrainingConfig | None = None,
+    *,
+    exclude_error_ids: set[str] | None = None,
+    shuffle_seed: str | None = None,
 ) -> list[dict[str, Any]]:
     cfg = config or TodayTrainingConfig()
     normalized_limit = max(1, min(int(limit or 1), 60))
+    excluded = {str(item or "").strip() for item in (exclude_error_ids or set()) if str(item or "").strip()}
+    seed = str(shuffle_seed or utcnow().date().isoformat()).strip() or utcnow().date().isoformat()
     history_map: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in attempt_rows:
         key = _key_from_attempt_row(row)
@@ -93,7 +104,7 @@ def build_today_training_queue(
     candidates: list[dict[str, Any]] = []
     for error in errors:
         key = _error_key(error)
-        if not key:
+        if not key or key in excluded:
             continue
         answer = str(error.get("answer") or "").strip()
         if not answer:
@@ -170,6 +181,7 @@ def build_today_training_queue(
     candidates.sort(
         key=lambda item: (
             -float(item["score"]),
+            _daily_shuffle_key(_error_key(item["error"]), seed),
             -int(item["wrongCount"]),
             str(item["lastWrongAt"] or ""),
             str(item["error"].get("updatedAt") or ""),
