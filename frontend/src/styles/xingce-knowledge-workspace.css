@@ -38,15 +38,34 @@
 }
 
 .xc-vue-legacy #notesContent.knowledge-notes-active.knowledge-workspace-note-mode {
-  display: flex;
-  flex-direction: column;
+  display: block;
+  overflow: auto;
   height: 100%;
   min-height: 0;
-  overflow: hidden;
 }
 
 .xc-vue-legacy #notesContent.knowledge-notes-active.knowledge-workspace-note-mode > * {
-  flex: 1;
+  height: auto;
+  min-height: 0;
+}
+
+.xc-vue-legacy #notesContent.knowledge-notes-active.knowledge-workspace-note-mode .knowledge-workspace-shell {
+  display: block;
+  height: auto;
+  min-height: 0;
+}
+
+.xc-vue-legacy #notesContent.knowledge-notes-active.knowledge-workspace-note-mode .knowledge-workspace-note-wrap {
+  display: block;
+  height: auto;
+  min-height: 0;
+}
+
+.xc-vue-legacy #notesContent.knowledge-notes-active.knowledge-workspace-note-mode .note-preview-scroll,
+.xc-vue-legacy #notesContent.knowledge-notes-active.knowledge-workspace-note-mode .note-preview-frame-scroll,
+.xc-vue-legacy #notesContent.knowledge-notes-active.knowledge-workspace-note-mode .knowledge-directory-preview {
+  display: block;
+  height: auto;
   min-height: 0;
 }
 
@@ -65,7 +84,9 @@
   flex-wrap: wrap;
   padding: 10px 14px 8px;
   border-bottom: 1px solid #f1e5d7;
-  background: linear-gradient(180deg, #fffaf5, #fff);
+  background:
+    radial-gradient(circle at top right, rgba(254, 215, 170, 0.3), transparent 34%),
+    linear-gradient(180deg, #fffaf5, #fff);
 }
 
 .xc-vue-legacy .knowledge-workspace-shell-meta {

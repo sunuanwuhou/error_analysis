@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { RouterLink } from 'vue-router'
 import { useXingceStore } from '@/stores/xingceStore'
 import { xingceApi } from '@/api/xingce'
 import MoreMenu from './MoreMenu.vue'
@@ -11,21 +10,6 @@ onMounted(() => {
   store.loadMe()
   store.loadPracticePanel()
 })
-
-const progressText = computed(() => {
-  const done = store.todayDone || 0
-  const total = store.todayTotal || 0
-  return `${done}/${total}`
-})
-
-const progressPct = computed(() => {
-  const total = store.todayTotal || 0
-  if (!total) return 0
-  return Math.max(0, Math.min(100, Math.round(((store.todayDone || 0) / total) * 100)))
-})
-
-const dailyBadge = computed(() => store.quizBadge || 0)
-const fullBadge = computed(() => store.eligibleFullPracticeCount)
 
 const cloudDetailsExpanded = ref(false)
 
@@ -60,13 +44,15 @@ function fmtLocalTime(iso: string | null | undefined): string {
 }
 
 const emit = defineEmits<{
-  startQuiz: [mode: 'daily' | 'full' | 'review' | 'retrain']
   startRandomNote: []
   openAdd: []
   openImport: []
   openMarkdownEditor: []
   openHistory: []
   openTypeRules: []
+  openDir: []
+  openClaudeBank: []
+  openClaudeImport: []
 }>()
 
 function goModuleHome() {
@@ -100,6 +86,9 @@ async function logout() {
           @open-markdown-editor="emit('openMarkdownEditor')"
           @open-history="emit('openHistory')"
           @open-type-rules="emit('openTypeRules')"
+          @open-dir="emit('openDir')"
+          @open-claude-bank="emit('openClaudeBank')"
+          @open-claude-import="emit('openClaudeImport')"
         />
       </div>
 
@@ -132,55 +121,9 @@ async function logout() {
         </div>
         <p style="margin:2px 0;font-size:10px;color:#94a3b8">同步：增量推送错题与知识树节点</p>
         <div class="sidebar-tools-row sidebar-cloud-actions">
-          <button type="button" class="btn btn-secondary" @click="store.load()">Cloud Load</button>
+          <button type="button" class="btn btn-secondary" @click="store.load({ force: true })">Cloud Load</button>
           <button type="button" class="btn btn-secondary" @click="store.flushSave()">Cloud Save</button>
           <button type="button" class="btn btn-secondary" @click="logout">Logout</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="quiz-block">
-      <button type="button" class="quiz-btn" @click="emit('startQuiz', 'daily')">
-        <span>今日训练</span>
-        <span class="badge">{{ dailyBadge }}</span>
-      </button>
-      <button type="button" class="quiz-btn full-practice" @click="emit('startQuiz', 'full')">
-        <span>随机一个模块出题</span>
-        <span class="badge">{{ fullBadge }}</span>
-      </button>
-      <button
-        v-if="store.reviewBadge > 0"
-        type="button"
-        class="quiz-btn review-queue"
-        @click="emit('startQuiz', 'review')"
-      >
-        <span>待复盘</span>
-        <span class="badge">{{ store.reviewBadge }}</span>
-      </button>
-      <button
-        v-if="store.retrainBadge > 0"
-        type="button"
-        class="quiz-btn retrain-queue"
-        @click="emit('startQuiz', 'retrain')"
-      >
-        <span>待复训</span>
-        <span class="badge">{{ store.retrainBadge }}</span>
-      </button>
-      <button type="button" class="quiz-btn random-note" @click="emit('startRandomNote')">
-        <span>随机笔记</span>
-      </button>
-      <RouterLink class="quiz-btn bank-drill" :to="{ name: 'XingceBankDrill' }">
-        <span>模块随机练</span>
-      </RouterLink>
-      <p v-if="store.errors.length !== fullBadge" style="margin:4px 0 0;font-size:10px;color:#94a3b8;text-align:center;line-height:1.35">
-        全库共 {{ store.errors.length }} 题，全量练习为未掌握题
-      </p>
-      <div class="today-progress">
-        <div class="prog-label">
-          <span>今日进度</span><span>{{ progressText }}</span>
-        </div>
-        <div class="prog-bar-bg">
-          <div class="prog-bar-fill" :style="{ width: progressPct + '%' }" />
         </div>
       </div>
     </div>

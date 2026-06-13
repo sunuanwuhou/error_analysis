@@ -15,6 +15,7 @@ body{
   z-index:2;
 }
 .sidebar-logo{padding:18px 18px 14px;font-size:16px;letter-spacing:.2px}
+.sidebar-progress-block{padding:14px 16px}
 .quiz-block{padding:14px 16px}
 .nav-scroll{padding:10px 10px 14px}
 .nav-item,.nav-type-header,.nav-subtype,.nav-sub2{border-radius:12px;margin:2px 6px}
@@ -71,6 +72,13 @@ body{
 .errors-header,.notes-header,.notes-panel-right-header{padding:14px 18px}
 .notes-header{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #eef1f5}
 .notes-header h2,.errors-header h2,.notes-panel-right-header h3{font-size:17px;letter-spacing:.2px}
+.notes-header-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;min-width:0}
+.notes-header-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.practice-action-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.quiz-btn--compact{width:auto;padding:6px 12px;font-size:12px;margin-top:0;white-space:nowrap}
+.quiz-btn--compact .badge{padding:0 6px;font-size:10px}
+.quiz-btn.full-practice{background:linear-gradient(135deg,#3498db,#2471a3)}
+.quiz-btn.random-note{background:linear-gradient(135deg,#16a34a,#15803d)}
 .search-box input{height:40px;border-radius:14px;background:#faf7f2;border-color:#ebe2d8}
 .date-filter-bar{padding:10px 16px;flex-wrap:wrap}
 .content-header{padding:12px 16px}
@@ -404,6 +412,14 @@ body{
 .notes-panel-right-body{display:none!important}
 .notes-panel-right .error-card{border-radius:16px;margin-bottom:10px}
 .related-errors-summary{padding:10px 4px 12px}
+.sidebar-progress-block{
+  margin:12px 12px 8px;
+  border:1px solid #f1dfd2;
+  border-radius:18px;
+  background:linear-gradient(180deg,#fffaf6,#fff);
+  box-shadow:0 8px 20px rgba(191,64,41,.05);
+}
+.sidebar-progress-block .today-progress{margin-top:0}
 .quiz-block{
   margin:12px 12px 8px;
   border:1px solid #f1dfd2;
@@ -466,6 +482,7 @@ body{
   display:block;
 }
 body.sidebar-tree-focus .sidebar-tools,
+body.sidebar-tree-focus .sidebar-progress-block,
 body.sidebar-tree-focus .quiz-block,
 body.sidebar-tree-focus .sidebar-status-block{
   display:none;

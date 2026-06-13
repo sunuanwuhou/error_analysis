@@ -118,7 +118,7 @@ onMounted(() => {
 <template>
   <div class="admin-page">
     <header class="admin-header">
-      <RouterLink class="admin-back" to="/">← 模块首页</RouterLink>
+      <RouterLink class="admin-back" :to="{ name: 'LegacyXingce' }">← 返回工作台</RouterLink>
       <h1>系统管理</h1>
       <p>分配账号与模块权限（仅超级管理员）</p>
     </header>

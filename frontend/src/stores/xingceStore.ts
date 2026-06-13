@@ -1,12 +1,14 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { xingceApi } from '@/api/xingce'
-import type { ErrorEntry, KnowledgeNode, AttemptSummary } from '@/api/xingce'
+import type { ErrorEntry, KnowledgeNode, AttemptSummary, DirTree, TypeRule } from '@/api/xingce'
+import { cloneDefaultDirTree, cloneDefaultTypeRules } from '@/lib/xingceDefaults'
 
 // ── 知识树工具 ────────────────────────────────────────────────────────────────
 
 const FIXED_ROOT_ORDER = ['言语理解与表达', '判断推理', '数量关系', '资料分析', '常识判断', '其他']
 const KNOWLEDGE_EXPANDED_STORAGE_KEY = 'xc_vue_knowledge_expanded_ids'
+const ACTIVE_NODE_STORAGE_KEY = 'xc_vue_active_node_id'
 const INVALID_NODE_TITLES = new Set(['undefined', 'null', 'nan', '[object object]'])
 const NOISY_ROOT_REMAP = new Map<string, string>([
   ['片段阅读', '言语理解与表达'],
@@ -299,12 +301,21 @@ function isVirtualKnowledgeNodeId(id: string | null | undefined): boolean {
 
 // ── Store ─────────────────────────────────────────────────────────────────────
 
+export type XingceLoadOptions = {
+  /** 后台刷新，不显示全屏 loading */
+  silent?: boolean
+  /** 强制全屏 loading（手动 Cloud Load / 重试） */
+  force?: boolean
+}
+
 export const useXingceStore = defineStore('xingce', () => {
   // ── 原始数据 ────────────────────────────────────────────────────────────────
   const errors = ref<ErrorEntry[]>([])
   const knowledgeNodes = ref<KnowledgeNode[]>([])
   const notesByType = ref<Record<string, unknown>>({})
   const noteImages = ref<Record<string, string>>({})
+  const typeRules = ref<TypeRule[]>(cloneDefaultTypeRules())
+  const dirTree = ref<DirTree>(cloneDefaultDirTree())
 
   // ── 加载状态 ────────────────────────────────────────────────────────────────
   const loading = ref(false)
@@ -334,8 +345,16 @@ export const useXingceStore = defineStore('xingce', () => {
 
   /** 可参与「全量练习」的题量（未掌握类） */
   const eligibleFullPracticeCount = computed(() =>
-    errors.value.filter(e => e.status !== 'mastered' && e.masteryLevel !== 'mastered').length,
+    workspaceErrors.value.filter(e => e.status !== 'mastered' && e.masteryLevel !== 'mastered').length,
   )
+
+  const workspaceErrors = computed(() => errors.value.filter(isWorkspaceErrorEntry))
+
+  function isClaudeBankEntry(e: ErrorEntry): boolean {
+    return !isWorkspaceErrorEntry(e)
+  }
+
+  const claudeBankEntries = computed(() => errors.value.filter(isClaudeBankEntry))
 
   // ── 筛选状态 ────────────────────────────────────────────────────────────────
   const activeType = ref<string | null>(null)
@@ -381,7 +400,7 @@ export const useXingceStore = defineStore('xingce', () => {
   /** 每个节点直接挂载的错题数（与旧版口径一致，含 mastered） */
   const errorCountByNode = computed(() => {
     const counts: Record<string, number> = {}
-    for (const e of errors.value) {
+    for (const e of workspaceErrors.value) {
       if (e.noteNodeId) {
         counts[e.noteNodeId] = (counts[e.noteNodeId] ?? 0) + 1
       }
@@ -589,7 +608,7 @@ export const useXingceStore = defineStore('xingce', () => {
   })
 
   const filteredErrors = computed(() => {
-    let list = errors.value
+    let list = workspaceErrors.value
 
     // 任务阶段筛选（workflowStage）
     if (taskFilter.value !== 'all') {
@@ -661,7 +680,7 @@ export const useXingceStore = defineStore('xingce', () => {
     if (activeNodeId.value) {
       const node = findNodeInTree(knowledgeTree.value, activeNodeId.value)
       const nodeIds = node ? new Set(collectDescendantIds(node)) : new Set([activeNodeId.value])
-      const matched = errors.value.filter(e => {
+      const matched = workspaceErrors.value.filter(e => {
         const nid = String(e.noteNodeId || '')
         return !!nid && nodeIds.has(nid)
       })
@@ -672,7 +691,7 @@ export const useXingceStore = defineStore('xingce', () => {
       }
     }
     if (activeType.value) {
-      let matched = errors.value.filter(e => e.type === activeType.value)
+      let matched = workspaceErrors.value.filter(e => e.type === activeType.value)
       if (activeSubtype.value) {
         const st = activeSubtype.value
         matched = matched.filter(e => String(e.subtype || '').trim() === st)
@@ -726,7 +745,7 @@ export const useXingceStore = defineStore('xingce', () => {
   /** 各任务阶段的错题数量（全量，不受其他筛选影响） */
   const taskCounts = computed(() => {
     const counts = { diagnose: 0, review_ready: 0, retrain: 0 }
-    for (const e of errors.value) {
+    for (const e of workspaceErrors.value) {
       const stage = String(e.workflowStage ?? '')
       if (stage === 'captured' || stage === 'diagnosing') counts.diagnose++
       else if (stage === 'review_ready') counts.review_ready++
@@ -738,7 +757,7 @@ export const useXingceStore = defineStore('xingce', () => {
   /** 当前数据中出现的错因列表（含计数，降序） */
   const reasonOptions = computed(() => {
     const map = new Map<string, number>()
-    for (const e of errors.value) {
+    for (const e of workspaceErrors.value) {
       const r = String(e.rootReason ?? e.errorReason ?? '').trim()
       if (r) map.set(r, (map.get(r) ?? 0) + 1)
     }
@@ -749,7 +768,7 @@ export const useXingceStore = defineStore('xingce', () => {
 
   const errorCountByType = computed(() => {
     const counts: Record<string, number> = {}
-    for (const e of errors.value) {
+    for (const e of workspaceErrors.value) {
       if (e.status !== 'mastered') {
         counts[e.type] = (counts[e.type] ?? 0) + 1
       }
@@ -759,28 +778,63 @@ export const useXingceStore = defineStore('xingce', () => {
 
   const totalCountByType = computed(() => {
     const counts: Record<string, number> = {}
-    for (const e of errors.value) {
+    for (const e of workspaceErrors.value) {
       counts[e.type] = (counts[e.type] ?? 0) + 1
     }
     return counts
   })
 
   // ── Actions ──────────────────────────────────────────────────────────────────
-  async function load() {
-    loading.value = true
-    loadError.value = null
-    try {
-      const snapshot = await xingceApi.load()
-      errors.value = snapshot.errors
-      knowledgeNodes.value = snapshot.knowledgeNodes
-      notesByType.value = snapshot.notesByType
-      noteImages.value = snapshot.noteImages
-      lastPulledAt.value = new Date().toISOString()
-    } catch (e) {
-      loadError.value = e instanceof Error ? e.message : '加载失败'
-    } finally {
-      loading.value = false
+  let _loadPromise: Promise<void> | null = null
+
+  async function load(options?: XingceLoadOptions) {
+    if (_loadPromise && !options?.force) {
+      return _loadPromise
     }
+
+    const run = async () => {
+      const silent = options?.silent === true
+      const force = options?.force === true
+      const hasCache = Boolean(lastPulledAt.value)
+      const showBlockingLoading = force || (!silent && !hasCache)
+
+      if (showBlockingLoading) {
+        loading.value = true
+      }
+      if (!silent) {
+        loadError.value = null
+      }
+
+      try {
+        const snapshot = await xingceApi.load()
+        errors.value = snapshot.errors
+        knowledgeNodes.value = snapshot.knowledgeNodes
+        notesByType.value = snapshot.notesByType
+        noteImages.value = snapshot.noteImages
+        typeRules.value = snapshot.typeRules
+        dirTree.value = snapshot.dirTree
+        lastPulledAt.value = new Date().toISOString()
+        loadError.value = null
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : '加载失败'
+        if (!silent || !hasCache) {
+          loadError.value = msg
+        }
+      } finally {
+        if (showBlockingLoading) {
+          loading.value = false
+        }
+        if (!loadError.value) {
+          loadKnowledgeExpandedState()
+          restoreActiveNodeFromStorage()
+        }
+      }
+    }
+
+    _loadPromise = run().finally(() => {
+      _loadPromise = null
+    })
+    return _loadPromise
   }
 
   let _saveTimer: ReturnType<typeof setTimeout> | null = null
@@ -824,6 +878,16 @@ export const useXingceStore = defineStore('xingce', () => {
         })),
         ...noteTypeOps,
         ...noteImageOps,
+        {
+          op_type: 'setting_upsert' as const,
+          entity_id: 'type_rules',
+          payload: { key: 'type_rules', value: typeRules.value, updatedAt: syncTs },
+        },
+        {
+          op_type: 'setting_upsert' as const,
+          entity_id: 'dir_tree',
+          payload: { key: 'dir_tree', value: dirTree.value, updatedAt: syncTs },
+        },
       ]
       await xingceApi.push(ops)
       pendingSyncDeletes.value = new Map()
@@ -944,7 +1008,7 @@ export const useXingceStore = defineStore('xingce', () => {
       knowledgeExpandedIds.value = new Set(knowledgeExpandedIds.value)
       saveKnowledgeExpandedState()
     }
-    if (activeNodeId.value === nodeId) activeNodeId.value = null
+    if (activeNodeId.value === nodeId) clearActiveNodeId()
     scheduleSave()
   }
 
@@ -1040,7 +1104,7 @@ export const useXingceStore = defineStore('xingce', () => {
     activeType.value = null
     activeSubtype.value = null
     activeSubSubtype.value = null
-    activeNodeId.value = null
+    clearActiveNodeId()
     reasonFilter.value = null
     searchQuery.value = ''
     dateFrom.value = ''
@@ -1054,20 +1118,20 @@ export const useXingceStore = defineStore('xingce', () => {
     activeType.value = null
     activeSubtype.value = null
     activeSubSubtype.value = null
-    activeNodeId.value = null
+    clearActiveNodeId()
   }
 
   /** 对齐旧版 `setReasonFilter`：切换错因时退出任务视角并清空知识节点 */
   function toggleReasonFilter(reason: string) {
     taskFilter.value = 'all'
-    activeNodeId.value = null
+    clearActiveNodeId()
     reasonFilter.value = reasonFilter.value === reason ? null : reason
   }
 
   /** 侧栏 breadcrumb 单项移除 */
   function removeFilterCrumb(key: string) {
     if (key === 'node') {
-      activeNodeId.value = null
+      clearActiveNodeId()
       return
     }
     if (key === 'task') {
@@ -1114,6 +1178,7 @@ export const useXingceStore = defineStore('xingce', () => {
 
   function setActiveType(type: string | null) {
     taskFilter.value = 'all'
+    clearActiveNodeId()
     activeType.value = type
     activeSubtype.value = null
     activeSubSubtype.value = null
@@ -1121,19 +1186,60 @@ export const useXingceStore = defineStore('xingce', () => {
 
   function setActiveSubtype(subtype: string | null) {
     if (subtype != null && !activeType.value) return
+    clearActiveNodeId()
     activeSubtype.value = subtype
     activeSubSubtype.value = null
   }
 
   function setActiveSubSubtype(subSubtype: string | null) {
     if (subSubtype != null && !activeSubtype.value) return
+    clearActiveNodeId()
     activeSubSubtype.value = subSubtype
   }
 
-  /** 选中知识节点：与题型筛选 AND（对齐 legacy `getFiltered` 多条件叠加） */
+  function saveActiveNodeId(nodeId: string | null) {
+    try {
+      if (nodeId) localStorage.setItem(ACTIVE_NODE_STORAGE_KEY, nodeId)
+      else localStorage.removeItem(ACTIVE_NODE_STORAGE_KEY)
+    } catch {
+      // ignore storage quota / privacy errors
+    }
+  }
+
+  function clearActiveNodeId() {
+    activeNodeId.value = null
+    saveActiveNodeId(null)
+  }
+
+  /** 数据加载后从 localStorage 还原选中节点，与旧版工作区行为一致 */
+  function restoreActiveNodeFromStorage() {
+    try {
+      const raw = localStorage.getItem(ACTIVE_NODE_STORAGE_KEY)?.trim()
+      if (raw && findNodeInTree(knowledgeTree.value, raw)) {
+        activeNodeId.value = raw
+        return
+      }
+    } catch {
+      // ignore storage parse errors
+    }
+    const first = knowledgeTree.value[0]
+    if (first?.id) {
+      activeNodeId.value = first.id
+      saveActiveNodeId(first.id)
+    } else {
+      activeNodeId.value = null
+      saveActiveNodeId(null)
+    }
+  }
+
+  /** 与 legacy `setCurrentKnowledgeNode`：点树节点时清空题型筛选 */
   function setActiveNode(nodeId: string | null) {
-    if (nodeId) taskFilter.value = 'all'
+    if (nodeId) {
+      taskFilter.value = 'all'
+      clearModuleFilters()
+    }
     activeNodeId.value = nodeId
+    saveActiveNodeId(nodeId)
   }
 
   function toggleKnowledgeNode(id: string) {
@@ -1395,11 +1501,151 @@ export const useXingceStore = defineStore('xingce', () => {
     scheduleSave()
   }
 
+  function setTypeRules(rules: TypeRule[]) {
+    typeRules.value = rules.map(r => ({
+      keywords: [...r.keywords],
+      type: r.type,
+      subtype: r.subtype || '',
+    }))
+    scheduleSave()
+  }
+
+  function resetTypeRules() {
+    setTypeRules(cloneDefaultTypeRules())
+  }
+
+  function setDirTree(tree: DirTree) {
+    dirTree.value = JSON.parse(JSON.stringify(tree)) as DirTree
+    scheduleSave()
+  }
+
+  function resetDirTree() {
+    setDirTree(cloneDefaultDirTree())
+  }
+
+  function getDirSubs(type: string): string[] {
+    const tree = dirTree.value[type]
+    return tree ? Object.keys(tree) : []
+  }
+
+  function getDirSub2s(type: string, sub: string): string[] {
+    const tree = dirTree.value[type]
+    if (!tree || !sub) return []
+    return tree[sub] ? [...tree[sub]] : []
+  }
+
+  function getSubtypeSuggestions(type: string): string[] {
+    const fromDir = getDirSubs(type)
+    const fromData = new Set(
+      workspaceErrors.value.filter(e => e.type === type).map(e => String(e.subtype || '').trim()).filter(Boolean),
+    )
+    return [...new Set([...fromDir, ...fromData])].sort()
+  }
+
+  function getSubSubtypeSuggestions(type: string, subtype: string): string[] {
+    const fromDir = getDirSub2s(type, subtype)
+    const fromData = new Set(
+      workspaceErrors.value
+        .filter(e => e.type === type && String(e.subtype || '').trim() === subtype)
+        .map(e => String(e.subSubtype || '').trim())
+        .filter(Boolean),
+    )
+    return [...new Set([...fromDir, ...fromData])].sort()
+  }
+
+  function autoDetectType(text: string): { type?: string; subtype?: string } | null {
+    const raw = String(text || '')
+    if (raw.length < 5) return null
+    for (const rule of typeRules.value) {
+      for (const kw of rule.keywords) {
+        if (kw && raw.includes(kw)) {
+          return { type: rule.type, subtype: rule.subtype || undefined }
+        }
+      }
+    }
+    return null
+  }
+
+  function mergeClaudeImport(items: Record<string, unknown>[]): { added: number; updated: number } {
+    const normalizeKey = (kind: string, q: string) => `${kind}::${String(q || '').trim().slice(0, 100)}`
+    const questionMap = new Map<string, number>()
+    const idMap = new Map<string, number>()
+    errors.value.forEach((e, i) => {
+      const kind = normalizeWorkspaceEntryKind((e as Record<string, unknown>).entryKind, 'error')
+      questionMap.set(normalizeKey(kind, e.question || ''), i)
+      idMap.set(e.id, i)
+    })
+    let added = 0
+    let updated = 0
+    const today = new Date().toISOString().slice(0, 10)
+    for (const raw of items) {
+      const id = String(raw.id || crypto.randomUUID())
+      const imp: ErrorEntry = {
+        ...(raw as ErrorEntry),
+        id,
+        entryKind: 'claude_bank',
+        type: String(raw.type || '其他'),
+        subtype: String(raw.subtype || '未分类'),
+        subSubtype: String(raw.subSubtype || '').trim() || undefined,
+        question: String(raw.question || ''),
+        status: (raw.status as ErrorEntry['status']) || 'focus',
+        masteryLevel: (raw.masteryLevel as ErrorEntry['masteryLevel']) || 'not_mastered',
+        addDate: String(raw.addDate || today),
+        updatedAt: new Date().toISOString(),
+      }
+      const k = normalizeKey('claude_bank', String(imp.question || ''))
+      const idx = idMap.has(id) ? idMap.get(id)! : questionMap.get(k)
+      if (idx !== undefined) {
+        const old = errors.value[idx]!
+        errors.value[idx] = {
+          ...old,
+          ...imp,
+          id: old.id,
+          entryKind: 'claude_bank',
+          addDate: old.addDate || imp.addDate,
+        }
+        updated++
+      } else {
+        errors.value.push(imp)
+        const newIdx = errors.value.length - 1
+        questionMap.set(k, newIdx)
+        idMap.set(imp.id, newIdx)
+        added++
+      }
+    }
+    scheduleSave()
+    return { added, updated }
+  }
+
+  function convertClaudeBankToError(id: string) {
+    const idx = errors.value.findIndex(e => e.id === id)
+    if (idx === -1) return
+    const item = errors.value[idx]!
+    if (!isClaudeBankEntry(item)) return
+    errors.value[idx] = {
+      ...item,
+      entryKind: 'error',
+      status: item.status || 'focus',
+      masteryLevel: item.masteryLevel || 'not_mastered',
+      addDate: item.addDate || new Date().toISOString().slice(0, 10),
+      updatedAt: new Date().toISOString(),
+    }
+    scheduleSave()
+  }
+
+  function getErrorGroupingPathTitles(e: ErrorEntry): string[] {
+    if (e.noteNodeId) {
+      const titles = findNodePathTitles(knowledgeTree.value, e.noteNodeId)
+      if (titles?.length) return titles
+    }
+    return [e.type || '其他', e.subtype || '未分类', e.subSubtype || '未细分'].filter(Boolean)
+  }
+
   function clearFilters() {
     activeType.value = null
     activeSubtype.value = null
     activeSubSubtype.value = null
-    activeNodeId.value = null
+    clearActiveNodeId()
     statusFilter.value = 'all'
     taskFilter.value = 'all'
     reasonFilter.value = null
@@ -1414,6 +1660,10 @@ export const useXingceStore = defineStore('xingce', () => {
     knowledgeNodes,
     notesByType,
     noteImages,
+    typeRules,
+    dirTree,
+    workspaceErrors,
+    claudeBankEntries,
     // 加载状态
     loading,
     saving,
@@ -1512,10 +1762,23 @@ export const useXingceStore = defineStore('xingce', () => {
     saveKnowledgeExpandedState,
     addError,
     clearActiveKnowledgeNote,
+    getErrorGroupingPathTitles,
     clearFilters,
     setTaskFilter,
     setStatusFilter,
     toggleReasonFilter,
     removeFilterCrumb,
+    setTypeRules,
+    resetTypeRules,
+    setDirTree,
+    resetDirTree,
+    getDirSubs,
+    getDirSub2s,
+    getSubtypeSuggestions,
+    getSubSubtypeSuggestions,
+    autoDetectType,
+    mergeClaudeImport,
+    convertClaudeBankToError,
+    isClaudeBankEntry,
   }
 })

@@ -89,45 +89,53 @@ function moveNodeByPrompt(e: Event) {
 <template>
   <div v-if="isVisible" class="ktn-wrap">
     <div
-      class="ktn-row"
-      :class="{ active: isActive, 'depth-0': depth === 0, 'depth-1': depth === 1 }"
-      :style="{ paddingLeft: `${8 + depth * 14}px` }"
+      class="ktn-row nav-item"
+      :class="{
+        active: isActive,
+        'nav-type-header': depth === 0,
+        'nav-subtype': depth === 1,
+        'nav-sub2': depth >= 2,
+        'knowledge-tree-node': true,
+        'is-active': isActive,
+      }"
+      :style="{ paddingLeft: `${10 + depth * 18}px` }"
       @click="handleClick"
     >
-      <!-- 展开/折叠箭头 -->
-      <span
-        v-if="hasChildren"
-        class="ktn-arrow"
-        @click="handleToggle"
-      >{{ shouldExpand ? '▾' : '▸' }}</span>
-      <span v-else class="ktn-arrow-placeholder" />
+      <span class="knowledge-tree-row">
+        <button
+          v-if="hasChildren"
+          type="button"
+          class="knowledge-tree-toggle"
+          @click="handleToggle"
+        >{{ shouldExpand ? '▾' : '▸' }}</button>
+        <span v-else class="knowledge-tree-toggle placeholder" />
 
-      <!-- 节点标题（双击重命名） -->
-      <span
-        v-if="!renaming"
-        class="ktn-title"
-        :title="'双击重命名'"
-        @dblclick.stop="beginRename"
-      >{{ node.title }}</span>
-      <input
-        v-else
-        ref="renameInputRef"
-        v-model="draftTitle"
-        class="ktn-rename"
-        type="text"
-        @click.stop
-        @keydown.enter.prevent="commitRename"
-        @keydown.escape.prevent="cancelRename"
-        @blur="commitRename"
-      >
+        <span
+          v-if="!renaming"
+          class="knowledge-tree-title ktn-title"
+          :title="'双击重命名'"
+          @dblclick.stop="beginRename"
+        >{{ node.title }}</span>
+        <input
+          v-else
+          ref="renameInputRef"
+          v-model="draftTitle"
+          class="ktn-rename"
+          type="text"
+          @click.stop
+          @keydown.enter.prevent="commitRename"
+          @keydown.escape.prevent="cancelRename"
+          @blur="commitRename"
+        >
+      </span>
 
-      <!-- 错题数 badge -->
       <span
-        class="ktn-badge"
-        :class="{ 'badge-warn': aggCount > 20, 'is-empty': aggCount === 0 }"
+        class="knowledge-tree-count"
+        :class="{ 'is-empty': aggCount === 0 }"
       >{{ aggCount }}</span>
       <button
         v-if="isActive && store.canMoveKnowledgeNode(node.id)"
+        type="button"
         class="ktn-move-btn"
         title="移动到其它父节点"
         @click.stop="moveNodeByPrompt"
@@ -201,20 +209,6 @@ function moveNodeByPrompt(e: Event) {
   outline: none;
   color: #1e293b;
 }
-
-.ktn-badge {
-  font-size: 10px;
-  background: #e2e8f0;
-  color: #64748b;
-  padding: 1px 5px;
-  border-radius: 8px;
-  min-width: 18px;
-  text-align: center;
-  flex-shrink: 0;
-  font-weight: 500;
-}
-.ktn-badge.badge-warn { background: #fff1f0; color: #cf1322; }
-.ktn-badge.is-empty { visibility: hidden; }
 
 .ktn-move-btn {
   border: 1px solid #dbe3ef;

@@ -12,6 +12,9 @@ const emit = defineEmits<{
   openMarkdownEditor: []
   openHistory: []
   openTypeRules: []
+  openDir: []
+  openClaudeBank: []
+  openClaudeImport: []
 }>()
 
 const store = useXingceStore()
@@ -97,7 +100,7 @@ async function cloudSave() {
 function cloudLoad() {
   open.value = false
   if (confirm('重新从云端加载数据？本地未保存的更改将丢失。')) {
-    store.load()
+    store.load({ force: true })
   }
 }
 
@@ -125,7 +128,7 @@ async function cloudFullLoad() {
   }
   store.replaceWorkspaceSnapshot(errors as ErrorEntry[], knowledgeNodes as KnowledgeNode[])
   await store.flushSave()
-  await store.load()
+  await store.load({ force: true })
   alert('云端全量已同步到本地')
 }
 
@@ -208,6 +211,9 @@ function openStats() {
       <button type="button" class="btn btn-secondary" @click="openMarkdownNote">Markdown备注（专业）</button>
       <button type="button" class="btn btn-secondary" @click="() => { open = false; emit('openHistory') }">学习历史</button>
       <button type="button" class="btn btn-secondary" @click="() => { open = false; emit('openTypeRules') }">题型规则</button>
+      <button type="button" class="btn btn-secondary" @click="() => { open = false; emit('openDir') }">目录管理</button>
+      <button type="button" class="btn btn-secondary" @click="() => { open = false; emit('openClaudeBank') }">📚 Claude 题库</button>
+      <button type="button" class="btn btn-secondary" @click="() => { open = false; emit('openClaudeImport') }">导入 Claude</button>
       <button type="button" class="btn btn-secondary" @click="openStats">学习统计</button>
       <button type="button" class="btn btn-secondary" @click="printList">打印</button>
       <details class="more-menu-advanced">

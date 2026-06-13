@@ -41,20 +41,19 @@ async function injectPartials() {
 }
 
 function ensureRandomNoteEntryPresence() {
-  const quizBlock = document.querySelector('.quiz-block');
-  if (quizBlock && !document.getElementById('randomNoteBtn')) {
+  const practiceBar = document.querySelector('.notes-header .practice-action-bar');
+  if (practiceBar && !document.getElementById('randomNoteBtn')) {
     const fullPracticeBtn = document.getElementById('fullPracticeBtn');
     const randomBtn = document.createElement('button');
-    randomBtn.className = 'quiz-btn';
+    randomBtn.className = 'quiz-btn quiz-btn--compact random-note';
     randomBtn.id = 'randomNoteBtn';
-    randomBtn.style.marginTop = '6px';
-    randomBtn.style.background = 'linear-gradient(135deg,#16a34a,#15803d)';
+    randomBtn.type = 'button';
     randomBtn.setAttribute('data-onclick', 'startRandomNoteReview()');
     randomBtn.innerHTML = '<span>随机笔记</span>';
-    if (fullPracticeBtn && fullPracticeBtn.parentNode === quizBlock) {
+    if (fullPracticeBtn && fullPracticeBtn.parentNode === practiceBar) {
       fullPracticeBtn.insertAdjacentElement('afterend', randomBtn);
     } else {
-      quizBlock.appendChild(randomBtn);
+      practiceBar.appendChild(randomBtn);
     }
   }
   const moreMenu = document.getElementById('moreMenuPanel');
@@ -261,9 +260,14 @@ async function loadV53FeatureModules() {
 window.__v53EnsureLegacyModalBundleLoaded = ensureLegacyModalBundleLoaded;
 
 /** 申论与套卷/模块练一致，走 `/new/...` Vue 子应用（与 `portalPrefs` 一致） */
+const PORTAL_SHELL_HOME = '/new/';
+const PORTAL_SHELL_PORTAL = '/new/portal';
+const PORTAL_LEGACY_XINGCE_TARGET = '/new/legacy-xingce';
 const PORTAL_SHENLUN_TARGET = '/new/shenlun';
+const PORTAL_INTERVIEW_TARGET = '/new/interview/workspace';
 const PORTAL_XINGCE_SUITE_TARGET = '/new/xingce/suite';
 const PORTAL_XINGCE_BANK_DRILL_TARGET = '/new/xingce/bank-drill';
+const PORTAL_XINGCE_VUE_TARGET = '/new/xingce/workspace';
 const PORTAL_ADMIN_TARGET = '/new/admin';
 /** 与 `frontend/src/lib/portalPrefs.ts` 保持一致 */
 const PORTAL_LAST_MODULE_KEY = 'v53.portal.lastModule';
@@ -289,7 +293,7 @@ function portalUserHasModule(user, key) {
 function readLastPortalModule() {
   try {
     const v = localStorage.getItem(PORTAL_LAST_MODULE_KEY);
-    if (v === 'xingce' || v === 'xingce_suite' || v === 'xingce_bank_drill' || v === 'shenlun') return v;
+    if (v === 'xingce' || v === 'xingce_vue' || v === 'xingce_suite' || v === 'xingce_bank_drill' || v === 'shenlun' || v === 'interview') return v;
   } catch (_) { /* ignore */ }
   return null;
 }
@@ -298,6 +302,15 @@ function saveLastPortalModule(choice) {
   try {
     localStorage.setItem(PORTAL_LAST_MODULE_KEY, choice);
   } catch (_) { /* ignore */ }
+}
+
+/** Shell 内嵌 iframe：跳过门户，直接加载旧版行测 */
+function isShellEmbed() {
+  try {
+    const p = (new URLSearchParams(window.location.search || '').get('embed') || '').toLowerCase();
+    return p === '1' || p === 'true' || p === 'yes';
+  } catch (_) { /* ignore */ }
+  return false;
 }
 
 /** `/?portal=1`：始终展示模块选择页（与侧栏「模块首页」一致），避免无法切换模块 */
@@ -325,7 +338,8 @@ function showXingceLoadingPlaceholder() {
 function renderPortalButtons(user) {
   const parts = [];
   if (portalUserHasModule(user, 'xingce')) {
-    parts.push('<button type="button" class="v53-portal-btn v53-portal-btn--xingce" data-portal-choice="xingce">行测</button>');
+    parts.push('<button type="button" class="v53-portal-btn v53-portal-btn--xingce" data-portal-choice="xingce">旧版行测</button>');
+    parts.push('<button type="button" class="v53-portal-btn v53-portal-btn--xingce-vue" data-portal-choice="xingce_vue">vue行测</button>');
   }
   if (portalUserHasModule(user, 'xingce_suite')) {
     parts.push('<button type="button" class="v53-portal-btn v53-portal-btn--suite" data-portal-choice="xingce_suite">套卷练习</button>');
@@ -335,6 +349,9 @@ function renderPortalButtons(user) {
   }
   if (portalUserHasModule(user, 'shenlun')) {
     parts.push('<button type="button" class="v53-portal-btn v53-portal-btn--shenlun" data-portal-choice="shenlun">申论</button>');
+  }
+  if (portalUserHasModule(user, 'interview')) {
+    parts.push('<button type="button" class="v53-portal-btn v53-portal-btn--interview" data-portal-choice="interview">面试</button>');
   }
   if (user && user.is_super_admin) {
     parts.push('<button type="button" class="v53-portal-btn v53-portal-btn--admin" data-portal-choice="admin">系统管理</button>');
@@ -352,10 +369,27 @@ async function gateModulePortal() {
     window.location.replace('/login.html');
     return new Promise(() => {});
   }
+  if (isShellEmbed()) {
+    if (!portalUserHasModule(me, 'xingce')) {
+      bootRoot.innerHTML = `
+        <div class="v53-boot-card v53-portal-card">
+          <div class="v53-boot-title">无行测权限</div>
+          <div class="v53-boot-sub">当前账号未分配旧版行测模块。</div>
+        </div>`;
+      return new Promise(() => {});
+    }
+    document.documentElement.classList.add('v53-shell-embed');
+    showXingceLoadingPlaceholder();
+    return;
+  }
   if (!shouldForcePortal()) {
     const last = readLastPortalModule();
     if (last && portalUserHasModule(me, last) && last === 'shenlun') {
       window.location.replace(PORTAL_SHENLUN_TARGET);
+      return new Promise(() => {});
+    }
+    if (last && portalUserHasModule(me, last) && last === 'interview') {
+      window.location.replace(PORTAL_INTERVIEW_TARGET);
       return new Promise(() => {});
     }
     if (last && portalUserHasModule(me, last) && last === 'xingce_suite') {
@@ -366,9 +400,13 @@ async function gateModulePortal() {
       window.location.replace(PORTAL_XINGCE_BANK_DRILL_TARGET);
       return new Promise(() => {});
     }
+    if (last === 'xingce_vue' && portalUserHasModule(me, 'xingce')) {
+      window.location.replace(PORTAL_XINGCE_VUE_TARGET);
+      return new Promise(() => {});
+    }
     if (last && portalUserHasModule(me, last) && last === 'xingce') {
-      showXingceLoadingPlaceholder();
-      return;
+      window.location.replace(PORTAL_LEGACY_XINGCE_TARGET);
+      return new Promise(() => {});
     }
   }
   bootRoot.innerHTML = `
@@ -389,10 +427,26 @@ async function gateModulePortal() {
         window.location.href = PORTAL_ADMIN_TARGET;
         return;
       }
+      if (choice === 'xingce_vue') {
+        if (!portalUserHasModule(me, 'xingce')) return;
+        saveLastPortalModule('xingce_vue');
+        window.location.href = PORTAL_XINGCE_VUE_TARGET;
+        return;
+      }
+      if (choice === 'xingce') {
+        if (!portalUserHasModule(me, 'xingce')) return;
+        saveLastPortalModule('xingce');
+        window.location.href = PORTAL_LEGACY_XINGCE_TARGET;
+        return;
+      }
       if (!portalUserHasModule(me, choice)) return;
       saveLastPortalModule(choice);
       if (choice === 'shenlun') {
         window.location.href = PORTAL_SHENLUN_TARGET;
+        return;
+      }
+      if (choice === 'interview') {
+        window.location.href = PORTAL_INTERVIEW_TARGET;
         return;
       }
       if (choice === 'xingce_suite') {
@@ -404,8 +458,7 @@ async function gateModulePortal() {
         return;
       }
       bootRoot.removeEventListener('click', onPick);
-      showXingceLoadingPlaceholder();
-      resolve();
+      window.location.href = PORTAL_LEGACY_XINGCE_TARGET;
     };
     bootRoot.addEventListener('click', onPick);
   });

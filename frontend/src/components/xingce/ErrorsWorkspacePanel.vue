@@ -5,6 +5,7 @@ import { useXingceStore } from '@/stores/xingceStore'
 import ErrorList from './ErrorList.vue'
 
 const store = useXingceStore()
+const errorListRef = ref<InstanceType<typeof ErrorList> | null>(null)
 const batchMoveTarget = ref('')
 const showBatchMoveModal = ref(false)
 
@@ -94,6 +95,10 @@ function applyBatchMountFromModal() {
             {{ store.errorSortOrder === 'asc' ? '升序' : '降序' }}
           </button>
         </div>
+        <div class="expand-btns">
+          <button type="button" class="btn btn-sm btn-secondary" @click="errorListRef?.expandAll()">展开全部</button>
+          <button type="button" class="btn btn-sm btn-secondary" @click="errorListRef?.collapseAll()">收起全部</button>
+        </div>
         <div class="stats-bar">
           <div class="stat-item">
             <div class="stat-num">{{ store.errorListStats.total }}</div>
@@ -158,7 +163,7 @@ function applyBatchMountFromModal() {
     </Teleport>
 
     <div class="errors-list">
-      <ErrorList :entries="store.filteredErrors" />
+      <ErrorList ref="errorListRef" :entries="store.filteredErrors" />
     </div>
   </div>
 </template>

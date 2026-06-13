@@ -23,12 +23,16 @@
 .sidebar-cloud-controls .btn{padding:2px 6px;font-size:10px;line-height:1.15;white-space:nowrap}
 .sidebar-cloud-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
 .sidebar-cloud-actions .btn{min-width:0}
+.sidebar-progress-block{padding:12px 14px;border-bottom:1px solid #f0f0f0}
 .quiz-block{padding:12px 14px;border-bottom:1px solid #f0f0f0}
 .quiz-btn{width:100%;padding:9px 0;background:linear-gradient(135deg,#e74c3c,#c0392b);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;transition:.2s}
 .quiz-btn:hover{opacity:.9;transform:translateY(-1px);box-shadow:0 4px 12px rgba(231,76,60,.35)}
 .quiz-btn .badge{background:rgba(255,255,255,.3);border-radius:10px;padding:1px 7px;font-size:11px}
 .quiz-btn.disabled{background:#ccc;cursor:default;transform:none;box-shadow:none}
+.quiz-btn.full-practice{background:linear-gradient(135deg,#3498db,#2471a3)}
+.quiz-btn.random-note{background:linear-gradient(135deg,#16a34a,#15803d)}
 .today-progress{margin-top:9px}
+.sidebar-progress-block .today-progress{margin-top:0}
 .prog-label{font-size:11px;color:#888;display:flex;justify-content:space-between;margin-bottom:4px}
 .prog-bar-bg{background:#f0f0f0;border-radius:4px;height:6px;overflow:hidden}
 .prog-bar-fill{height:100%;background:linear-gradient(90deg,#e74c3c,#ff6b6b);border-radius:4px;transition:width .5s}

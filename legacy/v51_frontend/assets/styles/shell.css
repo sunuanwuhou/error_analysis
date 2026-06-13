@@ -66,6 +66,11 @@ body:not(.v51-shell-loading) .v53-boot { display:none; }
   box-shadow: 0 10px 26px rgb(37 99 235 / 0.35);
 }
 
+.v53-portal-btn--xingce-vue {
+  background: linear-gradient(135deg, #0891b2 0%, #0e7490 55%, #155e75 100%);
+  box-shadow: 0 10px 26px rgb(8 145 178 / 0.35);
+}
+
 .v53-portal-btn--suite {
   background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 55%, #5b21b6 100%);
   box-shadow: 0 10px 26px rgb(124 58 237 / 0.34);
@@ -79,6 +84,11 @@ body:not(.v51-shell-loading) .v53-boot { display:none; }
 .v53-portal-btn--shenlun {
   background: linear-gradient(135deg, #059669 0%, #047857 55%, #065f46 100%);
   box-shadow: 0 10px 26px rgb(5 150 105 / 0.33);
+}
+
+.v53-portal-btn--interview {
+  background: linear-gradient(135deg, #ea580c 0%, #c2410c 55%, #9a3412 100%);
+  box-shadow: 0 10px 26px rgb(234 88 12 / 0.33);
 }
 
 .v53-portal-btn--admin {
@@ -189,7 +199,7 @@ body:not(.v51-shell-loading) .v53-boot { display:none; }
   .knowledge-workspace-actions .btn { width:100%; }
 }
 @media (max-width: 560px) {
-  .sidebar-tools, .quiz-block, .sidebar-tree-toolbar, .nav-scroll { padding-left: 12px; padding-right: 12px; }
+  .sidebar-tools, .sidebar-progress-block, .quiz-block, .sidebar-tree-toolbar, .nav-scroll { padding-left: 12px; padding-right: 12px; }
   .sidebar-logo { padding-left: 12px; padding-right: 12px; }
   .btn { min-height: 40px; }
   input, select, textarea { font-size: 16px !important; }
@@ -789,6 +799,12 @@ body.app-view-home #workspaceView{display:none}
     min-width:0;
     flex:1;
   }
+}
+
+/* Shell iframe embed: hide module portal; switching uses parent tab bar */
+html.v53-shell-embed .sidebar-module-portal-slot,
+html.v53-shell-embed #sidebarModuleHomeBtn {
+  display: none !important;
 }
 
 

@@ -31,8 +31,11 @@ export function installKnowledgeNoteEditorHost(onRequestClose?: (force?: boolean
   const w = window as HostWindow
   closeHandler = onRequestClose ?? null
 
-  w.getKnowledgeNodeById = (id: string) =>
-    store.knowledgeNodes.find(n => n.id === id) ?? null
+  w.getKnowledgeNodeById = (id: string) => {
+    const n = store.knowledgeNodes.find(item => item.id === id) ?? null
+    if (!n) return null
+    return { ...n }
+  }
 
   w.getKnowledgePathTitles = (id: string) => {
     const text = store.getNodePathText(id)
@@ -43,7 +46,14 @@ export function installKnowledgeNoteEditorHost(onRequestClose?: (force?: boolean
 
   w.ensureKnowledgeState = () => {}
 
-  w.ensureKnowledgeNoteRecord = () => {}
+  w.ensureKnowledgeNoteRecord = (node: KnowledgeNode) => {
+    if (!node?.id) return
+    const md = String(node.contentMd ?? '')
+    store.updateKnowledgeNode(node.id, {
+      contentMd: md,
+      updatedAt: node.updatedAt || new Date().toISOString(),
+    })
+  }
 
   w.saveKnowledgeState = () => {
     void store.flushSave()
@@ -58,7 +68,7 @@ export function installKnowledgeNoteEditorHost(onRequestClose?: (force?: boolean
     return true
   }
 
-  w.requestNoteEditorClose = (force?: boolean) => w.closeEmbeddedKnowledgeNoteEditor?.(force)
+  w.requestNoteEditorClose = (force?: boolean) => w.closeEmbeddedKnowledgeNoteEditor?.(force) ?? true
 }
 
 export function uninstallKnowledgeNoteEditorHost() {

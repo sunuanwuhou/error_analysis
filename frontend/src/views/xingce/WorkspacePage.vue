@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { computed, ref, onMounted, onActivated, onUnmounted, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useXingceStore } from '@/stores/xingceStore'
 import PracticePanel from '@/components/xingce/PracticePanel.vue'
@@ -12,6 +12,9 @@ import AddErrorModal from '@/components/xingce/AddErrorModal.vue'
 import ImportModal from '@/components/xingce/ImportModal.vue'
 import HistoryModal from '@/components/xingce/HistoryModal.vue'
 import TypeRulesModal from '@/components/xingce/TypeRulesModal.vue'
+import DirModal from '@/components/xingce/DirModal.vue'
+import ClaudeBankModal from '@/components/xingce/ClaudeBankModal.vue'
+import ClaudeImportModal from '@/components/xingce/ClaudeImportModal.vue'
 import WorkspaceMobileChrome from '@/components/xingce/WorkspaceMobileChrome.vue'
 import { savePortalLastModule } from '@/lib/portalPrefs'
 import '@/styles/xingce-vue-legacy.css'
@@ -27,6 +30,9 @@ const showImportModal = ref(false)
 const showGlobalSearch = ref(false)
 const showHistoryModal = ref(false)
 const showTypeRulesModal = ref(false)
+const showDirModal = ref(false)
+const showClaudeBankModal = ref(false)
+const showClaudeImportModal = ref(false)
 const notesWorkspaceRef = ref<InstanceType<typeof NotesWorkspacePanel> | null>(null)
 
 /** 与旧版 `switchTab` 默认一致：工作区先展示「学习笔记」 */
@@ -35,18 +41,18 @@ const mobileSidebarOpen = ref(false)
 
 const runtimeMode = computed(() => {
   if (typeof window === 'undefined') return 'unknown'
-  const { hostname } = window.location
-  if (hostname === '127.0.0.1' || hostname === 'localhost') return 'local'
+  const { hostname, port } = window.location
+  if (hostname === '127.0.0.1' || hostname === 'localhost') {
+    return port === '8080' || port === '8088' ? 'docker' : 'local'
+  }
   return 'docker'
 })
 
 const runtimeLabel = computed(() => {
   if (typeof window === 'undefined') return 'unknown'
   const { hostname, port } = window.location
-  if (hostname === '127.0.0.1' || hostname === 'localhost') {
-    return port ? `${hostname}:${port}` : hostname
-  }
-  return hostname
+  const host = port ? `${hostname}:${port}` : hostname
+  return runtimeMode.value === 'docker' ? `Docker / ${host}` : host
 })
 
 function onGlobalKeydown(e: KeyboardEvent) {
@@ -56,11 +62,21 @@ function onGlobalKeydown(e: KeyboardEvent) {
   }
 }
 
+const isFirstActivation = ref(true)
+
 onMounted(() => {
-  savePortalLastModule('xingce')
-  store.load()
-  store.loadMe()
+  void store.loadMe()
   window.addEventListener('keydown', onGlobalKeydown)
+})
+
+onActivated(() => {
+  savePortalLastModule('xingce_vue')
+  if (isFirstActivation.value) {
+    isFirstActivation.value = false
+    void store.load()
+    return
+  }
+  void store.load({ silent: true })
 })
 
 onUnmounted(() => {
@@ -191,7 +207,7 @@ function onPickSuite(paperId: string, questionId: string) {
 
     <div v-else-if="store.loadError" class="xc-error-state">
       <p class="xc-error-msg">{{ store.loadError }}</p>
-      <button type="button" class="btn btn-primary" @click="store.load()">重试</button>
+      <button type="button" class="btn btn-primary" @click="store.load({ force: true })">重试</button>
     </div>
 
     <template v-else>
@@ -211,61 +227,65 @@ function onPickSuite(paperId: string, questionId: string) {
       >
         <div class="sidebar-logo">
           <div class="wsb-title">Ashore</div>
-          <div class="runtime-badge" :data-mode="runtimeMode">Runtime: {{ runtimeLabel }}</div>
+          <div class="runtime-badge" :data-mode="runtimeMode">{{ runtimeLabel }}</div>
         </div>
         <PracticePanel
-          @start-quiz="(mode) => { quizMode = mode }"
           @start-random-note="onStartRandomNote"
           @open-add="openAddModal()"
           @open-import="showImportModal = true"
           @open-markdown-editor="onOpenMarkdownEditor"
           @open-history="showHistoryModal = true"
           @open-type-rules="showTypeRulesModal = true"
+          @open-dir="showDirModal = true"
+          @open-claude-bank="showClaudeBankModal = true"
+          @open-claude-import="showClaudeImportModal = true"
         />
         <FilterSidebar />
       </aside>
 
       <div class="main-area">
         <div class="xc-ws-main-inner">
-          <div class="xc-ws-tabs">
-            <button
-              type="button"
-              class="tab-btn"
-              data-testid="workspace-tab-notes"
-              :class="{ active: mainTab === 'notes' }"
-              @click="setMainTab('notes')"
-            >
-              学习笔记
-            </button>
-            <button
-              type="button"
-              class="tab-btn"
-              data-testid="workspace-tab-errors"
-              :class="{ active: mainTab === 'errors' }"
-              @click="setMainTab('errors')"
-            >
-              错题列表
-            </button>
-          </div>
-          <div class="xc-ws-top-meta">
-            <span v-if="store.currentUser" class="xc-user-pill">{{ store.currentUser.username }}</span>
-            <span
-              v-if="mainTab === 'errors'"
-              class="xc-mini-count"
-              title="当前筛选 / 全库"
-            >
-              {{ store.filteredErrors.length }} / {{ store.errors.length }} 题
-            </span>
-            <button
-              v-if="store.activeNodeId || store.statusFilter !== 'all' || store.taskFilter !== 'all' || store.reasonFilter || store.dateFrom || store.dateTo || store.searchQuery"
-              type="button"
-              class="btn btn-sm btn-secondary"
-              @click="store.clearFilters()"
-            >
-              清除筛选
-            </button>
-            <span v-if="store.saving" class="xc-save-pill saving">保存中…</span>
-            <span v-else-if="store.lastSavedAt" class="xc-save-pill saved">已保存</span>
+          <div class="workspace-switch-bar">
+            <div class="xc-ws-tabs">
+              <button
+                type="button"
+                class="tab-btn"
+                data-testid="workspace-tab-notes"
+                :class="{ active: mainTab === 'notes' }"
+                @click="setMainTab('notes')"
+              >
+                学习笔记
+              </button>
+              <button
+                type="button"
+                class="tab-btn"
+                data-testid="workspace-tab-errors"
+                :class="{ active: mainTab === 'errors' }"
+                @click="setMainTab('errors')"
+              >
+                错题列表
+              </button>
+            </div>
+            <div class="xc-ws-top-meta">
+              <span v-if="store.currentUser" class="xc-user-pill">{{ store.currentUser.username }}</span>
+              <span
+                v-if="mainTab === 'errors'"
+                class="xc-mini-count"
+                title="当前筛选 / 全库"
+              >
+                {{ store.filteredErrors.length }} / {{ store.workspaceErrors.length }} 题
+              </span>
+              <button
+                v-if="store.activeNodeId || store.statusFilter !== 'all' || store.taskFilter !== 'all' || store.reasonFilter || store.dateFrom || store.dateTo || store.searchQuery"
+                type="button"
+                class="btn btn-sm btn-secondary"
+                @click="store.clearFilters()"
+              >
+                清除筛选
+              </button>
+              <span v-if="store.saving" class="xc-save-pill saving">保存中…</span>
+              <span v-else-if="store.lastSavedAt" class="xc-save-pill saved">已保存</span>
+            </div>
           </div>
           <div class="xc-ws-tab-panes">
             <div
@@ -273,10 +293,12 @@ function onPickSuite(paperId: string, questionId: string) {
               class="tab-content"
               :class="{ active: mainTab === 'notes' }"
               :data-filtered-count="store.filteredErrors.length"
-              :data-total-count="store.errors.length"
+              :data-total-count="store.workspaceErrors.length"
             >
               <NotesWorkspacePanel
                 ref="notesWorkspaceRef"
+                @start-quiz="quizMode = $event"
+                @start-random-note="onStartRandomNote"
                 @open-import="showImportModal = true"
                 @open-global-search="showGlobalSearch = true"
                 @open-add-for-node="openAddModal"
@@ -312,6 +334,17 @@ function onPickSuite(paperId: string, questionId: string) {
 
     <HistoryModal v-if="showHistoryModal" @close="showHistoryModal = false" />
     <TypeRulesModal v-if="showTypeRulesModal" @close="showTypeRulesModal = false" />
+    <DirModal v-if="showDirModal" @close="showDirModal = false" />
+    <ClaudeBankModal
+      v-if="showClaudeBankModal"
+      @close="showClaudeBankModal = false"
+      @open-import="showClaudeBankModal = false; showClaudeImportModal = true"
+    />
+    <ClaudeImportModal
+      v-if="showClaudeImportModal"
+      @close="showClaudeImportModal = false"
+      @imported="showClaudeImportModal = false; showClaudeBankModal = true"
+    />
   </div>
 </template>
 

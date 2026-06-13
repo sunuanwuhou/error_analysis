@@ -83,10 +83,11 @@ from backend.services.workspace_entity_service import (
 
 def on_startup() -> None:
     init_db()
-    from backend.database import init_shenlun_tables, init_suite_bank_tables
+    from backend.database import init_interview_tables, init_shenlun_tables, init_suite_bank_tables
 
     init_shenlun_tables()
     init_suite_bank_tables()
+    init_interview_tables()
     with get_conn() as conn:
         count = conn.execute("SELECT COUNT(*) AS count FROM users").fetchone()["count"]
     if not count:

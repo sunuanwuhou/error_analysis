@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-05-05T03:01:46.851Z",
+  "timestamp": "2026-06-11T13:38:43.626Z",
   "loginAttempted": true,
   "steps": [
     {
@@ -7,8 +7,16 @@
       "file": "E:\\IdeaProject\\git\\xingce_v3_lab\\frontend\\artifacts\\workspace-alignment\\old-workspace.png"
     },
     {
+      "name": "old-sidebar",
+      "file": "E:\\IdeaProject\\git\\xingce_v3_lab\\frontend\\artifacts\\workspace-alignment\\old-sidebar.png"
+    },
+    {
       "name": "new-tab-notes-default",
       "file": "E:\\IdeaProject\\git\\xingce_v3_lab\\frontend\\artifacts\\workspace-alignment\\new-workspace-tab-notes.png"
+    },
+    {
+      "name": "new-sidebar",
+      "file": "E:\\IdeaProject\\git\\xingce_v3_lab\\frontend\\artifacts\\workspace-alignment\\new-sidebar.png"
     },
     {
       "name": "new-tab-errors",

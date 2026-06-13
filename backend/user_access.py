@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from typing import Literal
 
-PortalModuleKey = Literal["xingce", "xingce_suite", "xingce_bank_drill", "shenlun"]
+PortalModuleKey = Literal["xingce", "xingce_suite", "xingce_bank_drill", "shenlun", "interview"]
 
 PORTAL_MODULE_KEYS: tuple[PortalModuleKey, ...] = (
     "xingce",
     "xingce_suite",
     "xingce_bank_drill",
     "shenlun",
+    "interview",
 )
 
 DEFAULT_NEW_USER_MODULES: tuple[PortalModuleKey, ...] = ("xingce_suite",)
@@ -18,10 +19,11 @@ USER_ROLE_USER = "user"
 USER_ROLE_SUPER_ADMIN = "super_admin"
 
 MODULE_LABELS: dict[str, str] = {
-    "xingce": "行测",
+    "xingce": "旧版行测",
     "xingce_suite": "套卷练习",
     "xingce_bank_drill": "套卷模块练",
     "shenlun": "申论",
+    "interview": "面试",
 }
 
 

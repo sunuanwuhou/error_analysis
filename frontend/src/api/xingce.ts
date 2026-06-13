@@ -1,5 +1,14 @@
 // ── 数据类型 ─────────────────────────────────────────────────────────────────
 
+import {
+  cloneDefaultDirTree,
+  cloneDefaultTypeRules,
+  type DirTree,
+  type TypeRule,
+} from '@/lib/xingceDefaults'
+
+export type { DirTree, TypeRule }
+
 export interface ErrorEntry {
   id: string
   type: string
@@ -123,9 +132,11 @@ export interface SyncPullResponse {
 /** 从 ops 中重建的工作区状态快照 */
 export interface WorkspaceSnapshot {
   errors: ErrorEntry[]
-  knowledgeNodes: KnowledgeNode[]          // 扁平列表，由 store 组装成树
-  notesByType: Record<string, unknown>      // note_type entity
-  noteImages: Record<string, string>        // note_image entity (base64)
+  knowledgeNodes: KnowledgeNode[]
+  notesByType: Record<string, unknown>
+  noteImages: Record<string, string>
+  typeRules: TypeRule[]
+  dirTree: DirTree
 }
 
 // ── HTTP 工具 ────────────────────────────────────────────────────────────────
@@ -158,6 +169,8 @@ export function opsToSnapshot(ops: SyncOp[]): WorkspaceSnapshot {
   const knowledgeMap = new Map<string, KnowledgeNode>()
   const notesByType: Record<string, unknown> = {}
   const noteImages: Record<string, string> = {}
+  let typeRules: TypeRule[] | null = null
+  let dirTree: DirTree | null = null
 
   for (const op of ops) {
     const payload = parsePayload(op.payload)
@@ -198,6 +211,20 @@ export function opsToSnapshot(ops: SyncOp[]): WorkspaceSnapshot {
       case 'note_image_delete':
         delete noteImages[String(op.entity_id)]
         break
+
+      case 'setting_upsert': {
+        const key = String((payload as { key?: string }).key || op.entity_id || '')
+        const value = (payload as { value?: unknown }).value
+        if (key === 'type_rules' && Array.isArray(value)) typeRules = value as TypeRule[]
+        if (key === 'dir_tree' && value && typeof value === 'object') dirTree = value as DirTree
+        break
+      }
+      case 'setting_delete': {
+        const key = String(op.entity_id || '')
+        if (key === 'type_rules') typeRules = null
+        if (key === 'dir_tree') dirTree = null
+        break
+      }
     }
   }
 
@@ -206,6 +233,8 @@ export function opsToSnapshot(ops: SyncOp[]): WorkspaceSnapshot {
     knowledgeNodes: [...knowledgeMap.values()],
     notesByType,
     noteImages,
+    typeRules: typeRules ?? cloneDefaultTypeRules(),
+    dirTree: dirTree ?? cloneDefaultDirTree(),
   }
 }
 

@@ -5,25 +5,30 @@
   width: 100%;
   height: 100vh;
   overflow: hidden;
-  background: #f0f2f5;
+  background:
+    radial-gradient(circle at top left, rgba(255, 226, 214, 0.65), transparent 28%),
+    linear-gradient(180deg, #f7f5f1 0%, #eef2f7 100%);
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
   font-size: 14px;
   color: #333;
 }
 
 .xc-vue-legacy .sidebar {
-  width: 260px;
-  min-width: 260px;
-  background: #fff;
-  border-right: 1px solid #e8e8e8;
+  width: 280px;
+  min-width: 280px;
+  background: linear-gradient(180deg, #fffdfb 0%, #ffffff 100%);
+  border-right: 1px solid #e6e8ee;
+  box-shadow: 12px 0 32px rgba(15, 23, 42, 0.04);
   display: flex;
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  position: relative;
+  z-index: 2;
 }
 
 .xc-vue-legacy .sidebar-logo {
-  padding: 16px 14px 12px;
+  padding: 18px 18px 14px;
   border-bottom: 1px solid #f0f0f0;
   font-size: 15px;
   font-weight: 700;
@@ -172,7 +177,7 @@
 }
 
 .xc-vue-legacy .quiz-block {
-  padding: 12px 14px;
+  padding: 14px 16px;
   border-bottom: 1px solid #f0f0f0;
 }
 
@@ -238,6 +243,26 @@
   background: linear-gradient(135deg, #9333ea, #6b21a8);
 }
 
+.xc-vue-legacy .practice-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.xc-vue-legacy .quiz-btn.quiz-btn--compact {
+  width: auto;
+  padding: 6px 12px;
+  font-size: 12px;
+  margin-top: 0;
+  white-space: nowrap;
+}
+
+.xc-vue-legacy .quiz-btn.quiz-btn--compact .badge {
+  padding: 0 6px;
+  font-size: 10px;
+}
+
 .xc-vue-legacy .today-progress {
   margin-top: 9px;
 }
@@ -269,7 +294,94 @@
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 8px 0;
+  padding: 10px 10px 14px;
+}
+
+.xc-vue-legacy .nav-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 4px 14px 8px;
+}
+
+.xc-vue-legacy .nav-item,
+.xc-vue-legacy .nav-type-header,
+.xc-vue-legacy .nav-subtype,
+.xc-vue-legacy .nav-sub2 {
+  border-radius: 12px;
+  margin: 2px 6px;
+  min-height: 34px;
+}
+
+.xc-vue-legacy .nav-type-header {
+  padding: 7px 14px 7px 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #555;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.xc-vue-legacy .nav-subtype {
+  padding: 5px 14px 5px 28px;
+  font-size: 12.5px;
+  color: #666;
+}
+
+.xc-vue-legacy .nav-sub2 {
+  font-size: 12px;
+  color: #777;
+}
+
+.xc-vue-legacy .knowledge-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.xc-vue-legacy .knowledge-tree-toggle {
+  border: none;
+  background: transparent;
+  color: #aaa;
+  font-size: 10px;
+  width: 14px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.xc-vue-legacy .knowledge-tree-toggle.placeholder {
+  visibility: hidden;
+}
+
+.xc-vue-legacy .knowledge-tree-count {
+  font-size: 11px;
+  color: #aaa;
+  background: #f0f0f0;
+  padding: 1px 6px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.xc-vue-legacy .knowledge-tree-count.is-empty {
+  visibility: hidden;
+}
+
+.xc-vue-legacy .knowledge-tree-node.is-active,
+.xc-vue-legacy .nav-item.active {
+  background: #eef2ff;
+  color: #4a6cf7;
+}
+
+.xc-vue-legacy .expand-btns {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .xc-vue-legacy .nav-scroll::-webkit-scrollbar {
@@ -370,6 +482,9 @@
   flex-direction: column;
   overflow: hidden;
   min-width: 0;
+  padding: 16px 16px 16px 18px;
+  gap: 14px;
+  background: transparent;
 }
 
 .xc-vue-legacy .xc-ws-main-inner {
@@ -379,39 +494,51 @@
   min-height: 0;
   min-width: 0;
   overflow: hidden;
+  gap: 0;
+}
+
+.xc-vue-legacy .workspace-switch-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 4px 12px;
+  flex-shrink: 0;
 }
 
 .xc-vue-legacy .xc-ws-tabs {
   display: flex;
-  background: #fff;
-  border-bottom: 1px solid #e8e8e8;
   flex-shrink: 0;
+  padding: 4px;
+  border-radius: 999px;
+  background: #f6f1eb;
+  border: 1px solid #eadfd4;
 }
 
 .xc-vue-legacy .xc-ws-tabs .tab-btn {
-  flex: 1;
-  padding: 12px 16px;
+  flex: 0 0 auto;
+  min-width: 108px;
+  padding: 8px 18px;
   text-align: center;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: #666;
   border: none;
   background: none;
   cursor: pointer;
-  position: relative;
-  border-bottom: 2px solid transparent;
+  border-radius: 999px;
   transition: 0.2s;
 }
 
 .xc-vue-legacy .xc-ws-tabs .tab-btn:hover {
-  background: #fafafa;
+  background: rgba(255, 255, 255, 0.72);
   color: #333;
 }
 
 .xc-vue-legacy .xc-ws-tabs .tab-btn.active {
   color: #e74c3c;
-  border-bottom-color: #e74c3c;
-  background: #fff2f0;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
 }
 
 .xc-vue-legacy .xc-ws-top-meta {
@@ -419,11 +546,9 @@
   align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
-  gap: 10px;
-  padding: 8px 14px;
-  background: #fff;
-  border-bottom: 1px solid #e8e8e8;
-  flex-shrink: 0;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
   font-size: 12px;
 }
 
@@ -446,6 +571,15 @@
 
 .xc-vue-legacy .tab-content.active {
   display: flex;
+}
+
+.xc-vue-legacy #tabContentErrors .errors-area,
+.xc-vue-legacy #tabContentNotes .notes-area {
+  border: 1px solid #e7ebf1;
+  border-radius: 24px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.96);
 }
 
 .xc-vue-legacy .btn {
@@ -676,8 +810,8 @@
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   touch-action: pan-y;
-  padding: 0;
-  background: #fff;
+  padding: 8px 0 12px;
+  background: transparent;
 }
 
 .xc-vue-legacy .batch-bar {
@@ -714,8 +848,9 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  padding: 12px;
+  padding: 0;
   box-sizing: border-box;
+  background: transparent;
 }
 
 .xc-vue-legacy .errors-header {
@@ -753,9 +888,11 @@
 
 .xc-vue-legacy .search-box input {
   width: 100%;
-  padding: 6px 28px 6px 28px;
-  border: 1px solid #ddd;
-  border-radius: 16px;
+  height: 40px;
+  padding: 6px 28px;
+  border: 1px solid #ebe2d8;
+  border-radius: 14px;
+  background: #faf7f2;
   font-size: 13px;
   outline: none;
   transition: 0.2s;
@@ -793,6 +930,14 @@
 
 .xc-vue-legacy .search-box .search-clear:hover {
   color: #e74c3c;
+}
+
+.xc-vue-legacy .errors-area {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .xc-vue-legacy .date-filter-bar {

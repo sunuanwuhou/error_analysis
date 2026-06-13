@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { reactive, ref, computed } from 'vue'
+import { reactive, ref, computed, watch } from 'vue'
 import { useXingceStore } from '@/stores/xingceStore'
 import type { KnowledgeNode } from '@/api/xingce'
+import { FIXED_TYPES } from '@/lib/xingceDefaults'
 
 const props = defineProps<{
   initialNoteNodeId?: string
@@ -9,8 +10,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{ close: []; added: [] }>()
 const store = useXingceStore()
-
-const TYPES = ['言语理解与表达', '判断推理', '数量关系', '资料分析', '常识判断', '其他']
 
 const STATUS_OPTIONS = [
   { value: 'focus',    label: '重点复习' },
@@ -49,6 +48,23 @@ function walkLeaves(nodes: KnowledgeNode[]): KnowledgeNode[] {
 }
 
 const knowledgeLeaves = computed(() => walkLeaves(store.knowledgeTree))
+
+const subtypeSuggestions = computed(() => store.getSubtypeSuggestions(form.type))
+const subSubtypeSuggestions = computed(() =>
+  store.getSubSubtypeSuggestions(form.type, form.subtype.trim()),
+)
+
+watch(() => form.type, () => {
+  form.subtype = ''
+  form.subSubtype = ''
+})
+
+function onQuestionInput() {
+  const hit = store.autoDetectType(form.question)
+  if (!hit) return
+  if (hit.type) form.type = hit.type
+  if (hit.subtype && !form.subtype.trim()) form.subtype = hit.subtype
+}
 
 function leafLabel(n: KnowledgeNode) {
   const p = store.getNodePathText(n.id)
@@ -110,16 +126,22 @@ function submit() {
             <div class="am-field">
               <label class="am-label">1级 <span class="req">*</span></label>
               <select v-model="form.type" class="am-select">
-                <option v-for="t in TYPES" :key="t">{{ t }}</option>
+                <option v-for="t in FIXED_TYPES" :key="t">{{ t }}</option>
               </select>
             </div>
             <div class="am-field">
               <label class="am-label">2级（模块）<span class="req">*</span></label>
-              <input v-model="form.subtype" class="am-input" placeholder="如：逻辑判断" />
+              <input v-model="form.subtype" class="am-input" list="subtypeDatalist" placeholder="如：逻辑判断" />
+              <datalist id="subtypeDatalist">
+                <option v-for="s in subtypeSuggestions" :key="s" :value="s" />
+              </datalist>
             </div>
             <div class="am-field">
               <label class="am-label">3级（可选）</label>
-              <input v-model="form.subSubtype" class="am-input" placeholder="如：必然推理" />
+              <input v-model="form.subSubtype" class="am-input" list="sub2Datalist" placeholder="如：必然推理" />
+              <datalist id="sub2Datalist">
+                <option v-for="s in subSubtypeSuggestions" :key="s" :value="s" />
+              </datalist>
             </div>
           </div>
 
@@ -131,6 +153,7 @@ function submit() {
               class="am-textarea"
               rows="4"
               placeholder="请输入题目正文"
+              @input="onQuestionInput"
             />
           </div>
 

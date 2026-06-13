@@ -1,0 +1,24 @@
+/* Hide in-shell module portal buttons; switching uses the top tab bar. */
+.app-shell .sidebar-module-portal-slot,
+.app-shell .hub-module-hero-btn,
+.app-shell .suite-topbar-portal,
+.app-shell .bank-drill-topbar-portal,
+.app-shell .iv-topbar-home {
+  display: none !important;
+}
+
+.app-shell__main > * {
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+}
+
+.app-shell__main .sb-page,
+.app-shell__main .hub-page,
+.app-shell__main .xc-vue-legacy,
+.app-shell__main .iv-workspace {
+  min-height: 100% !important;
+  height: 100%;
+  max-height: 100%;
+  box-sizing: border-box;
+}

@@ -1,5 +1,53 @@
 <script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { useXingceStore } from '@/stores/xingceStore'
+import { FIXED_TYPES, type TypeRule } from '@/lib/xingceDefaults'
+
 const emit = defineEmits<{ close: [] }>()
+const store = useXingceStore()
+
+type DraftRule = { keywords: string; type: string; subtype: string }
+
+const draft = ref<DraftRule[]>([])
+
+onMounted(() => {
+  draft.value = store.typeRules.map(r => ({
+    keywords: r.keywords.join(','),
+    type: r.type,
+    subtype: r.subtype || '',
+  }))
+})
+
+function addRule() {
+  draft.value.push({ keywords: '关键词', type: '判断推理', subtype: '' })
+}
+
+function removeRule(i: number) {
+  draft.value.splice(i, 1)
+}
+
+function save() {
+  const rules: TypeRule[] = draft.value
+    .map(r => ({
+      keywords: r.keywords.split(',').map(k => k.trim()).filter(Boolean),
+      type: r.type,
+      subtype: r.subtype.trim(),
+    }))
+    .filter(r => r.keywords.length)
+  store.setTypeRules(rules)
+  window.alert(`规则已保存（共 ${rules.length} 条）`)
+  emit('close')
+}
+
+function reset() {
+  if (!window.confirm('恢复默认规则？当前自定义规则将被清除')) return
+  store.resetTypeRules()
+  draft.value = store.typeRules.map(r => ({
+    keywords: r.keywords.join(','),
+    type: r.type,
+    subtype: r.subtype || '',
+  }))
+}
 </script>
 
 <template>
@@ -7,41 +55,39 @@ const emit = defineEmits<{ close: [] }>()
     <div class="tr-backdrop" @click.self="emit('close')">
       <div class="tr-modal" role="dialog" aria-modal="true" @keydown.escape.prevent="emit('close')">
         <div class="tr-head">
-          <h2 class="tr-title">题型与识别规则</h2>
+          <h2 class="tr-title">题型自动识别规则</h2>
           <button type="button" class="tr-close" title="关闭" @click="emit('close')">×</button>
         </div>
         <div class="tr-body">
           <p class="tr-lead">
-            公务员行政职业能力测验（行测）常见五大模块。录入或导入题目时，「题型 / 子类」用于筛选与统计；旧版支持按关键词顺序匹配自动归类，本工作台亦兼容手动维护字段。
+            按顺序匹配关键词，命中后自动填充录入表单的「题型 / 子类型」。规则会同步到云端。
           </p>
-
-          <section class="tr-block">
-            <h3>言语理解与表达</h3>
-            <p>逻辑填空、片段阅读、语句表达等。关注上下文逻辑与词语搭配。</p>
-          </section>
-          <section class="tr-block">
-            <h3>数量关系</h3>
-            <p>数学运算、数字推理（若考纲含）。侧重建模与速算策略。</p>
-          </section>
-          <section class="tr-block">
-            <h3>判断推理</h3>
-            <p>图形推理、定义判断、类比推理、逻辑判断。强调规则提取与命题结构。</p>
-          </section>
-          <section class="tr-block">
-            <h3>资料分析</h3>
-            <p>表格与文字材料中的增长率、比重、平均数等；精读题干与单位。</p>
-          </section>
-          <section class="tr-block">
-            <h3>常识判断</h3>
-            <p>政治、法律、人文、科技等广泛常识，侧重排除法与知识储备。</p>
-          </section>
-
-          <p class="tr-note">
-            旧版「题型自动识别规则」弹窗按顺序匹配自定义规则；当前 Vue 端以错题条目上的 <strong>type / subtype</strong> 字段为准，可在卡片或导入数据中维护。若需完整可编辑规则表，可在后续版本对接专用配置接口。
-          </p>
+          <div v-if="!draft.length" class="tr-empty">暂无规则</div>
+          <div v-for="(rule, i) in draft" :key="i" class="tr-row">
+            <div class="tr-field tr-field-kw">
+              <label>关键词（逗号分隔）</label>
+              <input v-model="rule.keywords" type="text" />
+            </div>
+            <div class="tr-field tr-field-type">
+              <label>题型</label>
+              <select v-model="rule.type">
+                <option v-for="t in FIXED_TYPES" :key="t">{{ t }}</option>
+              </select>
+            </div>
+            <div class="tr-field tr-field-sub">
+              <label>子类型（可空）</label>
+              <input v-model="rule.subtype" type="text" />
+            </div>
+            <button type="button" class="tr-del" title="删除" @click="removeRule(i)">✕</button>
+          </div>
+          <button type="button" class="tr-add" @click="addRule">＋ 添加规则</button>
         </div>
         <div class="tr-foot">
-          <button type="button" class="tr-btn primary" @click="emit('close')">知道了</button>
+          <button type="button" class="tr-btn" @click="reset">恢复默认</button>
+          <div class="tr-foot-right">
+            <button type="button" class="tr-btn" @click="emit('close')">取消</button>
+            <button type="button" class="tr-btn primary" @click="save">保存</button>
+          </div>
         </div>
       </div>
     </div>
@@ -60,7 +106,7 @@ const emit = defineEmits<{ close: [] }>()
   padding: 16px;
 }
 .tr-modal {
-  width: min(560px, 96vw);
+  width: min(720px, 96vw);
   max-height: 88vh;
   background: #fff;
   border-radius: 12px;
@@ -95,45 +141,80 @@ const emit = defineEmits<{ close: [] }>()
 }
 .tr-body {
   overflow-y: auto;
-  padding: 14px 16px 8px;
+  padding: 14px 16px;
   font-size: 13px;
-  line-height: 1.55;
-  color: #334155;
 }
 .tr-lead {
   margin: 0 0 12px;
-  color: #475569;
-  font-size: 13px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
 }
-.tr-block {
-  margin-bottom: 12px;
-  padding: 10px 12px;
+.tr-empty {
+  text-align: center;
+  color: #cbd5e1;
+  padding: 24px;
+}
+.tr-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  margin-bottom: 10px;
+}
+.tr-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.tr-field label {
+  font-size: 10px;
+  color: #94a3b8;
+}
+.tr-field input,
+.tr-field select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+.tr-field-kw { flex: 2; min-width: 0; }
+.tr-field-type { width: 130px; flex-shrink: 0; }
+.tr-field-sub { flex: 1; min-width: 80px; }
+.tr-del {
+  margin-bottom: 2px;
+  background: none;
+  border: none;
+  color: #cbd5e1;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+  flex-shrink: 0;
+}
+.tr-del:hover { color: #ef4444; }
+.tr-add {
+  margin-top: 4px;
+  border: 1px dashed #cbd5e1;
   background: #f8fafc;
   border-radius: 8px;
-  border: 1px solid #e2e8f0;
-}
-.tr-block h3 {
-  margin: 0 0 6px;
-  font-size: 13px;
-  font-weight: 700;
-  color: #1e293b;
-}
-.tr-block p {
-  margin: 0;
+  padding: 8px 12px;
   font-size: 12px;
   color: #64748b;
-}
-.tr-note {
-  margin: 12px 0 0;
-  font-size: 11px;
-  color: #94a3b8;
-  line-height: 1.45;
+  cursor: pointer;
+  width: 100%;
 }
 .tr-foot {
   padding: 10px 16px 14px;
   border-top: 1px solid #f1f5f9;
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.tr-foot-right {
+  display: flex;
+  gap: 8px;
 }
 .tr-btn {
   border: 1px solid #d9dee5;

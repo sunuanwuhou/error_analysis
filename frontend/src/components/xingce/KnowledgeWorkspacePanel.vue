@@ -5,6 +5,7 @@ import type { KnowledgeNode } from '@/api/xingce'
 import { useXingceStore } from '@/stores/xingceStore'
 import ErrorCard from './ErrorCard.vue'
 import KnowledgeNodeModal from './KnowledgeNodeModal.vue'
+import KnowledgeNoteEditorModal from './KnowledgeNoteEditorModal.vue'
 
 marked.setOptions({ gfm: true, breaks: true })
 
@@ -32,6 +33,8 @@ const nodeModal = ref<{
   parentId?: string
   fallbackTitle?: string
 } | null>(null)
+
+const showNoteEditor = ref(false)
 
 const currentNode = computed(() => {
   const tree = store.knowledgeTree
@@ -136,7 +139,7 @@ function flattenDirectoryTree(nodes: KnowledgeNode[]): DirectorySection[] {
     const markdown = normalizeMd(node.contentMd).trim()
     const kids = node.children ?? []
     const childCount = store.countErrorsForKnowledgeNode(node.id, true)
-    if (markdown || kids.length) {
+    if (markdown || kids.length || childCount) {
       out.push({
         nodeId: node.id,
         title: String(node.title || ''),
@@ -235,6 +238,11 @@ function openDirectoryNode(nodeId: string) {
   directoryPreviewId.value = nodeId
 }
 
+function openPopupEditor() {
+  if (!currentNode.value) return
+  showNoteEditor.value = true
+}
+
 function startEdit() {
   draftMd.value = noteContent.value
   noteEditing.value = true
@@ -273,7 +281,7 @@ defineExpose({ startEdit })
           {{ pathText }}
         </div>
         <div class="knowledge-workspace-node-actions">
-          <button type="button" class="btn btn-sm btn-secondary" @click="startEdit">弹窗编辑</button>
+          <button type="button" class="btn btn-sm btn-secondary" @click="openPopupEditor">弹窗编辑</button>
           <button type="button" class="btn btn-sm btn-secondary" @click="openRename">重命名</button>
           <button type="button" class="btn btn-sm btn-secondary" @click="openMove">移动</button>
           <button type="button" class="btn btn-sm btn-secondary" @click="openCreateChild">+ 新建下级</button>
@@ -444,5 +452,10 @@ defineExpose({ startEdit })
     :fallback-title="nodeModal.fallbackTitle"
     @close="nodeModal = null"
     @done="nodeModal = null"
+  />
+  <KnowledgeNoteEditorModal
+    v-if="showNoteEditor && currentNode"
+    :node-id="currentNode.id"
+    @close="showNoteEditor = false"
   />
 </template>

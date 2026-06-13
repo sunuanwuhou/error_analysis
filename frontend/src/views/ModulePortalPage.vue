@@ -2,8 +2,9 @@
 import { onMounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { fetchMe, hasModule } from '@/api/authMe'
-import { readPortalLastModule, savePortalLastModule } from '@/lib/portalPrefs'
+import { savePortalLastModule } from '@/lib/portalPrefs'
 import type { MeUser, PortalModuleKey } from '@/lib/modules'
+import { defaultShellRouteName } from '@/lib/shellTabs'
 
 const router = useRouter()
 const route = useRoute()
@@ -17,20 +18,10 @@ function can(key: PortalModuleKey) {
 async function maybeAutoEnter() {
   const p = route.query.portal
   if (p === '1' || p === 'true') return
-  const last = readPortalLastModule()
-  if (!last || !can(last)) return
-  if (last === 'xingce') {
-    window.location.replace('/')
-    return
-  }
-  if (last === 'shenlun') {
-    await router.replace({ name: 'ShenlunHub' })
-    return
-  }
-  if (last === 'xingce_suite') {
-    await router.replace({ name: 'XingceSuiteBank' })
-  } else if (last === 'xingce_bank_drill') {
-    await router.replace({ name: 'XingceBankDrill' })
+  if (!me.value) return
+  const target = defaultShellRouteName(me.value)
+  if (target !== 'ModulePortal') {
+    await router.replace({ name: target })
   }
 }
 
@@ -55,17 +46,26 @@ onMounted(async () => {
       <div class="module-portal-brand">Ashore</div>
       <h1 class="module-portal-title">选择模块</h1>
       <p v-if="loading" class="module-portal-desc">正在加载权限…</p>
-      <p v-else class="module-portal-desc">请先选择要进入的模块，再回到对应工作台开始学习。</p>
+      <p v-else class="module-portal-desc">进入后可在顶部 Tab 随时切换模块，无需再回到本页。</p>
       <div v-if="!loading" class="module-portal-actions">
-        <a
+        <RouterLink
           v-if="can('xingce')"
           class="portal-tile portal-tile--xingce"
-          href="/"
+          :to="{ name: 'LegacyXingce' }"
           @click="savePortalLastModule('xingce')"
         >
-          <span class="portal-tile-label">行测</span>
+          <span class="portal-tile-label">旧版行测</span>
           <span class="portal-tile-sub">知识树、练习与错题本（旧版工作台）</span>
-        </a>
+        </RouterLink>
+        <RouterLink
+          v-if="can('xingce')"
+          class="portal-tile portal-tile--xingce-vue"
+          :to="{ name: 'XingceWorkspace' }"
+          @click="savePortalLastModule('xingce_vue')"
+        >
+          <span class="portal-tile-label">vue行测</span>
+          <span class="portal-tile-sub">Vue 工作台 · 知识树、练习与错题本</span>
+        </RouterLink>
         <RouterLink
           v-if="can('xingce_suite')"
           class="portal-tile portal-tile--suite"
@@ -94,6 +94,15 @@ onMounted(async () => {
           <span class="portal-tile-sub">知识树选题、笔记与工作台</span>
         </RouterLink>
         <RouterLink
+          v-if="can('interview')"
+          class="portal-tile portal-tile--interview"
+          :to="{ name: 'InterviewWorkspace' }"
+          @click="savePortalLastModule('interview')"
+        >
+          <span class="portal-tile-label">面试</span>
+          <span class="portal-tile-sub">结构化面试题库、答题框架与练习</span>
+        </RouterLink>
+        <RouterLink
           v-if="me?.is_super_admin"
           class="portal-tile portal-tile--admin"
           :to="{ name: 'AdminUsers' }"
@@ -106,8 +115,7 @@ onMounted(async () => {
         当前账号尚未分配模块权限，请联系管理员。
       </p>
       <p v-else class="module-portal-note">
-        会记住上次选择；需要切换模块时请打开选择页（侧栏「模块首页」，或访问
-        <code>/new/?portal=1</code>、<code>/?portal=1</code>）。
+        日常学习请使用顶部 Tab 切换；本页用于首次进入或查看全部模块说明。
       </p>
     </div>
   </div>
@@ -197,6 +205,12 @@ onMounted(async () => {
   box-shadow: 0 12px 32px rgb(37 99 235 / 0.38);
 }
 
+.portal-tile--xingce-vue {
+  padding: 16px 18px;
+  background: linear-gradient(135deg, #0891b2 0%, #0e7490 52%, #155e75 100%);
+  box-shadow: 0 12px 32px rgb(8 145 178 / 0.38);
+}
+
 .portal-tile--suite {
   padding: 16px 18px;
   background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 52%, #5b21b6 100%);
@@ -213,6 +227,12 @@ onMounted(async () => {
   padding: 16px 18px;
   background: linear-gradient(135deg, #059669 0%, #047857 52%, #065f46 100%);
   box-shadow: 0 12px 32px rgb(5 150 105 / 0.35);
+}
+
+.portal-tile--interview {
+  padding: 16px 18px;
+  background: linear-gradient(135deg, #ea580c 0%, #c2410c 52%, #9a3412 100%);
+  box-shadow: 0 12px 32px rgb(234 88 12 / 0.35);
 }
 
 .portal-tile--admin {

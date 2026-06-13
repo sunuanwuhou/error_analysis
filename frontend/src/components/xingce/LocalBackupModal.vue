@@ -37,7 +37,7 @@ async function createBackup() {
 async function restoreBackup(item: LocalBackupItem) {
   if (!confirm(`恢复备份 ${item.label || item.id}？`)) return
   await xingceApi.restoreLocalBackup(item.id, true)
-  await store.load()
+  await store.load({ force: true })
   emit('close')
 }
 

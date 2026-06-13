@@ -2,12 +2,15 @@
 import { ref } from 'vue'
 import { useXingceStore } from '@/stores/xingceStore'
 import KnowledgeWorkspacePanel from './KnowledgeWorkspacePanel.vue'
+import PracticeActionButtons from './PracticeActionButtons.vue'
 
 const store = useXingceStore()
 const workspaceRef = ref<InstanceType<typeof KnowledgeWorkspacePanel> | null>(null)
 const notesLayoutMode = ref<'list' | 'note'>('note')
 
 const emit = defineEmits<{
+  startQuiz: [mode: 'daily' | 'full' | 'review' | 'retrain']
+  startRandomNote: []
   openImport: []
   openGlobalSearch: []
   openAddForNode: [nodeId: string]
@@ -34,7 +37,11 @@ defineExpose({ enterNoteEdit })
   <div class="notes-area">
     <div class="notes-header">
       <h2>学习笔记</h2>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <div class="notes-header-actions">
+        <PracticeActionButtons
+          @start-quiz="emit('startQuiz', $event)"
+          @start-random-note="emit('startRandomNote')"
+        />
         <button type="button" class="btn btn-secondary" @click="emit('openGlobalSearch')">全局搜索</button>
         <button type="button" class="btn btn-secondary" @click="emit('openImport')">导入错题</button>
         <button
@@ -69,6 +76,13 @@ defineExpose({ enterNoteEdit })
 </template>
 
 <style scoped>
+.notes-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
 .del-node:not(:disabled) {
   border-color: #fecaca;
   color: #b91c1c;

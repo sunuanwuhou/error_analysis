@@ -28,7 +28,7 @@ function kwCollectDirectorySections(currentNode, normalizeMarkdown) {
       : String(node.contentMd || "").trim();
     var childCount = countErrorsForKnowledgeNode(node.id, true);
     var hasChildren = !!(node.children && node.children.length);
-    if (!markdown && !hasChildren) return;
+    if (!markdown && !hasChildren && !childCount) return;
     sections.push({
       nodeId: node.id,
       title: node.title || "",
@@ -50,7 +50,7 @@ function kwBuildDirectoryTree(node, normalizeMarkdown) {
     return kwBuildDirectoryTree(child, normalizeMarkdown);
   }).filter(Boolean);
   var childCount = countErrorsForKnowledgeNode(node.id, true);
-  if (!markdown && !children.length) return null;
+  if (!markdown && !children.length && !childCount) return null;
   return {
     nodeId: node.id,
     title: node.title || "",

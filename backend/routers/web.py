@@ -47,10 +47,28 @@ def health() -> dict[str, Any]:
     return {"ok": True, "time": utcnow().isoformat()}
 
 @router.get("/")
-def root(xingce_session: Optional[str] = Cookie(default=None)) -> Response:
+def root(
+    request: Request,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> Response:
     user = get_user_by_token(xingce_session)
     if not user:
         return _redirect_login_with_cookie_cleanup()
+    embed = (request.query_params.get("embed") or "").lower()
+    portal = (request.query_params.get("portal") or "").lower()
+    if embed == "1":
+        return FileResponse(
+            V51_INDEX_PATH,
+            headers={
+                "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            },
+        )
+    if portal in ("1", "true", "yes") and _new_frontend_ready():
+        return RedirectResponse(url="/new/portal", status_code=302)
+    if _new_frontend_ready():
+        return RedirectResponse(url="/new/", status_code=302)
     return FileResponse(
         V51_INDEX_PATH,
         headers={

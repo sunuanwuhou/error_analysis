@@ -605,3 +605,72 @@ def init_suite_bank_tables() -> None:
     migrate_suite_practice_records_schema()
     migrate_suite_drill_history()
     migrate_suite_drill_exports()
+
+
+def init_interview_tables() -> None:
+    with get_conn() as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS interview_questions (
+              id TEXT PRIMARY KEY,
+              category TEXT NOT NULL,
+              difficulty INTEGER NOT NULL DEFAULT 2,
+              question_text TEXT NOT NULL,
+              framework TEXT NOT NULL DEFAULT '',
+              sample_answer TEXT NOT NULL DEFAULT '',
+              source TEXT NOT NULL DEFAULT '',
+              created_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_interview_questions_category
+            ON interview_questions(category, created_at DESC)
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS interview_practice_records (
+              id TEXT PRIMARY KEY,
+              user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              question_id TEXT NOT NULL REFERENCES interview_questions(id) ON DELETE CASCADE,
+              my_answer TEXT NOT NULL DEFAULT '',
+              note TEXT NOT NULL DEFAULT '',
+              is_starred BOOLEAN NOT NULL DEFAULT FALSE,
+              practiced_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL,
+              UNIQUE (user_id, question_id)
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_interview_records_user_time
+            ON interview_practice_records(user_id, updated_at DESC)
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS interview_categories (
+              id TEXT PRIMARY KEY,
+              label TEXT NOT NULL UNIQUE,
+              sort_order INTEGER NOT NULL DEFAULT 0,
+              created_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_interview_categories_sort
+            ON interview_categories(sort_order ASC, created_at ASC)
+            """
+        )
+        conn.commit()
+
+    from backend.services.interview_categories import seed_interview_categories_if_empty
+    from backend.services.interview_records import migrate_interview_practice_records_schema
+
+    migrate_interview_practice_records_schema()
+    seed_interview_categories_if_empty()
+

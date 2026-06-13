@@ -18,9 +18,9 @@
 </div>
 <div class="sidebar-tools">
 <div class="sidebar-tools-row sidebar-module-portal-slot">
-<button class="btn btn-module-portal-hero" data-onclick="window.location.href='/?portal=1'" id="sidebarModuleHomeBtn" type="button">
-<span class="btn-module-portal-main">模块首页</span>
-<span class="btn-module-portal-sub">选择行测 / 申论模块</span>
+<button class="btn btn-module-portal-hero" data-onclick="if(window.parent!==window){try{window.parent.focus()}catch(e){}}else{window.location.href='/new/portal'}" id="sidebarModuleHomeBtn" type="button">
+<span class="btn-module-portal-main">切换模块</span>
+<span class="btn-module-portal-sub">使用顶部 Tab 切换</span>
 </button>
 </div>
 <div class="sidebar-tools-row">
@@ -68,18 +68,7 @@
 </div>
 </div>
 </div>
-<div class="quiz-block">
-<button class="quiz-btn" data-onclick="startQuiz()" id="quizBtn">
-<span>今日训练</span>
-<span class="badge" id="quizBadge">0</span>
-</button>
-<button class="quiz-btn" data-onclick="startFullPractice()" id="fullPracticeBtn" style="margin-top:6px;background:linear-gradient(135deg,#3498db,#2471a3)">
-<span>全量练习</span>
-<span class="badge" id="fullPracticeBadge">0</span>
-</button>
-<button class="quiz-btn" data-onclick="startRandomNoteReview()" id="randomNoteBtn" style="margin-top:6px;background:linear-gradient(135deg,#16a34a,#15803d)">
-<span>随机笔记</span>
-</button>
+<div class="sidebar-progress-block">
 <div class="today-progress">
 <div class="prog-label"><span>今日进度</span><span id="progText">0/0</span></div>
 <div class="prog-bar-bg"><div class="prog-bar-fill" id="progFill" style="width:0%"></div></div>
@@ -154,11 +143,26 @@
 <div class="notes-area">
 <div class="notes-header">
 <h2>学习笔记</h2>
-<div style="display:flex;gap:8px">
+<div class="notes-header-actions">
+<div class="practice-action-bar">
+<button class="quiz-btn quiz-btn--compact" data-onclick="startQuiz()" id="quizBtn" type="button">
+<span>今日训练</span>
+<span class="badge" id="quizBadge">0</span>
+</button>
+<button class="quiz-btn quiz-btn--compact full-practice" data-onclick="startFullPractice()" id="fullPracticeBtn" type="button">
+<span>全量练习</span>
+<span class="badge" id="fullPracticeBadge">0</span>
+</button>
+<button class="quiz-btn quiz-btn--compact random-note" data-onclick="startRandomNoteReview()" id="randomNoteBtn" type="button">
+<span>随机笔记</span>
+</button>
+</div>
+<div class="notes-header-tools">
 <button class="btn btn-secondary" data-onclick="openGlobalSearchModal()">全局搜索</button>
 <button class="btn btn-secondary" data-onclick="openImportModalForCurrentKnowledge()">导入错题</button>
 <button class="btn btn-secondary" data-onclick="deleteSelectedKnowledgeNode()">删除知识点</button>
 <button class="btn btn-secondary" data-onclick="clearNotes()">清空</button>
+</div>
 </div>
 </div>
 <div class="notes-content" id="notesContent"></div>
