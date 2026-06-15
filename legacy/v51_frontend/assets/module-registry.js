@@ -9,6 +9,7 @@
       'openQuickAddModal',
       'startQuiz',
       'startFullPractice',
+      'startRandomNoteReview',
     ],
     bootScripts: [
       '/assets/modules/mathjax-config.js',

@@ -32,7 +32,7 @@ const answeredEntryById = ref<Record<string, ErrorEntry>>({})
 
 const TITLE_MAP: Record<QuizMode, string> = {
   daily:   '📝 今日复习',
-  full:    '📚 随机一个模块出题',
+  full:    '📚 全量练习',
   review:  '🧩 待复盘训练',
   retrain: '🔁 待复训训练',
 }

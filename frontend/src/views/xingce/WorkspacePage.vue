@@ -267,22 +267,6 @@ function onPickSuite(paperId: string, questionId: string) {
               </button>
             </div>
             <div class="xc-ws-top-meta">
-              <span v-if="store.currentUser" class="xc-user-pill">{{ store.currentUser.username }}</span>
-              <span
-                v-if="mainTab === 'errors'"
-                class="xc-mini-count"
-                title="当前筛选 / 全库"
-              >
-                {{ store.filteredErrors.length }} / {{ store.workspaceErrors.length }} 题
-              </span>
-              <button
-                v-if="store.activeNodeId || store.statusFilter !== 'all' || store.taskFilter !== 'all' || store.reasonFilter || store.dateFrom || store.dateTo || store.searchQuery"
-                type="button"
-                class="btn btn-sm btn-secondary"
-                @click="store.clearFilters()"
-              >
-                清除筛选
-              </button>
               <span v-if="store.saving" class="xc-save-pill saving">保存中…</span>
               <span v-else-if="store.lastSavedAt" class="xc-save-pill saved">已保存</span>
             </div>

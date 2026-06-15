@@ -115,6 +115,7 @@ const DEFERRED_MODAL_ACTIONS = new Set([
   'openQuickAddModal',
   'startQuiz',
   'startFullPractice',
+  'startRandomNoteReview',
 ]);
 
 function installDeferredAction(name) {

@@ -176,6 +176,20 @@
   min-width: 0;
 }
 
+.xc-vue-legacy .sidebar-progress-block {
+  margin: 12px 12px 8px;
+  padding: 12px 14px;
+  border: 1px solid #f1dfd2;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #fffaf6, #fff);
+  box-shadow: 0 8px 20px rgba(191, 64, 41, 0.05);
+  flex-shrink: 0;
+}
+
+.xc-vue-legacy .sidebar-progress-block .today-progress {
+  margin-top: 0;
+}
+
 .xc-vue-legacy .quiz-block {
   padding: 14px 16px;
   border-bottom: 1px solid #f0f0f0;

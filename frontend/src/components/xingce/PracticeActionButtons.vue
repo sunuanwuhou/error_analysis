@@ -34,24 +34,6 @@ const emit = defineEmits<{
       <span class="badge">{{ fullBadge }}</span>
     </button>
     <button
-      v-if="store.reviewBadge > 0"
-      type="button"
-      class="quiz-btn quiz-btn--compact review-queue"
-      @click="emit('startQuiz', 'review')"
-    >
-      <span>待复盘</span>
-      <span class="badge">{{ store.reviewBadge }}</span>
-    </button>
-    <button
-      v-if="store.retrainBadge > 0"
-      type="button"
-      class="quiz-btn quiz-btn--compact retrain-queue"
-      @click="emit('startQuiz', 'retrain')"
-    >
-      <span>待复训</span>
-      <span class="badge">{{ store.retrainBadge }}</span>
-    </button>
-    <button
       type="button"
       class="quiz-btn quiz-btn--compact random-note"
       data-testid="practice-random-note"

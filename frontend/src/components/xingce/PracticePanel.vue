@@ -11,6 +11,18 @@ onMounted(() => {
   store.loadPracticePanel()
 })
 
+const progressText = computed(() => {
+  const done = store.todayDone || 0
+  const total = store.todayTotal || 0
+  return `${done}/${total}`
+})
+
+const progressPct = computed(() => {
+  const total = store.todayTotal || 0
+  if (!total) return 0
+  return Math.max(0, Math.min(100, Math.round(((store.todayDone || 0) / total) * 100)))
+})
+
 const cloudDetailsExpanded = ref(false)
 
 function toggleCloudDetails() {
@@ -56,7 +68,15 @@ const emit = defineEmits<{
 }>()
 
 function goModuleHome() {
-  window.location.href = '/?portal=1'
+  if (window.parent !== window) {
+    try {
+      window.parent.focus()
+    } catch {
+      /* ignore */
+    }
+    return
+  }
+  window.location.href = '/new/?portal=1'
 }
 
 async function logout() {
@@ -73,8 +93,8 @@ async function logout() {
     <div class="sidebar-tools">
       <div class="sidebar-tools-row sidebar-module-portal-slot">
         <button type="button" class="btn btn-module-portal-hero" @click="goModuleHome">
-          <span class="btn-module-portal-main">模块首页</span>
-          <span class="btn-module-portal-sub">选择行测 / 申论模块</span>
+          <span class="btn-module-portal-main">切换模块</span>
+          <span class="btn-module-portal-sub">使用顶部 Tab 切换</span>
         </button>
       </div>
       <div class="sidebar-tools-row">
@@ -124,6 +144,17 @@ async function logout() {
           <button type="button" class="btn btn-secondary" @click="store.load({ force: true })">Cloud Load</button>
           <button type="button" class="btn btn-secondary" @click="store.flushSave()">Cloud Save</button>
           <button type="button" class="btn btn-secondary" @click="logout">Logout</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-progress-block">
+      <div class="today-progress">
+        <div class="prog-label">
+          <span>今日进度</span><span>{{ progressText }}</span>
+        </div>
+        <div class="prog-bar-bg">
+          <div class="prog-bar-fill" :style="{ width: progressPct + '%' }" />
         </div>
       </div>
     </div>

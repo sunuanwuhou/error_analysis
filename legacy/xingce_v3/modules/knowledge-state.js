@@ -326,7 +326,8 @@
       selectedKnowledgeNodeId = allNodes[0].id;
     }
     syncKnowledgeNotesFromTree();
-    if (options.persist && changed) saveData();
+    var canPersistErrors = typeof hasFullWorkspaceDataLoaded !== "function" || hasFullWorkspaceDataLoaded();
+    if (options.persist && changed && canPersistErrors) saveData();
     if (options.persist) saveKnowledgeState();
   }
 

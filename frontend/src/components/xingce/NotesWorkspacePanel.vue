@@ -42,18 +42,20 @@ defineExpose({ enterNoteEdit })
           @start-quiz="emit('startQuiz', $event)"
           @start-random-note="emit('startRandomNote')"
         />
-        <button type="button" class="btn btn-secondary" @click="emit('openGlobalSearch')">全局搜索</button>
-        <button type="button" class="btn btn-secondary" @click="emit('openImport')">导入错题</button>
-        <button
-          type="button"
-          class="btn btn-secondary del-node"
-          title="删除当前选中的叶子知识点（有子节点或直属错题时不可删）"
-          :disabled="!store.activeNodeId"
-          @click="onDeleteKnowledgeNode"
-        >
-          删除知识点
-        </button>
-        <button type="button" class="btn btn-secondary" @click="onClearNotes">清空</button>
+        <div class="notes-header-tools">
+          <button type="button" class="btn btn-secondary" @click="emit('openGlobalSearch')">全局搜索</button>
+          <button type="button" class="btn btn-secondary" @click="emit('openImport')">导入错题</button>
+          <button
+            type="button"
+            class="btn btn-secondary del-node"
+            title="删除当前选中的叶子知识点（有子节点或直属错题时不可删）"
+            :disabled="!store.activeNodeId"
+            @click="onDeleteKnowledgeNode"
+          >
+            删除知识点
+          </button>
+          <button type="button" class="btn btn-secondary" @click="onClearNotes">清空</button>
+        </div>
       </div>
     </div>
     <div

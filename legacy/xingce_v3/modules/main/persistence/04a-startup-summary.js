@@ -74,3 +74,13 @@ function persistStartupSummary(errorsText) {
     console.warn('[persistStartupSummary] failed', e);
   }
 }
+
+async function persistStartupSummaryNow(errorsText) {
+  try {
+    const summary = buildStartupSummary(String(errorsText || '').length);
+    if (typeof cancelPendingPersist === 'function') cancelPendingPersist(KEY_STARTUP_SUMMARY);
+    await DB.set(KEY_STARTUP_SUMMARY, JSON.stringify(summary));
+  } catch (e) {
+    console.warn('[persistStartupSummaryNow] failed', e);
+  }
+}

@@ -274,6 +274,9 @@ async function _applyCloudBackupStaged(data, updatedAt, opts) {
   }));
   setCloudSyncState('saving', `正在同步云端错题 ${summary.errors || errors.length} 条`, syncAt);
   await delayCloudRestore(0);
+  if (typeof flushPendingPersists === 'function') {
+    await flushPendingPersists([KEY_ERRORS, KEY_REVEALED, KEY_EXP_TYPES, KEY_EXP_MAIN, KEY_EXP_SUB2]);
+  }
 
   withCloudAutoSaveSuppressed(() => withIncrementalSyncSuppressed(() => {
     _typeRules = data.typeRules || null;
@@ -325,6 +328,13 @@ async function _applyCloudBackupStaged(data, updatedAt, opts) {
     if (typeof renderNotesByType === 'function') renderNotesByType();
     if (typeof renderNotesPanelRight === 'function') renderNotesPanelRight();
   }
+  if (typeof flushPendingPersists === 'function') await flushPendingPersists();
+  if (typeof persistStartupSummaryNow === 'function') {
+    await persistStartupSummaryNow(JSON.stringify(errors));
+  }
+  fullDataLoaded = true;
+  setErrorSyncSnapshot();
+  setWorkspaceSyncSnapshot();
   if (!opts.skipCompletionAlert) {
     const errCount = errors.length;
     const noteCount = Object.keys(notesByType || {}).length;

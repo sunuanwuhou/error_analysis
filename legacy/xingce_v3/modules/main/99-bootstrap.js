@@ -174,13 +174,26 @@ if (typeof window !== 'undefined') {
       await ensureLegacyWorkspaceBundleLoaded();
       return true;
     }
-    if (legacyModalBundleLoaded) return false;
+    const modalLikelyNames = new Set([
+      'startRandomNoteReview',
+      'openQuickAddModal',
+      'startQuiz',
+      'startFullPractice',
+      'openModal',
+      'closeModal',
+      'showToast',
+    ]);
+    if (legacyModalBundleLoaded && missingName && typeof window[missingName] !== 'function') {
+      legacyModalBundleLoaded = false;
+    }
+    if (legacyModalBundleLoaded && !modalLikelyNames.has(missingName)) return false;
     await ensureLegacyModalBundleLoaded();
-    return true;
+    return typeof window[missingName] === 'function' || modalLikelyNames.has(missingName);
   };
 }
 
 (async () => {
+  try {
   const ALL_KEYS = [
     KEY_ERRORS, KEY_REVEALED, KEY_EXP_TYPES, KEY_EXP_MAIN, KEY_EXP_SUB2,
     KEY_GLOBAL_NOTE, KEY_TODAY_DATE, KEY_TODAY_DONE, KEY_HISTORY,
@@ -192,7 +205,7 @@ if (typeof window !== 'undefined') {
     ? shouldDeferFullDataLoadOnStartup()
     : false;
   await loadData({ deferErrors: deferErrorsOnStartup });
-  ensureKnowledgeState({ persist: true });
+  // ensureKnowledgeState is defined in workspace bundle; do not eager-load it here.
   if (typeof hasFullWorkspaceDataLoaded !== 'function' || hasFullWorkspaceDataLoaded()) {
     const allTypes = [...new Set(errors.map(e => e.type))];
     allTypes.forEach(t => expMain.add(t));
@@ -225,6 +238,9 @@ if (typeof window !== 'undefined') {
   }, 4000);
 
   window.addEventListener('beforeunload', () => {
+    if (typeof flushPendingPersists === 'function') {
+      flushPendingPersists().catch(() => {});
+    }
     if (typeof isManualCloudSyncOnly === 'function' && isManualCloudSyncOnly()) return;
     if (cloudSaveTimer) {
       clearTimeout(cloudSaveTimer);
@@ -254,4 +270,7 @@ if (typeof window !== 'undefined') {
       scheduleForegroundCloudWakeCheck();
     }
   }, 3 * 60 * 1000);
+  } catch (error) {
+    console.error('[bootstrap] startup failed', error);
+  }
 })();

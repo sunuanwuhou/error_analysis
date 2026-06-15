@@ -2,10 +2,14 @@
 // Load and hydrate workspace data
 // ============================================================
 async function loadFullErrorsFromDb() {
+  if (typeof cancelPendingPersist === 'function') cancelPendingPersist(KEY_ERRORS);
   try {
-    errors = (JSON.parse(await DB.get(KEY_ERRORS)) || getInitialData()).map(item => normalizeEntryRecord(item, 'error'));
+    const raw = await DB.get(KEY_ERRORS);
+    errors = raw
+      ? (JSON.parse(raw) || []).map(item => normalizeEntryRecord(item, 'error'))
+      : [];
   } catch (e) {
-    errors = getInitialData();
+    errors = [];
   }
   fullDataLoaded = true;
   fullDataLoading = false;
@@ -63,6 +67,9 @@ async function ensureFullWorkspaceDataLoaded() {
       await loadFullErrorsFromDb();
       await migrateIntegerIds();
       setErrorSyncSnapshot();
+      if (typeof ensureKnowledgeState === 'function') {
+        ensureKnowledgeState({ persist: true, syncErrors: true, repair: false });
+      }
       if (typeof syncNotesWithErrors === 'function') syncNotesWithErrors();
       refreshSidebarErrorsAndNotesPanels();
       return true;

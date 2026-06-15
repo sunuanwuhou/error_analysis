@@ -103,7 +103,8 @@ function ensureKnowledgeState(opts) {
     knowledgeErrorCountCacheVersion += 1;
   }
   syncKnowledgeNotesFromTree();
-  if (options.persist && changed) {
+  const canPersistErrors = typeof hasFullWorkspaceDataLoaded !== 'function' || hasFullWorkspaceDataLoaded();
+  if (options.persist && changed && canPersistErrors) {
     saveData();
   }
   if (options.persist) {
