@@ -53,7 +53,10 @@ async function queueDeferredCloudRestore(meta, opts) {
 
 async function maybeRestoreCloudBackup() {
   if (typeof isManualCloudSyncOnly === 'function' && isManualCloudSyncOnly()) return;
-  if (typeof hasFullWorkspaceDataLoaded === 'function' && !hasFullWorkspaceDataLoaded()) return;
+  // Deferred error load should not block restore when notes/knowledge are already missing locally.
+  if (typeof hasFullWorkspaceDataLoaded === 'function'
+    && !hasFullWorkspaceDataLoaded()
+    && hasLocalWorkspaceData()) return;
   if (!cloudUser || cloudBusy) return;
   cloudBusy = true;
   try {

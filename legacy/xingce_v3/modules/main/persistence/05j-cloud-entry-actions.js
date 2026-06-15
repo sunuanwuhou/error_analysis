@@ -105,6 +105,20 @@ async function loadCloudIncrementalFromSidebar(opts) {
     return;
   }
   if (incrementalSyncBusy || cloudBusy) return;
+  const localEmpty = typeof hasLocalWorkspaceData === 'function' && !hasLocalWorkspaceData();
+  if (localEmpty && !opts.forceIncremental) {
+    setCloudSyncState('saving', '本地无数据，正在从云端全量恢复', '');
+    await loadCloudBackup({
+      silent: opts.silent,
+      askBeforeRestore: false,
+      skipCompletionAlert: true,
+    });
+    if (cloudSyncState !== 'error') {
+      setCloudSyncState('synced', '已从云端全量恢复', cloudSyncUpdatedAt || new Date().toISOString());
+      if (!opts.silent) showCloudInfo('Cloud full restore completed', opts);
+    }
+    return;
+  }
   setCloudSyncState('saving', '正在从云端拉取增量更新', '');
   try {
     await syncWithServer({
@@ -113,7 +127,6 @@ async function loadCloudIncrementalFromSidebar(opts) {
       resetCursor: Boolean(opts.resetCursor)
     });
     if (cloudSyncState !== 'error') {
-      setCloudSyncState('synced', '云端增量同步完成', cloudSyncUpdatedAt || new Date().toISOString());
       if (!opts.silent) showCloudInfo('Incremental cloud pull completed', opts);
     }
   } catch (e) {

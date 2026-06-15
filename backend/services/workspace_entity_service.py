@@ -703,17 +703,10 @@ def ensure_workspace_entities_seeded(user_id: str, conn: sqlite3.Connection) -> 
         )
 
 
-def list_current_sync_ops(user_id: str, conn: sqlite3.Connection) -> list[dict[str, Any]]:
-    ensure_workspace_entities_seeded(user_id, conn)
-    rows = conn.execute(
-        """
-        SELECT entity_type, entity_id, payload_json, updated_at
-        FROM state_entities
-        WHERE user_id = ? AND entity_type IN ('error', 'note_type', 'note_image', 'knowledge_node', 'setting') AND deleted_at = ''
-        ORDER BY updated_at ASC, entity_type ASC, entity_id ASC
-        """,
-        (user_id,),
-    ).fetchall()
+SYNC_SNAPSHOT_PAGE_SIZE = 50
+
+
+def _rows_to_snapshot_sync_ops(rows: list[Any]) -> list[dict[str, Any]]:
     ops: list[dict[str, Any]] = []
     for row in rows:
         upsert_op = ENTITY_SYNC_OPS[row["entity_type"]][0]
@@ -726,6 +719,49 @@ def list_current_sync_ops(user_id: str, conn: sqlite3.Connection) -> list[dict[s
                 "created_at": row["updated_at"],
             }
         )
+    return ops
+
+
+def list_current_sync_ops_page(
+    user_id: str,
+    conn: sqlite3.Connection,
+    cursor_at: str = "",
+    cursor_entity_type: str = "",
+    cursor_entity_id: str = "",
+    limit: int = SYNC_SNAPSHOT_PAGE_SIZE,
+) -> tuple[list[dict[str, Any]], bool, tuple[str, str, str]]:
+    ensure_workspace_entities_seeded(user_id, conn)
+    page_limit = max(1, min(int(limit or SYNC_SNAPSHOT_PAGE_SIZE), 200))
+    params: list[Any] = [user_id]
+    where = (
+        "user_id = ? AND entity_type IN ('error', 'note_type', 'note_image', 'knowledge_node', 'setting') "
+        "AND deleted_at = ''"
+    )
+    if cursor_at:
+        where += " AND (updated_at, entity_type, entity_id) > (?, ?, ?)"
+        params.extend([cursor_at, cursor_entity_type, cursor_entity_id])
+    params.append(page_limit + 1)
+    rows = conn.execute(
+        f"""
+        SELECT entity_type, entity_id, payload_json, updated_at
+        FROM state_entities
+        WHERE {where}
+        ORDER BY updated_at ASC, entity_type ASC, entity_id ASC
+        LIMIT ?
+        """,
+        tuple(params),
+    ).fetchall()
+    has_more = len(rows) > page_limit
+    rows = rows[:page_limit]
+    next_cursor = ("", "", "")
+    if rows:
+        last = rows[-1]
+        next_cursor = (str(last["updated_at"] or ""), str(last["entity_type"] or ""), str(last["entity_id"] or ""))
+    return _rows_to_snapshot_sync_ops(rows), has_more, next_cursor
+
+
+def list_current_sync_ops(user_id: str, conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    ops, _, _ = list_current_sync_ops_page(user_id, conn, limit=10_000)
     return ops
 
 

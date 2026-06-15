@@ -66,13 +66,13 @@ async function clearWorkspaceStorageForRemoteRestore() {
     KEY_DIR_TREE, KEY_KNOWLEDGE_TREE, KEY_KNOWLEDGE_NOTES
   ];
   await Promise.all(keys.map(key => DB.remove(key)));
-  ['lastSyncCursorAt', 'lastSyncCursorId'].forEach(key => {
+  ['lastSyncCursorAt', 'lastSyncCursorEntityType', 'lastSyncCursorId'].forEach(key => {
     try { localStorage.removeItem(key); } catch (e) {}
   });
 }
 
 function clearLocalSyncMarkers() {
-  ['lastSyncCursorAt', 'lastSyncCursorId'].forEach(key => {
+  ['lastSyncCursorAt', 'lastSyncCursorEntityType', 'lastSyncCursorId'].forEach(key => {
     try { localStorage.removeItem(key); } catch (e) {}
   });
   setErrorSyncSnapshot(new Map());

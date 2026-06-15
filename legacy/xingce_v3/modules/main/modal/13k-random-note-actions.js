@@ -25,6 +25,23 @@ function _openRandomNoteInWorkspace(nodeId) {
   let attempts = 0;
   const locate = () => {
     attempts += 1;
+    if (typeof _isRandomNoteByTypeId === 'function' && _isRandomNoteByTypeId(nodeId)) {
+      const pathTitles = (typeof _randomNoteByTypeKey === 'function' ? _randomNoteByTypeKey(nodeId) : '')
+        .split('::')
+        .filter(Boolean);
+      if (pathTitles.length && typeof getKnowledgeNodeByPathTitles === 'function') {
+        const node = getKnowledgeNodeByPathTitles(pathTitles);
+        if (node && typeof setCurrentKnowledgeNode === 'function') {
+          setCurrentKnowledgeNode(node.id, { switchTab: true, mode: 'note' });
+          return;
+        }
+      }
+      const typeKey = pathTitles[0] || '';
+      if (typeKey && typeof selectNoteType === 'function') {
+        selectNoteType(typeKey);
+        return;
+      }
+    }
     if (typeof setCurrentKnowledgeNode === 'function') {
       setCurrentKnowledgeNode(nodeId, { switchTab: true, mode: 'note' });
       return;
@@ -110,6 +127,9 @@ async function startRandomNoteAllPractice(limit) {
 }
 
 function startRandomNoteReview() {
+  if (typeof ensureKnowledgeState === 'function') {
+    ensureKnowledgeState({ repair: false, persist: false });
+  }
   randomNoteSkipSet = new Set();
   const queue = _buildRandomNoteReviewQueue('');
   if (!queue.length) {

@@ -44,6 +44,33 @@ function _computeRandomNotePracticePriority(errorItem) {
 
 function _collectErrorsForRandomNotePractice(nodeId) {
   if (!nodeId || typeof getErrorEntries !== 'function') return [];
+  if (typeof _isRandomNoteByTypeId === 'function' && _isRandomNoteByTypeId(nodeId)) {
+    const pathTitles = (typeof _randomNoteByTypeKey === 'function' ? _randomNoteByTypeKey(nodeId) : '')
+      .split('::')
+      .filter(Boolean);
+    const typeKey = pathTitles[0] || '';
+    if (!typeKey) return [];
+    if (pathTitles.length > 1 && typeof getKnowledgeNodeByPathTitles === 'function') {
+      const node = getKnowledgeNodeByPathTitles(pathTitles);
+      if (node && typeof getKnowledgeDescendantNodeIds === 'function') {
+        const idSet = new Set((getKnowledgeDescendantNodeIds(node) || []).map(id => String(id)));
+        idSet.add(String(node.id));
+        return getErrorEntries().filter((e) => {
+          const boundId = typeof resolveErrorKnowledgeNodeId === 'function'
+            ? resolveErrorKnowledgeNodeId(e)
+            : String(e.noteNodeId || '');
+          if (!boundId || !idSet.has(String(boundId))) return false;
+          if (typeof isEffectivelyMastered === 'function' && isEffectivelyMastered(e)) return false;
+          return true;
+        });
+      }
+    }
+    return getErrorEntries().filter((e) => {
+      if (!e || String(e.type || '') !== typeKey) return false;
+      if (typeof isEffectivelyMastered === 'function' && isEffectivelyMastered(e)) return false;
+      return true;
+    });
+  }
   const idSet = new Set([String(nodeId)]);
   if (typeof getKnowledgeNodeById === 'function' && typeof getKnowledgeDescendantNodeIds === 'function') {
     const node = getKnowledgeNodeById(nodeId);

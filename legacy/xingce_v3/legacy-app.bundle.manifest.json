@@ -1,8 +1,8 @@
 {
-  "built_at": "2026-06-15T07:35:16Z",
+  "built_at": "2026-06-15T11:27:30Z",
   "css_bundle": {
     "path": "legacy/xingce_v3/styles/legacy-app.bundle.css",
-    "sha256": "569a8898eca6788d44c8be684ca0177755d48298f6d5792fe66246dcebe6e50b",
+    "sha256": "667b77f26887395e13cf09f58545a189601f15e0dedb1acf3cdb255f8069d2bf",
     "sources": [
       "styles/main/00-base-reset.css",
       "styles/main/01-sidebar.css",
@@ -45,7 +45,7 @@
   },
   "js_bundle": {
     "path": "legacy/xingce_v3/modules/legacy-app.bundle.js",
-    "sha256": "e1f202fba175880239d950c8bff36993a855fe2dff269e4908b4dc58280a0968",
+    "sha256": "1466ea00c07bcc3118ca4ad7aa06a7b4c75316ee2bc7c22374885ea369a8fbed",
     "sources": [
       "modules/main/00-event-dispatcher.js",
       "modules/main/state/01a-reason-utils.js",
@@ -190,7 +190,7 @@
   "js_view_bundles": {
     "home": {
       "path": "legacy/xingce_v3/modules/legacy-app.home.bundle.js",
-      "sha256": "e0437e0196a07d137602620b4f28fc535d6b0f171e95bead48ac764477d28aa5",
+      "sha256": "c6b48e790aacaa4661bbaf5575e406f3ccf10514dbce731fd047c98c838355a5",
       "sources": [
         "modules/main/00-event-dispatcher.js",
         "modules/main/state/01a-reason-utils.js",
@@ -245,7 +245,7 @@
     },
     "workspace": {
       "path": "legacy/xingce_v3/modules/legacy-app.workspace.bundle.js",
-      "sha256": "67c3d9a3ae2e39fb59156ab8322f104cbe55b952f05efe1111d292c1108fba5a",
+      "sha256": "cfe663f294c35e9d1a9c178f4c1ee6107c23cc67be24a2897dddc4cfc29f3e83",
       "sources": [
         "modules/main/10-notes-panel.js",
         "modules/main/11-typed-note-tree.js",
@@ -294,7 +294,7 @@
     },
     "modal": {
       "path": "legacy/xingce_v3/modules/legacy-app.modal.bundle.js",
-      "sha256": "92691c12b10db0192b913facf068602c054b4fe699831aed1342d9afc773319c",
+      "sha256": "ca3fd5fa3d31458d8f5ef73945963e02d1659e6cc7438afe37e7be8f0de8d36a",
       "sources": [
         "modules/main/06-ai-workbench.js",
         "modules/main/image/07a-image-value-utils.js",
@@ -344,7 +344,7 @@
     },
     "bootstrap": {
       "path": "legacy/xingce_v3/modules/legacy-app.bootstrap.bundle.js",
-      "sha256": "66bd7ad30bf528b2004576f441e3d0194e0e97f49680cef82db55f97c8217d97",
+      "sha256": "5cd96a0a2807efa9100c0bbebd374ac5a503391fa5d47942b099a7d17e1ebb70",
       "sources": [
         "modules/main/99-bootstrap.js"
       ]

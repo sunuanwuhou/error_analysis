@@ -11,7 +11,6 @@ from backend.core import (
     apply_sync_op_to_state_entity,
     cleanup_old_ops,
     get_workspace_snapshot_updated_at,
-    list_current_sync_ops,
     list_origin_statuses,
     require_user,
     upsert_origin_status,
@@ -22,7 +21,11 @@ from backend.schemas import (
     SyncPushPayload,
 )
 from backend.security import utcnow
-from backend.services.workspace_entity_service import DELETE_TO_ENTITY_TYPE, UPSERT_TO_ENTITY_TYPE
+from backend.services.workspace_entity_service import (
+    DELETE_TO_ENTITY_TYPE,
+    UPSERT_TO_ENTITY_TYPE,
+    list_current_sync_ops_page,
+)
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -59,6 +62,7 @@ def sync_pull(
     since: str = "",
     cursorAt: str = "",
     cursorId: str = "",
+    cursorEntityType: str = "",
     xingce_session: Optional[str] = Cookie(default=None),
 ) -> dict[str, Any]:
     user = require_user(xingce_session)
@@ -67,13 +71,20 @@ def sync_pull(
         snapshot_updated_at = get_workspace_snapshot_updated_at(user["id"], conn)
         origins = list_origin_statuses(user["id"], conn=conn)
         if not since:
-            ops = list_current_sync_ops(user["id"], conn)
+            ops, has_more, next_cursor = list_current_sync_ops_page(
+                user["id"],
+                conn,
+                cursor_at=cursorAt,
+                cursor_entity_type=cursorEntityType,
+                cursor_entity_id=cursorId,
+            )
             elapsed_ms = (time.perf_counter() - query_start) * 1000
             if elapsed_ms >= SLOW_SYNC_QUERY_MS:
                 logger.warning(
-                    "sync pull snapshot slow user=%s ops=%s elapsed_ms=%.2f",
+                    "sync pull snapshot slow user=%s ops=%s has_more=%s elapsed_ms=%.2f",
                     user["id"],
                     len(ops),
+                    has_more,
                     elapsed_ms,
                 )
             return {
@@ -81,7 +92,10 @@ def sync_pull(
                 "serverTime": utcnow().isoformat(),
                 "snapshotUpdatedAt": snapshot_updated_at,
                 "origins": origins,
-                "hasMore": False,
+                "hasMore": has_more,
+                "nextCursorAt": next_cursor[0],
+                "nextCursorEntityType": next_cursor[1],
+                "nextCursorId": next_cursor[2],
             }
         if cursorAt:
             rows = conn.execute(

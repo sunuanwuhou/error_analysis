@@ -142,12 +142,56 @@ const AUTO_SYNC_DELAY_MS = 5 * 60 * 1000;
 const STARTUP_CLOUD_META_TTL_MS = 5 * 60 * 1000;
 const STARTUP_INCREMENTAL_SYNC_TTL_MS = 5 * 60 * 1000;
 const FOREGROUND_CLOUD_CHECK_TTL_MS = 5 * 60 * 1000;
-const CLOUD_MANUAL_SYNC_ONLY = true;
+const CLOUD_MANUAL_SYNC_ONLY = false;
 const FULL_BACKUP_CHUNK_BYTES = 1024 * 1024;
 const FULL_BACKUP_DOWNLOAD_CHUNK_BYTES = 1024 * 1024;
+const SYNC_PUSH_BATCH_SIZE = 30;
+const SYNC_FETCH_TIMEOUT_MS = 120000;
 let deferredCloudRestorePromise = null;
 let deferredCloudRestoreUpdatedAt = '';
 let backgroundCloudBootstrapTimer = null;
+
+const WORKSPACE_PERSIST_KEYS = [
+  KEY_ERRORS, KEY_NOTES_BY_TYPE, KEY_NOTE_IMAGES,
+  KEY_KNOWLEDGE_TREE, KEY_KNOWLEDGE_NOTES,
+  KEY_REVEALED, KEY_EXP_TYPES, KEY_EXP_MAIN, KEY_EXP_SUB2,
+  KEY_GLOBAL_NOTE, KEY_TYPE_RULES, KEY_DIR_TREE, KEY_HISTORY,
+  KEY_KNOWLEDGE_EXPANDED
+];
+
+async function flushWorkspacePersistsNow() {
+  if (typeof flushPendingPersists !== 'function') return;
+  await flushPendingPersists(WORKSPACE_PERSIST_KEYS);
+}
+
+async function fetchSyncJson(url, options) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), SYNC_FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { ...(options || {}), signal: controller.signal });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.detail || data.error || `sync request failed (${res.status})`);
+    }
+    return data;
+  } catch (e) {
+    if (e && e.name === 'AbortError') {
+      throw new Error('云端同步超时（公网较慢或数据量较大），请稍后重试');
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function rememberPartialSyncCursor(cursorAt, cursorEntityType, cursorId) {
+  try {
+    if (cursorAt) localStorage.setItem('lastSyncCursorAt', cursorAt);
+    if (cursorEntityType) localStorage.setItem('lastSyncCursorEntityType', cursorEntityType);
+    if (cursorId) localStorage.setItem('lastSyncCursorId', cursorId);
+  } catch (e) {}
+}
+
 async function syncWithServer(opts) {
   const options = opts || {};
   if (!cloudUser) return;
@@ -158,22 +202,36 @@ async function syncWithServer(opts) {
   }
   incrementalSyncBusy = true;
   try {
-    const pending = getPendingOps();
+    let pending = getPendingOps();
     let pushed = false;
     let latestSnapshotAt = '';
     if (!options.pullOnly && pending.length > 0) {
-      const pushRes = await fetch('/api/sync', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ops: pending }),
-      });
-      const pushData = await pushRes.json().catch(() => ({}));
-      if (!pushRes.ok) throw new Error(pushData.detail || pushData.error || 'sync push failed');
-      localStorage.removeItem('pendingOps');
-      pushed = true;
-      latestSnapshotAt = pushData.snapshotUpdatedAt || latestSnapshotAt;
-      if (Array.isArray(pushData.origins)) updateCloudOriginStatuses(pushData.origins);
+      while (pending.length > 0) {
+        const batch = pending.slice(0, SYNC_PUSH_BATCH_SIZE);
+        setCloudSyncState('saving', `正在上传本地改动（剩余 ${pending.length} 条）`, '');
+        const pushData = await fetchSyncJson('/api/sync', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ops: batch }),
+        });
+        const acceptedOps = Number(pushData.acceptedOps || 0);
+        const skippedOps = Number(pushData.skippedOps || 0);
+        if (acceptedOps === 0 && skippedOps > 0) {
+          throw new Error(`云端未接受本地改动（${skippedOps} 条跳过）`);
+        }
+        if (acceptedOps > 0) {
+          pending = pending.slice(Math.min(batch.length, acceptedOps));
+          savePendingOps(pending);
+          pushed = true;
+        }
+        latestSnapshotAt = pushData.snapshotUpdatedAt || latestSnapshotAt;
+        if (Array.isArray(pushData.origins)) updateCloudOriginStatuses(pushData.origins);
+        if (acceptedOps < batch.length) break;
+      }
+      if (!pending.length) {
+        try { localStorage.removeItem('pendingOps'); } catch (e) {}
+      }
     }
     if (options.pushOnly) {
       markIncrementalSyncChecked(latestSnapshotAt || new Date().toISOString());
@@ -190,7 +248,9 @@ async function syncWithServer(opts) {
     if (options.resetCursor) clearLastSyncCursor();
     const syncCursor = getLastSyncCursor();
     const baseSince = options.forceFullPull ? '' : (syncCursor.since || '');
+    const isSnapshotPull = !baseSince;
     let cursorAt = options.forceFullPull ? '' : (syncCursor.cursorAt || '');
+    let cursorEntityType = options.forceFullPull ? '' : (syncCursor.cursorEntityType || '');
     let cursorId = options.forceFullPull ? '' : (syncCursor.cursorId || '');
     let pulled = 0;
     let serverTime = syncCursor.since || '';
@@ -198,10 +258,14 @@ async function syncWithServer(opts) {
       const params = new URLSearchParams();
       params.set('since', baseSince);
       if (cursorAt) params.set('cursorAt', cursorAt);
+      if (cursorEntityType) params.set('cursorEntityType', cursorEntityType);
       if (cursorId) params.set('cursorId', cursorId);
-      const pullRes = await fetch(`/api/sync?${params.toString()}`, { credentials: 'include' });
-      const pullData = await pullRes.json().catch(() => ({}));
-      if (!pullRes.ok) throw new Error(pullData.detail || pullData.error || 'sync pull failed');
+      setCloudSyncState('saving', pulled > 0
+        ? (isSnapshotPull
+          ? `正在与云端全量对齐（已处理 ${pulled} 条实体）`
+          : `正在合并云端增量改动（已处理 ${pulled} 条）`)
+        : (isSnapshotPull ? '正在与云端全量对齐' : '正在检查云端增量改动'), '');
+      const pullData = await fetchSyncJson(`/api/sync?${params.toString()}`, { credentials: 'include' });
       const ops = Array.isArray(pullData.ops) ? pullData.ops : [];
       if (ops.length) {
         applyOps(ops);
@@ -212,12 +276,10 @@ async function syncWithServer(opts) {
       serverTime = pullData.serverTime || serverTime;
       if (!pullData.hasMore) break;
       cursorAt = pullData.nextCursorAt || (ops.length ? String(ops[ops.length - 1].created_at || '') : cursorAt);
-      cursorId = pullData.nextCursorId || (ops.length ? String(ops[ops.length - 1].id || '') : cursorId);
+      cursorEntityType = pullData.nextCursorEntityType || cursorEntityType;
+      cursorId = pullData.nextCursorId || (ops.length ? String(ops[ops.length - 1].entity_id || ops[ops.length - 1].id || '') : cursorId);
       if (!cursorAt) break;
-      try {
-        localStorage.setItem('lastSyncCursorAt', cursorAt);
-        localStorage.setItem('lastSyncCursorId', cursorId);
-      } catch (e) {}
+      rememberPartialSyncCursor(cursorAt, cursorEntityType, cursorId);
     }
     rememberLastSyncCursor(serverTime);
     markIncrementalSyncChecked(serverTime || new Date().toISOString());
@@ -227,10 +289,27 @@ async function syncWithServer(opts) {
       saveCloudMeta();
     }
     if (pushed || pulled > 0) {
-      setCloudSyncState('synced', '错题增量同步完成', latestSnapshotAt || serverTime || '');
+      await flushWorkspacePersistsNow();
+      const syncMessage = isSnapshotPull
+        ? `已与云端全量对齐（${pulled} 条实体记录，非本地改动）`
+        : `已合并 ${pulled} 条云端增量改动`;
+      setCloudSyncState('synced', syncMessage, latestSnapshotAt || serverTime || '');
+    } else if (options.pullOnly) {
+      setCloudSyncState('synced', '云端无新增改动', latestSnapshotAt || serverTime || new Date().toISOString());
+    }
+    if (!options._backupRecovery
+      && typeof hasLocalWorkspaceData === 'function'
+      && !hasLocalWorkspaceData()
+      && typeof loadCloudBackup === 'function') {
+      await loadCloudBackup({
+        silent: true,
+        askBeforeRestore: false,
+        skipCompletionAlert: true,
+        _backupRecovery: true,
+      });
     }
   } catch (e) {
-    setCloudSyncState('error', e.message || '错题增量同步失败', '');
+    setCloudSyncState('error', e.message || '云端增量同步失败', '');
     console.warn('[syncWithServer] failed', e);
   } finally {
     incrementalSyncBusy = false;

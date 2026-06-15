@@ -64,7 +64,7 @@ function scheduleDeferredSlowSync() {
   if (incrementalSyncTimer) clearTimeout(incrementalSyncTimer);
   incrementalSyncTimer = setTimeout(() => {
     incrementalSyncTimer = null;
-    syncWithServer({ forceFullPull: true });
+    syncWithServer();
   }, AUTO_SYNC_DELAY_MS);
 }
 
@@ -126,7 +126,7 @@ async function runBackgroundCloudBootstrap(strategy) {
       const checkIncremental = mode === 'startup' ? shouldRunIncrementalSyncOnStartup() : shouldRunIncrementalSyncInForeground();
       const checkCloudSave = shouldRunCloudSaveDue();
       const incrementalOnlyAutoSave = shouldUseIncrementalOnlyAutoSave();
-      if (checkMeta) {
+      if (checkMeta || (typeof hasLocalWorkspaceData === 'function' && !hasLocalWorkspaceData())) {
         await maybeRestoreCloudBackup();
       }
       if (checkCloudSave) {

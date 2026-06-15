@@ -135,17 +135,41 @@ function applyRemoteError(remote) {
   return false;
 }
 
+function applyRemoteKnowledgeNodeContent(remote) {
+  if (!remote || !remote.id || typeof getKnowledgeNodeById !== 'function') return false;
+  const node = getKnowledgeNodeById(String(remote.id));
+  if (!node) return false;
+  const remoteUpdated = String(remote.updatedAt || '').trim();
+  const localUpdated = String(node.updatedAt || '').trim();
+  const remoteWins = !localUpdated || (remoteUpdated && remoteUpdated >= localUpdated);
+  let changed = false;
+  const remoteContent = String(remote.contentMd || '');
+  const localContent = String(node.contentMd || '');
+  if (remoteContent.trim() && (remoteWins || !localContent.trim()) && localContent !== remoteContent) {
+    node.contentMd = remoteContent;
+    changed = true;
+  }
+  const remoteTitle = String(remote.title || '').trim();
+  const localTitle = String(node.title || '').trim();
+  const titleCorrupted = /^\?+$/.test(localTitle);
+  if (remoteTitle && remoteWins && (!localTitle || titleCorrupted) && localTitle !== remoteTitle) {
+    node.title = remoteTitle;
+    changed = true;
+  }
+  if (remoteUpdated && remoteUpdated > localUpdated) {
+    node.updatedAt = remoteUpdated;
+    changed = true;
+  }
+  return changed;
+}
+
 function applyOps(ops) {
   let errorChanged = false;
   let notesChanged = false;
   let noteImagesChanged = false;
   let knowledgeChanged = false;
   let settingsChanged = false;
-  const isCorruptedKnowledgeTitle = (title) => {
-    const text = String(title || '').trim();
-    if (!text) return true;
-    return /^\?+$/.test(text);
-  };
+  const batchKnowledgeRecords = [];
   for (const op of ops) {
     if (op.op_type === 'error_upsert') {
       const remote = parseSyncPayload(op.payload);
@@ -167,8 +191,17 @@ function applyOps(ops) {
       const remote = parseSyncPayload(op.payload);
       const key = String(remote.key || op.entity_id || '');
       if (key) {
-        notesByType[key] = remote.value || {};
-        notesChanged = true;
+        const nextValue = remote.value || {};
+        const existing = notesByType[key];
+        const remoteUpdated = String(remote.updatedAt || (nextValue && nextValue.updatedAt) || '').trim();
+        const localUpdated = String((existing && existing.updatedAt) || '').trim();
+        if (!existing || !localUpdated || (remoteUpdated && remoteUpdated >= localUpdated)) {
+          const remoteContent = String((nextValue && nextValue.content) || '').trim();
+          const localContent = String((existing && existing.content) || '').trim();
+          if (!remoteContent && localContent) continue;
+          notesByType[key] = nextValue;
+          notesChanged = true;
+        }
       }
       continue;
     }
@@ -193,9 +226,19 @@ function applyOps(ops) {
       }
       continue;
     }
-    if (op.op_type === 'knowledge_node_upsert' || op.op_type === 'knowledge_node_delete') {
-      // Lock tree structure locally: remote knowledge-node ops are treated as non-authoritative.
-      // We only keep question bindings consistent via ensureKnowledgeState/rebind flow.
+    if (op.op_type === 'knowledge_node_upsert') {
+      const remote = parseSyncPayload(op.payload);
+      if (remote && remote.id) {
+        remote.id = String(remote.id);
+        batchKnowledgeRecords.push(remote);
+        if (applyRemoteKnowledgeNodeContent(remote)) {
+          knowledgeChanged = true;
+        }
+      }
+      continue;
+    }
+    if (op.op_type === 'knowledge_node_delete') {
+      // Preserve local tree shape: ignore remote deletes during incremental pull.
       continue;
     }
     if (op.op_type === 'setting_upsert') {
@@ -206,6 +249,44 @@ function applyOps(ops) {
     }
     if (op.op_type === 'setting_delete') {
       settingsChanged = applySettingSyncValue(String(op.entity_id || ''), null) || settingsChanged;
+    }
+  }
+  if (batchKnowledgeRecords.length) {
+    const existingRecords = typeof flattenKnowledgeNodesForSync === 'function'
+      ? flattenKnowledgeNodesForSync(getKnowledgeRootNodes(), '', [])
+      : [];
+    const byId = new Map(existingRecords.map(record => [String(record.id), record]));
+    batchKnowledgeRecords.forEach(record => {
+      if (!record || !record.id) return;
+      const id = String(record.id);
+      const existing = byId.get(id);
+      if (!existing) {
+        byId.set(id, record);
+        return;
+      }
+      const remoteUpdated = String(record.updatedAt || '').trim();
+      const localUpdated = String(existing.updatedAt || '').trim();
+      const remoteWins = !localUpdated || (remoteUpdated && remoteUpdated >= localUpdated);
+      const remoteContent = String(record.contentMd || '').trim();
+      const localContent = String(existing.contentMd || '').trim();
+      byId.set(id, {
+        ...existing,
+        ...record,
+        title: remoteWins && String(record.title || '').trim()
+          ? String(record.title || '')
+          : String(existing.title || record.title || ''),
+        contentMd: remoteContent && (remoteWins || !localContent)
+          ? String(record.contentMd || '')
+          : String(existing.contentMd || record.contentMd || ''),
+        updatedAt: remoteUpdated > localUpdated ? remoteUpdated : (localUpdated || remoteUpdated),
+        parentId: String(record.parentId !== undefined ? record.parentId : existing.parentId || ''),
+        sort: Number(record.sort !== undefined ? record.sort : existing.sort || 0),
+      });
+    });
+    const rebuilt = buildKnowledgeTreeFromSyncRecords(Array.from(byId.values()));
+    if (rebuilt && Array.isArray(rebuilt.roots)) {
+      knowledgeTree = rebuilt;
+      knowledgeChanged = true;
     }
   }
   if (knowledgeChanged) {

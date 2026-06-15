@@ -54,9 +54,13 @@ function normalizeKnowledgeNodes(nodes, level) {
     const legacy = getLegacyKnowledgeNoteSnapshot(node.id);
     if (typeof node.contentMd !== 'string') {
       node.contentMd = legacy && typeof legacy.content === 'string' ? legacy.content : '';
+    } else if (!String(node.contentMd || '').trim() && legacy && String(legacy.content || '').trim()) {
+      node.contentMd = legacy.content;
     }
     if (typeof node.updatedAt !== 'string') {
       node.updatedAt = legacy && typeof legacy.updatedAt === 'string' ? legacy.updatedAt : '';
+    } else if (!String(node.updatedAt || '').trim() && legacy && String(legacy.updatedAt || '').trim()) {
+      node.updatedAt = legacy.updatedAt;
     }
     normalizeKnowledgeNodes(node.children, level + 1);
     node.isLeaf = node.children.length === 0;

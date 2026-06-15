@@ -5,6 +5,9 @@ const RANDOM_NOTE_EDIT_WEIGHT = 0.7;
 const RANDOM_NOTE_VIEW_WEIGHT = 0.3;
 const RANDOM_NOTE_RECENT_VIEW_DOWN_WEIGHT = 0.2;
 const RANDOM_NOTE_RECENT_VIEW_DAYS = 1;
+const RANDOM_NOTE_BY_TYPE_PREFIX = '__notes_by_type__:';
+const RANDOM_NOTE_LEVEL1_SCORE_FACTOR = 0.75;
+const RANDOM_NOTE_DEPTH_SCORE_BOOST = 0.12;
 let randomNoteReviewQueue = [];
 let randomNoteReviewIndex = -1;
 let randomNoteQueueMode = 'weighted';
@@ -54,28 +57,60 @@ function _normalizeNoteMeaningfulText(raw) {
     .trim();
 }
 
-function _resolveRandomNoteContentMd(node) {
-  if (!node || typeof node !== 'object') return '';
-  const direct = String(node.contentMd || '').trim();
-  if (direct) return direct;
-  const nodeId = String(node.id || '').trim();
-  if (!nodeId) return '';
-  if (typeof getLegacyKnowledgeNoteSnapshot === 'function') {
-    const legacy = getLegacyKnowledgeNoteSnapshot(nodeId);
-    const legacyContent = legacy && typeof legacy.content === 'string' ? legacy.content.trim() : '';
-    if (legacyContent) return legacyContent;
-  }
-  if (typeof knowledgeNotes === 'object' && knowledgeNotes && knowledgeNotes[nodeId]) {
-    const entry = knowledgeNotes[nodeId];
-    const content = entry && typeof entry.content === 'string' ? entry.content.trim() : '';
-    if (content) return content;
-  }
+function _isRandomNoteByTypeId(nodeId) {
+  return String(nodeId || '').startsWith(RANDOM_NOTE_BY_TYPE_PREFIX);
+}
+
+function _randomNoteByTypeKey(nodeId) {
+  return String(nodeId || '').slice(RANDOM_NOTE_BY_TYPE_PREFIX.length);
+}
+
+function _normalizeNotePathTitles(pathTitles) {
+  return (pathTitles || []).map(title => String(title || '').trim()).filter(Boolean);
+}
+
+function _resolveNotesByTypeEntryContent(entry) {
+  if (!entry) return '';
+  if (typeof entry === 'string') return entry.trim();
+  if (typeof entry === 'object' && typeof entry.content === 'string') return entry.content.trim();
   return '';
+}
+
+function _resolveNotesByTypeEntryUpdatedAt(entry) {
+  if (!entry || typeof entry !== 'object') return '';
+  return String(entry.updatedAt || '').trim();
+}
+
+function _resolveNotesByTypeEntryByPath(pathTitles) {
+  const path = _normalizeNotePathTitles(pathTitles);
+  if (!path.length || typeof notesByType !== 'object' || !notesByType) return null;
+  let entry = notesByType[path[0]];
+  if (!entry) return null;
+  for (let i = 1; i < path.length; i += 1) {
+    if (!entry || typeof entry !== 'object') return null;
+    entry = entry.children && entry.children[path[i]] ? entry.children[path[i]] : null;
+  }
+  return entry;
+}
+
+function _resolveNotesByTypeContentByPath(pathTitles) {
+  return _resolveNotesByTypeEntryContent(_resolveNotesByTypeEntryByPath(pathTitles));
+}
+
+function _resolveNotesByTypeUpdatedAtByPath(pathTitles) {
+  return _resolveNotesByTypeEntryUpdatedAt(_resolveNotesByTypeEntryByPath(pathTitles));
+}
+
+function _noteContentHasImage(content) {
+  if (typeof noteContentHasImage === 'function') return noteContentHasImage(content);
+  const text = String(content || '');
+  return /noteimg:/i.test(text) || /!\[[^\]]*\]\([^)]+\)/.test(text) || /<img\b/i.test(text);
 }
 
 function _hasMeaningfulNoteContent(contentMd, title) {
   const body = String(contentMd || '').trim();
   if (!body) return false;
+  if (_noteContentHasImage(body)) return true;
   const normalizedBody = _normalizeNoteMeaningfulText(body);
   if (!normalizedBody) return false;
   const normalizedTitle = _normalizeNoteMeaningfulText(String(title || ''));
@@ -85,11 +120,118 @@ function _hasMeaningfulNoteContent(contentMd, title) {
   return true;
 }
 
+function _resolveRandomNoteContentMd(node) {
+  if (!node || typeof node !== 'object') return '';
+  const nodeId = String(node.id || '').trim();
+  const direct = String(node.contentMd || '').trim();
+  if (direct) return direct;
+  if (nodeId && typeof getKnowledgePathTitles === 'function') {
+    const pathContent = _resolveNotesByTypeContentByPath(getKnowledgePathTitles(nodeId)).trim();
+    if (pathContent) return pathContent;
+  }
+  if (nodeId && typeof getLegacyKnowledgeNoteSnapshot === 'function') {
+    const legacy = getLegacyKnowledgeNoteSnapshot(nodeId);
+    const legacyContent = legacy && typeof legacy.content === 'string' ? legacy.content.trim() : '';
+    if (legacyContent) return legacyContent;
+  }
+  if (nodeId && typeof knowledgeNotes === 'object' && knowledgeNotes && knowledgeNotes[nodeId]) {
+    const entry = knowledgeNotes[nodeId];
+    const content = entry && typeof entry.content === 'string' ? entry.content.trim() : '';
+    if (content) return content;
+  }
+  return '';
+}
+
+function _candidateDepth(pathTitles, level) {
+  const depth = _normalizeNotePathTitles(pathTitles).length;
+  if (depth > 0) return depth;
+  return Math.max(1, Number(level || 1));
+}
+
+function _applyDepthScoreFactor(score, depth) {
+  const base = Math.max(0.001, Number(score || 0));
+  if (depth <= 1) return Math.max(0.001, base * RANDOM_NOTE_LEVEL1_SCORE_FACTOR);
+  return Math.max(0.001, base * (1 + RANDOM_NOTE_DEPTH_SCORE_BOOST * (depth - 1)));
+}
+
+function _buildRandomNoteCandidate(nodeId, title, contentMd, updatedAt, tracking, extra) {
+  const editGapDays = _daysSince(updatedAt, 365);
+  const viewGapDays = _daysSince(tracking && tracking.lastViewedAt, 365);
+  let score = (RANDOM_NOTE_EDIT_WEIGHT * Math.log1p(editGapDays))
+    + (RANDOM_NOTE_VIEW_WEIGHT * Math.log1p(viewGapDays));
+  if (viewGapDays < RANDOM_NOTE_RECENT_VIEW_DAYS) score *= RANDOM_NOTE_RECENT_VIEW_DOWN_WEIGHT;
+  const depth = _candidateDepth(extra && extra.pathTitles, extra && extra.level);
+  score = _applyDepthScoreFactor(score, depth);
+  return {
+    nodeId: String(nodeId || ''),
+    title: String(title || '未命名笔记'),
+    contentMd,
+    updatedAt: String(updatedAt || ''),
+    lastViewedAt: String((tracking && tracking.lastViewedAt) || ''),
+    viewCount: Number((tracking && tracking.viewCount) || 0),
+    editGapDays,
+    viewGapDays,
+    score: Math.max(0.001, score),
+    ...(extra || {}),
+  };
+}
+
 function _getRandomNoteRoots() {
-  if (typeof ensureKnowledgeState === 'function') ensureKnowledgeState();
+  if (typeof ensureKnowledgeState === 'function') ensureKnowledgeState({ repair: false, persist: false });
   return (typeof getKnowledgeRootNodes === 'function')
     ? (getKnowledgeRootNodes() || [])
     : ((knowledgeTree && knowledgeTree.roots) || []);
+}
+
+function _notesByTypeMatchesRootFilter(typeKey, rootId) {
+  const filterId = String(rootId || randomNoteRootFilter || '').trim();
+  if (!filterId) return true;
+  const root = _getRandomNoteRoots().find(node => String(node && node.id || '') === filterId);
+  if (!root) return false;
+  return String(root.title || '').trim() === String(typeKey || '').trim();
+}
+
+function _rememberRandomNoteCandidate(candidates, seen, item) {
+  const nodeId = String(item && item.nodeId || '').trim();
+  if (!nodeId || seen.has(nodeId)) return;
+  seen.add(nodeId);
+  candidates.push(item);
+}
+
+function _walkNotesByTypeCandidates(pathTitles, entry, rootId, candidates, seen) {
+  const path = _normalizeNotePathTitles(pathTitles);
+  if (!path.length || !entry) return;
+  if (!_notesByTypeMatchesRootFilter(path[0], rootId)) return;
+  const title = path[path.length - 1];
+  const contentMd = _resolveNotesByTypeEntryContent(entry);
+  if (_hasMeaningfulNoteContent(contentMd, title)) {
+    let nodeId = `${RANDOM_NOTE_BY_TYPE_PREFIX}${path.join('::')}`;
+    let displayTitle = title;
+    if (typeof getKnowledgeNodeByPathTitles === 'function') {
+      const linkedNode = getKnowledgeNodeByPathTitles(path);
+      if (linkedNode && linkedNode.id) {
+        nodeId = String(linkedNode.id);
+        displayTitle = String(linkedNode.title || title);
+      }
+    }
+    const tracking = (noteReviewTracking && noteReviewTracking[nodeId]) || {};
+    const updatedAt = _resolveNotesByTypeEntryUpdatedAt(entry) || _resolveNotesByTypeUpdatedAtByPath(path);
+    _rememberRandomNoteCandidate(candidates, seen, _buildRandomNoteCandidate(
+      nodeId,
+      displayTitle,
+      contentMd,
+      updatedAt,
+      tracking,
+      { source: 'notes_by_type', level: path.length, pathTitles: path.slice() },
+    ));
+  }
+  const children = entry && typeof entry === 'object' && entry.children && typeof entry.children === 'object'
+    ? entry.children
+    : {};
+  Object.keys(children).forEach((childKey) => {
+    if (!childKey) return;
+    _walkNotesByTypeCandidates(path.concat(childKey), children[childKey], rootId, candidates, seen);
+  });
 }
 
 function _collectRandomNoteCandidates(rootId) {
@@ -98,35 +240,39 @@ function _collectRandomNoteCandidates(rootId) {
     ? roots.filter(node => String(node && node.id || '') === String(rootId || randomNoteRootFilter || '').trim())
     : roots;
   const candidates = [];
+  const seen = new Set();
   const walk = (nodes) => {
-    (nodes || []).forEach(node => {
+    (nodes || []).forEach((node) => {
       if (!node || typeof node !== 'object') return;
+      const nodeId = String(node.id || '').trim();
       const contentMd = _resolveRandomNoteContentMd(node);
       if (_hasMeaningfulNoteContent(contentMd, node.title)) {
-        const tracking = (noteReviewTracking && noteReviewTracking[node.id]) || {};
+        const pathTitles = (typeof getKnowledgePathTitles === 'function')
+          ? _normalizeNotePathTitles(getKnowledgePathTitles(nodeId))
+          : [];
+        const tracking = (noteReviewTracking && noteReviewTracking[nodeId]) || {};
         const updatedAt = String(node.updatedAt || '').trim()
-          || String((knowledgeNotes && knowledgeNotes[node.id] && knowledgeNotes[node.id].updatedAt) || '');
-        const editGapDays = _daysSince(updatedAt, 365);
-        const viewGapDays = _daysSince(tracking.lastViewedAt, 365);
-        let score = (RANDOM_NOTE_EDIT_WEIGHT * Math.log1p(editGapDays))
-          + (RANDOM_NOTE_VIEW_WEIGHT * Math.log1p(viewGapDays));
-        if (viewGapDays < RANDOM_NOTE_RECENT_VIEW_DAYS) score *= RANDOM_NOTE_RECENT_VIEW_DOWN_WEIGHT;
-        candidates.push({
-          nodeId: String(node.id || ''),
-          title: String(node.title || '未命名笔记'),
+          || String((knowledgeNotes && knowledgeNotes[nodeId] && knowledgeNotes[nodeId].updatedAt) || '')
+          || _resolveNotesByTypeUpdatedAtByPath(pathTitles);
+        _rememberRandomNoteCandidate(candidates, seen, _buildRandomNoteCandidate(
+          nodeId,
+          node.title,
           contentMd,
           updatedAt,
-          lastViewedAt: String(tracking.lastViewedAt || ''),
-          viewCount: Number(tracking.viewCount || 0),
-          editGapDays,
-          viewGapDays,
-          score: Math.max(0.001, score),
-        });
+          tracking,
+          { source: 'knowledge_tree', level: Number(node.level || pathTitles.length || 0), pathTitles },
+        ));
       }
       walk(node.children || []);
     });
   };
   walk(scopedRoots);
+  if (typeof notesByType === 'object' && notesByType) {
+    Object.keys(notesByType).forEach((typeKey) => {
+      if (!typeKey) return;
+      _walkNotesByTypeCandidates([typeKey], notesByType[typeKey], rootId, candidates, seen);
+    });
+  }
   return candidates;
 }
 
