@@ -112,7 +112,13 @@ function kwRenderDirectoryMode(currentNode, deps) {
   }
 
   var previewNode = d.getDirectoryPreviewNode(currentNode, sections);
-  var previewContent = previewNode ? d.normalizeKnowledgeNoteMarkdown(previewNode.contentMd) : "";
+  var previewContent = previewNode
+    ? d.normalizeKnowledgeNoteMarkdown(
+      typeof resolveKnowledgeNodeMarkdown === "function"
+        ? resolveKnowledgeNodeMarkdown(previewNode)
+        : previewNode.contentMd
+    )
+    : "";
   var previewHtml = previewNode
     ? d.renderInlineNotePreview(previewNode, previewContent)
     : "<div class=\"knowledge-workspace-empty\">请选择一个章节查看笔记。</div>";

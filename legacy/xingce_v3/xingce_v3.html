@@ -150,11 +150,16 @@
               <span>全量练习</span>
               <span class="badge" id="fullPracticeBadge">0</span>
             </button>
+            <button class="quiz-btn quiz-btn--compact random-question" id="randomQuestionBtn" data-onclick="startRandomQuestion()" type="button">
+              <span>随机题目</span>
+              <span class="badge" id="randomQuestionBadge">0</span>
+            </button>
             <button class="quiz-btn quiz-btn--compact random-note" id="randomNoteBtn" data-onclick="startRandomNoteReview()" type="button">
               <span>随机笔记</span>
             </button>
           </div>
           <div class="notes-header-tools">
+            <button class="btn btn-secondary" data-onclick="openKnowledgeScopeExportModal()" id="exportKnowledgeScopeBtn" title="导出当前知识节点下的笔记和错题" type="button">导出</button>
             <button class="btn btn-secondary" data-onclick="openGlobalSearchModal()">全局搜索</button>
             <button class="btn btn-secondary" data-onclick="openImportModalForCurrentKnowledge()">导入错题</button>
             <button class="btn btn-secondary" data-onclick="deleteSelectedKnowledgeNode()">删除知识点</button>
@@ -628,6 +633,37 @@
     <div class="modal-btns">
       <button class="btn btn-secondary" data-onclick="closeModal(&#x27;exportModal&#x27;)">取消</button>
       <button class="btn btn-primary" data-onclick="doExport()">导出</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 知识节点导出（JSON / Markdown） ===== -->
+<div class="modal-mask" id="knowledgeScopeExportModal">
+  <div class="modal" style="width:480px;max-width:95vw">
+    <button class="modal-close" data-onclick="closeModal(&#x27;knowledgeScopeExportModal&#x27;)">✕</button>
+    <h2>导出当前节点</h2>
+    <p id="knowledgeScopeExportSummary" style="font-size:13px;color:#666;margin-bottom:14px;line-height:1.6"></p>
+    <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:8px">导出格式</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <label class="export-fmt-card active" id="ksExportFmt_json" data-onclick="selectKnowledgeScopeExportFmt(&#x27;json&#x27;)">
+        <input type="radio" name="ksExportFmt" value="json" checked style="display:none">
+        <div style="font-size:22px;margin-bottom:4px">🤖</div>
+        <div style="font-size:13px;font-weight:700">JSON</div>
+        <div style="font-size:11px;color:#999;margin-top:2px">发给 AI 分析</div>
+      </label>
+      <label class="export-fmt-card" id="ksExportFmt_md" data-onclick="selectKnowledgeScopeExportFmt(&#x27;md&#x27;)">
+        <input type="radio" name="ksExportFmt" value="md" style="display:none">
+        <div style="font-size:22px;margin-bottom:4px">📄</div>
+        <div style="font-size:13px;font-weight:700">Markdown</div>
+        <div style="font-size:11px;color:#999;margin-top:2px">分享或阅读</div>
+      </label>
+    </div>
+    <div style="font-size:11px;color:#999;line-height:1.7;margin-bottom:12px">
+      JSON 含完整结构化数据与图片引用，适合粘贴给 Claude / ChatGPT；Markdown 排版清晰，适合发给同学、老师或导入笔记软件。
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-secondary" data-onclick="closeModal(&#x27;knowledgeScopeExportModal&#x27;)">取消</button>
+      <button class="btn btn-primary" id="knowledgeScopeExportConfirmBtn" type="button" data-onclick="confirmKnowledgeScopeExport()">导出</button>
     </div>
   </div>
 </div>

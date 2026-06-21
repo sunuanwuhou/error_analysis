@@ -3,6 +3,9 @@
 // ============================================================
 async function applyCloudBackup(data, updatedAt, opts) {
   opts = opts || {};
+  if (typeof cancelWorkspacePendingPersists === 'function') {
+    cancelWorkspacePendingPersists();
+  }
   if (opts.forceOverwriteLocal !== false) {
     await clearWorkspaceStorageForRemoteRestore();
     clearLocalSyncMarkers();
@@ -16,6 +19,9 @@ async function applyCloudBackup(data, updatedAt, opts) {
     }));
   }
   rememberCloudDecision(updatedAt || data.exportTime || '', 'loaded');
+  if (typeof markIncrementalSyncChecked === 'function') {
+    markIncrementalSyncChecked(updatedAt || data.exportTime || new Date().toISOString());
+  }
   scheduleOriginStatusSync({
     lastLoadedAt: updatedAt || data.exportTime || '',
     lastBackupUpdatedAt: updatedAt || data.exportTime || ''
@@ -94,23 +100,10 @@ async function maybeRestoreCloudBackup() {
       setCloudSyncState('synced', '当前入口已与云端对齐', updatedAt);
       return;
     }
-    const ok = confirm('检测到该账号已有云端备份。是否恢复到当前入口？\n\n选择“取消”会保留当前入口本地数据，你仍可稍后点击 Cloud Load 手动恢复。');
-    if (!ok) {
-      rememberCloudDecision(updatedAt, 'kept_local');
-      setCloudSyncState('dirty', 'Keeping local entry data; cloud backup not loaded', updatedAt);
-      showCloudWarning('Local data was kept. Use Cloud Load any time to restore the cloud copy.');
-      return;
-    }
-    if (shouldUseDeferredCloudRestore(meta)) {
-      setCloudSyncState('saving', `云端数据较大（${formatBackupBytes(getCloudBackupBytes(meta))}），已切换为后台缓慢同步`, updatedAt);
-      queueDeferredCloudRestore(meta, { forceOverwriteLocal: true });
-      showCloudInfo('Started restoring the cloud backup in the background');
-      return;
-    }
-    const data = await fetchCloudBackupData();
-    if (!data.exists || !data.backup) return;
-    await applyCloudBackup({ ...data.backup, summary: data.summary || {} }, updatedAt || data.backup.exportTime || '', { silent: true, forceOverwriteLocal: true, staged: true, skipCompletionAlert: true });
-    showCloudInfo('Cloud backup restored to the current entry');
+    // Keep local data by default; user can restore manually via Cloud Load.
+    rememberCloudDecision(updatedAt, 'kept_local');
+    setCloudSyncState('dirty', 'Keeping local entry data; cloud backup not loaded', updatedAt);
+    return;
   } catch (e) {
     console.warn('cloud restore skipped:', e);
   } finally {

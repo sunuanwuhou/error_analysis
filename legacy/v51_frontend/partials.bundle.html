@@ -62,7 +62,7 @@
 <div class="cloud-origin-list" id="cloudOriginStatus"></div>
 </div>
 <div class="sidebar-tools-row sidebar-cloud-actions">
-<button class="btn btn-secondary" data-onclick="loadCloudIncrementalFromSidebar()">Cloud Load</button>
+<button class="btn btn-secondary" data-onclick="loadCloudIncrementalFromSidebar()">增量同步</button>
 <button class="btn btn-secondary" data-onclick="saveCloudBackup()">Cloud Save</button>
 <button class="btn btn-secondary" data-onclick="logoutCloud()" id="cloudLogoutBtn">Logout</button>
 </div>
@@ -153,11 +153,16 @@
 <span>全量练习</span>
 <span class="badge" id="fullPracticeBadge">0</span>
 </button>
+<button class="quiz-btn quiz-btn--compact random-question" data-onclick="startRandomQuestion()" id="randomQuestionBtn" type="button">
+<span>随机题目</span>
+<span class="badge" id="randomQuestionBadge">0</span>
+</button>
 <button class="quiz-btn quiz-btn--compact random-note" data-onclick="startRandomNoteReview()" id="randomNoteBtn" type="button">
 <span>随机笔记</span>
 </button>
 </div>
 <div class="notes-header-tools">
+<button class="btn btn-secondary" data-onclick="openKnowledgeScopeExportModal()" id="exportKnowledgeScopeBtn" title="导出当前知识节点下的笔记和错题" type="button">导出</button>
 <button class="btn btn-secondary" data-onclick="openGlobalSearchModal()">全局搜索</button>
 <button class="btn btn-secondary" data-onclick="openImportModalForCurrentKnowledge()">导入错题</button>
 <button class="btn btn-secondary" data-onclick="deleteSelectedKnowledgeNode()">删除知识点</button>

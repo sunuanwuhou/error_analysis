@@ -11,6 +11,7 @@ const notesLayoutMode = ref<'list' | 'note'>('note')
 const emit = defineEmits<{
   startQuiz: [mode: 'daily' | 'full' | 'review' | 'retrain']
   startRandomNote: []
+  startRandomQuestion: []
   openImport: []
   openGlobalSearch: []
   openAddForNode: [nodeId: string]
@@ -41,6 +42,7 @@ defineExpose({ enterNoteEdit })
         <PracticeActionButtons
           @start-quiz="emit('startQuiz', $event)"
           @start-random-note="emit('startRandomNote')"
+          @start-random-question="emit('startRandomQuestion')"
         />
         <div class="notes-header-tools">
           <button type="button" class="btn btn-secondary" @click="emit('openGlobalSearch')">全局搜索</button>

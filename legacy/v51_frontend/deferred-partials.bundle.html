@@ -449,6 +449,35 @@
 </div>
 </div>
 </div>
+<div class="modal-mask" id="knowledgeScopeExportModal">
+<div class="modal" style="width:480px;max-width:95vw">
+<button class="modal-close" data-onclick="closeModal('knowledgeScopeExportModal')">✕</button>
+<h2>导出当前节点</h2>
+<p id="knowledgeScopeExportSummary" style="font-size:13px;color:#666;margin-bottom:14px;line-height:1.6"></p>
+<div style="font-size:12px;font-weight:600;color:#555;margin-bottom:8px">导出格式</div>
+<div style="display:flex;gap:8px;margin-bottom:14px">
+<label class="export-fmt-card active" data-onclick="selectKnowledgeScopeExportFmt('json')" id="ksExportFmt_json">
+<input checked="" name="ksExportFmt" style="display:none" type="radio" value="json"/>
+<div style="font-size:22px;margin-bottom:4px">🤖</div>
+<div style="font-size:13px;font-weight:700">JSON</div>
+<div style="font-size:11px;color:#999;margin-top:2px">发给 AI 分析</div>
+</label>
+<label class="export-fmt-card" data-onclick="selectKnowledgeScopeExportFmt('md')" id="ksExportFmt_md">
+<input name="ksExportFmt" style="display:none" type="radio" value="md"/>
+<div style="font-size:22px;margin-bottom:4px">📄</div>
+<div style="font-size:13px;font-weight:700">Markdown</div>
+<div style="font-size:11px;color:#999;margin-top:2px">分享或阅读</div>
+</label>
+</div>
+<div style="font-size:11px;color:#999;line-height:1.7;margin-bottom:12px">
+        JSON 含完整结构化数据与图片引用，适合粘贴给 Claude / ChatGPT；Markdown 排版清晰，适合发给同学、老师或导入笔记软件。
+      </div>
+<div class="modal-btns">
+<button class="btn btn-secondary" data-onclick="closeModal('knowledgeScopeExportModal')">取消</button>
+<button class="btn btn-primary" data-onclick="confirmKnowledgeScopeExport()" id="knowledgeScopeExportConfirmBtn" type="button">导出</button>
+</div>
+</div>
+</div>
 <div class="modal-mask" id="dirModal">
 <div class="modal" style="width:700px;max-width:96vw;max-height:92vh">
 <button class="modal-close" data-onclick="closeModal('dirModal')">✕</button>

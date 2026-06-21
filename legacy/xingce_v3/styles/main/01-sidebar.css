@@ -31,6 +31,7 @@
 .quiz-btn.disabled{background:#ccc;cursor:default;transform:none;box-shadow:none}
 .quiz-btn.full-practice{background:linear-gradient(135deg,#3498db,#2471a3)}
 .quiz-btn.random-note{background:linear-gradient(135deg,#16a34a,#15803d)}
+.quiz-btn.random-question{background:linear-gradient(135deg,#ea580c,#c2410c)}
 .today-progress{margin-top:9px}
 .sidebar-progress-block .today-progress{margin-top:0}
 .prog-label{font-size:11px;color:#888;display:flex;justify-content:space-between;margin-bottom:4px}

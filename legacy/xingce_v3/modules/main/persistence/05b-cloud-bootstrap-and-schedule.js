@@ -120,6 +120,14 @@ async function runBackgroundCloudBootstrap(strategy) {
   }
   const run = async () => {
     if (!cloudUser) return;
+    if (typeof getKnowledgeRootNodes !== 'function'
+      && typeof ensureLegacyWorkspaceBundleLoaded === 'function') {
+      try {
+        await ensureLegacyWorkspaceBundleLoaded();
+      } catch (e) {
+        console.warn('[cloud bootstrap] workspace bundle preload failed', e);
+      }
+    }
     try {
       const mode = String(strategy || 'startup');
       const checkMeta = mode === 'startup' ? shouldCheckCloudMetaOnStartup() : shouldCheckCloudMetaInForeground();

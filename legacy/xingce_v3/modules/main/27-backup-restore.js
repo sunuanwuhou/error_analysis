@@ -120,10 +120,20 @@ function _applyFullBackup(data, mode, opts) {
   }
   knowledgeTree = data.knowledgeTree || null;
   knowledgeNotes = data.knowledgeNotes || {};
-  DB.set(KEY_KNOWLEDGE_TREE, JSON.stringify(knowledgeTree));
-  DB.set(KEY_KNOWLEDGE_NOTES, JSON.stringify(knowledgeNotes));
-  // Full restore should preserve the cloud tree shape as-is.
-  ensureKnowledgeState({ persist: true, repair: false, syncErrors: false, preserveTreeShape: mode === 'restore' });
+  if (typeof hydrateKnowledgeContentFromStoredNotes === 'function') {
+    hydrateKnowledgeContentFromStoredNotes();
+  }
+  if (typeof ensureKnowledgeState === 'function') {
+    ensureKnowledgeState({ persist: false, repair: false, syncErrors: false, preserveTreeShape: mode === 'restore' });
+  }
+  if (typeof persistKnowledgeWorkspaceNow === 'function') {
+    persistKnowledgeWorkspaceNow().catch((e) => {
+      console.warn('[applyFullBackup] persist knowledge workspace failed', e);
+    });
+  } else {
+    DB.set(KEY_KNOWLEDGE_TREE, JSON.stringify(knowledgeTree));
+    DB.set(KEY_KNOWLEDGE_NOTES, JSON.stringify(knowledgeNotes));
+  }
 
   closeModal('importModal');
   saveReveal();
@@ -217,10 +227,25 @@ function _applyFullBackup(data, mode, opts) {
     knowledgeTree = data.knowledgeTree || null;
     knowledgeNotes = data.knowledgeNotes || {};
   }
-  DB.set(KEY_KNOWLEDGE_TREE, JSON.stringify(knowledgeTree));
-  DB.set(KEY_KNOWLEDGE_NOTES, JSON.stringify(knowledgeNotes));
-  // Merge/restore follows the current local tree; avoid re-shaping the restored cloud tree here.
-  ensureKnowledgeState({ persist: true, repair: false, syncErrors: false });
+  if (typeof hydrateKnowledgeContentFromStoredNotes === 'function') {
+    hydrateKnowledgeContentFromStoredNotes();
+  }
+  if (typeof ensureKnowledgeState === 'function') {
+    ensureKnowledgeState({
+      persist: false,
+      repair: false,
+      syncErrors: false,
+      preserveTreeShape: mode === 'restore',
+    });
+  }
+  if (typeof persistKnowledgeWorkspaceNow === 'function') {
+    persistKnowledgeWorkspaceNow().catch((e) => {
+      console.warn('[applyFullBackup] persist knowledge workspace failed', e);
+    });
+  } else {
+    DB.set(KEY_KNOWLEDGE_TREE, JSON.stringify(knowledgeTree));
+    DB.set(KEY_KNOWLEDGE_NOTES, JSON.stringify(knowledgeNotes));
+  }
 
   closeModal('importModal');
   saveReveal();
@@ -309,15 +334,31 @@ async function _applyCloudBackupStaged(data, updatedAt, opts) {
   withCloudAutoSaveSuppressed(() => withIncrementalSyncSuppressed(() => {
     knowledgeTree = data.knowledgeTree || null;
     knowledgeNotes = data.knowledgeNotes || {};
+    if (typeof hydrateKnowledgeContentFromStoredNotes === 'function') {
+      hydrateKnowledgeContentFromStoredNotes();
+    }
+    if (typeof ensureKnowledgeState === 'function') {
+      ensureKnowledgeState({ persist: false, repair: false, syncErrors: false, preserveTreeShape: true });
+    }
     DB.set(KEY_KNOWLEDGE_TREE, JSON.stringify(knowledgeTree));
     DB.set(KEY_KNOWLEDGE_NOTES, JSON.stringify(knowledgeNotes));
-    // Cloud full restore should keep the remote tree structure intact.
-    ensureKnowledgeState({ persist: true, repair: false, syncErrors: false, preserveTreeShape: true });
   }));
   setCloudSyncState('saving', `正在同步知识点 ${summary.knowledgeNodes || collectKnowledgeNodes().length} 个`, syncAt);
   await delayCloudRestore(0);
 
   closeModal('importModal');
+  if (typeof flushPendingPersists === 'function') {
+    const nonKnowledgeKeys = typeof WORKSPACE_PERSIST_KEYS !== 'undefined'
+      ? WORKSPACE_PERSIST_KEYS.filter((key) => key !== KEY_KNOWLEDGE_TREE && key !== KEY_KNOWLEDGE_NOTES)
+      : undefined;
+    await flushPendingPersists(nonKnowledgeKeys);
+  }
+  if (typeof cancelWorkspacePendingPersists === 'function') {
+    cancelWorkspacePendingPersists();
+  }
+  if (typeof persistKnowledgeWorkspaceNow === 'function') {
+    await persistKnowledgeWorkspaceNow();
+  }
   saveReveal();
   if (typeof refreshWorkspaceAfterKnowledgeDataChange === 'function') {
     refreshWorkspaceAfterKnowledgeDataChange({ sidebar: true, notes: true, rightPanel: true });
@@ -328,7 +369,12 @@ async function _applyCloudBackupStaged(data, updatedAt, opts) {
     if (typeof renderNotesByType === 'function') renderNotesByType();
     if (typeof renderNotesPanelRight === 'function') renderNotesPanelRight();
   }
-  if (typeof flushPendingPersists === 'function') await flushPendingPersists();
+  if (typeof cancelWorkspacePendingPersists === 'function') {
+    cancelWorkspacePendingPersists();
+  }
+  if (typeof persistKnowledgeWorkspaceNow === 'function') {
+    await persistKnowledgeWorkspaceNow();
+  }
   if (typeof persistStartupSummaryNow === 'function') {
     await persistStartupSummaryNow(JSON.stringify(errors));
   }

@@ -237,6 +237,11 @@
   background: linear-gradient(135deg, #16a34a, #15803d);
 }
 
+.xc-vue-legacy .quiz-btn.random-question {
+  margin-top: 6px;
+  background: linear-gradient(135deg, #ea580c, #c2410c);
+}
+
 .xc-vue-legacy .quiz-btn.suite-bank {
   margin-top: 6px;
   background: linear-gradient(135deg, #7c3aed, #5b21b6);

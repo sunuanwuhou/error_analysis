@@ -10,6 +10,7 @@ import WorkbenchPage from '@/views/shenlun/WorkbenchPage.vue'
 import ResultPage from '@/views/shenlun/ResultPage.vue'
 import XingceWorkspacePage from '@/views/xingce/WorkspacePage.vue'
 import SuiteBankPage from '@/views/xingce/SuiteBankPage.vue'
+import ExamInsightPage from '@/views/xingce/ExamInsightPage.vue'
 import BankDrillPage from '@/views/xingce/BankDrillPage.vue'
 import BankDrillExportPage from '@/views/xingce/BankDrillExportPage.vue'
 import InterviewWorkspacePage from '@/views/interview/WorkspacePage.vue'
@@ -99,7 +100,8 @@ onMounted(async () => {
           :class="panelClass('xingce_suite')"
         >
           <KeepAlive>
-            <SuiteBankPage />
+            <ExamInsightPage v-if="route.name === 'XingceExamInsight'" key="exam-insight" />
+            <SuiteBankPage v-else key="suite-bank" />
           </KeepAlive>
         </div>
 

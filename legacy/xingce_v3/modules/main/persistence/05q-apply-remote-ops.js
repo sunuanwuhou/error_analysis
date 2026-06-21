@@ -163,6 +163,37 @@ function applyRemoteKnowledgeNodeContent(remote) {
   return changed;
 }
 
+function preserveKnowledgeTreeContentFromLocal(rebuilt) {
+  if (!rebuilt || !Array.isArray(rebuilt.roots)) return rebuilt;
+  hydrateKnowledgeContentFromStoredNotes();
+  const localRecords = typeof flattenKnowledgeNodesForSync === 'function'
+    ? flattenKnowledgeNodesForSync(
+      typeof getKnowledgeRootNodesForSync === 'function'
+        ? getKnowledgeRootNodesForSync()
+        : (typeof getKnowledgeRootNodes === 'function' ? getKnowledgeRootNodes() : []),
+      '',
+      []
+    )
+    : [];
+  const localById = new Map(localRecords.map(record => [String(record.id), record]));
+  function walk(nodes) {
+    (nodes || []).forEach((node) => {
+      if (!node || !node.id) return;
+      const local = localById.get(String(node.id));
+      const stored = knowledgeNotes && knowledgeNotes[node.id];
+      const localContent = String((local && local.contentMd) || (stored && stored.content) || '').trim();
+      const nodeContent = String(node.contentMd || '').trim();
+      if (localContent && !nodeContent) {
+        node.contentMd = (local && local.contentMd) || (stored && stored.content) || '';
+        node.updatedAt = String(node.updatedAt || (local && local.updatedAt) || (stored && stored.updatedAt) || '');
+      }
+      walk(node.children);
+    });
+  }
+  walk(rebuilt.roots);
+  return rebuilt;
+}
+
 function applyOps(ops) {
   let errorChanged = false;
   let notesChanged = false;
@@ -252,9 +283,25 @@ function applyOps(ops) {
     }
   }
   if (batchKnowledgeRecords.length) {
+    hydrateKnowledgeContentFromStoredNotes();
     const existingRecords = typeof flattenKnowledgeNodesForSync === 'function'
-      ? flattenKnowledgeNodesForSync(getKnowledgeRootNodes(), '', [])
+      ? flattenKnowledgeNodesForSync(
+        typeof getKnowledgeRootNodesForSync === 'function'
+          ? getKnowledgeRootNodesForSync()
+          : (typeof getKnowledgeRootNodes === 'function' ? getKnowledgeRootNodes() : []),
+        '',
+        []
+      )
       : [];
+    existingRecords.forEach((record) => {
+      if (!record || !record.id) return;
+      const stored = knowledgeNotes && knowledgeNotes[String(record.id)];
+      const storedContent = stored && typeof stored.content === 'string' ? stored.content.trim() : '';
+      if (!String(record.contentMd || '').trim() && storedContent) {
+        record.contentMd = stored.content;
+        if (stored.updatedAt) record.updatedAt = stored.updatedAt;
+      }
+    });
     const byId = new Map(existingRecords.map(record => [String(record.id), record]));
     batchKnowledgeRecords.forEach(record => {
       if (!record || !record.id) return;
@@ -285,12 +332,9 @@ function applyOps(ops) {
     });
     const rebuilt = buildKnowledgeTreeFromSyncRecords(Array.from(byId.values()));
     if (rebuilt && Array.isArray(rebuilt.roots)) {
-      knowledgeTree = rebuilt;
+      knowledgeTree = preserveKnowledgeTreeContentFromLocal(rebuilt);
       knowledgeChanged = true;
     }
-  }
-  if (knowledgeChanged) {
-    ensureKnowledgeState({ persist: true });
   }
   if (errorChanged || notesChanged || noteImagesChanged || knowledgeChanged || settingsChanged) {
     withIncrementalSyncSuppressed(() => {
@@ -307,8 +351,15 @@ function applyOps(ops) {
         queuePersist(KEY_HISTORY, _history || [], 220);
       }
       if (notesChanged || noteImagesChanged) saveNotesByType();
-      if (knowledgeChanged) saveKnowledgeState();
-      syncNotesWithErrors();
+      if (knowledgeChanged) {
+        if (typeof ensureKnowledgeState === 'function') {
+          ensureKnowledgeState({ persist: false, preserveTreeShape: true, repair: false });
+        }
+        saveKnowledgeState({ preserveTreeShape: true });
+      }
+      if (errorChanged && typeof syncNotesWithErrors === 'function') {
+        syncNotesWithErrors();
+      }
       if (typeof requestWorkspaceRender === 'function') {
         requestWorkspaceRender({ sidebar: true, notes: true, immediate: true });
       } else {
@@ -318,5 +369,10 @@ function applyOps(ops) {
         renderNotesPanelRight();
       }
     });
+    if (knowledgeChanged || notesChanged || noteImagesChanged) {
+      persistKnowledgeWorkspaceNow().catch((e) => {
+        console.warn('[applyOps] persist knowledge workspace failed', e);
+      });
+    }
   }
 }

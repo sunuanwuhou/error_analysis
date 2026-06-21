@@ -44,7 +44,9 @@ function resetQuizSession() {
 }
 
 function getQuizClosePrompt(targetTab) {
-  const sessionLabel = quizSessionMode === 'full' ? '全量练习' : '今日复习';
+  const sessionLabel = quizSessionMode === 'full'
+    ? '全量练习'
+    : (quizSessionMode === 'random' ? '随机题目' : '今日复习');
   const destination = targetTab === 'notes' ? '并前往知识树' : '';
   if (!quizAnswers.length && quizIdx === 0) {
     return `确认关闭本次${sessionLabel}${destination}？`;

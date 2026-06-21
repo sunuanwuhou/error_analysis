@@ -10,12 +10,34 @@ function walkKnowledgeNodes(nodes, visitor, trail) {
 }
 
 function syncKnowledgeNotesFromTree() {
+  const previous = knowledgeNotes && typeof knowledgeNotes === 'object' ? knowledgeNotes : {};
   const next = {};
   walkKnowledgeNodes(getKnowledgeRootNodes(), node => {
+    const legacy = typeof getLegacyKnowledgeNoteSnapshot === 'function'
+      ? getLegacyKnowledgeNoteSnapshot(node.id)
+      : null;
+    const nodeContent = String(node.contentMd || '').trim();
+    const legacyContent = legacy && legacy.content ? String(legacy.content).trim() : '';
+    const content = nodeContent || legacyContent || '';
+    if (!nodeContent && legacyContent) {
+      node.contentMd = legacy.content;
+      if (legacy.updatedAt && !node.updatedAt) node.updatedAt = legacy.updatedAt;
+    }
     next[node.id] = {
-      title: node.title,
-      content: node.contentMd || '',
-      updatedAt: node.updatedAt || ''
+      title: String(node.title || (legacy && legacy.title) || ''),
+      content,
+      updatedAt: String(node.updatedAt || (legacy && legacy.updatedAt) || '')
+    };
+  });
+  Object.keys(previous).forEach((nodeId) => {
+    if (next[nodeId]) return;
+    const legacy = previous[nodeId];
+    const content = legacy && typeof legacy.content === 'string' ? legacy.content.trim() : '';
+    if (!content) return;
+    next[nodeId] = {
+      title: String((legacy && legacy.title) || ''),
+      content: legacy.content,
+      updatedAt: String((legacy && legacy.updatedAt) || '')
     };
   });
   knowledgeNotes = next;

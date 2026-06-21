@@ -12,6 +12,7 @@ const ROUTE_MODULE: Record<string, PortalModuleKey> = {
   LegacyXingce: 'xingce',
   XingceWorkspace: 'xingce',
   XingceSuiteBank: 'xingce_suite',
+  XingceExamInsight: 'xingce_suite',
   XingceBankDrill: 'xingce_bank_drill',
   XingceBankDrillExport: 'xingce_bank_drill',
   ShenlunHub: 'shenlun',
@@ -46,6 +47,11 @@ const router = createRouter({
         {
           path: 'xingce/suite',
           name: 'XingceSuiteBank',
+          component: routePlaceholder,
+        },
+        {
+          path: 'xingce/exam-insight',
+          name: 'XingceExamInsight',
           component: routePlaceholder,
         },
         {

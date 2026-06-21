@@ -50,7 +50,11 @@
     var ta = document.getElementById("noteTypeTextarea");
     if (ta) return ta.value;
     var node = getCurrentKnowledgeNode();
-    return normalizeKnowledgeNoteMarkdown(node ? node.contentMd : "");
+    if (!node) return "";
+    if (typeof resolveKnowledgeNodeMarkdown === "function") {
+      return normalizeKnowledgeNoteMarkdown(resolveKnowledgeNodeMarkdown(node));
+    }
+    return normalizeKnowledgeNoteMarkdown(node.contentMd);
   }
 
   function normalizeKnowledgeNoteMarkdown(value) {
@@ -328,7 +332,7 @@
   }
 
   function renderKnowledgeNotesViewV2() {
-    ensureKnowledgeState();
+    ensureKnowledgeState({ preserveTreeShape: true, repair: false, persist: false });
     clearGlobalNoteTocDock();
     var content = document.getElementById("notesContent");
     if (!content) return;
@@ -346,7 +350,11 @@
     var linkedCount = countErrorsForKnowledgeNode(currentNode.id, true);
     var directCount = countErrorsForKnowledgeNode(currentNode.id, false);
     var relatedErrors = collectNodeErrors(currentNode);
-    var noteContent = normalizeKnowledgeNoteMarkdown(currentNode.contentMd);
+    var noteContent = normalizeKnowledgeNoteMarkdown(
+      typeof resolveKnowledgeNodeMarkdown === "function"
+        ? resolveKnowledgeNodeMarkdown(currentNode)
+        : currentNode.contentMd
+    );
     var mode = getWorkspaceMode();
     if (mode === "list" && !relatedErrors.length && noteContent.trim()) {
       mode = "note";

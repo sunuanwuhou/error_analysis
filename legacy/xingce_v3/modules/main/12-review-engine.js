@@ -359,6 +359,7 @@ function updateSidebar() {
   if (fullPracticeBadge) fullPracticeBadge.textContent = fullN;
   const fullPracticeBtn = document.getElementById('fullPracticeBtn');
   if (fullPracticeBtn) fullPracticeBtn.classList.toggle('disabled', fullN === 0);
+  if (typeof refreshRandomQuestionBadge === 'function') refreshRandomQuestionBadge();
   const total = todayDone + dueN;
   const progText = document.getElementById('progText');
   if (progText) progText.textContent = `${todayDone}/${total || todayDone}`;

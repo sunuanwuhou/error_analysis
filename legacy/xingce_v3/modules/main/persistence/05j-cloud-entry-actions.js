@@ -158,6 +158,12 @@ async function loadCloudFullBackupFromMore() {
       renderNotesByType();
       if (typeof renderNotesPanelRight === 'function') renderNotesPanelRight();
     }
+    if (typeof cancelWorkspacePendingPersists === 'function') {
+      cancelWorkspacePendingPersists();
+    }
+    if (typeof persistKnowledgeWorkspaceNow === 'function') {
+      await persistKnowledgeWorkspaceNow();
+    }
     showCloudInfo('云端全量覆盖已完成，当前页面已刷新为云端数据');
   }
 }

@@ -17,13 +17,16 @@ import ClaudeBankModal from '@/components/xingce/ClaudeBankModal.vue'
 import ClaudeImportModal from '@/components/xingce/ClaudeImportModal.vue'
 import WorkspaceMobileChrome from '@/components/xingce/WorkspaceMobileChrome.vue'
 import { savePortalLastModule } from '@/lib/portalPrefs'
+import { pickRandomQuestion } from '@/lib/randomQuestionPick'
+import type { ErrorEntry } from '@/api/xingce'
 import '@/styles/xingce-vue-legacy.css'
 import '@/styles/xingce-knowledge-workspace.css'
 
 const store = useXingceStore()
 const router = useRouter()
 const route = useRoute()
-const quizMode = ref<'daily' | 'full' | 'review' | 'retrain' | null>(null)
+const quizMode = ref<'daily' | 'full' | 'review' | 'retrain' | 'random' | null>(null)
+const randomQuizQueue = ref<ErrorEntry[]>([])
 const showAddModal = ref(false)
 const addModalNoteNodeId = ref<string | undefined>(undefined)
 const showImportModal = ref(false)
@@ -139,6 +142,28 @@ function onStartRandomNote() {
   const pick = withNotes[Math.floor(Math.random() * withNotes.length)]!
   store.setActiveNode(pick.id)
   mainTab.value = 'notes'
+}
+
+function onStartRandomQuestion() {
+  const missingSummaryIds = store.workspaceErrors
+    .filter(e => e.id && !Object.prototype.hasOwnProperty.call(store.practiceSummaries, e.id))
+    .map(e => e.id)
+    .slice(0, 80)
+  if (missingSummaryIds.length) {
+    store.queuePracticeSummaries(missingSummaryIds)
+  }
+  const { entry, reason } = pickRandomQuestion(store.workspaceErrors, store.practiceSummaries)
+  if (!entry) {
+    window.alert(reason || '暂无可随机练习的错题')
+    return
+  }
+  randomQuizQueue.value = [entry]
+  quizMode.value = 'random'
+}
+
+function closeQuizModal() {
+  quizMode.value = null
+  randomQuizQueue.value = []
 }
 
 function onOpenMarkdownEditor() {
@@ -283,6 +308,7 @@ function onPickSuite(paperId: string, questionId: string) {
                 ref="notesWorkspaceRef"
                 @start-quiz="quizMode = $event"
                 @start-random-note="onStartRandomNote"
+                @start-random-question="onStartRandomQuestion"
                 @open-import="showImportModal = true"
                 @open-global-search="showGlobalSearch = true"
                 @open-add-for-node="openAddModal"
@@ -307,7 +333,12 @@ function onPickSuite(paperId: string, questionId: string) {
       @pick-note="onPickNote"
       @pick-suite="onPickSuite"
     />
-    <QuizModal v-if="quizMode" :mode="quizMode" @close="quizMode = null" />
+    <QuizModal
+      v-if="quizMode"
+      :mode="quizMode"
+      :initial-queue="quizMode === 'random' ? randomQuizQueue : undefined"
+      @close="closeQuizModal"
+    />
     <AddErrorModal
       v-if="showAddModal"
       :initial-note-node-id="addModalNoteNodeId"

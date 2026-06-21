@@ -176,12 +176,17 @@ if (typeof window !== 'undefined') {
     }
     const modalLikelyNames = new Set([
       'startRandomNoteReview',
+      'startRandomQuestion',
       'openQuickAddModal',
       'startQuiz',
       'startFullPractice',
       'openModal',
       'closeModal',
       'showToast',
+      'openKnowledgeScopeExportModal',
+      'selectKnowledgeScopeExportFmt',
+      'confirmKnowledgeScopeExport',
+      'exportKnowledgeScopeForAI',
     ]);
     if (legacyModalBundleLoaded && missingName && typeof window[missingName] !== 'function') {
       legacyModalBundleLoaded = false;
@@ -238,6 +243,9 @@ if (typeof window !== 'undefined') {
   }, 4000);
 
   window.addEventListener('beforeunload', () => {
+    if (typeof persistKnowledgeWorkspaceNow === 'function') {
+      persistKnowledgeWorkspaceNow().catch(() => {});
+    }
     if (typeof flushPendingPersists === 'function') {
       flushPendingPersists().catch(() => {});
     }

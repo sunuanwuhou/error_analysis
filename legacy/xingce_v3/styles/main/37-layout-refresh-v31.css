@@ -79,6 +79,7 @@ body{
 .quiz-btn--compact .badge{padding:0 6px;font-size:10px}
 .quiz-btn.full-practice{background:linear-gradient(135deg,#3498db,#2471a3)}
 .quiz-btn.random-note{background:linear-gradient(135deg,#16a34a,#15803d)}
+.quiz-btn.random-question{background:linear-gradient(135deg,#ea580c,#c2410c)}
 .search-box input{height:40px;border-radius:14px;background:#faf7f2;border-color:#ebe2d8}
 .date-filter-bar{padding:10px 16px;flex-wrap:wrap}
 .content-header{padding:12px 16px}

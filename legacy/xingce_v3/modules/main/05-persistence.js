@@ -57,6 +57,138 @@ async function loadKnowledgeState() {
   }
   try { noteReviewTracking = JSON.parse(await DB.get(KEY_NOTE_REVIEW_TRACKING) || '{}') || {}; }
   catch(e) { noteReviewTracking = {}; }
+  if (!knowledgeTree || typeof knowledgeTree !== 'object') knowledgeTree = { version: 1, roots: [] };
+  if (!Array.isArray(knowledgeTree.roots)) knowledgeTree.roots = [];
+  knowledgeNotes = knowledgeNotes && typeof knowledgeNotes === 'object' ? knowledgeNotes : {};
+  hydrateKnowledgeContentFromStoredNotes();
+  syncKnowledgeNotesFromTreeSafe();
+  function treeHasNoteContent(nodes) {
+    return (nodes || []).some((node) => {
+      if (!node) return false;
+      if (String(node.contentMd || '').trim()) return true;
+      return treeHasNoteContent(node.children);
+    });
+  }
+  const hasNoteContent = Object.values(knowledgeNotes || {}).some(
+    (item) => item && String(item.content || '').trim()
+  ) || treeHasNoteContent(knowledgeTree.roots);
+  if (hasNoteContent) {
+    await persistKnowledgeWorkspaceNow();
+  }
+}
+
+function getKnowledgeRootNodesForSync() {
+  if (typeof getKnowledgeRootNodes === 'function') {
+    return getKnowledgeRootNodes();
+  }
+  if (knowledgeTree && Array.isArray(knowledgeTree.roots)) {
+    return knowledgeTree.roots;
+  }
+  return [];
+}
+
+function syncKnowledgeNotesFromTreeSafe() {
+  if (typeof syncKnowledgeNotesFromTree === 'function') {
+    syncKnowledgeNotesFromTree();
+    return;
+  }
+  rebuildKnowledgeNotesFromTreeInline();
+}
+
+function rebuildKnowledgeNotesFromTreeInline() {
+  if (!knowledgeTree || !Array.isArray(knowledgeTree.roots)) return;
+  const next = {};
+  function walk(nodes) {
+    (nodes || []).forEach((node) => {
+      if (!node || !node.id) return;
+      const stored = knowledgeNotes && knowledgeNotes[node.id];
+      const storedContent = stored && typeof stored.content === 'string' ? stored.content.trim() : '';
+      const nodeContent = String(node.contentMd || '').trim();
+      const content = nodeContent || storedContent || '';
+      if (!nodeContent && storedContent) {
+        node.contentMd = stored.content;
+        if (stored.updatedAt && !node.updatedAt) node.updatedAt = stored.updatedAt;
+      }
+      next[node.id] = {
+        title: String(node.title || (stored && stored.title) || ''),
+        content,
+        updatedAt: String(node.updatedAt || (stored && stored.updatedAt) || ''),
+      };
+      walk(node.children);
+    });
+  }
+  walk(knowledgeTree.roots);
+  Object.keys(knowledgeNotes || {}).forEach((nodeId) => {
+    if (next[nodeId]) return;
+    const stored = knowledgeNotes[nodeId];
+    const storedContent = stored && typeof stored.content === 'string' ? stored.content.trim() : '';
+    if (!storedContent) return;
+    next[nodeId] = {
+      title: String((stored && stored.title) || ''),
+      content: stored.content,
+      updatedAt: String((stored && stored.updatedAt) || ''),
+    };
+  });
+  knowledgeNotes = next;
+}
+
+function hydrateKnowledgeContentFromStoredNotes() {
+  if (!knowledgeTree || !Array.isArray(knowledgeTree.roots)) return false;
+  let changed = false;
+  function walk(nodes) {
+    (nodes || []).forEach((node) => {
+      if (!node || !node.id) return;
+      const stored = knowledgeNotes && knowledgeNotes[node.id];
+      const storedContent = stored && typeof stored.content === 'string' ? stored.content.trim() : '';
+      const nodeContent = String(node.contentMd || '').trim();
+      if (!nodeContent && storedContent) {
+        node.contentMd = stored.content;
+        if (stored.updatedAt) node.updatedAt = stored.updatedAt;
+        changed = true;
+      }
+      walk(node.children);
+    });
+  }
+  walk(knowledgeTree.roots);
+  if (changed) rebuildKnowledgeNotesFromTreeInline();
+  return changed;
+}
+
+async function persistKnowledgeWorkspaceNow() {
+  hydrateKnowledgeContentFromStoredNotes();
+  syncKnowledgeNotesFromTreeSafe();
+  const keys = [KEY_KNOWLEDGE_TREE, KEY_KNOWLEDGE_NOTES, KEY_NOTES_BY_TYPE, KEY_NOTE_IMAGES];
+  if (typeof cancelPendingPersist === 'function') {
+    keys.forEach((key) => cancelPendingPersist(key));
+  }
+  await Promise.all([
+    DB.set(KEY_KNOWLEDGE_TREE, JSON.stringify(knowledgeTree)),
+    DB.set(KEY_KNOWLEDGE_NOTES, JSON.stringify(knowledgeNotes)),
+    DB.set(KEY_NOTES_BY_TYPE, JSON.stringify(notesByType || {})),
+    DB.set(KEY_NOTE_IMAGES, JSON.stringify(noteImages || {})),
+  ].map((promise) => promise.catch(reportLocalStorageFailure)));
+}
+
+let knowledgeWorkspacePersistTimer = null;
+function cancelWorkspacePendingPersists() {
+  if (typeof cancelAllPendingPersists === 'function') {
+    cancelAllPendingPersists();
+  } else if (typeof cancelPendingPersist === 'function') {
+    WORKSPACE_PERSIST_KEYS.forEach((key) => cancelPendingPersist(key));
+  }
+  if (knowledgeWorkspacePersistTimer) {
+    clearTimeout(knowledgeWorkspacePersistTimer);
+    knowledgeWorkspacePersistTimer = null;
+  }
+}
+function scheduleKnowledgeWorkspacePersist() {
+  if (knowledgeWorkspacePersistTimer) clearTimeout(knowledgeWorkspacePersistTimer);
+  knowledgeWorkspacePersistTimer = setTimeout(() => {
+    knowledgeWorkspacePersistTimer = null;
+    persistKnowledgeWorkspaceNow().catch((e) => {
+      console.warn('[scheduleKnowledgeWorkspacePersist] failed', e);
+    });
+  }, 120);
 }
 function saveNotesByType() {
   DB.set(KEY_NOTES_BY_TYPE, JSON.stringify(notesByType));
@@ -64,7 +196,8 @@ function saveNotesByType() {
   scheduleCloudSave();
 }
 function saveKnowledgeState() {
-  syncKnowledgeNotesFromTree();
+  hydrateKnowledgeContentFromStoredNotes();
+  syncKnowledgeNotesFromTreeSafe();
   knowledgeErrorCountCacheVersion += 1;
   DB.set(KEY_KNOWLEDGE_TREE, JSON.stringify(knowledgeTree));
   DB.set(KEY_KNOWLEDGE_NOTES, JSON.stringify(knowledgeNotes));
@@ -104,14 +237,16 @@ saveNotesByType = function() {
 };
 saveKnowledgeState = function(options) {
   const opts = options || {};
-  if (!opts.preserveTreeShape) {
+  if (!opts.preserveTreeShape && typeof getKnowledgeRootNodes === 'function') {
     mergeDuplicateKnowledgeSiblings(getKnowledgeRootNodes());
     collapseDuplicateKnowledgeWrappers(getKnowledgeRootNodes());
   }
-  syncKnowledgeNotesFromTree();
+  hydrateKnowledgeContentFromStoredNotes();
+  syncKnowledgeNotesFromTreeSafe();
   const changed = syncWorkspaceOpsFromSnapshot();
   queuePersist(KEY_KNOWLEDGE_TREE, knowledgeTree);
   queuePersist(KEY_KNOWLEDGE_NOTES, knowledgeNotes);
+  scheduleKnowledgeWorkspacePersist();
   if (changed) markIncrementalWorkspaceChange();
 };
 saveKnowledgeExpanded = function() {
@@ -195,6 +330,9 @@ function rememberPartialSyncCursor(cursorAt, cursorEntityType, cursorId) {
 async function syncWithServer(opts) {
   const options = opts || {};
   if (!cloudUser) return;
+  const hadLocalWorkspaceDataAtStart = typeof hasLocalWorkspaceData === 'function'
+    ? hasLocalWorkspaceData()
+    : false;
   if (incrementalSyncBusy) return;
   if (incrementalSyncTimer) {
     clearTimeout(incrementalSyncTimer);
@@ -240,6 +378,8 @@ async function syncWithServer(opts) {
         cloudMeta.lastSeenBackupAt = latestSnapshotAt;
         saveCloudMeta();
       }
+      await flushWorkspacePersistsNow();
+      await persistKnowledgeWorkspaceNow();
       if (pushed) {
         setCloudSyncState('synced', '本地增量已上传到云端（未自动下拉）', latestSnapshotAt || '');
       }
@@ -290,6 +430,7 @@ async function syncWithServer(opts) {
     }
     if (pushed || pulled > 0) {
       await flushWorkspacePersistsNow();
+      await persistKnowledgeWorkspaceNow();
       const syncMessage = isSnapshotPull
         ? `已与云端全量对齐（${pulled} 条实体记录，非本地改动）`
         : `已合并 ${pulled} 条云端增量改动`;
@@ -298,6 +439,7 @@ async function syncWithServer(opts) {
       setCloudSyncState('synced', '云端无新增改动', latestSnapshotAt || serverTime || new Date().toISOString());
     }
     if (!options._backupRecovery
+      && !hadLocalWorkspaceDataAtStart
       && typeof hasLocalWorkspaceData === 'function'
       && !hasLocalWorkspaceData()
       && typeof loadCloudBackup === 'function') {

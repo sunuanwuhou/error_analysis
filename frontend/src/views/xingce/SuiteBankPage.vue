@@ -1101,6 +1101,7 @@ function onGlobalPickNote(_nodeId: string) {
           </button>
           <button type="button" class="btn btn-secondary" @click="goWorkspace">行测工作台</button>
           <RouterLink class="btn btn-secondary" :to="{ name: 'XingceBankDrill' }">套卷模块练</RouterLink>
+          <RouterLink class="btn btn-secondary" :to="{ name: 'XingceExamInsight' }">考情分析</RouterLink>
           <button type="button" class="btn btn-ghost" @click="goPortal">模块首页</button>
         </div>
       </div>

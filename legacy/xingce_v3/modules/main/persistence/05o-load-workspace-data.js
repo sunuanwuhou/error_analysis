@@ -68,7 +68,7 @@ async function ensureFullWorkspaceDataLoaded() {
       await migrateIntegerIds();
       setErrorSyncSnapshot();
       if (typeof ensureKnowledgeState === 'function') {
-        ensureKnowledgeState({ persist: true, syncErrors: true, repair: false });
+        ensureKnowledgeState({ persist: true, syncErrors: true, repair: false, preserveTreeShape: true });
       }
       if (typeof syncNotesWithErrors === 'function') syncNotesWithErrors();
       refreshSidebarErrorsAndNotesPanels();

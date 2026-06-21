@@ -85,7 +85,9 @@ async function saveQuizResults() {
       },
     });
   });
-  const sessionType = quizSessionMode === 'full' ? '全量练习' : '今日复习';
+  const sessionType = quizSessionMode === 'full'
+    ? '全量练习'
+    : (quizSessionMode === 'random' ? '随机题目' : '今日复习');
   pushHistory({
     date: today()+' '+new Date().toTimeString().slice(0,5),
     sessionType,
@@ -100,7 +102,7 @@ async function saveQuizResults() {
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         date: today(),
-        mode: sessionType.includes('全量') ? 'targeted' : 'daily',
+        mode: sessionType.includes('全量') ? 'targeted' : (sessionType.includes('随机') ? 'random' : 'daily'),
         weaknessTag: reasonFilter || '',
         total: realAnswers.length,
         correct: realAnswers.filter(a=>a.correct).length,

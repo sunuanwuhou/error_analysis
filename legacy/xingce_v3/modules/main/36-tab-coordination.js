@@ -33,7 +33,7 @@ function renderKnowledgeTreeHtml(nodes, depth) {
   }).join('');
 }
 function renderKnowledgeNotesView() {
-  ensureKnowledgeState();
+  ensureKnowledgeState({ preserveTreeShape: true, repair: false, persist: false });
   const content = document.getElementById('notesContent');
   if (!content) return;
   const currentNode = getCurrentKnowledgeNode() || collectKnowledgeLeaves()[0];
@@ -155,7 +155,9 @@ function renderKnowledgeNotesView() {
 function getKnowledgeNoteRenderBundle(node) {
   const safeNode = node || {};
   const nodeId = String(safeNode.id || '');
-  const noteContent = String(safeNode.contentMd || '');
+  const noteContent = typeof resolveKnowledgeNodeMarkdown === 'function'
+    ? String(resolveKnowledgeNodeMarkdown(safeNode) || '')
+    : String(safeNode.contentMd || '');
   const updatedAt = String(safeNode.updatedAt || '');
   const cached = knowledgeNoteRenderCache.get(nodeId);
   if (cached && cached.content === noteContent && cached.updatedAt === updatedAt) {
@@ -177,7 +179,7 @@ function getKnowledgeNoteRenderBundle(node) {
   return bundle;
 }
 function renderKnowledgeNotesViewV2() {
-  ensureKnowledgeState();
+  ensureKnowledgeState({ preserveTreeShape: true, repair: false, persist: false });
   const content = document.getElementById('notesContent');
   if (!content) return;
   content.classList.add('knowledge-notes-active');

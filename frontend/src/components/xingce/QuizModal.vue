@@ -4,7 +4,7 @@ import { useXingceStore } from '@/stores/xingceStore'
 import { xingceApi } from '@/api/xingce'
 import type { ErrorEntry } from '@/api/xingce'
 
-type QuizMode = 'daily' | 'full' | 'review' | 'retrain'
+type QuizMode = 'daily' | 'full' | 'review' | 'retrain' | 'random'
 type Phase = 'loading' | 'question' | 'review' | 'saving' | 'done'
 
 interface Answer {
@@ -15,7 +15,10 @@ interface Answer {
   durationSec: number
 }
 
-const props = defineProps<{ mode: QuizMode }>()
+const props = defineProps<{
+  mode: QuizMode
+  initialQueue?: ErrorEntry[]
+}>()
 const emit = defineEmits<{ close: [] }>()
 
 const store = useXingceStore()
@@ -35,6 +38,7 @@ const TITLE_MAP: Record<QuizMode, string> = {
   full:    '📚 全量练习',
   review:  '🧩 待复盘训练',
   retrain: '🔁 待复训训练',
+  random:  '🎲 随机题目',
 }
 
 const current = computed(() => queue.value[idx.value] ?? null)
@@ -50,6 +54,9 @@ const progressText = computed(() => `${idx.value + 1} / ${queue.value.length}`)
 
 // ── 构建题目队列 ─────────────────────────────────────────────────────────────
 async function buildQueue(): Promise<ErrorEntry[]> {
+  if (props.mode === 'random') {
+    return (props.initialQueue ?? []).filter(e => e?.id)
+  }
   if (props.mode === 'full') {
     return store.filteredErrors
       .filter(e => e.status !== 'mastered' && e.masteryLevel !== 'mastered')
@@ -147,6 +154,8 @@ async function saveResults() {
         sessionMode:
           props.mode === 'full'
             ? 'full'
+            : props.mode === 'random'
+              ? 'random'
             : props.mode === 'review'
               ? 'review'
               : props.mode === 'retrain'
@@ -193,7 +202,7 @@ async function saveResults() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         date: today,
-        mode: props.mode === 'full' ? 'targeted' : 'daily',
+        mode: props.mode === 'full' ? 'targeted' : (props.mode === 'random' ? 'random' : 'daily'),
         weaknessTag: '',
         total: realAnswers.length,
         correct: realAnswers.filter(a => a.correct).length,

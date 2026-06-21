@@ -193,6 +193,372 @@ function exportSelectAll(v) {
   document.querySelectorAll('.export-mod-cb').forEach(cb => cb.checked = v);
 }
 
+const AI_EXPORT_SUGGESTED_PROMPT = '请根据以下知识笔记和错题数据，分析我还有哪些知识点遗漏、笔记哪些地方需要补充完善，并给出按优先级排序的复习建议。';
+let _knowledgeScopeExportFmt = 'json';
+
+function selectKnowledgeScopeExportFmt(fmt) {
+  _knowledgeScopeExportFmt = fmt === 'md' ? 'md' : 'json';
+  document.getElementById('ksExportFmt_json')?.classList.toggle('active', _knowledgeScopeExportFmt === 'json');
+  document.getElementById('ksExportFmt_md')?.classList.toggle('active', _knowledgeScopeExportFmt === 'md');
+}
+
+function formatKnowledgeScopeExportDateTime(iso) {
+  try {
+    return new Date(iso || Date.now()).toLocaleString('zh-CN', { hour12: false });
+  } catch (e) {
+    return today();
+  }
+}
+
+function formatErrorStatusLabelForExport(status) {
+  const value = String(status || '').trim();
+  if (value === 'focus') return '重点复习';
+  if (value === 'mastered') return '已掌握';
+  return value || '—';
+}
+
+function resolveNoteImagesInMarkdown(md, noteImagesMap) {
+  let text = String(md || '');
+  text = text.replace(/!\[([^\]]*)\]\(noteimg:([a-z0-9-]+)\)/gi, (_, alt, id) => {
+    const src = (noteImagesMap && noteImagesMap[id]) || '';
+    return src ? `![${alt}](${src})` : `![${alt}](noteimg:${id})`;
+  });
+  text = text.replace(/\(noteimg:([a-z0-9-]+)\)/gi, (_, id) => {
+    const src = (noteImagesMap && noteImagesMap[id]) || '';
+    return src ? `(${src})` : `(noteimg:${id})`;
+  });
+  return text;
+}
+
+function mdBlockquote(text) {
+  const lines = String(text || '').trim().split('\n').filter(Boolean);
+  if (!lines.length) return '';
+  return lines.map(line => `> ${line}`).join('\n');
+}
+
+function mdTableRow(label, value) {
+  const cell = String(value || '—').replace(/\|/g, '\\|').replace(/\n/g, ' ');
+  return `| ${label} | ${cell || '—'} |`;
+}
+
+function formatErrorOptionsMarkdown(options) {
+  const lines = String(options || '').split(/\n|\|/).map(item => item.trim()).filter(Boolean);
+  if (!lines.length) return '';
+  return lines.map(item => (item.startsWith('-') ? item : `- ${item}`)).join('\n');
+}
+
+function mdImageLine(alt, src) {
+  if (!src) return '';
+  return `\n![${alt || '图片'}](${src})\n`;
+}
+
+function groupErrorsForMarkdown(errorsList) {
+  const map = new Map();
+  (errorsList || []).forEach(item => {
+    const type = item.type || '未分类';
+    const subtype = item.subtype || '未分类';
+    const key = `${type}::${subtype}`;
+    if (!map.has(key)) map.set(key, { type, subtype, items: [] });
+    map.get(key).items.push(item);
+  });
+  return Array.from(map.values());
+}
+
+function buildKnowledgeScopeMarkdown(context, notesList, portableErrors, materializedNoteImages) {
+  const sortedNotes = [...(notesList || [])].sort((a, b) => String(a.path || '').localeCompare(String(b.path || ''), 'zh-CN'));
+  const groupedErrors = groupErrorsForMarkdown(portableErrors || []);
+  const lines = [];
+  lines.push(`# 行测学习资料 · ${context.title || '知识节点'}`);
+  lines.push('');
+  lines.push('> **知识范围**：' + (context.path || context.title || '—'));
+  lines.push('> **导出时间**：' + formatKnowledgeScopeExportDateTime(new Date().toISOString()));
+  lines.push(`> **内容统计**：${sortedNotes.length} 条笔记 · ${(portableErrors || []).length} 道题目`);
+  lines.push('');
+  lines.push('---');
+  lines.push('');
+  lines.push('## 一、知识笔记');
+  lines.push('');
+  if (!sortedNotes.length) {
+    lines.push('_（本节暂无笔记）_');
+  } else {
+    sortedNotes.forEach(note => {
+      lines.push(`### ${note.title || '未命名笔记'}`);
+      lines.push('');
+      lines.push('| 项目 | 内容 |');
+      lines.push('| --- | --- |');
+      lines.push(mdTableRow('路径', note.path || '—'));
+      lines.push(mdTableRow('更新', String(note.updatedAt || '').slice(0, 10) || '—'));
+      lines.push('');
+      lines.push(resolveNoteImagesInMarkdown(note.contentMd, materializedNoteImages));
+      lines.push('');
+      lines.push('---');
+      lines.push('');
+    });
+  }
+  lines.push('## 二、题目');
+  lines.push('');
+  if (!groupedErrors.length) {
+    lines.push('_（本节暂无题目）_');
+  } else {
+    groupedErrors.forEach(group => {
+      lines.push(`### ${group.type} · ${group.subtype}`);
+      lines.push('');
+      group.items.forEach((item, index) => {
+        lines.push(`#### 题目 ${index + 1}`);
+        lines.push('');
+        if (item.question) {
+          lines.push(mdBlockquote(item.question));
+          lines.push('');
+        }
+        if (item.imgData) lines.push(mdImageLine('题目图片', item.imgData));
+        const optionsMd = formatErrorOptionsMarkdown(item.options);
+        if (optionsMd) {
+          lines.push(optionsMd);
+          lines.push('');
+        }
+        lines.push('---');
+        lines.push('');
+      });
+    });
+  }
+  lines.push('---');
+  lines.push('');
+  lines.push('_由行测学习笔记导出 · ' + today() + '_');
+  return lines.join('\n');
+}
+
+function downloadKnowledgeScopeExportFile(name, content, mime) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], { type: mime || 'application/octet-stream' }));
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function previewKnowledgeScopeExportSummary(context, notesList, errorsList) {
+  const el = document.getElementById('knowledgeScopeExportSummary');
+  if (!el) return;
+  el.textContent = `范围：${context.path || context.title} · ${notesList.length} 条笔记 · ${errorsList.length} 道错题`;
+}
+
+async function gatherKnowledgeScopeExportData() {
+  const context = buildKnowledgeScopeExportContext();
+  if (!context) return { error: '请先在左侧知识树选中一个节点' };
+  const errorsList = collectErrorsForKnowledgeNodeIds(context.nodeIds);
+  const notesList = buildNotesArrayForAI(context.nodeIds);
+  if (!errorsList.length && !notesList.length) {
+    return { error: `「${context.title}」范围内没有可导出的笔记或错题` };
+  }
+  const noteImagesSubset = collectScopedNoteImages(context.nodeIds, notesList);
+  const materializedNoteImages = await materializeNoteImagesSubset(noteImagesSubset);
+  const portableErrors = typeof buildPortableErrorExport === 'function'
+    ? await Promise.all(errorsList.map(item => buildPortableErrorExport(item)))
+    : errorsList.map(item => cloneJson(item));
+  return { context, errorsList, notesList, noteImagesSubset, materializedNoteImages, portableErrors };
+}
+
+async function openKnowledgeScopeExportModal() {
+  if (typeof ensureLegacyModalBundleLoaded === 'function') {
+    await ensureLegacyModalBundleLoaded();
+  }
+  _knowledgeScopeExportFmt = 'json';
+  selectKnowledgeScopeExportFmt('json');
+  const context = buildKnowledgeScopeExportContext();
+  if (!context) {
+    showToast('请先在左侧知识树选中一个节点', 'warning');
+    return;
+  }
+  const errorsList = collectErrorsForKnowledgeNodeIds(context.nodeIds);
+  const notesList = buildNotesArrayForAI(context.nodeIds);
+  if (!errorsList.length && !notesList.length) {
+    showToast(`「${context.title}」范围内没有可导出的笔记或错题`, 'warning');
+    return;
+  }
+  previewKnowledgeScopeExportSummary(context, notesList, errorsList);
+  openModal('knowledgeScopeExportModal');
+}
+
+async function confirmKnowledgeScopeExport() {
+  const confirmBtn = document.getElementById('knowledgeScopeExportConfirmBtn');
+  const headerBtn = document.getElementById('exportKnowledgeScopeBtn');
+  if (confirmBtn && confirmBtn.dataset.exporting === '1') return;
+  if (confirmBtn) {
+    confirmBtn.dataset.exporting = '1';
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = '导出中…';
+  }
+  if (headerBtn) {
+    headerBtn.disabled = true;
+    headerBtn.textContent = '导出中…';
+  }
+  try {
+    const data = await gatherKnowledgeScopeExportData();
+    if (data.error) {
+      showToast(data.error, 'warning');
+      return;
+    }
+    const { context, notesList, errorsList, noteImagesSubset, materializedNoteImages, portableErrors } = data;
+    const imageCount = Object.keys(noteImagesSubset || {}).length;
+    if (_knowledgeScopeExportFmt === 'md') {
+      const mdErrors = await Promise.all(errorsList.map(async item => ({
+        type: item.type,
+        subtype: item.subtype,
+        question: item.question,
+        options: item.options,
+        imgData: await materializePortableImageValue(item.imgData || ''),
+      })));
+      const markdown = buildKnowledgeScopeMarkdown(context, notesList, mdErrors, materializedNoteImages);
+      const fileName = `xingce_export_${context.label}_${today()}.md`;
+      downloadKnowledgeScopeExportFile(fileName, markdown, 'text/markdown;charset=utf-8');
+    } else {
+      let payload = buildKnowledgeScopeForAIPayload(context, errorsList, notesList, noteImagesSubset);
+      payload = await buildPortableBackupPayload(payload);
+      payload.noteImages = materializedNoteImages;
+      const fileName = `xingce_ai_export_${context.label}_${today()}.json`;
+      downloadKnowledgeScopeExportFile(fileName, JSON.stringify(payload, null, 2), 'application/json;charset=utf-8');
+    }
+    closeModal('knowledgeScopeExportModal');
+    showToast(`已导出：${notesList.length} 条笔记、${errorsList.length} 道错题、${imageCount} 张图片`, 'success');
+  } catch (err) {
+    console.error('[confirmKnowledgeScopeExport]', err);
+    showToast('导出失败：' + (err && err.message ? err.message : String(err)), 'error');
+  } finally {
+    if (confirmBtn) {
+      confirmBtn.dataset.exporting = '0';
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = '导出';
+    }
+    if (headerBtn) {
+      headerBtn.disabled = false;
+      headerBtn.textContent = '导出';
+    }
+  }
+}
+
+async function exportKnowledgeScopeForAI() {
+  await openKnowledgeScopeExportModal();
+}
+
+if (typeof window !== 'undefined') {
+  window.openKnowledgeScopeExportModal = openKnowledgeScopeExportModal;
+  window.selectKnowledgeScopeExportFmt = selectKnowledgeScopeExportFmt;
+  window.confirmKnowledgeScopeExport = confirmKnowledgeScopeExport;
+  window.exportKnowledgeScopeForAI = exportKnowledgeScopeForAI;
+}
+
+function collectNoteImageIdsFromText(text) {
+  const ids = new Set();
+  String(text || '').replace(/\(noteimg:([a-z0-9-]+)\)/gi, (_, id) => { ids.add(id); });
+  String(text || '').replace(/!\[[^\]]*\]\(noteimg:([a-z0-9-]+)\)/gi, (_, id) => { ids.add(id); });
+  return ids;
+}
+
+function resolveKnowledgeExportNodeId() {
+  return knowledgeNodeFilter || selectedKnowledgeNodeId || null;
+}
+
+function buildKnowledgeScopeExportContext() {
+  const nodeId = resolveKnowledgeExportNodeId();
+  if (!nodeId) return null;
+  if (typeof ensureKnowledgeState === 'function') ensureKnowledgeState();
+  const node = getKnowledgeNodeById(nodeId);
+  if (!node) return null;
+  const nodeIds = getKnowledgeDescendantNodeIds(node);
+  const pathTitles = typeof getKnowledgePathTitles === 'function' && typeof collapseKnowledgePathTitles === 'function'
+    ? collapseKnowledgePathTitles(getKnowledgePathTitles(node.id))
+    : [node.title || ''];
+  return {
+    nodeId: node.id,
+    node,
+    nodeIds,
+    title: node.title || '',
+    path: pathTitles.join(' > '),
+    label: sanitizeExportLabel(`knowledge_${node.title || 'scope'}`),
+    displayLabel: `知识点：${node.title || '当前节点'}`
+  };
+}
+
+function collectErrorsForKnowledgeNodeIds(nodeIds) {
+  const idSet = new Set((nodeIds || []).filter(Boolean));
+  if (!idSet.size) return [];
+  const resolveId = typeof resolveErrorKnowledgeNodeId === 'function'
+    ? resolveErrorKnowledgeNodeId
+    : (item) => String(item.noteNodeId || '');
+  return getErrorEntries().filter(item => idSet.has(resolveId(item)));
+}
+
+function buildNotesArrayForAI(nodeIds) {
+  const notes = [];
+  (nodeIds || []).forEach(id => {
+    const node = getKnowledgeNodeById(id);
+    if (!node) return;
+    const stored = knowledgeNotes[id];
+    const content = String(node.contentMd || (stored && (stored.content || stored.contentMd)) || '').trim();
+    if (!content) return;
+    const pathTitles = typeof getKnowledgePathTitles === 'function' && typeof collapseKnowledgePathTitles === 'function'
+      ? collapseKnowledgePathTitles(getKnowledgePathTitles(id))
+      : [node.title || ''];
+    notes.push({
+      nodeId: id,
+      title: node.title || '',
+      path: pathTitles.join(' > '),
+      contentMd: content,
+      updatedAt: node.updatedAt || (stored && stored.updatedAt) || ''
+    });
+  });
+  return notes;
+}
+
+function collectScopedNoteImages(nodeIds, notesList) {
+  const ids = new Set();
+  (nodeIds || []).forEach(id => {
+    const node = getKnowledgeNodeById(id);
+    const stored = knowledgeNotes[id];
+    const md = String((node && node.contentMd) || (stored && (stored.content || stored.contentMd)) || '');
+    collectNoteImageIdsFromText(md).forEach(imgId => ids.add(imgId));
+  });
+  (notesList || []).forEach(note => collectNoteImageIdsFromText(note.contentMd).forEach(imgId => ids.add(imgId)));
+  const subset = {};
+  ids.forEach(id => {
+    if (noteImages[id]) subset[id] = noteImages[id];
+  });
+  return subset;
+}
+
+async function materializeNoteImagesSubset(subset) {
+  const result = {};
+  for (const [key, value] of Object.entries(subset || {})) {
+    result[key] = await materializePortableImageValue(value || '');
+  }
+  return result;
+}
+
+function buildKnowledgeScopeForAIPayload(context, errorsList, notesList, noteImagesSubset) {
+  const knowledgeSubset = buildKnowledgeSubset(context.nodeIds);
+  return {
+    xc_version: 3,
+    exportTime: new Date().toISOString(),
+    exportKind: 'knowledge_scope_for_ai',
+    exportScope: context.displayLabel,
+    scope: {
+      nodeId: context.nodeId,
+      title: context.title,
+      path: context.path
+    },
+    suggestedPrompt: AI_EXPORT_SUGGESTED_PROMPT,
+    stats: {
+      noteCount: notesList.length,
+      errorCount: errorsList.length,
+      imageCount: Object.keys(noteImagesSubset || {}).length
+    },
+    notes: notesList,
+    errors: errorsList.map(item => cloneJson(item)),
+    noteImages: cloneJson(noteImagesSubset),
+    knowledgeTree: knowledgeSubset.knowledgeTree,
+    knowledgeNotes: knowledgeSubset.knowledgeNotes
+  };
+}
+
 function exportKnowledgeTreeSnapshot() {
   ensureKnowledgeState();
   const roots = cloneJson(getKnowledgeRootNodes() || []);

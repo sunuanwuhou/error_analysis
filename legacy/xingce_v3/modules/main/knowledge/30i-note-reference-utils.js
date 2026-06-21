@@ -12,6 +12,26 @@ function getLegacyKnowledgeNoteSnapshot(nodeId) {
   };
 }
 
+function resolveKnowledgeNodeMarkdown(nodeOrId) {
+  const node = typeof nodeOrId === 'string'
+    ? (typeof getKnowledgeNodeById === 'function' ? getKnowledgeNodeById(nodeOrId) : null)
+    : nodeOrId;
+  const nodeId = node && node.id ? String(node.id) : (typeof nodeOrId === 'string' ? nodeOrId : '');
+  const nodeContent = node && typeof node.contentMd === 'string' ? String(node.contentMd).trim() : '';
+  if (nodeContent && nodeContent.toLowerCase() !== 'undefined') {
+    return node.contentMd;
+  }
+  const legacy = getLegacyKnowledgeNoteSnapshot(nodeId);
+  if (legacy && String(legacy.content || '').trim()) {
+    if (node && !String(node.contentMd || '').trim()) {
+      node.contentMd = legacy.content;
+      if (legacy.updatedAt && !node.updatedAt) node.updatedAt = legacy.updatedAt;
+    }
+    return legacy.content;
+  }
+  return node && typeof node.contentMd === 'string' ? node.contentMd : '';
+}
+
 function removeKnowledgeNoteEntry(nodeId) {
   if (!nodeId || !knowledgeNotes || typeof knowledgeNotes !== 'object') return;
   delete knowledgeNotes[nodeId];

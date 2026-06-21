@@ -1,8 +1,8 @@
 {
-  "built_at": "2026-06-15T11:27:30Z",
+  "built_at": "2026-06-19T00:35:04Z",
   "css_bundle": {
     "path": "legacy/xingce_v3/styles/legacy-app.bundle.css",
-    "sha256": "667b77f26887395e13cf09f58545a189601f15e0dedb1acf3cdb255f8069d2bf",
+    "sha256": "b8f01eab6bf51850077f04f80f1d293705b92e415ee2a115b13ae88ae6cb66b3",
     "sources": [
       "styles/main/00-base-reset.css",
       "styles/main/01-sidebar.css",
@@ -45,7 +45,7 @@
   },
   "js_bundle": {
     "path": "legacy/xingce_v3/modules/legacy-app.bundle.js",
-    "sha256": "1466ea00c07bcc3118ca4ad7aa06a7b4c75316ee2bc7c22374885ea369a8fbed",
+    "sha256": "f66d8b14641b14800419c4126c6f435d082899e597f4239f4c1eb951aa1005fa",
     "sources": [
       "modules/main/00-event-dispatcher.js",
       "modules/main/state/01a-reason-utils.js",
@@ -98,6 +98,7 @@
       "modules/main/modal/13i-random-note-practice-priority.js",
       "modules/main/modal/13j-random-note-modal-render.js",
       "modules/main/modal/13k-random-note-actions.js",
+      "modules/main/modal/13l-random-question.js",
       "modules/main/13-quiz-flow.js",
       "modules/main/modal/13a-quiz-canvas-feedback.js",
       "modules/main/14-sidebar-render.js",
@@ -180,17 +181,17 @@
   "v51_partials": {
     "core": {
       "path": "legacy/v51_frontend/partials.bundle.html",
-      "sha256": "26bc87f1556999174590e1dc7ddff3854ff0af370385fe2ca3a06ab2aff1b0fd"
+      "sha256": "4229f0b7a4e31913b567dc71d48590034164a4030c2723019cb6d409254d86d4"
     },
     "deferred": {
       "path": "legacy/v51_frontend/deferred-partials.bundle.html",
-      "sha256": "78e9783f968f912e862ae618123fc05e9b95614588dece02f95682f10d0b961c"
+      "sha256": "8d4a8e40d249810a57b747419a9d61a30c0d038e038c6782d00f3758d6331f1a"
     }
   },
   "js_view_bundles": {
     "home": {
       "path": "legacy/xingce_v3/modules/legacy-app.home.bundle.js",
-      "sha256": "c6b48e790aacaa4661bbaf5575e406f3ccf10514dbce731fd047c98c838355a5",
+      "sha256": "1fa655069df59a1f4e7138ba24252855d7e7561b524fb46546ef3674eb51efd2",
       "sources": [
         "modules/main/00-event-dispatcher.js",
         "modules/main/state/01a-reason-utils.js",
@@ -245,7 +246,7 @@
     },
     "workspace": {
       "path": "legacy/xingce_v3/modules/legacy-app.workspace.bundle.js",
-      "sha256": "cfe663f294c35e9d1a9c178f4c1ee6107c23cc67be24a2897dddc4cfc29f3e83",
+      "sha256": "3c54ed5dd047980654052d686247158cb1ae4a25d55f0e76f2989d0285f5b62d",
       "sources": [
         "modules/main/10-notes-panel.js",
         "modules/main/11-typed-note-tree.js",
@@ -294,7 +295,7 @@
     },
     "modal": {
       "path": "legacy/xingce_v3/modules/legacy-app.modal.bundle.js",
-      "sha256": "ca3fd5fa3d31458d8f5ef73945963e02d1659e6cc7438afe37e7be8f0de8d36a",
+      "sha256": "e405fe1b6b37cc13122688b279a8c880abc380ec68421ba63c58a665b85fba5a",
       "sources": [
         "modules/main/06-ai-workbench.js",
         "modules/main/image/07a-image-value-utils.js",
@@ -327,6 +328,7 @@
         "modules/main/modal/13i-random-note-practice-priority.js",
         "modules/main/modal/13j-random-note-modal-render.js",
         "modules/main/modal/13k-random-note-actions.js",
+        "modules/main/modal/13l-random-question.js",
         "modules/main/13-quiz-flow.js",
         "modules/main/modal/13a-quiz-canvas-feedback.js",
         "modules/main/31-inline-quiz.js",
@@ -344,7 +346,7 @@
     },
     "bootstrap": {
       "path": "legacy/xingce_v3/modules/legacy-app.bootstrap.bundle.js",
-      "sha256": "5cd96a0a2807efa9100c0bbebd374ac5a503391fa5d47942b099a7d17e1ebb70",
+      "sha256": "5531ff48d7a077765a29c5ea866e0390a930a42d5cdc7cfc36ebdccbfacecf0d",
       "sources": [
         "modules/main/99-bootstrap.js"
       ]

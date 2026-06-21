@@ -92,6 +92,7 @@ const ROUTE_ACTIVE_TAB: Record<string, ShellTabId> = {
   ShenlunWorkbench: 'shenlun',
   ShenlunResult: 'shenlun',
   XingceBankDrillExport: 'xingce_bank_drill',
+  XingceExamInsight: 'xingce_suite',
 }
 
 export function getVisibleShellTabs(user?: MeUser): ShellTabDef[] {

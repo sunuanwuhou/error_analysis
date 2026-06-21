@@ -10,6 +10,7 @@
       'startQuiz',
       'startFullPractice',
       'startRandomNoteReview',
+      'startRandomQuestion',
     ],
     bootScripts: [
       '/assets/modules/mathjax-config.js',

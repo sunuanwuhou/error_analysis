@@ -41,6 +41,7 @@ from backend.services.suite_bank_service import (
     search_suite_questions,
     upsert_suite_practice_record,
 )
+from backend.services.suite_exam_insight import compute_exam_insight
 
 router = APIRouter()
 
@@ -440,6 +441,32 @@ def api_suite_bank_bank_drill_export_delete(
 def api_suite_bank_papers(xingce_session: Optional[str] = Cookie(default=None)) -> dict[str, Any]:
     _session_user_id(xingce_session)
     return {"papers": list_papers()}
+
+
+@router.get("/api/suite-bank/exam-insight")
+def api_suite_bank_exam_insight(
+    exam_track: str = Query(EXAM_TRACK_PROVINCIAL, description="provincial | unified"),
+    years: str = Query("", description="逗号分隔年份，空则默认近5年"),
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    _session_user_id(xingce_session)
+    year_list: list[int] | None = None
+    raw = (years or "").strip()
+    if raw:
+        parsed: list[int] = []
+        for part in raw.split(","):
+            part = part.strip()
+            if not part:
+                continue
+            try:
+                y = int(part)
+            except ValueError:
+                continue
+            if 1990 <= y <= 2100:
+                parsed.append(y)
+        if parsed:
+            year_list = sorted(set(parsed))
+    return compute_exam_insight(exam_track=exam_track.strip(), years=year_list)
 
 
 @router.get("/api/suite-bank/papers/{paper_id}")

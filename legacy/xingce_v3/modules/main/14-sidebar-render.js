@@ -61,7 +61,7 @@ function renderSidebarKnowledgeTreeV2(nodes, depth, renderBudget) {
 }
 function renderSidebar() {
   updateSidebar();
-  ensureKnowledgeState();
+  ensureKnowledgeState({ preserveTreeShape: true, repair: false, persist: false });
   const nextTreeStateKey = getKnowledgeTreeRenderStateKey();
   if (nextTreeStateKey !== knowledgeTreeRenderStateKey) {
     knowledgeTreeRenderStateKey = nextTreeStateKey;

@@ -97,9 +97,17 @@ function ensureFixedKnowledgeRoots() {
 }
 
 function getKnowledgeRootNodes() {
-  if (!knowledgeTree || !Array.isArray(knowledgeTree.roots)) {
-    knowledgeTree = createDefaultKnowledgeTree();
+  const hasStoredNotes = knowledgeNotes && typeof knowledgeNotes === 'object'
+    && Object.values(knowledgeNotes).some((item) => item && String(item.content || '').trim());
+  if (knowledgeTree && Array.isArray(knowledgeTree.roots)) {
+    return knowledgeTree.roots;
   }
+  if (hasStoredNotes) {
+    if (!knowledgeTree || typeof knowledgeTree !== 'object') knowledgeTree = { version: 1, roots: [] };
+    if (!Array.isArray(knowledgeTree.roots)) knowledgeTree.roots = [];
+    return knowledgeTree.roots;
+  }
+  knowledgeTree = createDefaultKnowledgeTree();
   return knowledgeTree.roots;
 }
 

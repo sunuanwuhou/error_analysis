@@ -34,6 +34,10 @@ function cancelPendingPersist(key) {
   persistPendingValues.delete(key);
 }
 
+function cancelAllPendingPersists() {
+  Array.from(persistTimers.keys()).forEach(cancelPendingPersist);
+}
+
 function queuePersist(key, value, delay) {
   const wait = typeof delay === 'number' ? delay : 160;
   const encoded = typeof value === 'string' ? value : JSON.stringify(value);
