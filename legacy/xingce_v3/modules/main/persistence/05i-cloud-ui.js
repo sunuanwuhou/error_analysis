@@ -78,7 +78,14 @@ function getCloudFreshnessText(localIso, cloudIso) {
 }
 
 function getCloudActionHint(state) {
+  const manual = typeof isManualCloudSyncOnly === 'function' && isManualCloudSyncOnly();
   if (state === 'error') return '可点 Cloud Load 或 Cloud Save 重新处理';
+  if (manual) {
+    if (state === 'dirty') return '本地改动已记录，点击 Cloud Save 上传到云端';
+    if (state === 'saving') return '正在处理，请稍候';
+    if (state === 'synced') return '当前入口和云端已经对齐';
+    return '默认使用本地数据，需要时再点 Cloud Load 或 Cloud Save';
+  }
   if (state === 'dirty') return '本地改动已记住，系统会在后台继续处理';
   if (state === 'saving') return '正在后台处理，不需要重复点击';
   if (state === 'synced') return '当前入口和云端已经对齐';

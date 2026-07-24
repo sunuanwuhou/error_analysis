@@ -1,13 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchMe, hasModule } from '@/api/authMe'
 import type { MeUser } from '@/lib/modules'
 import ModuleTabBar from '@/components/shell/ModuleTabBar.vue'
 import LegacyXingceFrame from '@/components/shell/LegacyXingceFrame.vue'
-import HubPage from '@/views/shenlun/HubPage.vue'
-import WorkbenchPage from '@/views/shenlun/WorkbenchPage.vue'
-import ResultPage from '@/views/shenlun/ResultPage.vue'
 import XingceWorkspacePage from '@/views/xingce/WorkspacePage.vue'
 import SuiteBankPage from '@/views/xingce/SuiteBankPage.vue'
 import ExamInsightPage from '@/views/xingce/ExamInsightPage.vue'
@@ -17,6 +14,10 @@ import InterviewWorkspacePage from '@/views/interview/WorkspacePage.vue'
 import AdminUsersPage from '@/views/admin/AdminUsersPage.vue'
 import { useXingceStore } from '@/stores/xingceStore'
 import { defaultShellRouteName, shellTabForRouteName, type ShellTabId } from '@/lib/shellTabs'
+
+const HubPage = defineAsyncComponent(() => import('@/views/shenlun/HubPage.vue'))
+const WorkbenchPage = defineAsyncComponent(() => import('@/views/shenlun/WorkbenchPage.vue'))
+const ResultPage = defineAsyncComponent(() => import('@/views/shenlun/ResultPage.vue'))
 
 const route = useRoute()
 const router = useRouter()

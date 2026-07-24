@@ -323,7 +323,11 @@
     });
     var allNodes = collectKnowledgeNodes();
     if ((!selectedKnowledgeNodeId || !getKnowledgeNodeById(selectedKnowledgeNodeId)) && allNodes.length > 0) {
-      selectedKnowledgeNodeId = allNodes[0].id;
+      if (typeof restoreSelectedKnowledgeNodeId === "function" && restoreSelectedKnowledgeNodeId()) {
+        // keep restored selection
+      } else {
+        selectedKnowledgeNodeId = allNodes[0].id;
+      }
     }
     syncKnowledgeNotesFromTree();
     var canPersistErrors = typeof hasFullWorkspaceDataLoaded !== "function" || hasFullWorkspaceDataLoaded();

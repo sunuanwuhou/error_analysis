@@ -126,7 +126,13 @@ export interface SyncOp {
 
 export interface SyncPullResponse {
   ops: SyncOp[]
+  serverTime?: string
+  snapshotUpdatedAt?: string
   snapshot_updated_at?: string
+  hasMore?: boolean
+  nextCursorAt?: string
+  nextCursorEntityType?: string
+  nextCursorId?: string
 }
 
 /** 从 ops 中重建的工作区状态快照 */
@@ -238,6 +244,38 @@ export function opsToSnapshot(ops: SyncOp[]): WorkspaceSnapshot {
   }
 }
 
+/** 与旧版 `syncWithServer` 全量快照拉取一致：分页直到 hasMore 为 false */
+export async function pullAllSyncOps(): Promise<SyncOp[]> {
+  const ops: SyncOp[] = []
+  let cursorAt = ''
+  let cursorEntityType = ''
+  let cursorId = ''
+
+  while (true) {
+    const params = new URLSearchParams()
+    params.set('since', '')
+    if (cursorAt) params.set('cursorAt', cursorAt)
+    if (cursorEntityType) params.set('cursorEntityType', cursorEntityType)
+    if (cursorId) params.set('cursorId', cursorId)
+
+    const pullData = await request<SyncPullResponse>(`/api/sync?${params.toString()}`)
+    const pageOps = Array.isArray(pullData.ops) ? pullData.ops : []
+    if (pageOps.length) ops.push(...pageOps)
+
+    if (!pullData.hasMore) break
+
+    const last = pageOps[pageOps.length - 1]
+    cursorAt = pullData.nextCursorAt
+      || (last ? String(last.created_at || '') : cursorAt)
+    cursorEntityType = pullData.nextCursorEntityType || cursorEntityType
+    cursorId = pullData.nextCursorId
+      || (last ? String(last.entity_id || last.id || '') : cursorId)
+    if (!cursorAt) break
+  }
+
+  return ops
+}
+
 // ── API ──────────────────────────────────────────────────────────────────────
 
 export const xingceApi = {
@@ -251,10 +289,10 @@ export const xingceApi = {
     return request('/api/auth/logout', { method: 'POST' })
   },
 
-  /** 拉取全量 ops，重建本地快照 */
+  /** 拉取全量 ops（分页），重建本地快照 */
   async load(): Promise<WorkspaceSnapshot> {
-    const res = await request<SyncPullResponse>('/api/sync')
-    return opsToSnapshot(res.ops)
+    const ops = await pullAllSyncOps()
+    return opsToSnapshot(ops)
   },
 
   /** 推送单条或多条 op（upsert/delete，payload 可省略） */

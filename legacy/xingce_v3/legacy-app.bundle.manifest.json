@@ -1,8 +1,8 @@
 {
-  "built_at": "2026-06-21T12:02:53Z",
+  "built_at": "2026-07-03T14:44:15Z",
   "css_bundle": {
     "path": "legacy/xingce_v3/styles/legacy-app.bundle.css",
-    "sha256": "a789f5f836aff2cc5d820b1fb76f330845a4d48cda5cfde729fd4b36a4d82561",
+    "sha256": "124f93967cb74983c6276e965fbef8511164d94169144a3c7213deeff75dc4a8",
     "sources": [
       "styles/main/00-base-reset.css",
       "styles/main/01-sidebar.css",
@@ -45,7 +45,7 @@
   },
   "js_bundle": {
     "path": "legacy/xingce_v3/modules/legacy-app.bundle.js",
-    "sha256": "90e21b2dd914eb14c26208e0e315329fba01280b8b49249aac96e98a3a9dcc40",
+    "sha256": "c4ac53dde90d588c0319f4626d859dbf176badd6432803589c13b639e9e511ea",
     "sources": [
       "modules/main/00-event-dispatcher.js",
       "modules/main/state/01a-reason-utils.js",
@@ -132,6 +132,7 @@
       "modules/main/knowledge/30e-knowledge-tree-modal-flow.js",
       "modules/main/knowledge/30f-knowledge-tree-binding.js",
       "modules/main/knowledge/30g-knowledge-tree-dnd.js",
+      "modules/main/knowledge/30u-knowledge-tree-sort-modal.js",
       "modules/main/knowledge/30h-walk-sync-notes.js",
       "modules/main/knowledge/30i-note-reference-utils.js",
       "modules/main/knowledge/30j-duplicate-merge.js",
@@ -181,7 +182,7 @@
   "v51_partials": {
     "core": {
       "path": "legacy/v51_frontend/partials.bundle.html",
-      "sha256": "4229f0b7a4e31913b567dc71d48590034164a4030c2723019cb6d409254d86d4"
+      "sha256": "f1afdce40848cbd5219d3e27c5155838617ffad6fb0f8806def5d93183ffd52a"
     },
     "deferred": {
       "path": "legacy/v51_frontend/deferred-partials.bundle.html",
@@ -191,7 +192,7 @@
   "js_view_bundles": {
     "home": {
       "path": "legacy/xingce_v3/modules/legacy-app.home.bundle.js",
-      "sha256": "d16e735c5cfb54e15ad751b83b3bfb9bd6deca11bda4edf6cdd29a40e49e025d",
+      "sha256": "1d1e1cd006350f5fe909f4422bcb5a047337e6a4f7871da4e984062904cb1cfc",
       "sources": [
         "modules/main/00-event-dispatcher.js",
         "modules/main/state/01a-reason-utils.js",
@@ -246,7 +247,7 @@
     },
     "workspace": {
       "path": "legacy/xingce_v3/modules/legacy-app.workspace.bundle.js",
-      "sha256": "c2a8f3382daeaee0ea7ea0196eed2a339f2428b1f64a7216309da9db8f3c897c",
+      "sha256": "c3dc59ec9e69fe3dde60ff911a6be15f4c1017316a33292ad3819b859cb0f603",
       "sources": [
         "modules/main/10-notes-panel.js",
         "modules/main/11-typed-note-tree.js",
@@ -263,6 +264,7 @@
         "modules/main/knowledge/30e-knowledge-tree-modal-flow.js",
         "modules/main/knowledge/30f-knowledge-tree-binding.js",
         "modules/main/knowledge/30g-knowledge-tree-dnd.js",
+        "modules/main/knowledge/30u-knowledge-tree-sort-modal.js",
         "modules/main/knowledge/30h-walk-sync-notes.js",
         "modules/main/knowledge/30i-note-reference-utils.js",
         "modules/main/knowledge/30j-duplicate-merge.js",
@@ -295,7 +297,7 @@
     },
     "modal": {
       "path": "legacy/xingce_v3/modules/legacy-app.modal.bundle.js",
-      "sha256": "973fa20d7e73af6bc38290e7f55ae3f31e48ff6ee4f9b26f80fabe07dcf3f96a",
+      "sha256": "f53c85f66ccda1b4d924fd5137d2ca2a7709a45e07714aaad510ae82bb55632e",
       "sources": [
         "modules/main/06-ai-workbench.js",
         "modules/main/image/07a-image-value-utils.js",
@@ -346,7 +348,7 @@
     },
     "bootstrap": {
       "path": "legacy/xingce_v3/modules/legacy-app.bootstrap.bundle.js",
-      "sha256": "0f7ed1e44c5373bbeec1765c2135634b9aa14cae17f3491eade747b22f3ae0c4",
+      "sha256": "540c4d949d57dbd7c55f47853e5be2564a875aea3fdac9ba24820941d459f681",
       "sources": [
         "modules/main/99-bootstrap.js"
       ]

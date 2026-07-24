@@ -80,7 +80,7 @@ function kwRenderNoteMode(currentNode, noteContent, isEditing, deps) {
           "<div class=\"note-split-label\">" + String(text.edit || "") +
             "<button onclick=\"saveNoteTypeContent();noteEditing=false;renderNotesByType()\" style=\"float:right;background:#52c41a;color:#fff;border:none;border-radius:4px;padding:2px 10px;cursor:pointer;font-size:12px\">" + String(text.done || "") + "</button>" +
           "</div>" +
-          "<textarea id=\"noteTypeTextarea\" class=\"note-md-textarea\" placeholder=\"# \\u89c4\\u5219\\u603b\\u7ed3&#10;## \\u6613\\u9519\\u70b9&#10;- ...&#10;&#10;## \\u884c\\u52a8\\u5efa\\u8bae&#10;- ...\" oninput=\"liveNotePreview()\">" + d.escapeHtml(noteContent) + "</textarea>" +
+          "<textarea id=\"noteTypeTextarea\" class=\"note-md-textarea\" placeholder=\"# \\u89c4\\u5219\\u603b\\u7ed3&#10;## \\u6613\\u9519\\u70b9&#10;- ...&#10;&#10;## \\u884c\\u52a8\\u5efa\\u8bae&#10;- ...\" oninput=\"liveNotePreview();scheduleKnowledgeNoteAutoPersist()\">" + d.escapeHtml(noteContent) + "</textarea>" +
           "<div class=\"note-btn-bar\">" +
             "<button class=\"btn btn-primary btn-sm\" onclick=\"saveNoteTypeContent()\">" + String(text.save || "") + "</button>" +
             "<span class=\"save-hint\">" + String(text.shortcutSave || "") + "</span>" +

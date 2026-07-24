@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { shenlunApi, type Attempt, type SegmentReview } from '@/api/shenlun'
 import { nodeIdToRouteQuery } from '@/data/shenlunTree'
@@ -13,6 +13,7 @@ const error = ref<string | null>(null)
 const deleting = ref(false)
 const activeSegmentIndex = ref(0)
 const activeTab = ref<'segments' | 'overall'>('segments')
+const focusIssues = ref(false)
 
 // submit-cc is synchronous, so result should already be ready.
 // Polling is kept as a safety fallback (e.g. if user navigates directly to URL).
@@ -28,6 +29,7 @@ async function loadAttempt() {
       setTimeout(() => void loadAttempt(), 3000)
       return
     }
+    applyRouteFocus()
   } catch (e) {
     error.value = (e as Error).message
   } finally {
@@ -35,13 +37,61 @@ async function loadAttempt() {
   }
 }
 
+function applyRouteFocus() {
+  const tab = String(route.query.tab || '')
+  const segRaw = route.query.segment
+  focusIssues.value = String(route.query.focus || '') === 'issues'
+
+  if (tab === 'overall') {
+    activeTab.value = 'overall'
+  } else if (segRaw !== undefined && segRaw !== null && String(segRaw) !== '') {
+    activeTab.value = 'segments'
+    const idx = Number.parseInt(String(segRaw), 10)
+    if (!Number.isNaN(idx) && idx >= 0) {
+      activeSegmentIndex.value = idx
+    }
+  }
+
+  if (focusIssues.value) {
+    void nextTick(() => {
+      const el = document.querySelector('.rp-focus-issues') as HTMLElement | null
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      window.setTimeout(() => {
+        focusIssues.value = false
+      }, 2400)
+    })
+  }
+}
+
 onMounted(() => void loadAttempt())
+
+watch(
+  () => route.query,
+  () => {
+    if (attempt.value) applyRouteFocus()
+  },
+)
 
 const ccResult = computed(() => attempt.value?.cc_result_json ?? null)
 const segments = computed<SegmentReview[]>(() => ccResult.value?.segments ?? [])
 const activeSegment = computed<SegmentReview | null>(
   () => segments.value[activeSegmentIndex.value] ?? null,
 )
+
+const issueCount = computed(() => {
+  const cr = ccResult.value
+  if (!cr) return 0
+  let n = cr.overall_issue_tags?.length ?? 0
+  for (const seg of cr.segments ?? []) {
+    n += seg.issue_tags?.length ?? 0
+  }
+  return n
+})
+
+const segmentHasIssues = (i: number) => {
+  const seg = segments.value[i]
+  return Boolean(seg?.issue_tags?.length || seg?.missed_points?.length || seg?.wrong_points?.length)
+}
 
 const statusLabel = computed(() => {
   const s = attempt.value?.cc_status
@@ -73,6 +123,15 @@ function goHubList() {
   void router.push({
     name: 'ShenlunHub',
     query: { node: nodeIdToRouteQuery(nid) },
+  })
+}
+
+function goHubIssues() {
+  const att = attempt.value
+  const nid = att?.source_node_id ?? ''
+  void router.push({
+    name: 'ShenlunHub',
+    query: { node: nodeIdToRouteQuery(nid), tab: 'issues' },
   })
 }
 
@@ -137,6 +196,11 @@ async function deleteThisRound() {
         </div>
       </header>
 
+      <div v-if="issueCount > 0 && attempt.cc_status === 'success'" class="rp-issue-banner">
+        <span>本题第 {{ attempt.attempt_no }} 轮 · 共 {{ issueCount }} 处弱点标注</span>
+        <button type="button" class="btn-link" @click="goHubIssues">在复盘问题中查看 →</button>
+      </div>
+
       <!-- Waiting state -->
       <div v-if="attempt.cc_status === 'pending'" class="rp-waiting">
         <div class="rp-spinner" />
@@ -176,10 +240,11 @@ async function deleteThisRound() {
               v-for="(_, i) in segments"
               :key="i"
               class="seg-nav-btn"
-              :class="{ active: activeSegmentIndex === i }"
+              :class="{ active: activeSegmentIndex === i, 'has-issues': segmentHasIssues(i) }"
               @click="activeSegmentIndex = i"
             >
               材料 {{ i + 1 }}
+              <span v-if="segmentHasIssues(i)" class="seg-nav-dot" aria-hidden="true" />
             </button>
           </div>
 
@@ -226,7 +291,11 @@ async function deleteThisRound() {
             </div>
 
             <!-- Issue tags -->
-            <div v-if="activeSegment.issue_tags.length" class="seg-tags">
+            <div
+              v-if="activeSegment.issue_tags.length"
+              class="seg-tags rp-focus-issues"
+              :class="{ 'rp-focus-issues--pulse': focusIssues && activeTab === 'segments' }"
+            >
               <span
                 v-for="tag in activeSegment.issue_tags"
                 :key="tag"
@@ -255,7 +324,11 @@ async function deleteThisRound() {
             </section>
           </div>
 
-          <div v-if="ccResult.overall_issue_tags?.length" class="overall-tags">
+          <div
+            v-if="ccResult.overall_issue_tags?.length"
+            class="overall-tags rp-focus-issues"
+            :class="{ 'rp-focus-issues--pulse': focusIssues && activeTab === 'overall' }"
+          >
             <span
               v-for="tag in ccResult.overall_issue_tags"
               :key="tag"
@@ -452,6 +525,48 @@ async function deleteThisRound() {
   background: #3b82f6;
   border-color: #3b82f6;
   color: #fff;
+}
+
+.seg-nav-btn.has-issues {
+  position: relative;
+  padding-right: 18px;
+}
+
+.seg-nav-dot {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #f59e0b;
+  box-shadow: 0 0 0 2px rgb(251 191 36 / 0.35);
+}
+
+.seg-nav-btn.active .seg-nav-dot {
+  background: #fde68a;
+  box-shadow: 0 0 0 2px rgb(255 255 255 / 0.35);
+}
+
+.rp-issue-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
+  font-size: 13px;
+  color: #1e40af;
+}
+
+.rp-focus-issues--pulse {
+  box-shadow: 0 0 0 3px rgb(245 158 11 / 0.35);
+  border-radius: 8px;
+  transition: box-shadow 0.3s;
 }
 
 /* Segment detail */

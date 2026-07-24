@@ -859,3 +859,121 @@ body.errors-top-collapsed #tabContentErrors .expand-btns{
     font-size:13px!important;
   }
 }
+
+/* ===== Knowledge tree sort modal ===== */
+.kts-modal .kts-sub{
+  margin:0 0 12px;
+  font-size:12px;
+  color:#888;
+  line-height:1.6;
+}
+.kts-body{
+  flex:1;
+  min-height:0;
+  overflow:auto;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.kts-breadcrumb{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:4px;
+  font-size:12px;
+}
+.kts-crumb{
+  border:none;
+  background:#f8fafc;
+  color:#475569;
+  border-radius:999px;
+  padding:3px 10px;
+  font-size:12px;
+  cursor:pointer;
+}
+.kts-crumb:hover{background:#eef2ff;color:#1d4ed8}
+.kts-crumb.active{
+  background:#eff6ff;
+  color:#1d4ed8;
+  font-weight:700;
+  cursor:default;
+}
+.kts-crumb-sep{color:#cbd5e1;font-size:11px}
+.kts-hint{
+  font-size:12px;
+  color:#ad6800;
+  background:#fff7e6;
+  border:1px solid #ffd591;
+  border-radius:10px;
+  padding:8px 10px;
+  line-height:1.6;
+}
+.kts-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.kts-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px 12px;
+  border:1px solid #e8e8e8;
+  border-radius:10px;
+  background:#fff;
+}
+.kts-row-main{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+  flex:1;
+}
+.kts-title{
+  font-size:13px;
+  color:#334155;
+  font-weight:600;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.kts-count{
+  font-size:11px;
+  color:#64748b;
+  background:#f8fafc;
+  border-radius:999px;
+  padding:2px 8px;
+  flex-shrink:0;
+}
+.kts-row-actions{
+  display:flex;
+  gap:6px;
+  flex-shrink:0;
+}
+.kts-move-btn{
+  min-width:34px;
+  padding:4px 8px;
+  font-weight:700;
+}
+.kts-move-btn:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+}
+.kts-enter-btn{white-space:nowrap}
+.kts-empty{
+  padding:28px 12px;
+  text-align:center;
+  color:#94a3b8;
+  font-size:13px;
+  border:1px dashed #e2e8f0;
+  border-radius:12px;
+}
+.kts-footer{
+  margin-top:12px;
+  display:flex;
+  justify-content:flex-end;
+}
+.sidebar-tree-toolbar-row .btn{
+  flex-shrink:0;
+}

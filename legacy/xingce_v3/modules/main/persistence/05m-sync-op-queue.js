@@ -69,11 +69,22 @@ function recordOp(opType, entityId, payload, opts) {
   pending.push(op);
   savePendingOps(pending);
   if (!opts.silentState) {
-    if (cloudUser) {
+    if (isManualCloudSyncOnly()) {
+      pendingCloudSave = true;
+      if (cloudUser) {
+        setCloudSyncState('dirty', '本地改动已记录；点击 Cloud Save 上传到云端', op.created_at);
+      } else {
+        setCloudSyncState('dirty', '本地改动已记录，登录后点击 Cloud Save 上传', op.created_at);
+      }
+    } else if (cloudUser) {
       setCloudSyncState('dirty', '错题改动已记录，稍后会在后台处理', op.created_at);
     } else {
       setCloudSyncState('dirty', '本地错题改动已记录，登录后可继续处理', op.created_at);
     }
+  }
+  if (isManualCloudSyncOnly()) {
+    pendingCloudSave = true;
+    return;
   }
   scheduleIncrementalSync();
 }
@@ -81,6 +92,7 @@ function recordOp(opType, entityId, payload, opts) {
 let incrementalSyncTimer = null;
 
 function scheduleIncrementalSync() {
+  if (isManualCloudSyncOnly()) return;
   if (!cloudUser) return;
   clearTimeout(incrementalSyncTimer);
   setNextIncrementalSyncAt(new Date(Date.now() + AUTO_SYNC_DELAY_MS).toISOString());

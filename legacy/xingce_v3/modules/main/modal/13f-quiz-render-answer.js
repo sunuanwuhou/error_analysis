@@ -123,6 +123,7 @@ function renderQuizQuestionFenbiMode() {
       </div>
       <div class="quiz-bottom-row quiz-action-dock">
         <div class="quiz-action-secondary">
+          <button class="quiz-skip-btn" type="button" onclick='copyQuestionStem(${idLit})'>复制题目</button>
           <button class="quiz-skip-btn" type="button" id="quizCanvasToggleBtn" onclick='toggleQuizProcessCanvas(${idLit}, this)'>画布</button>
           <button class="quiz-skip-btn" type="button" id="quizPauseBtn" onclick="toggleQuizPause()">暂停</button>
           <button class="quiz-skip-btn" id="quizSkipBtn" onclick="skipQuizQuestion()">跳过</button>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onActivated, onUnmounted, nextTick, watch } from 'vue'
+import { computed, ref, onMounted, onActivated, onUnmounted, nextTick, watch, provide } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useXingceStore } from '@/stores/xingceStore'
 import PracticePanel from '@/components/xingce/PracticePanel.vue'
@@ -15,9 +15,10 @@ import TypeRulesModal from '@/components/xingce/TypeRulesModal.vue'
 import DirModal from '@/components/xingce/DirModal.vue'
 import ClaudeBankModal from '@/components/xingce/ClaudeBankModal.vue'
 import ClaudeImportModal from '@/components/xingce/ClaudeImportModal.vue'
-import WorkspaceMobileChrome from '@/components/xingce/WorkspaceMobileChrome.vue'
+import RandomNoteReviewModal from '@/components/xingce/RandomNoteReviewModal.vue'
 import { savePortalLastModule } from '@/lib/portalPrefs'
 import { pickRandomQuestion } from '@/lib/randomQuestionPick'
+import { collectRandomNoteCandidates } from '@/lib/randomNoteReview'
 import type { ErrorEntry } from '@/api/xingce'
 import '@/styles/xingce-vue-legacy.css'
 import '@/styles/xingce-knowledge-workspace.css'
@@ -29,6 +30,7 @@ const quizMode = ref<'daily' | 'full' | 'review' | 'retrain' | 'random' | null>(
 const randomQuizQueue = ref<ErrorEntry[]>([])
 const showAddModal = ref(false)
 const addModalNoteNodeId = ref<string | undefined>(undefined)
+const editErrorId = ref<string | undefined>(undefined)
 const showImportModal = ref(false)
 const showGlobalSearch = ref(false)
 const showHistoryModal = ref(false)
@@ -36,7 +38,9 @@ const showTypeRulesModal = ref(false)
 const showDirModal = ref(false)
 const showClaudeBankModal = ref(false)
 const showClaudeImportModal = ref(false)
+const showRandomNoteModal = ref(false)
 const notesWorkspaceRef = ref<InstanceType<typeof NotesWorkspacePanel> | null>(null)
+const notePracticeTitle = ref('')
 
 /** 与旧版 `switchTab` 默认一致：工作区先展示「学习笔记」 */
 const mainTab = ref<'notes' | 'errors'>('notes')
@@ -123,25 +127,33 @@ function onPickQuestion(id: string) {
 }
 
 function onStartRandomNote() {
-  const withNotes = store.knowledgeNodes.filter((n) => {
-    const md = String(n.contentMd ?? '').trim()
-    const nt = String(n.noteContent ?? '').trim()
-    if (md || nt) return true
-    const fromNotes = (store.notesByType as Record<string, unknown>)[n.id]
-    if (typeof fromNotes === 'string' && fromNotes.trim()) return true
-    if (fromNotes && typeof fromNotes === 'object') {
-      const v = (fromNotes as Record<string, unknown>).content
-      if (typeof v === 'string' && v.trim()) return true
-    }
-    return false
+  const candidates = collectRandomNoteCandidates({
+    knowledgeTree: store.knowledgeTree,
+    knowledgeNodes: store.knowledgeNodes,
+    notesByType: store.notesByType,
+    errors: store.errors,
+    practiceSummaries: store.practiceSummaries,
+    getNodePathText: store.getNodePathText,
+    getKnowledgeNodeInTree: store.getKnowledgeNodeInTree,
+    countErrorsForKnowledgeNode: store.countErrorsForKnowledgeNode,
   })
-  if (!withNotes.length) {
-    window.alert('暂无笔记内容')
+  if (!candidates.length) {
+    window.alert('暂无可复习笔记（需要有内容）')
     return
   }
-  const pick = withNotes[Math.floor(Math.random() * withNotes.length)]!
-  store.setActiveNode(pick.id)
+  showRandomNoteModal.value = true
+}
+
+function onOpenRandomNoteInWorkspace(nodeId: string) {
+  store.setActiveNode(nodeId)
   mainTab.value = 'notes'
+}
+
+function onStartRandomNotePractice(payload: { queue: ErrorEntry[]; title: string }) {
+  if (!payload.queue.length) return
+  randomQuizQueue.value = payload.queue
+  notePracticeTitle.value = payload.title
+  quizMode.value = 'random'
 }
 
 function onStartRandomQuestion() {
@@ -164,6 +176,7 @@ function onStartRandomQuestion() {
 function closeQuizModal() {
   quizMode.value = null
   randomQuizQueue.value = []
+  notePracticeTitle.value = ''
 }
 
 function onOpenMarkdownEditor() {
@@ -172,13 +185,23 @@ function onOpenMarkdownEditor() {
 }
 
 function openAddModal(nodeId?: string) {
+  editErrorId.value = undefined
   addModalNoteNodeId.value = nodeId
   showAddModal.value = true
 }
 
+function openEditError(id: string) {
+  editErrorId.value = id
+  addModalNoteNodeId.value = undefined
+  showAddModal.value = true
+}
+
+provide('xingceOpenEditError', openEditError)
+
 function closeAddModal() {
   showAddModal.value = false
   addModalNoteNodeId.value = undefined
+  editErrorId.value = undefined
 }
 
 function onPickNote(nodeId: string) {
@@ -337,13 +360,22 @@ function onPickSuite(paperId: string, questionId: string) {
       v-if="quizMode"
       :mode="quizMode"
       :initial-queue="quizMode === 'random' ? randomQuizQueue : undefined"
+      :title-override="notePracticeTitle || undefined"
       @close="closeQuizModal"
+    />
+    <RandomNoteReviewModal
+      v-if="showRandomNoteModal"
+      @close="showRandomNoteModal = false"
+      @open-in-workspace="onOpenRandomNoteInWorkspace"
+      @start-practice="onStartRandomNotePractice"
     />
     <AddErrorModal
       v-if="showAddModal"
       :initial-note-node-id="addModalNoteNodeId"
+      :edit-id="editErrorId"
       @close="closeAddModal"
       @added="closeAddModal"
+      @saved="closeAddModal"
     />
     <ImportModal v-if="showImportModal" @close="showImportModal = false" @imported="() => {}" />
 

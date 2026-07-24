@@ -1,42 +1,91 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, inject } from 'vue'
 import type { ErrorEntry, KnowledgeNode } from '@/api/xingce'
 import { useXingceStore } from '@/stores/xingceStore'
 import PracticeModal from './PracticeModal.vue'
-
-const WORKFLOW_OPTIONS = [
-  { value: 'captured', label: '待判因' },
-  { value: 'diagnosing', label: '判因中' },
-  { value: 'review_ready', label: '待复盘' },
-  { value: 'retrain_due', label: '待复训' },
-  { value: 'mastered', label: '已闭环' },
-]
+import ErrorQuestionImage from './ErrorQuestionImage.vue'
+import { hasErrorImage } from '@/lib/errorImage'
+import {
+  ERROR_STATUS_OPTIONS,
+  ERROR_WORKFLOW_OPTIONS,
+  buildMasteryCyclePatch,
+  buildStatusPatch,
+  buildWorkflowPatch,
+  copyErrorMarkdown,
+  copyQuestionAndOptions,
+  masteryButtonStyle,
+} from '@/lib/errorCardActions'
 
 const props = defineProps<{ entry: ErrorEntry }>()
 const store = useXingceStore()
-const expanded = ref(false)
-const confirmDelete = ref(false)
-const practicing = ref(false)
+const openEditError = inject<(id: string) => void>('xingceOpenEditError')
 
-function cycleStatus() {
-  const next: Record<string, ErrorEntry['status']> = {
-    focus: 'review', review: 'mastered', mastered: 'focus'
-  }
-  store.updateError(props.entry.id, { status: next[props.entry.status] ?? 'focus' })
+const expanded = ref(false)
+const practicing = ref(false)
+const showMoveModal = ref(false)
+const moveTarget = ref('')
+
+function onStatusChange(ev: Event) {
+  const status = (ev.target as HTMLSelectElement).value as ErrorEntry['status']
+  store.updateError(props.entry.id, buildStatusPatch(props.entry, status))
+}
+
+function onWorkflowChange(ev: Event) {
+  const stage = (ev.target as HTMLSelectElement).value
+  store.updateError(props.entry.id, buildWorkflowPatch(props.entry, stage))
 }
 
 function cycleMastery() {
-  const next: Record<string, ErrorEntry['masteryLevel']> = {
-    not_mastered: 'fuzzy', fuzzy: 'mastered', mastered: 'not_mastered'
-  }
-  store.updateError(props.entry.id, {
-    masteryLevel: next[props.entry.masteryLevel ?? 'not_mastered']
-  })
+  store.updateError(props.entry.id, buildMasteryCyclePatch(props.entry))
 }
 
 function doDelete() {
-  if (!confirmDelete.value) { confirmDelete.value = true; setTimeout(() => confirmDelete.value = false, 3000); return }
+  if (!window.confirm(`删除 #${props.entry.id}？`)) return
   store.deleteError(props.entry.id)
+}
+
+function openMoveModal() {
+  moveTarget.value = props.entry.noteNodeId || ''
+  showMoveModal.value = true
+}
+
+function applyMove() {
+  if (!moveTarget.value) return
+  store.updateError(props.entry.id, { noteNodeId: moveTarget.value })
+  showMoveModal.value = false
+}
+
+function onEdit() {
+  openEditError?.(props.entry.id)
+}
+
+function onCopyMd() {
+  copyErrorMarkdown(props.entry)
+}
+
+function onCopyQuestion() {
+  copyQuestionAndOptions(props.entry)
+}
+
+function walkLeaves(nodes: KnowledgeNode[]): KnowledgeNode[] {
+  const out: KnowledgeNode[] = []
+  for (const n of nodes) {
+    const kids = n.children ?? []
+    if (kids.length) out.push(...walkLeaves(kids as KnowledgeNode[]))
+    else out.push(n)
+  }
+  return out
+}
+
+const knowledgeLeaves = computed(() => walkLeaves(store.knowledgeTree))
+
+function leafLabel(n: KnowledgeNode) {
+  const p = store.getNodePathText(n.id)
+  return p ? `${p} › ${n.title}` : n.title
+}
+
+function onNoteBlur(ev: Event) {
+  store.updateError(props.entry.id, { note: (ev.target as HTMLTextAreaElement).value })
 }
 
 const statusMap = {
@@ -52,6 +101,7 @@ const masteryMap = {
 
 const statusInfo = computed(() => statusMap[props.entry.status] ?? statusMap.focus)
 const masteryInfo = computed(() => masteryMap[props.entry.masteryLevel ?? 'not_mastered'])
+const masteryBtn = computed(() => masteryButtonStyle(props.entry.masteryLevel))
 
 const knowledgePath = computed(() =>
   [props.entry.type, props.entry.subtype, props.entry.subSubtype].filter(Boolean).join(' › ')
@@ -70,7 +120,6 @@ const problemTypeLabel: Record<string, string> = {
 
 const summary = computed(() => store.practiceSummaries[props.entry.id] ?? null)
 
-/** 对齐旧版 `getErrorWrongCount`：摘要 / quiz / 错题本体字段取最大 */
 const wrongCount = computed(() => {
   const s = summary.value
   const e = props.entry as Record<string, unknown>
@@ -82,7 +131,6 @@ const wrongCount = computed(() => {
   return vals.length ? Math.max(...vals) : 0
 })
 
-/** 对齐旧版 `getRecentDurationSeconds` */
 const recentDurationSec = computed(() => {
   const s = summary.value
   const fromSummary = Number(s?.lastDuration ?? 0)
@@ -119,7 +167,6 @@ function formatPracticeSummaryTime(raw: string | undefined): string {
   return `${dateText} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-/** 对齐旧版 `renderPracticeSummaryMeta`（第四条 cyan chip） */
 const practiceMetaLine = computed(() => {
   const s = summary.value
   if (!s) return ''
@@ -152,41 +199,11 @@ const showPracticeChips = computed(() =>
   || !!practiceMetaLine.value,
 )
 
-function walkLeaves(nodes: KnowledgeNode[]): KnowledgeNode[] {
-  const out: KnowledgeNode[] = []
-  for (const n of nodes) {
-    const kids = n.children ?? []
-    if (kids.length) out.push(...walkLeaves(kids as KnowledgeNode[]))
-    else out.push(n)
-  }
-  return out
-}
-
-const knowledgeLeaves = computed(() => walkLeaves(store.knowledgeTree))
-
-function leafLabel(n: KnowledgeNode) {
-  const p = store.getNodePathText(n.id)
-  return p ? `${p} › ${n.title}` : n.title
-}
-
-function onWorkflowChange(ev: Event) {
-  const v = (ev.target as HTMLSelectElement).value
-  store.updateError(props.entry.id, { workflowStage: v })
-}
-
-function onMoveNode(ev: Event) {
-  const v = (ev.target as HTMLSelectElement).value
-  store.updateError(props.entry.id, { noteNodeId: v || undefined })
-}
-
-function onNoteBlur(ev: Event) {
-  store.updateError(props.entry.id, { note: (ev.target as HTMLTextAreaElement).value })
-}
 </script>
 
 <template>
   <div
-    class="ec"
+    class="error-card ec"
     :class="{ 'ec--expanded': expanded, 'ec--batch': store.batchMode }"
     :data-error-id="entry.id"
   >
@@ -198,100 +215,144 @@ function onNoteBlur(ev: Event) {
       />
     </label>
     <div class="ec-inner">
-    <!-- 顶部标签行 -->
-    <div class="ec-tags">
-      <span class="ec-tag" :class="statusInfo.cls">{{ statusInfo.label }}</span>
-      <span v-if="entry.subSubtype" class="ec-tag tag-sub">{{ entry.subSubtype }}</span>
-      <span v-if="knowledgePath" class="ec-tag tag-path" :title="knowledgePath">{{ knowledgePath }}</span>
-      <span v-if="entry.problemType && entry.problemType !== 'unknown'" class="ec-tag tag-pt">
-        {{ problemTypeLabel[entry.problemType] ?? entry.problemType }}
-      </span>
-      <span class="ec-tag" :class="masteryInfo.cls">{{ masteryInfo.label }}</span>
-    </div>
-
-    <!-- 题目 -->
-    <div class="ec-question">{{ entry.question }}</div>
-
-    <!-- 选项 -->
-    <div v-if="optionLines.length" class="ec-options">
-      <p v-for="(opt, i) in optionLines" :key="i" class="ec-option">{{ opt }}</p>
-    </div>
-
-    <!-- 练习统计 chips（对齐 legacy `renderCardPracticeMetaChips`） -->
-    <div v-if="showPracticeChips" class="ec-practice-chips">
-      <span class="ec-pc pc-wrong">错 {{ wrongCount }} 次</span>
-      <span v-if="fmtDuration(recentDurationSec)" class="ec-pc pc-time">
-        最近用时 {{ fmtDuration(recentDurationSec) }}
-      </span>
-      <span v-if="fmtDuration(targetDurationSec)" class="ec-pc pc-target">
-        预计用时 {{ fmtDuration(targetDurationSec) }}
-      </span>
-      <span v-if="practiceSummaryMetaDisplay" class="ec-pc pc-meta">{{ practiceSummaryMetaDisplay }}</span>
-    </div>
-
-    <!-- 操作栏 -->
-    <div class="ec-actions">
-      <button class="ec-toggle" @click="expanded = !expanded">{{ expanded ? '收起' : '详情' }}</button>
-      <button class="ec-act" :class="statusInfo.cls" @click="cycleStatus" :title="'切换：' + statusInfo.label">{{ statusInfo.label }}</button>
-      <button class="ec-act" :class="masteryInfo.cls" @click="cycleMastery" :title="'切换掌握度：' + masteryInfo.label">{{ masteryInfo.label }}</button>
-      <button class="ec-act tag-sub" style="margin-left:auto" @click="practicing = true">练习</button>
-      <button class="ec-del" :class="{ confirm: confirmDelete }" @click="doDelete">
-        {{ confirmDelete ? '确认?' : '删除' }}
-      </button>
-    </div>
-
-    <PracticeModal v-if="practicing" :entry="entry" @close="practicing = false" />
-
-    <!-- 展开面板 -->
-    <div v-if="expanded" class="ec-detail">
-      <div class="ec-pills">
-        <span v-if="entry.myAnswer" class="ec-pill pill-wrong">我的答案：{{ entry.myAnswer }}</span>
-        <span class="ec-pill pill-correct">正确答案：{{ entry.answer ?? '-' }}</span>
-        <span v-if="entry.confidence" class="ec-pill pill-meta">信心 {{ entry.confidence }}/5</span>
-        <span v-if="entry.actualDurationSec" class="ec-pill pill-meta">用时 {{ entry.actualDurationSec }}s</span>
-        <span v-if="entry.targetDurationSec" class="ec-pill pill-meta">目标 {{ entry.targetDurationSec }}s</span>
-      </div>
-      <div v-if="entry.errorReason || entry.rootReason" class="ec-section">
-        <span class="ec-section-label">错误原因</span>
-        <p>{{ entry.errorReason || entry.rootReason }}</p>
-      </div>
-      <div v-if="entry.analysis" class="ec-section">
-        <span class="ec-section-label">解析</span>
-        <p class="ec-analysis">{{ entry.analysis }}</p>
-      </div>
-      <div v-if="entry.tip || entry.nextAction" class="ec-section">
-        <span class="ec-section-label">提示</span>
-        <p>{{ entry.tip || entry.nextAction }}</p>
+      <div class="ec-tags card-top">
+        <span class="ec-tag status-tag" :class="statusInfo.cls">{{ statusInfo.label }}</span>
+        <span v-if="entry.subSubtype" class="ec-tag tag-sub">{{ entry.subSubtype }}</span>
+        <span v-if="knowledgePath" class="ec-tag tag-path" :title="knowledgePath">{{ knowledgePath }}</span>
+        <span v-if="entry.problemType && entry.problemType !== 'unknown'" class="ec-tag tag-pt">
+          {{ problemTypeLabel[entry.problemType] ?? entry.problemType }}
+        </span>
+        <span class="ec-tag" :class="masteryInfo.cls">{{ masteryInfo.label }}</span>
       </div>
 
-      <div class="ec-section ec-tools">
-        <span class="ec-section-label">卡片操作</span>
-        <div class="ec-tool-grid">
-          <span class="ec-mini-label">任务阶段</span>
-          <select
-            class="ec-select"
-            :value="entry.workflowStage || 'captured'"
-            @change="onWorkflowChange"
-          >
-            <option v-for="w in WORKFLOW_OPTIONS" :key="w.value" :value="w.value">{{ w.label }}</option>
-          </select>
-          <span class="ec-mini-label">关联知识点</span>
-          <select class="ec-select" :value="entry.noteNodeId || ''" @change="onMoveNode">
-            <option value="">（未关联）</option>
-            <option v-for="n in knowledgeLeaves" :key="n.id" :value="n.id">{{ leafLabel(n) }}</option>
-          </select>
-          <span class="ec-mini-label">备注</span>
+      <div class="card-question-surface">
+        <div v-if="String(entry.question || '').trim()" class="ec-question card-question">{{ entry.question }}</div>
+        <ErrorQuestionImage v-if="hasErrorImage(entry, 'imgData')" :src="entry.imgData" variant="card" />
+        <div v-if="optionLines.length" class="ec-options card-options">
+          <p v-for="(opt, i) in optionLines" :key="i" class="ec-option">{{ opt }}</p>
+        </div>
+      </div>
+
+      <div v-if="showPracticeChips" class="ec-practice-chips">
+        <span class="ec-pc pc-wrong">错 {{ wrongCount }} 次</span>
+        <span v-if="fmtDuration(recentDurationSec)" class="ec-pc pc-time">
+          最近用时 {{ fmtDuration(recentDurationSec) }}
+        </span>
+        <span v-if="fmtDuration(targetDurationSec)" class="ec-pc pc-target">
+          预计用时 {{ fmtDuration(targetDurationSec) }}
+        </span>
+        <span v-if="practiceSummaryMetaDisplay" class="ec-pc pc-meta">{{ practiceSummaryMetaDisplay }}</span>
+      </div>
+
+      <div v-if="expanded" class="ec-detail card-lower-panel">
+        <div class="ec-pills detail-meta-row">
+          <span v-if="entry.myAnswer" class="ec-pill pill-wrong detail-pill wrong-pill">我的答案：{{ entry.myAnswer }}</span>
+          <span class="ec-pill pill-correct detail-pill correct-pill">正确答案：{{ entry.answer ?? '-' }}</span>
+          <span v-if="entry.confidence" class="ec-pill pill-meta detail-pill meta-pill">信心 {{ entry.confidence }}/5</span>
+          <span v-if="entry.actualDurationSec" class="ec-pill pill-meta detail-pill meta-pill">用时 {{ entry.actualDurationSec }}s</span>
+          <span v-if="entry.targetDurationSec" class="ec-pill pill-meta detail-pill meta-pill">目标 {{ entry.targetDurationSec }}s</span>
+        </div>
+        <div v-if="entry.errorReason || entry.rootReason" class="ec-section">
+          <span class="ec-section-label">错误原因</span>
+          <p>{{ entry.errorReason || entry.rootReason }}</p>
+        </div>
+        <div v-if="entry.analysis" class="ec-section card-detail">
+          <span class="ec-section-label">解析</span>
+          <p class="ec-analysis detail-analysis">{{ entry.analysis }}</p>
+        </div>
+        <ErrorQuestionImage
+          v-if="hasErrorImage(entry, 'analysisImgData')"
+          :src="entry.analysisImgData"
+          variant="analysis"
+          alt="解析图片"
+        />
+        <div v-if="entry.tip || entry.nextAction" class="ec-section">
+          <span class="ec-section-label">提示</span>
+          <p>{{ entry.tip || entry.nextAction }}</p>
+        </div>
+        <div class="card-note-area">
+          <div class="card-note-label">备注</div>
           <textarea
-            class="ec-note-input"
+            class="card-note-ta ec-note-input"
             rows="2"
             :value="entry.note || ''"
-            placeholder="失焦自动保存"
+            placeholder="添加备注…"
             @blur="onNoteBlur"
           />
         </div>
       </div>
+
+      <button
+        type="button"
+        class="card-reveal-btn"
+        :style="expanded ? 'color:#bbb;border-color:#eee;font-size:11px;margin-top:6px' : ''"
+        @click="expanded = !expanded"
+      >
+        {{ expanded ? '收起' : '查看详情' }}
+      </button>
+
+      <div class="card-actions card-actions-soft">
+        <button type="button" class="btn btn-sm btn-secondary" @click="openMoveModal">改挂载</button>
+        <select
+          class="status-select"
+          :value="entry.status"
+          @change="onStatusChange"
+        >
+          <option v-for="s in ERROR_STATUS_OPTIONS" :key="s.value" :value="s.value">{{ s.label }}</option>
+        </select>
+        <select
+          class="status-select"
+          :value="entry.workflowStage || 'captured'"
+          title="任务阶段"
+          @change="onWorkflowChange"
+        >
+          <option v-for="w in ERROR_WORKFLOW_OPTIONS" :key="w.value" :value="w.value">{{ w.label }}</option>
+        </select>
+        <button
+          type="button"
+          class="btn btn-sm ec-mastery-btn"
+          :style="{
+            color: masteryBtn.color,
+            background: masteryBtn.bg,
+            border: `1px solid ${masteryBtn.border}`,
+          }"
+          title="切换掌握度"
+          @click="cycleMastery"
+        >
+          ● {{ masteryBtn.label }}
+        </button>
+        <button type="button" class="btn btn-sm btn-secondary" @click="onCopyQuestion">复制题干</button>
+        <button type="button" class="btn btn-sm btn-secondary" @click="onCopyMd">复制MD</button>
+        <button type="button" class="btn btn-sm btn-secondary" @click="onEdit">编辑</button>
+        <button
+          type="button"
+          class="btn btn-sm btn-secondary ec-quiz-btn"
+          @click="practicing = true"
+        >
+          做题
+        </button>
+        <button type="button" class="del-btn del-btn-danger" @click="doDelete">删除</button>
+      </div>
+
+      <PracticeModal v-if="practicing" :entry="entry" @close="practicing = false" />
     </div>
-    </div>
+
+    <Teleport to="body">
+      <div v-if="showMoveModal" class="ec-move-mask" @click.self="showMoveModal = false">
+        <div class="ec-move-dialog" role="dialog" aria-modal="true" @keydown.escape.prevent="showMoveModal = false">
+          <div class="ec-move-title">改挂载</div>
+          <p class="ec-move-hint">将此题挂载到所选知识点叶子节点。</p>
+          <select v-model="moveTarget" class="status-select ec-move-select">
+            <option value="">请选择目标知识点…</option>
+            <option v-for="n in knowledgeLeaves" :key="n.id" :value="n.id">{{ leafLabel(n) }}</option>
+          </select>
+          <div class="ec-move-actions">
+            <button type="button" class="btn btn-sm btn-secondary" @click="showMoveModal = false">取消</button>
+            <button type="button" class="btn btn-sm btn-primary" :disabled="!moveTarget" @click="applyMove">应用</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -322,14 +383,6 @@ function onNoteBlur(ev: Event) {
 .ec-batch-cb input { cursor: pointer; width: 16px; height: 16px; }
 .ec:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08); }
 .ec--expanded { border-color: #bfdbfe; }
-@keyframes ec-picked-flash {
-  0% { box-shadow: 0 0 0 0 rgba(74, 108, 247, 0.55); }
-  100% { box-shadow: 0 0 0 6px rgba(74, 108, 247, 0); }
-}
-.ec--picked {
-  animation: ec-picked-flash 0.9s ease-out 2;
-  border-color: #4a6cf7;
-}
 
 .ec-tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .ec-tag {
@@ -363,41 +416,6 @@ function onNoteBlur(ev: Event) {
 .ec-options { display: flex; flex-direction: column; gap: 2px; }
 .ec-option { font-size: 13px; color: #444; margin: 0; padding: 2px 0; }
 
-.ec-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-
-.ec-toggle {
-  font-size: 12px;
-  color: #4a6cf7;
-  background: none;
-  border: 1px solid #c7d2fe;
-  border-radius: 4px;
-  padding: 3px 10px;
-  cursor: pointer;
-}
-.ec-toggle:hover { background: #eef2ff; }
-
-.ec-act {
-  font-size: 11px;
-  padding: 2px 10px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: opacity 0.15s;
-}
-.ec-act:hover { opacity: 0.75; }
-
-.ec-del {
-  font-size: 11px;
-  padding: 2px 10px;
-  border-radius: 8px;
-  border: 1px solid #fca5a5;
-  background: #fff1f0;
-  color: #b91c1c;
-  cursor: pointer;
-  margin-left: auto;
-}
-.ec-del.confirm { background: #b91c1c; color: #fff; border-color: #b91c1c; }
-
 .ec-detail { display: flex; flex-direction: column; gap: 10px; }
 
 .ec-pills { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -422,24 +440,9 @@ function onNoteBlur(ev: Event) {
 .ec-section p { font-size: 13px; color: #333; margin: 0; line-height: 1.6; }
 .ec-analysis  { white-space: pre-wrap; }
 
-.ec-tools { margin-top: 4px; }
-.ec-tool-grid {
-  display: grid;
-  grid-template-columns: 72px 1fr;
-  gap: 6px 8px;
-  align-items: center;
-}
-.ec-mini-label { font-size: 11px; color: #64748b; }
-.ec-select {
-  width: 100%;
-  font-size: 12px;
-  padding: 4px 8px;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  background: #fff;
-}
+.card-note-area { margin-top: 4px; }
+.card-note-label { font-size: 11px; color: #888; margin-bottom: 4px; }
 .ec-note-input {
-  grid-column: 1 / -1;
   width: 100%;
   font-size: 12px;
   padding: 6px 8px;
@@ -447,6 +450,12 @@ function onNoteBlur(ev: Event) {
   border-radius: 6px;
   resize: vertical;
   box-sizing: border-box;
+  font-family: inherit;
+}
+
+.ec-quiz-btn {
+  color: #4e8ef7;
+  border-color: #adc6ff;
 }
 
 .ec-practice-chips { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -456,10 +465,30 @@ function onNoteBlur(ev: Event) {
   border-radius: 8px;
   border: 1px solid transparent;
 }
-.pc-wrong       { background:#fff1f2; color:#be123c; border-color:#fecdd3; }
-.pc-wrong-light { background:#fff7f0; color:#c2410c; border-color:#fed7aa; }
-.pc-correct     { background:#f0fdf4; color:#16a34a; border-color:#bbf7d0; }
-.pc-time        { background:#ecfdf5; color:#065f46; border-color:#a7f3d0; }
-.pc-target      { background:#eef2ff; color:#3730a3; border-color:#c7d2fe; }
-.pc-meta        { background:#ecfeff; color:#155e75; border-color:#a5f3fc; }
+.pc-wrong  { background:#fff1f2; color:#be123c; border-color:#fecdd3; }
+.pc-time   { background:#ecfdf5; color:#065f46; border-color:#a7f3d0; }
+.pc-target { background:#eef2ff; color:#3730a3; border-color:#c7d2fe; }
+.pc-meta   { background:#ecfeff; color:#155e75; border-color:#a5f3fc; }
+
+.ec-move-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.38);
+  z-index: 1150;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.ec-move-dialog {
+  background: #fff;
+  border-radius: 12px;
+  padding: 18px 20px;
+  width: min(420px, 96vw);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
+}
+.ec-move-title { font-size: 15px; font-weight: 700; color: #1e293b; margin-bottom: 8px; }
+.ec-move-hint { font-size: 12px; color: #64748b; margin: 0 0 12px; line-height: 1.5; }
+.ec-move-select { width: 100%; margin-bottom: 14px; }
+.ec-move-actions { display: flex; justify-content: flex-end; gap: 8px; }
 </style>

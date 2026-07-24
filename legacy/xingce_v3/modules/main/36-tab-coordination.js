@@ -33,7 +33,11 @@ function renderKnowledgeTreeHtml(nodes, depth) {
   }).join('');
 }
 function renderKnowledgeNotesView() {
-  ensureKnowledgeState({ preserveTreeShape: true, repair: false, persist: false });
+  if (typeof ensureKnowledgeState === 'function') {
+    ensureKnowledgeState({ preserveTreeShape: true, repair: false, persist: false });
+  } else if (typeof ensureKnowledgeNotesHydratedIntoTree === 'function') {
+    ensureKnowledgeNotesHydratedIntoTree();
+  }
   const content = document.getElementById('notesContent');
   if (!content) return;
   const currentNode = getCurrentKnowledgeNode() || collectKnowledgeLeaves()[0];
@@ -97,7 +101,7 @@ function renderKnowledgeNotesView() {
           <div class="note-split-label">编辑
             <button onclick="saveNoteTypeContent();noteEditing=false;renderNotesByType()" style="float:right;background:#52c41a;color:#fff;border:none;border-radius:4px;padding:2px 10px;cursor:pointer;font-size:12px">完成</button>
           </div>
-          <textarea id="noteTypeTextarea" class="note-md-textarea" placeholder="# 规则总结&#10;## 易错点&#10;- ...&#10;&#10;## 行动建议&#10;- ..." oninput="liveNotePreview()">${escapeHtml(note.content || '')}</textarea>
+          <textarea id="noteTypeTextarea" class="note-md-textarea" placeholder="# 规则总结&#10;## 易错点&#10;- ...&#10;&#10;## 行动建议&#10;- ..." oninput="liveNotePreview();scheduleKnowledgeNoteAutoPersist()">${escapeHtml(note.content || '')}</textarea>
           <div class="note-btn-bar">
             <div class="table-picker-wrap">
               <button class="btn btn-secondary btn-sm" type="button" id="tablePickerBtn" onclick="toggleTablePicker()">+ 表格</button>
@@ -179,7 +183,11 @@ function getKnowledgeNoteRenderBundle(node) {
   return bundle;
 }
 function renderKnowledgeNotesViewV2() {
-  ensureKnowledgeState({ preserveTreeShape: true, repair: false, persist: false });
+  if (typeof ensureKnowledgeState === 'function') {
+    ensureKnowledgeState({ preserveTreeShape: true, repair: false, persist: false });
+  } else {
+    ensureKnowledgeNotesHydratedIntoTree();
+  }
   const content = document.getElementById('notesContent');
   if (!content) return;
   content.classList.add('knowledge-notes-active');
@@ -246,7 +254,7 @@ function renderKnowledgeNotesViewV2() {
               </div>
             </div>
           </div>
-          <textarea id="noteTypeTextarea" class="note-md-textarea" placeholder="# 规则总结&#10;## 易错点&#10;- ...&#10;&#10;## 行动建议&#10;- ..." oninput="liveNotePreview()">${escapeHtml(noteContent)}</textarea>
+          <textarea id="noteTypeTextarea" class="note-md-textarea" placeholder="# 规则总结&#10;## 易错点&#10;- ...&#10;&#10;## 行动建议&#10;- ..." oninput="liveNotePreview();scheduleKnowledgeNoteAutoPersist()">${escapeHtml(noteContent)}</textarea>
           <div class="note-btn-bar">
             <button class="btn btn-primary btn-sm" onclick="saveNoteTypeContent()">保存</button>
             <button class="btn btn-secondary btn-sm" onclick="selectedKnowledgeNodeId='${currentNode.id}';addKnowledgeLeafUnderSelected()">+ 新建下级</button>
@@ -296,8 +304,4 @@ window.openWorkspaceView = openWorkspaceView;
 window.openWorkspaceTaskView = openWorkspaceTaskView;
 window.openWorkspaceQuickAdd = openWorkspaceQuickAdd;
 window.switchTab = switchTab;
-setTimeout(() => {
-  syncAppViewChrome();
-  if (appView === 'workspace' && typeof switchTab === 'function') switchTab('notes');
-}, 0);
 

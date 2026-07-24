@@ -12,8 +12,21 @@ from pydantic import BaseModel
 from backend.core import extract_json_object, require_user
 from backend.database import get_conn
 from backend.security import utcnow
+from backend.services.shenlun_issues import (
+    row_to_issue_entry,
+    sync_issue_entries_for_attempt,
+)
 
 router = APIRouter(prefix="/api/shenlun", tags=["shenlun"])
+
+# 内置一级题型节点（仅允许在其下创建二级子节点）
+BUILTIN_L1_NODE_IDS = frozenset({"type-summary", "type-analysis", "type-solution"})
+
+BUILTIN_L1_TITLES: dict[str, str] = {
+    "type-summary": "概括归纳",
+    "type-analysis": "综合分析",
+    "type-solution": "提出对策",
+}
 
 # ---------------------------------------------------------------------------
 # Pydantic schemas
@@ -51,9 +64,64 @@ class HubNotePutPayload(BaseModel):
     body_md: str = ""
 
 
+class CreateKnowledgeNodePayload(BaseModel):
+    parent_id: str
+    title: str
+
+
+class PatchKnowledgeNodePayload(BaseModel):
+    title: str
+
+
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
+def _row_to_knowledge_node(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": str(row["id"]),
+        "parent_id": str(row["parent_id"]),
+        "title": str(row["title"]),
+        "sort_order": int(row.get("sort_order") or 0),
+        "created_at": str(row["created_at"]),
+        "updated_at": str(row["updated_at"]),
+    }
+
+
+def _assert_valid_l1_parent(parent_id: str) -> str:
+    pid = (parent_id or "").strip()
+    if pid not in BUILTIN_L1_NODE_IDS:
+        raise HTTPException(status_code=422, detail="parent_id must be a builtin level-1 node")
+    return pid
+
+
+def _normalize_node_title(title: str) -> str:
+    t = (title or "").strip()
+    if not t:
+        raise HTTPException(status_code=422, detail="title required")
+    if len(t) > 80:
+        raise HTTPException(status_code=422, detail="title too long (max 80)")
+    return t
+
+
+def _get_user_child_node(conn: Any, user_id: str, node_id: str) -> dict[str, Any] | None:
+    row = conn.execute(
+        """
+        SELECT * FROM shenlun_knowledge_nodes
+        WHERE id = %s AND user_id = %s
+        """,
+        (node_id, user_id),
+    ).fetchone()
+    return dict(row) if row else None
+
+
+def _assert_node_allows_sources(conn: Any, user_id: str, node_id: str) -> None:
+    """子节点（用户自定义二级）不可挂题目。"""
+    nid = (node_id or "").strip()
+    if not nid or nid in BUILTIN_L1_NODE_IDS:
+        return
+    if _get_user_child_node(conn, user_id, nid):
+        raise HTTPException(status_code=422, detail="note-only child nodes cannot have practice sources")
 
 def _source_key(question: str, material: str) -> str:
     """Stable dedup key: SHA-256 of normalized question+material."""
@@ -91,6 +159,18 @@ def _row_to_source_summary(row: dict[str, Any]) -> dict[str, Any]:
     data["attempt_count"] = int(row.get("attempt_count") or 0)
     data["cc_success_count"] = int(row.get("cc_success_count") or 0)
     data["latest_cc_status"] = row.get("latest_cc_status") or None
+    tags_raw = row.get("latest_issue_tags")
+    if isinstance(tags_raw, list):
+        data["latest_issue_tags"] = [str(t) for t in tags_raw if t]
+    elif isinstance(tags_raw, str) and tags_raw.strip():
+        try:
+            parsed = json.loads(tags_raw)
+            data["latest_issue_tags"] = [str(t) for t in parsed if t] if isinstance(parsed, list) else []
+        except Exception:
+            data["latest_issue_tags"] = []
+    else:
+        data["latest_issue_tags"] = []
+    data["top_issue_tag"] = str(row.get("top_issue_tag") or "") or None
     return data
 
 
@@ -334,6 +414,152 @@ def put_hub_note(
     }
 
 
+@router.get("/knowledge-tree")
+def get_knowledge_tree(
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    """返回内置一级节点 + 当前用户自定义二级子节点。"""
+    user = require_user(xingce_session)
+    user_id: str = user["id"]
+
+    with get_conn() as conn:
+        rows = conn.execute(
+            """
+            SELECT * FROM shenlun_knowledge_nodes
+            WHERE user_id = %s
+            ORDER BY parent_id ASC, sort_order ASC, created_at ASC
+            """,
+            (user_id,),
+        ).fetchall()
+
+    children = [_row_to_knowledge_node(dict(r)) for r in rows]
+    tree = [
+        {
+            "id": nid,
+            "title": BUILTIN_L1_TITLES[nid],
+            "children": [c for c in children if c["parent_id"] == nid],
+        }
+        for nid in sorted(BUILTIN_L1_NODE_IDS, key=lambda x: list(BUILTIN_L1_TITLES.keys()).index(x))
+    ]
+    return {"tree": tree, "custom_nodes": children}
+
+
+@router.post("/knowledge-nodes")
+def create_knowledge_node(
+    payload: CreateKnowledgeNodePayload,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    user = require_user(xingce_session)
+    user_id: str = user["id"]
+    parent_id = _assert_valid_l1_parent(payload.parent_id)
+    title = _normalize_node_title(payload.title)
+    now = utcnow().isoformat()
+
+    with get_conn() as conn:
+        dup = conn.execute(
+            """
+            SELECT id FROM shenlun_knowledge_nodes
+            WHERE user_id = %s AND parent_id = %s AND title = %s
+            """,
+            (user_id, parent_id, title),
+        ).fetchone()
+        if dup:
+            raise HTTPException(status_code=409, detail="same title already exists under this parent")
+
+        sort_row = conn.execute(
+            """
+            SELECT COALESCE(MAX(sort_order), -1)::int AS m
+            FROM shenlun_knowledge_nodes
+            WHERE user_id = %s AND parent_id = %s
+            """,
+            (user_id, parent_id),
+        ).fetchone()
+        sort_order = int(sort_row["m"] if sort_row else -1) + 1
+
+        new_id = secrets.token_hex(12)
+        conn.execute(
+            """
+            INSERT INTO shenlun_knowledge_nodes
+              (id, user_id, parent_id, title, sort_order, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """,
+            (new_id, user_id, parent_id, title, sort_order, now, now),
+        )
+        row = conn.execute(
+            "SELECT * FROM shenlun_knowledge_nodes WHERE id = %s",
+            (new_id,),
+        ).fetchone()
+
+    return _row_to_knowledge_node(dict(row))
+
+
+@router.patch("/knowledge-nodes/{node_id}")
+def patch_knowledge_node(
+    node_id: str,
+    payload: PatchKnowledgeNodePayload,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    user = require_user(xingce_session)
+    user_id: str = user["id"]
+    title = _normalize_node_title(payload.title)
+    now = utcnow().isoformat()
+
+    with get_conn() as conn:
+        existing = _get_user_child_node(conn, user_id, node_id)
+        if not existing:
+            raise HTTPException(status_code=404, detail="knowledge node not found")
+
+        dup = conn.execute(
+            """
+            SELECT id FROM shenlun_knowledge_nodes
+            WHERE user_id = %s AND parent_id = %s AND title = %s AND id <> %s
+            """,
+            (user_id, existing["parent_id"], title, node_id),
+        ).fetchone()
+        if dup:
+            raise HTTPException(status_code=409, detail="same title already exists under this parent")
+
+        conn.execute(
+            """
+            UPDATE shenlun_knowledge_nodes
+            SET title = %s, updated_at = %s
+            WHERE id = %s AND user_id = %s
+            """,
+            (title, now, node_id, user_id),
+        )
+        row = conn.execute(
+            "SELECT * FROM shenlun_knowledge_nodes WHERE id = %s",
+            (node_id,),
+        ).fetchone()
+
+    return _row_to_knowledge_node(dict(row))
+
+
+@router.delete("/knowledge-nodes/{node_id}")
+def delete_knowledge_node(
+    node_id: str,
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    user = require_user(xingce_session)
+    user_id: str = user["id"]
+
+    with get_conn() as conn:
+        existing = _get_user_child_node(conn, user_id, node_id)
+        if not existing:
+            raise HTTPException(status_code=404, detail="knowledge node not found")
+
+        conn.execute(
+            "DELETE FROM shenlun_hub_notes WHERE user_id = %s AND node_id = %s",
+            (user_id, node_id),
+        )
+        conn.execute(
+            "DELETE FROM shenlun_knowledge_nodes WHERE id = %s AND user_id = %s",
+            (node_id, user_id),
+        )
+
+    return {"ok": True, "id": node_id}
+
+
 @router.post("/sources")
 def upsert_source(
     payload: UpsertSourcePayload,
@@ -352,6 +578,9 @@ def upsert_source(
     pst = (payload.paper_suite_type or "").strip()
 
     with get_conn() as conn:
+        if payload.node_id is not None:
+            _assert_node_allows_sources(conn, user_id, payload.node_id)
+
         existing = conn.execute(
             "SELECT * FROM shenlun_sources WHERE user_id = %s AND source_key = %s",
             (user_id, key),
@@ -410,6 +639,7 @@ def upsert_source(
         else:
             new_id = secrets.token_hex(12)
             node_val = (payload.node_id or "").strip()
+            _assert_node_allows_sources(conn, user_id, node_val)
             conn.execute(
                 """
                 INSERT INTO shenlun_sources
@@ -468,7 +698,32 @@ def list_sources(
                 AS cc_success_count,
               (SELECT a.cc_status FROM shenlun_attempts a
                  WHERE a.source_id = s.id ORDER BY a.updated_at DESC LIMIT 1)
-                AS latest_cc_status
+                AS latest_cc_status,
+              (
+                SELECT COALESCE(
+                  json_agg(DISTINCT e.issue_tag ORDER BY e.issue_tag),
+                  '[]'::json
+                )
+                FROM shenlun_issue_entries e
+                WHERE e.attempt_id = (
+                  SELECT a2.id FROM shenlun_attempts a2
+                  WHERE a2.source_id = s.id AND a2.cc_status = 'success'
+                  ORDER BY a2.updated_at DESC
+                  LIMIT 1
+                )
+              ) AS latest_issue_tags,
+              (
+                SELECT e.issue_tag FROM shenlun_issue_entries e
+                WHERE e.attempt_id = (
+                  SELECT a3.id FROM shenlun_attempts a3
+                  WHERE a3.source_id = s.id AND a3.cc_status = 'success'
+                  ORDER BY a3.updated_at DESC
+                  LIMIT 1
+                )
+                GROUP BY e.issue_tag
+                ORDER BY COUNT(*) DESC, e.issue_tag
+                LIMIT 1
+              ) AS top_issue_tag
             FROM shenlun_sources s
             WHERE s.user_id = %s AND s.node_id = %s
             {where_extra}
@@ -532,15 +787,34 @@ def list_attempts_for_source(
 
         rows = conn.execute(
             """
-            SELECT id, attempt_no, cc_status, created_at, updated_at
-            FROM shenlun_attempts
-            WHERE source_id = %s AND user_id = %s
-            ORDER BY updated_at DESC
+            SELECT a.id, a.attempt_no, a.cc_status, a.created_at, a.updated_at,
+              (
+                SELECT COALESCE(json_agg(DISTINCT e.issue_tag ORDER BY e.issue_tag), '[]'::json)
+                FROM shenlun_issue_entries e
+                WHERE e.attempt_id = a.id
+              ) AS issue_tags
+            FROM shenlun_attempts a
+            WHERE a.source_id = %s AND a.user_id = %s
+            ORDER BY a.updated_at DESC
             """,
             (source_id, user_id),
         ).fetchall()
 
-    items = [dict(r) for r in rows]
+    items = []
+    for r in rows:
+        row_d = dict(r)
+        tags_raw = row_d.pop("issue_tags", None)
+        if isinstance(tags_raw, list):
+            row_d["issue_tags"] = [str(t) for t in tags_raw if t]
+        elif isinstance(tags_raw, str) and tags_raw.strip():
+            try:
+                parsed = json.loads(tags_raw)
+                row_d["issue_tags"] = [str(t) for t in parsed if t] if isinstance(parsed, list) else []
+            except Exception:
+                row_d["issue_tags"] = []
+        else:
+            row_d["issue_tags"] = []
+        items.append(row_d)
     return {"items": items}
 
 
@@ -581,13 +855,16 @@ def patch_source_node(
         if not existing:
             raise HTTPException(status_code=404, detail="source not found")
 
+        node_val = (payload.node_id or "").strip()
+        _assert_node_allows_sources(conn, user_id, node_val)
+
         conn.execute(
             """
             UPDATE shenlun_sources
             SET node_id = %s, updated_at = %s
             WHERE id = %s
             """,
-            ((payload.node_id or "").strip(), now, source_id),
+            (node_val, now, source_id),
         )
         row = conn.execute(
             "SELECT * FROM shenlun_sources WHERE id = %s", (source_id,)
@@ -798,6 +1075,13 @@ def paste_cc_result(
 
     now = utcnow().isoformat()
     with get_conn() as conn:
+        source = conn.execute(
+            "SELECT * FROM shenlun_sources WHERE id = %s AND user_id = %s",
+            (attempt["source_id"], user_id),
+        ).fetchone()
+        if not source:
+            raise HTTPException(status_code=404, detail="source not found")
+
         conn.execute(
             """
             UPDATE shenlun_attempts
@@ -812,9 +1096,16 @@ def paste_cc_result(
             "UPDATE shenlun_sources SET status = 'cc_done', updated_at = %s WHERE id = %s",
             (now, attempt["source_id"]),
         )
-        row = conn.execute(
+        attempt_row = conn.execute(
             "SELECT * FROM shenlun_attempts WHERE id = %s", (attempt_id,)
         ).fetchone()
+        sync_issue_entries_for_attempt(
+            conn,
+            attempt_row=dict(attempt_row),
+            source_row=dict(source),
+            cc_result=result,
+        )
+        row = attempt_row
 
     return _row_to_attempt(row)
 
@@ -844,3 +1135,122 @@ def get_attempt(
     out = _row_to_attempt(row_d)
     out["source_node_id"] = str(row_d.get("source_node_id") or "")
     return out
+
+
+@router.get("/issue-feed")
+def list_issue_feed(
+    node_id: str = Query("", description="申论知识树节点 id；空字符串表示未分类"),
+    tag: str = Query("", description="按 issue_tag 筛选"),
+    scope: str = Query("", description="segment 或 overall"),
+    source_id: str = Query("", description="限定某一题目"),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    user = require_user(xingce_session)
+    user_id: str = user["id"]
+
+    where_parts = ["user_id = %s", "node_id = %s"]
+    params: list[Any] = [user_id, node_id]
+
+    tag_val = tag.strip()
+    if tag_val:
+        where_parts.append("issue_tag = %s")
+        params.append(tag_val)
+
+    scope_val = scope.strip()
+    if scope_val in ("segment", "overall"):
+        where_parts.append("scope = %s")
+        params.append(scope_val)
+
+    source_val = source_id.strip()
+    if source_val:
+        where_parts.append("source_id = %s")
+        params.append(source_val)
+
+    where_sql = " AND ".join(where_parts)
+
+    with get_conn() as conn:
+        total_row = conn.execute(
+            f"SELECT COUNT(*)::int AS c FROM shenlun_issue_entries WHERE {where_sql}",
+            tuple(params),
+        ).fetchone()
+        total = int(total_row["c"] if total_row else 0)
+
+        rows = conn.execute(
+            f"""
+            SELECT * FROM shenlun_issue_entries
+            WHERE {where_sql}
+            ORDER BY detected_at DESC, id DESC
+            LIMIT %s OFFSET %s
+            """,
+            tuple(params + [limit, offset]),
+        ).fetchall()
+
+    return {
+        "items": [row_to_issue_entry(dict(r)) for r in rows],
+        "total": total,
+    }
+
+
+@router.get("/issue-stats")
+def get_issue_stats(
+    node_id: str = Query("", description="申论知识树节点 id；空字符串表示未分类"),
+    xingce_session: Optional[str] = Cookie(default=None),
+) -> dict[str, Any]:
+    user = require_user(xingce_session)
+    user_id: str = user["id"]
+
+    with get_conn() as conn:
+        tag_rows = conn.execute(
+            """
+            SELECT issue_tag, COUNT(*)::int AS count, MAX(detected_at) AS last_at
+            FROM shenlun_issue_entries
+            WHERE user_id = %s AND node_id = %s
+            GROUP BY issue_tag
+            ORDER BY count DESC, issue_tag ASC
+            """,
+            (user_id, node_id),
+        ).fetchall()
+
+        summary = conn.execute(
+            """
+            SELECT
+              COUNT(*)::int AS total_entries,
+              COUNT(DISTINCT source_id)::int AS sources_with_issues,
+              COUNT(DISTINCT attempt_id)::int AS attempts_with_issues
+            FROM shenlun_issue_entries
+            WHERE user_id = %s AND node_id = %s
+            """,
+            (user_id, node_id),
+        ).fetchone()
+
+    from datetime import datetime, timedelta, timezone
+
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+    with get_conn() as conn:
+        recent_row = conn.execute(
+            """
+            SELECT COUNT(*)::int AS c
+            FROM shenlun_issue_entries
+            WHERE user_id = %s AND node_id = %s AND detected_at >= %s
+            """,
+            (user_id, node_id, cutoff),
+        ).fetchone()
+
+    recent_7d = int(recent_row["c"] if recent_row else 0)
+
+    return {
+        "tag_counts": [
+            {
+                "tag": str(r["issue_tag"]),
+                "count": int(r["count"]),
+                "last_at": str(r["last_at"] or ""),
+            }
+            for r in tag_rows
+        ],
+        "total_entries": int(summary["total_entries"] if summary else 0),
+        "sources_with_issues": int(summary["sources_with_issues"] if summary else 0),
+        "attempts_with_issues": int(summary["attempts_with_issues"] if summary else 0),
+        "recent_7d_count": recent_7d,
+    }

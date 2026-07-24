@@ -120,9 +120,13 @@ async function startRandomNoteHighValuePractice(limit) {
   }, '笔记高价值练习');
 }
 
-async function startRandomNoteAllPractice(limit) {
-  await _startRandomNotePractice(limit, (pool, maxItems) => {
-    return _shuffleArray(pool).slice(0, maxItems);
+async function startRandomNoteAllPractice() {
+  await _startRandomNotePractice(null, (pool) => {
+    return pool.slice().sort((a, b) => {
+      const ta = String(a.createdAt || a.addDate || a.updatedAt || '');
+      const tb = String(b.createdAt || b.addDate || b.updatedAt || '');
+      return tb.localeCompare(ta);
+    });
   }, '笔记全部错题');
 }
 

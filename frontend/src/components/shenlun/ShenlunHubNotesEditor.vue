@@ -13,6 +13,12 @@ const emit = defineEmits<{
 
 const root = ref<HTMLDivElement>()
 const vditorInst = shallowRef<Vditor | null>(null)
+/** 程序化 setValue 时抑制 input 回写，避免与 v-model 形成同步死循环 */
+let suppressInput = false
+
+function normalizeMd(v: string): string {
+  return v.replace(/\r\n/g, '\n')
+}
 
 function measureHeight() {
   const reserve = 320
@@ -145,6 +151,7 @@ function attachVditor(value: string) {
       },
     },
     input(md: string) {
+      if (suppressInput) return
       emit('update:modelValue', md)
     },
   })
@@ -152,14 +159,24 @@ function attachVditor(value: string) {
   vditorInst.value = vd
 }
 
+function setEditorValue(next: string) {
+  const vd = vditorInst.value
+  if (!vd) return
+  const cur = normalizeMd(vd.getValue())
+  const normalized = normalizeMd(next)
+  if (normalized === cur) return
+  suppressInput = true
+  try {
+    vd.setValue(normalized)
+  } finally {
+    suppressInput = false
+  }
+}
+
 watch(
   () => props.modelValue,
   (next) => {
-    const vd = vditorInst.value
-    if (!vd) return
-    const cur = vd.getValue()
-    if (next === cur) return
-    vd.setValue(next)
+    setEditorValue(next)
   },
 )
 

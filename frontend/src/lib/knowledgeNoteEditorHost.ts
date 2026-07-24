@@ -11,6 +11,14 @@ type HostWindow = Window & {
   showToast?: (msg: string, tone?: string) => void
   closeEmbeddedKnowledgeNoteEditor?: (force?: boolean) => boolean
   requestNoteEditorClose?: (force?: boolean) => boolean
+  noteImgId?: () => string
+  setNoteImageRef?: (id: string, value: string) => string
+  getNoteImageRef?: (id: string) => string
+  resolveNoteImgs?: (text: string) => string
+}
+
+function noteImgId(): string {
+  return `ni${Math.random().toString(36).slice(2, 8)}`
 }
 
 let closeHandler: ((force?: boolean) => boolean) | null = null
@@ -63,6 +71,25 @@ export function installKnowledgeNoteEditorHost(onRequestClose?: (force?: boolean
     window.alert(msg)
   }
 
+  w.noteImgId = noteImgId
+
+  w.setNoteImageRef = (id: string, value: string) => {
+    const key = String(id || '').trim()
+    if (!key) return ''
+    store.noteImages[key] = value || ''
+    void store.flushSave()
+    return store.noteImages[key]
+  }
+
+  w.getNoteImageRef = (id: string) => {
+    const key = String(id || '').trim()
+    return key ? (store.noteImages[key] || '') : ''
+  }
+
+  w.resolveNoteImgs = (text: string) => {
+    return String(text || '').replace(/noteimg:([a-z0-9-]+)/gi, (_, id) => store.noteImages[id] || '')
+  }
+
   w.closeEmbeddedKnowledgeNoteEditor = (force?: boolean) => {
     if (closeHandler) return closeHandler(force) !== false
     return true
@@ -81,6 +108,10 @@ export function uninstallKnowledgeNoteEditorHost() {
   delete w.ensureKnowledgeNoteRecord
   delete w.saveKnowledgeState
   delete w.showToast
+  delete w.noteImgId
+  delete w.setNoteImageRef
+  delete w.getNoteImageRef
+  delete w.resolveNoteImgs
   delete w.closeEmbeddedKnowledgeNoteEditor
   delete w.requestNoteEditorClose
 }

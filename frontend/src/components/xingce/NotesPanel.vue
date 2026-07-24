@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { marked } from 'marked'
 import { useXingceStore } from '@/stores/xingceStore'
-
-marked.setOptions({ gfm: true, breaks: true })
+import KnowledgeNotePreview from './KnowledgeNotePreview.vue'
 
 const store = useXingceStore()
 const editing = ref(false)
@@ -35,19 +33,9 @@ const pathLine = computed(() => {
   return store.getNodePathText(store.activeNodeId)
 })
 
-const renderedNote = computed(() => {
-  const raw = noteContent.value
-  if (!String(raw).trim()) return ''
-  return marked.parse(raw) as string
-})
-
-const draftRendered = computed(() => {
-  const raw = draftMd.value
-  if (!String(raw).trim()) {
-    return '<p class="np-ph">预览将显示在此</p>'
-  }
-  return marked.parse(raw) as string
-})
+const previewMarkdown = computed(() =>
+  editing.value ? draftMd.value : noteContent.value,
+)
 
 watch(
   () => store.activeNodeId,
@@ -115,14 +103,19 @@ defineExpose({ startEdit })
           </div>
           <div class="np-edit-pane np-edit-preview">
             <div class="np-edit-label">预览</div>
-            <div class="np-content np-md np-md-preview" v-html="draftRendered" />
+            <KnowledgeNotePreview
+              :markdown="draftMd"
+              :node-id="store.activeNodeId ?? undefined"
+              :note-images="store.noteImages"
+            />
           </div>
         </div>
         <template v-else>
-          <div
+          <KnowledgeNotePreview
             v-if="noteContent"
-            class="np-content np-md"
-            v-html="renderedNote"
+            :markdown="previewMarkdown"
+            :node-id="store.activeNodeId ?? undefined"
+            :note-images="store.noteImages"
           />
           <p v-else class="np-no-note">该节点暂无笔记，点击「编辑笔记」开始记录</p>
         </template>

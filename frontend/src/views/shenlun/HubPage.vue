@@ -1,57 +1,162 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import ShenlunHubNotesEditor from '@/components/shenlun/ShenlunHubNotesEditor.vue'
-import { shenlunApi, type SourceSummary } from '@/api/shenlun'
+import IssueStatsBar from '@/components/shenlun/IssueStatsBar.vue'
+import IssueTagChip from '@/components/shenlun/IssueTagChip.vue'
+import { shenlunApi, type IssueStats, type ShenlunCustomNode, type SourceSummary } from '@/api/shenlun'
 import {
   SL_TREE,
-  shenlunNodeTitle,
+  collectCustomChildIds,
+  isNoteOnlyNode,
+  mergeTreeWithChildren,
+  shenlunNodeTitleFromTree,
   routeQueryToNodeId,
   nodeIdToRouteQuery,
   SL_UNCATEGORIZED_ROUTE,
+  type ShenlunTreeNode,
 } from '@/data/shenlunTree'
 import { savePortalLastModule } from '@/lib/portalPrefs'
+import {
+  clearNoteDirty,
+  countDirtyNotes,
+  formatCacheTime,
+  isNoteDirty,
+  listDirtyNoteIds,
+  markNoteDirty,
+  readCacheMeta,
+  readIssueStatsCache,
+  readKnowledgeTreeCache,
+  readNoteLocal,
+  readSourcesCache,
+  writeCacheMeta,
+  writeIssueStatsCache,
+  writeKnowledgeTreeCache,
+  writeNoteLocal,
+  writeSourcesCache,
+} from '@/lib/shenlunLocalCache'
+
+const ShenlunHubNotesEditor = defineAsyncComponent(
+  () => import('@/components/shenlun/ShenlunHubNotesEditor.vue'),
+)
+const IssueFeedPanel = defineAsyncComponent(
+  () => import('@/components/shenlun/IssueFeedPanel.vue'),
+)
 
 const route = useRoute()
 const router = useRouter()
 
 const selectedNodeId = computed(() => routeQueryToNodeId(route.query.node))
 
+const customNodes = ref<ShenlunCustomNode[]>([])
+const knowledgeTree = computed(() => mergeTreeWithChildren(customNodes.value))
+const customChildIds = computed(() => collectCustomChildIds(customNodes.value))
+const isNoteOnlySelected = computed(() =>
+  isNoteOnlyNode(selectedNodeId.value, customChildIds.value),
+)
+const selectedNodeTitle = computed(() =>
+  shenlunNodeTitleFromTree(selectedNodeId.value, knowledgeTree.value),
+)
+
+const treeActionBusy = ref(false)
+
+const syncBusy = ref(false)
+const lastSyncAt = ref<string | null>(readCacheMeta().lastManualSyncAt)
+const dirtyNoteCount = ref(countDirtyNotes())
+
+function refreshDirtyCount() {
+  dirtyNoteCount.value = countDirtyNotes()
+}
+
+function hydrateKnowledgeTreeFromCache() {
+  const cached = readKnowledgeTreeCache()
+  if (cached?.custom_nodes) customNodes.value = cached.custom_nodes
+}
+
+async function createChildNode(parentId: string) {
+  const raw = window.prompt('新建子节点名称（仅 Markdown 笔记）')
+  if (raw === null) return
+  const title = raw.trim()
+  if (!title) return
+  treeActionBusy.value = true
+  try {
+    const created = await shenlunApi.createKnowledgeNode(parentId, title)
+    customNodes.value = [...customNodes.value, created]
+    writeKnowledgeTreeCache(customNodes.value)
+    expanded.value = new Set([...expanded.value, parentId])
+  } catch (e) {
+    alert((e as Error).message || '创建失败')
+  } finally {
+    treeActionBusy.value = false
+  }
+}
+
+async function renameChildNode(nodeId: string, currentTitle: string) {
+  const raw = window.prompt('重命名子节点', currentTitle)
+  if (raw === null) return
+  const title = raw.trim()
+  if (!title || title === currentTitle) return
+  treeActionBusy.value = true
+  try {
+    await shenlunApi.patchKnowledgeNode(nodeId, title)
+    customNodes.value = customNodes.value.map((n) =>
+      n.id === nodeId ? { ...n, title } : n,
+    )
+    writeKnowledgeTreeCache(customNodes.value)
+  } catch (e) {
+    alert((e as Error).message || '重命名失败')
+  } finally {
+    treeActionBusy.value = false
+  }
+}
+
+async function deleteChildNode(nodeId: string, title: string) {
+  const ok = window.confirm(`确定删除子节点「${title}」？笔记内容将一并删除。`)
+  if (!ok) return
+  treeActionBusy.value = true
+  try {
+    await shenlunApi.deleteKnowledgeNode(nodeId)
+    if (selectedNodeId.value === nodeId) {
+      const parent = customNodes.value.find((n) => n.id === nodeId)?.parent_id
+      if (parent) pickNode(parent)
+      else pickUncategorized()
+    }
+    customNodes.value = customNodes.value.filter((n) => n.id !== nodeId)
+    writeKnowledgeTreeCache(customNodes.value)
+    clearNoteDirty(nodeId)
+    refreshDirtyCount()
+  } catch (e) {
+    alert((e as Error).message || '删除失败')
+  } finally {
+    treeActionBusy.value = false
+  }
+}
+
 const items = ref<SourceSummary[]>([])
-const listLoading = ref(false)
+const listCacheEmpty = ref(true)
 const listError = ref<string | null>(null)
 const searchQuery = ref('')
 const deletingId = ref<string | null>(null)
 
-let searchDebounce: ReturnType<typeof setTimeout> | null = null
-
-type HubMainSection = 'topics' | 'notes'
+type HubMainSection = 'topics' | 'notes' | 'issues'
 const hubMainSection = ref<HubMainSection>('topics')
-const notesEditorMounted = ref(false)
+const issueFeedRef = ref<InstanceType<typeof IssueFeedPanel> | null>(null)
 
-const NOTES_LS_PREFIX = 'shenlun:hubNotes:v1:'
+const issueStats = ref<IssueStats | null>(null)
+const topicIssueTagFilter = ref('')
+const topicListFilter = ref<'all' | 'reviewed' | 'has_issues'>('all')
+const issuesInitialTag = ref('')
+const issuesInitialSourceId = ref('')
 
-function notesStorageKey(nodeId: string): string {
-  return NOTES_LS_PREFIX + (nodeId === '' ? '_uncategorized_' : nodeId)
-}
-
-/** 知识点笔记 Markdown（与 hubNotesMd 同步；以服务器为准并写回本地作缓存） */
+/** 知识点笔记 Markdown（本地优先，手动同步上传云端） */
 const hubNotesMd = ref('')
 
-let hubNotesNavChain = Promise.resolve()
-const skipHubNotesPersist = ref(false)
-type HubNotesCloudState = 'idle' | 'loading' | 'synced' | 'saving' | 'error'
+type HubNotesCloudState = 'local' | 'dirty' | 'syncing' | 'synced' | 'error'
 const hubNotesCloud = ref<{ status: HubNotesCloudState; detail?: string }>({
-  status: 'idle',
+  status: 'local',
 })
 
-let persistHubNotesTimer: ReturnType<typeof setTimeout> | null = null
-const PERSIST_DEBOUNCE_MS = 560
-
-/** 服务器返回的上一版保存时间（ISO），用于向用户展示「确实已写入云端」 */
+/** 服务器返回的上一版保存时间（ISO） */
 const hubNotesLastServerAt = ref('')
-/** 防抖等待中：已编辑但尚未发起 PUT */
-const hubNotesDebounceActive = ref(false)
 
 function applyHubNoteSavedMeta(r: { updated_at?: string }) {
   const u = (r.updated_at ?? '').trim()
@@ -59,225 +164,171 @@ function applyHubNoteSavedMeta(r: { updated_at?: string }) {
 }
 
 function formatHubSavedAt(iso: string): string {
-  const s = iso.trim()
-  if (!s) return ''
-  const d = new Date(s)
-  if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleString('zh-CN', { hour12: false })
+  return formatCacheTime(iso)
 }
+
+const syncStatusHint = computed(() => {
+  if (syncBusy.value) return '正在与云端同步…'
+  const parts: string[] = ['本地优先']
+  const synced = formatCacheTime(lastSyncAt.value)
+  if (synced) parts.push(`上次同步 ${synced}`)
+  if (dirtyNoteCount.value > 0) parts.push(`${dirtyNoteCount.value} 篇笔记待上传`)
+  return parts.join(' · ')
+})
 
 const hubNotesBadgeText = computed(() => {
   const st = hubNotesCloud.value.status
-  if (st === 'idle' || st === 'loading') return '正在加载笔记本…'
-  if (st === 'error') return '云端保存失败'
-  if (st === 'saving') return '正在保存到云端…'
-  if (st === 'synced' && hubNotesDebounceActive.value) return '有改动：将自动保存'
-  if (st === 'synced') return '已保存到云端（账号）'
-  return '申论笔记'
+  if (st === 'syncing') return '同步中…'
+  if (st === 'error') return '同步失败'
+  if (st === 'dirty') return '有改动 · 待同步'
+  if (st === 'synced') return '已与云端一致'
+  return '仅本地缓存'
 })
 
 const hubNotesBadgeClass = computed(() => {
   const st = hubNotesCloud.value.status
   return {
     'hub-notes-badge': true,
-    'hub-notes-badge--loading': st === 'idle' || st === 'loading',
-    'hub-notes-badge--saving': st === 'saving',
+    'hub-notes-badge--loading': st === 'local',
+    'hub-notes-badge--saving': st === 'syncing',
     'hub-notes-badge--error': st === 'error',
-    'hub-notes-badge--pending': st === 'synced' && hubNotesDebounceActive.value,
-    'hub-notes-badge--ok': st === 'synced' && !hubNotesDebounceActive.value,
+    'hub-notes-badge--pending': st === 'dirty',
+    'hub-notes-badge--ok': st === 'synced',
   }
 })
 
 const hubNotesSubHint = computed(() => {
   const st = hubNotesCloud.value.status
   if (st === 'error') {
-    return (
-      hubNotesCloud.value.detail ||
-      '请检查网络后点「重试保存」，或重新登录后再试。'
-    )
+    return hubNotesCloud.value.detail || '同步失败，请点顶栏「同步」重试。'
   }
-  if (st === 'idle' || st === 'loading') {
-    return '正在连接服务器并读取当前知识点的笔记本…'
-  }
-  if (st === 'saving') {
-    return '正在向服务器写入，请稍候…'
-  }
-  const saved = formatHubSavedAt(hubNotesLastServerAt.value)
-  if (st === 'synced' && saved) {
-    return `云端记录时间：${saved}（换设备登录同一账号可继续编辑）`
+  if (st === 'dirty') {
+    return '改动已写入本地；点顶栏「同步」上传到账号。'
   }
   if (st === 'synced') {
-    return '编辑后约 1 秒内自动上传；切换知识点、切走标签或关闭页面前也会再保存一次。'
+    const saved = formatHubSavedAt(hubNotesLastServerAt.value)
+    return saved
+      ? `云端记录：${saved}（换设备需先同步）`
+      : '已与云端对齐。'
   }
-  return ''
+  return '当前为本地缓存；编辑后点顶栏「同步」上传，并从云端拉取最新题目与统计。'
 })
 
-/** 「笔记」标签上的小点：有未上传改动 / 正在保存 / 失败时提醒 */
+/** 「笔记」标签上的小点 */
 const hubNotesTabMarkerClass = computed(() => {
   const st = hubNotesCloud.value.status
   if (st === 'error') return 'hub-tab-marker hub-tab-marker--error'
-  if (st === 'saving' || (st === 'synced' && hubNotesDebounceActive.value)) {
+  if (st === 'dirty' || st === 'syncing') {
     return 'hub-tab-marker hub-tab-marker--pending'
   }
   return ''
 })
 
 function flushHubNotesToNode(nodeId: string) {
-  try {
-    localStorage.setItem(notesStorageKey(nodeId), hubNotesMd.value)
-  } catch {
-    /* storage full or disabled */
-  }
-}
-
-function clearHubNotesPersistTimer() {
-  if (persistHubNotesTimer !== null) {
-    window.clearTimeout(persistHubNotesTimer)
-    persistHubNotesTimer = null
-  }
-  hubNotesDebounceActive.value = false
+  writeNoteLocal(nodeId, hubNotesMd.value)
 }
 
 function applyHubNotesFromRemote(md: string) {
-  skipHubNotesPersist.value = true
   hubNotesMd.value = md
-  queueMicrotask(() => {
-    skipHubNotesPersist.value = false
-  })
 }
 
-async function persistHubNotesToServerNow(nodeId: string): Promise<void> {
-  flushHubNotesToNode(nodeId)
-  hubNotesCloud.value = { status: 'saving' }
-  try {
-    const r = await shenlunApi.putHubNote(nodeId, hubNotesMd.value)
-    applyHubNoteSavedMeta(r)
-    hubNotesCloud.value = { status: 'synced' }
-  } catch (e) {
-    hubNotesCloud.value = { status: 'error', detail: (e as Error).message }
-  }
+function onNotesInput(md: string) {
+  hubNotesMd.value = md
+  saveNoteLocally()
 }
 
-function scheduleHubNotesPersist() {
-  if (skipHubNotesPersist.value) return
+function saveNoteLocally() {
   const nid = selectedNodeId.value
-  clearHubNotesPersistTimer()
-  hubNotesDebounceActive.value = true
-  persistHubNotesTimer = window.setTimeout(() => {
-    persistHubNotesTimer = null
-    hubNotesDebounceActive.value = false
-    void (async () => {
-      flushHubNotesToNode(nid)
-      hubNotesCloud.value = { status: 'saving' }
-      try {
-        const r = await shenlunApi.putHubNote(nid, hubNotesMd.value)
-        applyHubNoteSavedMeta(r)
-        hubNotesCloud.value = { status: 'synced' }
-      } catch (err) {
-        hubNotesCloud.value = { status: 'error', detail: (err as Error).message }
-      }
-    })()
-  }, PERSIST_DEBOUNCE_MS)
+  const prev = readNoteLocal(nid)
+  if (prev === hubNotesMd.value) return
+  flushHubNotesToNode(nid)
+  markNoteDirty(nid)
+  refreshDirtyCount()
+  hubNotesCloud.value = { status: 'dirty' }
+}
+
+function loadNoteForNode(id: string, prev?: string) {
+  if (prev !== undefined) {
+    flushHubNotesToNode(prev)
+  }
+  applyHubNotesFromRemote(readNoteLocal(id))
+  hubNotesCloud.value = isNoteDirty(id) ? { status: 'dirty' } : { status: 'local' }
+  if (!isNoteDirty(id)) hubNotesLastServerAt.value = ''
 }
 
 watch(
   () => selectedNodeId.value,
   (id, prev) => {
-    hubNotesNavChain = hubNotesNavChain
-      .then(async () => {
-        clearHubNotesPersistTimer()
-
-        if (prev !== undefined) {
-          await persistHubNotesToServerNow(prev)
-        }
-
-        hubNotesCloud.value = { status: 'loading' }
-        hubNotesLastServerAt.value = ''
-        try {
-          const remote = await shenlunApi.getHubNote(id)
-          applyHubNoteSavedMeta(remote)
-          let md = remote.body_md ?? ''
-          if (!md.trim()) {
-            try {
-              const legacy = localStorage.getItem(notesStorageKey(id)) ?? ''
-              if (legacy.trim()) {
-                md = legacy
-                const up = await shenlunApi.putHubNote(id, md)
-                applyHubNoteSavedMeta(up)
-              }
-            } catch {
-              /* ignore migration upload errors */
-            }
-          }
-          applyHubNotesFromRemote(md)
-          await nextTick()
-          flushHubNotesToNode(id)
-          hubNotesCloud.value = { status: 'synced' }
-        } catch (e) {
-          hubNotesCloud.value = { status: 'error', detail: (e as Error).message }
-          try {
-            applyHubNotesFromRemote(localStorage.getItem(notesStorageKey(id)) ?? '')
-          } catch {
-            applyHubNotesFromRemote('')
-          }
-        }
-      })
-      .catch(() => {})
+    loadNoteForNode(id, prev)
   },
   { immediate: true },
 )
 
-watch(
-  hubNotesMd,
-  () => {
-    scheduleHubNotesPersist()
-  },
-  { flush: 'sync' },
-)
-
-async function retryHubNotesSave() {
-  const nid = selectedNodeId.value
-  hubNotesCloud.value = { status: 'saving' }
-  flushHubNotesToNode(nid)
+async function manualSync() {
+  if (syncBusy.value) return
+  syncBusy.value = true
+  listError.value = null
+  const nodeId = selectedNodeId.value
+  hubNotesCloud.value = { status: 'syncing' }
   try {
-    const r = await shenlunApi.putHubNote(nid, hubNotesMd.value)
-    applyHubNoteSavedMeta(r)
-    hubNotesCloud.value = { status: 'synced' }
+    flushHubNotesToNode(nodeId)
+
+    for (const nid of listDirtyNoteIds()) {
+      const md = readNoteLocal(nid)
+      const r = await shenlunApi.putHubNote(nid, md)
+      clearNoteDirty(nid)
+      if (nid === nodeId) applyHubNoteSavedMeta(r)
+    }
+    refreshDirtyCount()
+
+    const treeRes = await shenlunApi.getKnowledgeTree()
+    customNodes.value = treeRes.custom_nodes ?? []
+    writeKnowledgeTreeCache(customNodes.value)
+
+    const [sourcesRes, statsRes] = await Promise.all([
+      shenlunApi.listSources(nodeId, ''),
+      shenlunApi.getIssueStats(nodeId),
+    ])
+    writeSourcesCache(nodeId, sourcesRes.items)
+    writeIssueStatsCache(nodeId, statsRes)
+    items.value = sourcesRes.items
+    listCacheEmpty.value = false
+    issueStats.value = statsRes
+
+    if (!isNoteDirty(nodeId)) {
+      const remote = await shenlunApi.getHubNote(nodeId)
+      applyHubNotesFromRemote(remote.body_md ?? '')
+      writeNoteLocal(nodeId, remote.body_md ?? '')
+      applyHubNoteSavedMeta(remote)
+    }
+
+    const now = new Date().toISOString()
+    writeCacheMeta({ lastManualSyncAt: now })
+    lastSyncAt.value = now
+    hubNotesCloud.value = isNoteDirty(nodeId) ? { status: 'dirty' } : { status: 'synced' }
+
+    if (hubMainSection.value === 'issues') {
+      void issueFeedRef.value?.reload?.()
+    }
   } catch (e) {
+    listError.value = (e as Error).message
     hubNotesCloud.value = { status: 'error', detail: (e as Error).message }
+  } finally {
+    syncBusy.value = false
   }
-}
-
-function flushHubNotesBestEffort() {
-  clearHubNotesPersistTimer()
-  const nid = selectedNodeId.value
-  flushHubNotesToNode(nid)
-  void shenlunApi
-    .putHubNote(nid, hubNotesMd.value)
-    .then((r) => {
-      applyHubNoteSavedMeta(r)
-      hubNotesCloud.value = { status: 'synced' }
-    })
-    .catch(() => {})
-}
-
-function onVisibilityFlush() {
-  if (document.visibilityState === 'hidden') flushHubNotesBestEffort()
 }
 
 onMounted(() => {
   savePortalLastModule('shenlun')
-  document.addEventListener('visibilitychange', onVisibilityFlush)
+  hydrateKnowledgeTreeFromCache()
+  refreshDirtyCount()
+  if (String(route.query.tab || '') === 'issues') {
+    goIssuesTab('', '')
+  }
 })
 
 onBeforeUnmount(() => {
-  document.removeEventListener('visibilitychange', onVisibilityFlush)
-  clearHubNotesPersistTimer()
   flushHubNotesToNode(selectedNodeId.value)
-  void shenlunApi
-    .putHubNote(selectedNodeId.value, hubNotesMd.value)
-    .then((r) => applyHubNoteSavedMeta(r))
-    .catch(() => {})
 })
 
 const copyBlinkId = ref<string | null>(null)
@@ -305,38 +356,87 @@ async function copySourceProblem(row: SourceSummary, ev?: Event) {
   }
 }
 
+watch(
+  () => isNoteOnlySelected.value,
+  (noteOnly) => {
+    if (noteOnly && hubMainSection.value !== 'notes') {
+      hubMainSection.value = 'notes'
+    }
+  },
+)
+
 watch(hubMainSection, (s) => {
-  if (s === 'notes') notesEditorMounted.value = true
+  if (s === 'issues') {
+    void issueFeedRef.value?.reload?.()
+  }
 })
 
 const expanded = ref<Set<string>>(
   new Set(SL_TREE.map((n) => n.id)),
 )
 
-async function loadList() {
-  listLoading.value = true
+function hasChildren(n: ShenlunTreeNode): boolean {
+  return (n.children?.length ?? 0) > 0
+}
+
+function applyListFromCache(nodeId: string) {
   listError.value = null
-  try {
-    const res = await shenlunApi.listSources(selectedNodeId.value, searchQuery.value)
-    items.value = res.items
-  } catch (e) {
-    listError.value = (e as Error).message
-    items.value = []
-  } finally {
-    listLoading.value = false
+  const sourcesCached = readSourcesCache(nodeId)
+  items.value = sourcesCached?.items ?? []
+  listCacheEmpty.value = !sourcesCached
+  const statsCached = readIssueStatsCache(nodeId)
+  issueStats.value = statsCached?.stats ?? null
+}
+
+const filteredItems = computed(() => {
+  let rows = items.value
+  const needle = searchQuery.value.trim().toLowerCase()
+  if (needle) {
+    rows = rows.filter((r) => {
+      const q = (r.question_text_raw ?? '').toLowerCase()
+      const m = (r.material_text_raw ?? '').toLowerCase()
+      const meta = [r.paper_year, r.paper_province, r.paper_suite_type]
+        .join(' ')
+        .toLowerCase()
+      return q.includes(needle) || m.includes(needle) || meta.includes(needle)
+    })
   }
+  if (topicListFilter.value === 'reviewed') {
+    rows = rows.filter((r) => (r.cc_success_count ?? 0) > 0 || r.latest_cc_status === 'success')
+  } else if (topicListFilter.value === 'has_issues') {
+    rows = rows.filter((r) => (r.latest_issue_tags?.length ?? 0) > 0)
+  }
+  if (topicIssueTagFilter.value) {
+    rows = rows.filter((r) => r.latest_issue_tags?.includes(topicIssueTagFilter.value))
+  }
+  return rows
+})
+
+function goIssuesTab(tag = '', sourceId = '') {
+  issuesInitialTag.value = tag
+  issuesInitialSourceId.value = sourceId
+  hubMainSection.value = 'issues'
+}
+
+function onTopicTagClick(tag: string, sourceId: string, ev: Event) {
+  ev.preventDefault()
+  ev.stopPropagation()
+  goIssuesTab(tag, sourceId)
+}
+
+function onStatsTagUpdate(tag: string) {
+  topicIssueTagFilter.value = tag
+}
+
+function onStatsViewAll() {
+  goIssuesTab(topicIssueTagFilter.value, '')
 }
 
 watch(
   () => selectedNodeId.value,
-  () => void loadList(),
+  (nodeId) => applyListFromCache(nodeId),
   { immediate: true },
 )
-
-watch(searchQuery, () => {
-  if (searchDebounce) window.clearTimeout(searchDebounce)
-  searchDebounce = window.setTimeout(() => void loadList(), 280)
-})
 
 function paperMetaLine(row: SourceSummary): string {
   const ys = [row.paper_year, row.paper_province, row.paper_suite_type]
@@ -354,7 +454,15 @@ async function confirmDelete(row: SourceSummary, ev: Event) {
   deletingId.value = row.id
   try {
     await shenlunApi.deleteSource(row.id)
-    await loadList()
+    const cached = readSourcesCache(selectedNodeId.value)
+    if (cached) {
+      writeSourcesCache(
+        selectedNodeId.value,
+        cached.items.filter((i) => i.id !== row.id),
+      )
+      listCacheEmpty.value = cached.items.length <= 1
+    }
+    applyListFromCache(selectedNodeId.value)
   } catch {
     alert('删除失败')
   } finally {
@@ -452,9 +560,18 @@ function statusLabel(row: SourceSummary): string {
     <header class="hub-header">
       <div>
         <h1 class="hub-title">申论工作台</h1>
-        <p class="hub-sub">先选知识点，再查看已有练习或新建录入。</p>
+        <p class="hub-sub">本地优先展示；点「同步」与云端交换数据。</p>
+        <p class="hub-sync-hint">{{ syncStatusHint }}</p>
       </div>
       <nav class="hub-nav hub-nav-wrap">
+        <button
+          type="button"
+          class="btn btn-sync"
+          :disabled="syncBusy"
+          @click="manualSync"
+        >
+          {{ syncBusy ? '同步中…' : '同步' }}
+        </button>
         <a href="/?portal=1" class="hub-module-hero-btn">
           <span class="hmh-main">模块首页</span>
           <span class="hmh-sub">门户切换</span>
@@ -478,11 +595,12 @@ function statusLabel(row: SourceSummary): string {
         </button>
 
         <div class="hub-tree">
-          <template v-for="n in SL_TREE" :key="n.id">
+          <p v-if="syncBusy" class="hub-tree-muted">同步中…</p>
+          <template v-for="n in knowledgeTree" :key="n.id">
             <div class="hub-tree-node">
               <div class="hub-tree-row">
                 <button
-                  v-if="n.children?.length"
+                  v-if="hasChildren(n)"
                   type="button"
                   class="hub-tree-chevron"
                   @click="toggleExpand(n.id)"
@@ -490,9 +608,7 @@ function statusLabel(row: SourceSummary): string {
                   {{ expanded.has(n.id) ? '▾' : '▸' }}
                 </button>
                 <span v-else class="hub-tree-chevron hub-tree-chevron--ghost" />
-                <span v-if="n.children?.length" class="hub-tree-label hub-tree-label--group">{{ n.title }}</span>
                 <button
-                  v-else
                   type="button"
                   class="hub-tree-label hub-tree-label--leaf"
                   :class="{ active: selectedNodeId === n.id }"
@@ -500,9 +616,18 @@ function statusLabel(row: SourceSummary): string {
                 >
                   {{ n.title }}
                 </button>
+                <button
+                  type="button"
+                  class="hub-tree-add"
+                  title="新建子节点（仅笔记）"
+                  :disabled="treeActionBusy"
+                  @click.stop="createChildNode(n.id)"
+                >
+                  +
+                </button>
               </div>
 
-              <div v-if="n.children?.length && expanded.has(n.id)" class="hub-tree-children">
+              <div v-if="hasChildren(n) && expanded.has(n.id)" class="hub-tree-children">
                 <div v-for="c in n.children" :key="c.id" class="hub-tree-row hub-tree-row--child">
                   <span class="hub-tree-chevron hub-tree-chevron--ghost" />
                   <button
@@ -513,6 +638,26 @@ function statusLabel(row: SourceSummary): string {
                   >
                     {{ c.title }}
                   </button>
+                  <div class="hub-tree-child-actions">
+                    <button
+                      type="button"
+                      class="hub-tree-action"
+                      title="重命名"
+                      :disabled="treeActionBusy"
+                      @click.stop="renameChildNode(c.id, c.title)"
+                    >
+                      改
+                    </button>
+                    <button
+                      type="button"
+                      class="hub-tree-action hub-tree-action--danger"
+                      title="删除"
+                      :disabled="treeActionBusy"
+                      @click.stop="deleteChildNode(c.id, c.title)"
+                    >
+                      删
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -524,13 +669,21 @@ function statusLabel(row: SourceSummary): string {
         <div class="hub-main-head">
           <div>
             <h2>当前节点</h2>
-            <p class="hub-node-path">{{ shenlunNodeTitle(selectedNodeId) }}</p>
+            <p class="hub-node-path">{{ selectedNodeTitle }}</p>
           </div>
-          <button type="button" class="btn btn-primary" @click="goNewPractice">新建练习</button>
+          <button
+            v-if="!isNoteOnlySelected"
+            type="button"
+            class="btn btn-primary"
+            @click="goNewPractice"
+          >
+            新建练习
+          </button>
         </div>
 
         <div class="hub-seg-tabs" role="tablist">
           <button
+            v-if="!isNoteOnlySelected"
             type="button"
             class="hub-tab"
             :class="{ active: hubMainSection === 'topics' }"
@@ -560,9 +713,35 @@ function statusLabel(row: SourceSummary): string {
               </span>
             </span>
           </button>
+          <button
+            v-if="!isNoteOnlySelected"
+            type="button"
+            class="hub-tab"
+            :class="{ active: hubMainSection === 'issues' }"
+            role="tab"
+            :aria-selected="hubMainSection === 'issues'"
+            @click="goIssuesTab('', '')"
+          >
+            复盘问题
+            <span v-if="issueStats && issueStats.total_entries > 0" class="hub-tab-count">
+              {{ issueStats.total_entries }}
+            </span>
+          </button>
         </div>
 
-        <template v-if="hubMainSection === 'topics'">
+        <p v-if="isNoteOnlySelected" class="hub-note-only-hint">
+          本子节点仅用于 Markdown 笔记，不支持题目与复盘。
+        </p>
+
+        <template v-if="!isNoteOnlySelected && hubMainSection === 'topics'">
+          <IssueStatsBar
+            :stats="issueStats"
+            :node-title="selectedNodeTitle"
+            :active-tag="topicIssueTagFilter"
+            :loading="syncBusy"
+            @update:active-tag="onStatsTagUpdate"
+            @view-all="onStatsViewAll"
+          />
           <div class="hub-toolbar">
             <input
               v-model="searchQuery"
@@ -571,12 +750,25 @@ function statusLabel(row: SourceSummary): string {
               placeholder="搜索题干、材料或套卷信息…"
               enterkeyhint="search"
             />
+            <select v-model="topicListFilter" class="hub-filter-select">
+              <option value="all">全部题目</option>
+              <option value="reviewed">已复盘</option>
+              <option value="has_issues">含弱点标签</option>
+            </select>
           </div>
-          <p v-if="listLoading" class="hub-muted">加载中…</p>
-          <p v-else-if="listError" class="hub-error">加载失败：{{ listError }}</p>
+          <p v-if="syncBusy" class="hub-muted">正在同步云端数据…</p>
+          <p v-else-if="listError" class="hub-error">同步失败：{{ listError }}</p>
           <ul v-else class="hub-list">
-            <li v-if="!items.length" class="hub-empty">该知识点下还没有练习记录，点击右上角新建。</li>
-            <li v-for="row in items" :key="row.id" class="hub-row" @click="openSource(row)">
+            <li v-if="!filteredItems.length" class="hub-empty">
+              {{
+                listCacheEmpty
+                  ? '暂无本地题目缓存，请点击顶栏「同步」从云端拉取。'
+                  : items.length && filteredItems.length !== items.length
+                    ? '没有符合筛选条件的题目。'
+                    : '该知识点下还没有练习记录，可新建或先同步云端。'
+              }}
+            </li>
+            <li v-for="row in filteredItems" :key="row.id" class="hub-row" @click="openSource(row)">
               <div class="hub-row-main">
                 <span class="hub-row-title">{{ previewRowLead(row) }}</span>
                 <span class="hub-row-meta">
@@ -584,6 +776,18 @@ function statusLabel(row: SourceSummary): string {
                   {{ statusLabel(row) }} · {{ row.attempt_count }} 次练习 ·
                   {{ new Date(row.updated_at).toLocaleString('zh-CN', { hour12: false }) }}
                 </span>
+                <div v-if="row.latest_issue_tags?.length" class="hub-row-tags" @click.stop>
+                  <IssueTagChip
+                    v-for="tag in row.latest_issue_tags.slice(0, 2)"
+                    :key="tag"
+                    :tag="tag"
+                    size="sm"
+                    @click="onTopicTagClick(tag, row.id, $event)"
+                  />
+                  <span v-if="row.latest_issue_tags.length > 2" class="hub-row-tags-more">
+                    +{{ row.latest_issue_tags.length - 2 }}
+                  </span>
+                </div>
               </div>
               <div class="hub-row-actions">
                 <button
@@ -607,6 +811,15 @@ function statusLabel(row: SourceSummary): string {
           </ul>
         </template>
 
+        <div v-if="!isNoteOnlySelected && hubMainSection === 'issues'" class="hub-issues-pane">
+          <IssueFeedPanel
+            ref="issueFeedRef"
+            :node-id="selectedNodeId"
+            :initial-tag="issuesInitialTag"
+            :initial-source-id="issuesInitialSourceId"
+          />
+        </div>
+
         <div v-show="hubMainSection === 'notes'" class="hub-notes-pane">
           <div
             class="hub-notes-savebar"
@@ -617,19 +830,22 @@ function statusLabel(row: SourceSummary): string {
             <div class="hub-notes-savebar-top">
               <span :class="hubNotesBadgeClass">{{ hubNotesBadgeText }}</span>
               <button
-                v-if="hubNotesCloud.status === 'error'"
+                v-if="hubNotesCloud.status === 'error' || hubNotesCloud.status === 'dirty'"
                 type="button"
                 class="hub-notes-retry"
-                @click="retryHubNotesSave"
+                :disabled="syncBusy"
+                @click="manualSync"
               >
-                重试保存
+                立即同步
               </button>
             </div>
             <p v-if="hubNotesSubHint" class="hub-notes-savebar-sub">{{ hubNotesSubHint }}</p>
           </div>
           <ShenlunHubNotesEditor
-            v-if="notesEditorMounted"
-            v-model="hubNotesMd"
+            v-if="hubMainSection === 'notes' || isNoteOnlySelected"
+            :key="selectedNodeId"
+            :model-value="hubNotesMd"
+            @update:model-value="onNotesInput"
           />
         </div>
       </main>
@@ -667,6 +883,33 @@ function statusLabel(row: SourceSummary): string {
   margin: 0;
   font-size: 14px;
   color: #6b7280;
+}
+
+.hub-sync-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.btn-sync {
+  align-self: center;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid #93c5fd;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.btn-sync:hover:not(:disabled) {
+  background: #dbeafe;
+}
+
+.btn-sync:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .hub-nav {
@@ -865,6 +1108,80 @@ function statusLabel(row: SourceSummary): string {
   font-weight: 600;
 }
 
+.hub-tree-muted {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.hub-tree-add {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #fff;
+  color: #6b7280;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.hub-tree-add:hover:not(:disabled) {
+  border-color: #93c5fd;
+  color: #2563eb;
+  background: #eff6ff;
+}
+
+.hub-tree-add:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.hub-tree-child-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.hub-tree-action {
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.hub-tree-action:hover:not(:disabled) {
+  border-color: #93c5fd;
+  color: #2563eb;
+  background: #eff6ff;
+}
+
+.hub-tree-action--danger:hover:not(:disabled) {
+  border-color: #fecaca;
+  color: #b91c1c;
+  background: #fef2f2;
+}
+
+.hub-tree-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.hub-note-only-hint {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+  font-size: 13px;
+}
+
 .hub-tree-label--group {
   font-weight: 600;
   color: #111827;
@@ -959,6 +1276,34 @@ function statusLabel(row: SourceSummary): string {
 .hub-tab-marker--error {
   background: #ef4444;
   box-shadow: 0 0 0 2px rgb(252 165 165 / 0.55);
+}
+
+.hub-tab-count {
+  margin-left: 4px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.hub-issues-pane {
+  margin-top: 4px;
+  min-width: 0;
+}
+
+.hub-row-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.hub-row-tags-more {
+  font-size: 11px;
+  color: #6b7280;
 }
 
 @keyframes hubNotesDotPulse {
@@ -1065,16 +1410,30 @@ function statusLabel(row: SourceSummary): string {
 }
 
 .hub-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 14px;
 }
 .hub-search {
-  width: 100%;
+  flex: 1 1 220px;
+  width: auto;
   max-width: 420px;
   box-sizing: border-box;
   padding: 9px 12px;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   font-size: 14px;
+}
+.hub-filter-select {
+  flex: 0 0 auto;
+  font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  color: #374151;
 }
 .hub-search:focus {
   outline: none;

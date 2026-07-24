@@ -136,6 +136,9 @@
     var resolvedId = resolveKnowledgeDisplayNodeId(nodeId);
     expandKnowledgePath(resolvedId);
     selectedKnowledgeNodeId = resolvedId;
+    if (typeof rememberSelectedKnowledgeNodeId === "function") {
+      rememberSelectedKnowledgeNodeId(resolvedId);
+    }
     knowledgeNodeFilter = options.applyFilter === false ? knowledgeNodeFilter : resolvedId;
     typeFilter = null;
     noteEditing = false;
@@ -224,6 +227,11 @@
         saveNoteTypeContent();
       }
     });
+    ta.addEventListener("input", function () {
+      if (typeof scheduleKnowledgeNoteAutoPersist === "function") {
+        scheduleKnowledgeNoteAutoPersist();
+      }
+    });
   }
 
   function openExternalKnowledgeNoteEditor(nodeId) {
@@ -250,13 +258,19 @@
   function saveNoteTypeContent() {
     var ta = document.getElementById("noteTypeTextarea");
     if (!ta) return;
-    ensureKnowledgeState();
+    ensureKnowledgeState({ preserveTreeShape: true, repair: false, persist: false });
     if (!selectedKnowledgeNodeId) return;
     var node = getKnowledgeNodeById(selectedKnowledgeNodeId);
     if (!node) return;
     node.contentMd = ta.value;
     node.updatedAt = new Date().toISOString();
-    saveKnowledgeState();
+    if (typeof rememberSelectedKnowledgeNodeId === "function") rememberSelectedKnowledgeNodeId(node.id);
+    saveKnowledgeState({ preserveTreeShape: true });
+    if (typeof persistKnowledgeStateNow === "function") {
+      persistKnowledgeStateNow().catch(function (e) {
+        console.warn("[saveNoteTypeContent] persist failed", e);
+      });
+    }
   }
 
   function renderWorkspaceHeader(currentNode, pathText, directCount, linkedCount, errorCount, mode) {

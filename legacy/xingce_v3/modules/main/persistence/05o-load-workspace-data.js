@@ -51,6 +51,7 @@ async function loadData(options) {
   catch(e) { cloudMeta = getDefaultCloudMeta(); }
   await loadNotesByType();
   await loadKnowledgeState();
+  restoreSelectedKnowledgeNodeId();
   await migrateIntegerIds();
   if (fullDataLoaded) setErrorSyncSnapshot();
   setWorkspaceSyncSnapshot();

@@ -17,6 +17,9 @@ export interface SourceSummary extends SourceRecord {
   cc_success_count?: number
   /** 最近一轮练习的批改状态（无练习时为 null） */
   latest_cc_status?: 'none' | 'pending' | 'success' | 'failed' | null
+  /** 最近一轮成功复盘的 issue tags */
+  latest_issue_tags?: string[]
+  top_issue_tag?: string | null
 }
 
 export interface AttemptSummary {
@@ -25,6 +28,7 @@ export interface AttemptSummary {
   cc_status: string
   created_at: string
   updated_at: string
+  issue_tags?: string[]
 }
 
 export interface Segment {
@@ -77,6 +81,58 @@ export interface HubNoteRecord {
   node_id: string
   body_md: string
   updated_at: string
+}
+
+export interface ShenlunCustomNode {
+  id: string
+  parent_id: string
+  title: string
+  sort_order?: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface ShenlunKnowledgeTreeResponse {
+  tree: Array<{
+    id: string
+    title: string
+    children: ShenlunCustomNode[]
+  }>
+  custom_nodes: ShenlunCustomNode[]
+}
+
+export interface IssueEntry {
+  id: string
+  node_id: string
+  source_id: string
+  attempt_id: string
+  attempt_no: number
+  scope: 'segment' | 'overall'
+  segment_index: number | null
+  issue_tag: string
+  missed_points: string[]
+  wrong_points: string[]
+  cc_comment: string
+  question_preview: string
+  paper_year: string
+  paper_province: string
+  paper_suite_type: string
+  detected_at: string
+  status: string
+}
+
+export interface IssueTagCount {
+  tag: string
+  count: number
+  last_at: string
+}
+
+export interface IssueStats {
+  tag_counts: IssueTagCount[]
+  total_entries: number
+  sources_with_issues: number
+  attempts_with_issues: number
+  recent_7d_count: number
 }
 
 const BASE = '/api/shenlun'
@@ -204,5 +260,54 @@ export const shenlunApi = {
       method: 'PUT',
       body: JSON.stringify({ node_id: nodeId, body_md }),
     })
+  },
+
+  getKnowledgeTree() {
+    return request<ShenlunKnowledgeTreeResponse>('/knowledge-tree')
+  },
+
+  createKnowledgeNode(parent_id: string, title: string) {
+    return request<ShenlunCustomNode>('/knowledge-nodes', {
+      method: 'POST',
+      body: JSON.stringify({ parent_id, title }),
+    })
+  },
+
+  patchKnowledgeNode(nodeId: string, title: string) {
+    return request<ShenlunCustomNode>(`/knowledge-nodes/${encodeURIComponent(nodeId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ title }),
+    })
+  },
+
+  deleteKnowledgeNode(nodeId: string) {
+    return request<{ ok: boolean; id: string }>(
+      `/knowledge-nodes/${encodeURIComponent(nodeId)}`,
+      { method: 'DELETE' },
+    )
+  },
+
+  listIssueFeed(params: {
+    nodeId: string
+    tag?: string
+    scope?: 'segment' | 'overall' | ''
+    sourceId?: string
+    limit?: number
+    offset?: number
+  }) {
+    const q = new URLSearchParams()
+    q.set('node_id', params.nodeId)
+    if (params.tag?.trim()) q.set('tag', params.tag.trim())
+    if (params.scope) q.set('scope', params.scope)
+    if (params.sourceId?.trim()) q.set('source_id', params.sourceId.trim())
+    if (params.limit) q.set('limit', String(params.limit))
+    if (params.offset) q.set('offset', String(params.offset))
+    return request<{ items: IssueEntry[]; total: number }>(`/issue-feed?${q.toString()}`)
+  },
+
+  getIssueStats(nodeId: string) {
+    const q = new URLSearchParams()
+    q.set('node_id', nodeId)
+    return request<IssueStats>(`/issue-stats?${q.toString()}`)
   },
 }

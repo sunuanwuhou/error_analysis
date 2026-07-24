@@ -155,6 +155,8 @@
     if (ensureKs) ensureKs();
     node.contentMd = markdown;
     node.updatedAt = new Date().toISOString();
+    var rememberNode = resolveHostApi("rememberSelectedKnowledgeNodeId");
+    if (rememberNode) rememberNode(node.id);
     var ensureNote = resolveHostApi("ensureKnowledgeNoteRecord");
     if (ensureNote) {
       try {
@@ -164,8 +166,16 @@
       }
     }
     var saveKs = resolveHostApi("saveKnowledgeState");
-    if (saveKs) saveKs();
+    if (saveKs) saveKs({ preserveTreeShape: true });
     else return false;
+    var persistNow = resolveHostApi("persistKnowledgeStateNow");
+    if (persistNow) {
+      try {
+        persistNow();
+      } catch (error) {
+        console.warn("persistKnowledgeStateNow failed", error);
+      }
+    }
     try {
       if ("noteEditing" in state.host) state.host.noteEditing = false;
       if ("selectedKnowledgeNodeId" in state.host) state.host.selectedKnowledgeNodeId = node.id;
@@ -212,7 +222,10 @@
       var confirmed = window.confirm(TEXT.confirmRefresh);
       if (!confirmed) return;
     }
-    var markdown = node.contentMd || "";
+    var resolveMd = resolveHostApi("resolveKnowledgeNodeMarkdown");
+    var markdown = resolveMd
+      ? String(resolveMd(node) || "")
+      : String(node.contentMd || "");
     if (state.editor) state.editor.setMarkdown(markdown, false);
     state.lastSavedValue = markdown;
     setDirty(false);
@@ -491,7 +504,11 @@
 
     applyEmbedMode();
     syncHeader();
-    initEditor(node.contentMd || "");
+    var resolveMd = resolveHostApi("resolveKnowledgeNodeMarkdown");
+    var markdown = resolveMd
+      ? String(resolveMd(node) || "")
+      : String(node.contentMd || "");
+    initEditor(markdown);
     exposeTestApi();
     bindShortcuts();
     bindActions();

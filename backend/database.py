@@ -473,6 +473,80 @@ def init_shenlun_tables() -> None:
             ON shenlun_hub_notes(user_id, updated_at DESC)
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS shenlun_issue_entries (
+              id TEXT PRIMARY KEY,
+              user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              node_id TEXT NOT NULL DEFAULT '',
+              source_id TEXT NOT NULL REFERENCES shenlun_sources(id) ON DELETE CASCADE,
+              attempt_id TEXT NOT NULL REFERENCES shenlun_attempts(id) ON DELETE CASCADE,
+              attempt_no INTEGER NOT NULL DEFAULT 1,
+              scope TEXT NOT NULL,
+              segment_index INTEGER,
+              issue_tag TEXT NOT NULL,
+              missed_points_json TEXT NOT NULL DEFAULT '[]',
+              wrong_points_json TEXT NOT NULL DEFAULT '[]',
+              cc_comment TEXT NOT NULL DEFAULT '',
+              question_preview TEXT NOT NULL DEFAULT '',
+              paper_year TEXT NOT NULL DEFAULT '',
+              paper_province TEXT NOT NULL DEFAULT '',
+              paper_suite_type TEXT NOT NULL DEFAULT '',
+              detected_at TEXT NOT NULL,
+              status TEXT NOT NULL DEFAULT 'open',
+              created_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_sl_issues_user_node_time
+            ON shenlun_issue_entries(user_id, node_id, detected_at DESC)
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_sl_issues_user_node_tag
+            ON shenlun_issue_entries(user_id, node_id, issue_tag)
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_sl_issues_attempt
+            ON shenlun_issue_entries(attempt_id)
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_sl_issues_source
+            ON shenlun_issue_entries(source_id)
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS shenlun_knowledge_nodes (
+              id TEXT PRIMARY KEY,
+              user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              parent_id TEXT NOT NULL,
+              title TEXT NOT NULL,
+              sort_order INTEGER NOT NULL DEFAULT 0,
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_sl_kn_user_parent
+            ON shenlun_knowledge_nodes(user_id, parent_id, sort_order)
+            """
+        )
+        conn.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_sl_kn_user_parent_title
+            ON shenlun_knowledge_nodes(user_id, parent_id, title)
+            """
+        )
         conn.commit()
 
 

@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { marked } from 'marked'
 import type { KnowledgeNode } from '@/api/xingce'
 import { useXingceStore } from '@/stores/xingceStore'
 import ErrorCard from './ErrorCard.vue'
 import KnowledgeNodeModal from './KnowledgeNodeModal.vue'
 import KnowledgeNoteEditorModal from './KnowledgeNoteEditorModal.vue'
-
-marked.setOptions({ gfm: true, breaks: true })
+import KnowledgeNotePreview from './KnowledgeNotePreview.vue'
 
 const emit = defineEmits<{
   layoutMode: [mode: WorkspaceMode]
@@ -104,16 +102,14 @@ watch(noteContent, (v) => {
   if (!noteEditing.value) draftMd.value = v
 })
 
-const renderedNote = computed(() => {
-  const raw = noteEditing.value ? draftMd.value : noteContent.value
-  if (!String(raw).trim()) return ''
-  return marked.parse(raw) as string
-})
+const previewMarkdown = computed(() =>
+  noteEditing.value ? draftMd.value : noteContent.value,
+)
 
-const draftRendered = computed(() => {
-  const raw = draftMd.value
-  if (!String(raw).trim()) return '<p class="np-ph">预览将显示在此</p>'
-  return marked.parse(raw) as string
+const directoryPreviewMarkdown = computed(() => {
+  const node = directoryPreviewNode.value
+  if (!node) return ''
+  return normalizeMd(node.contentMd)
 })
 
 const isTopLevel = computed(() => store.isTopLevelKnowledgeNode(currentNode.value))
@@ -178,14 +174,6 @@ watch(directorySections, (sections) => {
   if (!directoryPreviewId.value || !sections.some(s => s.nodeId === directoryPreviewId.value)) {
     directoryPreviewId.value = sections.find(s => s.hasContent)?.nodeId ?? sections[0]?.nodeId ?? null
   }
-})
-
-const directoryPreviewHtml = computed(() => {
-  const node = directoryPreviewNode.value
-  if (!node) return ''
-  const md = normalizeMd(node.contentMd)
-  if (!md.trim()) return ''
-  return marked.parse(md) as string
 })
 
 function setWorkspaceMode(mode: WorkspaceMode) {
@@ -382,15 +370,20 @@ defineExpose({ startEdit })
         <div class="note-split-preview">
           <div class="note-split-label">预览</div>
           <div class="note-preview-scroll note-preview-frame-scroll">
-            <div class="knowledge-inline-preview np-md" v-html="draftRendered" />
+            <KnowledgeNotePreview
+              :markdown="draftMd"
+              :node-id="currentNode.id"
+              :note-images="store.noteImages"
+            />
           </div>
         </div>
       </div>
       <div v-else class="note-preview-scroll note-preview-frame-scroll">
-        <div
-          v-if="renderedNote"
-          class="knowledge-inline-preview np-md"
-          v-html="renderedNote"
+        <KnowledgeNotePreview
+          v-if="noteContent.trim()"
+          :markdown="previewMarkdown"
+          :node-id="currentNode.id"
+          :note-images="store.noteImages"
         />
         <div v-else class="knowledge-workspace-empty">
           当前节点还没有笔记，先写规则总结、易错点和下一步动作。
@@ -432,10 +425,11 @@ defineExpose({ startEdit })
             </div>
           </div>
           <div class="note-preview-scroll note-preview-frame-scroll knowledge-directory-preview">
-            <div
-              v-if="directoryPreviewHtml"
-              class="knowledge-inline-preview np-md"
-              v-html="directoryPreviewHtml"
+            <KnowledgeNotePreview
+              v-if="directoryPreviewMarkdown.trim()"
+              :markdown="directoryPreviewMarkdown"
+              :node-id="directoryPreviewNode?.id"
+              :note-images="store.noteImages"
             />
             <div v-else class="knowledge-workspace-empty">请选择一个章节查看笔记。</div>
           </div>

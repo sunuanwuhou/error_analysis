@@ -165,6 +165,9 @@ function setCurrentKnowledgeNode(nodeId, opts) {
     expandKnowledgePath(resolvedId);
   }
   selectedKnowledgeNodeId = resolvedId;
+  if (typeof rememberSelectedKnowledgeNodeId === 'function') {
+    rememberSelectedKnowledgeNodeId(resolvedId);
+  }
   knowledgeNodeFilter = options.applyFilter === false ? knowledgeNodeFilter : resolvedId;
   typeFilter = null;
   noteEditing = false;

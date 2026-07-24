@@ -535,11 +535,24 @@ def download_chunk_part(user_id: str, download_id: str, chunk_index: int) -> tup
 
 def get_backup_response(user_id: str, *, current_origin: str, meta: bool) -> dict[str, Any]:
     with get_conn() as conn:
-        materialized = build_workspace_snapshot_from_entities(user_id, conn)
         row = conn.execute(
             "SELECT payload_json, updated_at FROM user_backups WHERE user_id = ?",
             (user_id,),
         ).fetchone()
+        materialized = build_workspace_snapshot_from_entities(user_id, conn) if not row else None
+    if row:
+        payload_text = row["payload_json"] or "{}"
+        backup = json.loads(payload_text)
+        return {
+            "exists": True,
+            "currentOrigin": current_origin,
+            "updatedAt": row["updated_at"],
+            "payloadBytes": len(payload_text.encode("utf-8")),
+            "summary": build_backup_summary(backup),
+            "payload": None if meta else backup,
+            "backup": None if meta else backup,
+            "origins": list_origin_statuses(user_id),
+        }
     if materialized:
         updated_at = str(materialized.get("exportTime") or materialized.get("baseUpdatedAt") or "")
         return {
@@ -552,26 +565,13 @@ def get_backup_response(user_id: str, *, current_origin: str, meta: bool) -> dic
             "backup": None if meta else materialized,
             "origins": list_origin_statuses(user_id),
         }
-    if not row:
-        return {
-            "exists": False,
-            "currentOrigin": current_origin,
-            "payloadBytes": 0,
-            "summary": {},
-            "payload": None,
-            "backup": None,
-            "origins": list_origin_statuses(user_id),
-        }
-    payload_text = row["payload_json"] or "{}"
-    backup = json.loads(payload_text)
     return {
-        "exists": True,
+        "exists": False,
         "currentOrigin": current_origin,
-        "updatedAt": row["updated_at"],
-        "payloadBytes": len(payload_text.encode("utf-8")),
-        "summary": build_backup_summary(backup),
-        "payload": None if meta else backup,
-        "backup": None if meta else backup,
+        "payloadBytes": 0,
+        "summary": {},
+        "payload": None,
+        "backup": None,
         "origins": list_origin_statuses(user_id),
     }
 

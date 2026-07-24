@@ -19,8 +19,16 @@ async function applyCloudBackup(data, updatedAt, opts) {
     }));
   }
   rememberCloudDecision(updatedAt || data.exportTime || '', 'loaded');
-  if (typeof markIncrementalSyncChecked === 'function') {
-    markIncrementalSyncChecked(updatedAt || data.exportTime || new Date().toISOString());
+  if (typeof markFullBackupRestoreCompleted === 'function') {
+    await markFullBackupRestoreCompleted();
+  } else if (typeof markIncrementalSyncChecked === 'function') {
+    markIncrementalSyncChecked(new Date().toISOString());
+  }
+  if (typeof ensureKnowledgeNotesHydratedIntoTree === 'function') {
+    ensureKnowledgeNotesHydratedIntoTree();
+  }
+  if (typeof persistFullWorkspaceNow === 'function') {
+    await persistFullWorkspaceNow();
   }
   scheduleOriginStatusSync({
     lastLoadedAt: updatedAt || data.exportTime || '',
@@ -59,10 +67,12 @@ async function queueDeferredCloudRestore(meta, opts) {
 
 async function maybeRestoreCloudBackup() {
   if (typeof isManualCloudSyncOnly === 'function' && isManualCloudSyncOnly()) return;
-  // Deferred error load should not block restore when notes/knowledge are already missing locally.
+  // If full workspace data is not yet loaded (deferred mode), do not attempt restore.
+  // Deferred loading means IndexedDB already has valid data; we must wait for it to load
+  // before deciding whether local is truly empty, otherwise we risk clearing IndexedDB
+  // and then racing against the deferred loader which reads an empty KEY_ERRORS.
   if (typeof hasFullWorkspaceDataLoaded === 'function'
-    && !hasFullWorkspaceDataLoaded()
-    && hasLocalWorkspaceData()) return;
+    && !hasFullWorkspaceDataLoaded()) return;
   if (!cloudUser || cloudBusy) return;
   cloudBusy = true;
   try {

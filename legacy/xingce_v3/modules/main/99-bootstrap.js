@@ -66,18 +66,18 @@ function scheduleWorkspaceWarmup() {
   if (typeof getErrorEntries === 'function' && getErrorEntries().length >= 800) return;
   const run = () => {
     if (appView !== 'workspace') return;
+    if (typeof renderNotesByType !== 'function') return;
     try {
-      renderAll();
       renderNotesByType();
     } catch (error) {
       console.warn('workspace warmup failed', error);
     }
   };
   if (typeof window.requestIdleCallback === 'function') {
-    window.requestIdleCallback(run, { timeout: 1800 });
+    window.requestIdleCallback(run, { timeout: 3200 });
     return;
   }
-  setTimeout(run, 900);
+  setTimeout(run, 1600);
 }
 
 const LEGACY_SPLIT_BUNDLE_VERSION = '20260508-root-move-fix';
@@ -168,7 +168,10 @@ if (typeof window !== 'undefined') {
       'renderSidebar',
       'openWorkspaceView',
       'switchTab',
-      'openEditModal'
+      'openEditModal',
+      'openKnowledgeTreeSortModal',
+      'setKnowledgeTreeSortParent',
+      'moveKnowledgeTreeSortSibling',
     ]);
     if (!legacyWorkspaceBundleLoaded && workspaceLikelyNames.has(missingName)) {
       await ensureLegacyWorkspaceBundleLoaded();
@@ -243,6 +246,9 @@ if (typeof window !== 'undefined') {
   }, 4000);
 
   window.addEventListener('beforeunload', () => {
+    if (typeof flushKnowledgeNoteDraftFromDom === 'function') {
+      flushKnowledgeNoteDraftFromDom();
+    }
     if (typeof persistKnowledgeWorkspaceNow === 'function') {
       persistKnowledgeWorkspaceNow().catch(() => {});
     }
@@ -256,6 +262,14 @@ if (typeof window !== 'undefined') {
     }
   });
   document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      if (typeof flushKnowledgeNoteDraftFromDom === 'function') {
+        flushKnowledgeNoteDraftFromDom();
+      }
+      if (typeof persistKnowledgeStateNow === 'function') {
+        persistKnowledgeStateNow().catch(() => {});
+      }
+    }
     if (typeof isManualCloudSyncOnly === 'function' && isManualCloudSyncOnly()) return;
     if (document.visibilityState === 'visible' && typeof scheduleForegroundCloudWakeCheck === 'function') {
       scheduleForegroundCloudWakeCheck();

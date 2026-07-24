@@ -49,7 +49,7 @@ function renderSidebarKnowledgeTreeV2(nodes, depth, renderBudget) {
     let html = `<div class="${cls} knowledge-tree-node ${active ? 'active is-active' : ''} ${matched ? 'is-search-match' : ''} ${hasChildren ? 'is-branch' : ''}" style="${extraStyle}" data-knowledge-node-id="${displayNode.id}" draggable="true" ondragstart="startKnowledgeNodeDrag('${displayNode.id}', event)" ondragend="endKnowledgeNodeDrag()" ondragover="allowKnowledgeDrop(event, '${displayNode.id}')" ondragleave="leaveKnowledgeDrop(event)" ondrop="handleKnowledgeDrop('${displayNode.id}', event)" onclick="handleKnowledgeNodeClick('${displayNode.id}', event)" ondblclick="handleKnowledgeNodeDoubleClick('${displayNode.id}', event)">
       <span class="knowledge-tree-row">
         <button type="button" class="knowledge-tree-toggle${hasChildren ? '' : ' placeholder'}" onclick="handleKnowledgeToggleClick('${displayNode.id}', event)" aria-label="${hasChildren ? '展开或收起' : '无下级'}">${marker}</button>
-        <span class="knowledge-tree-drag-hint" title="拖拽排序">⋮⋮</span>
+        <span class="knowledge-tree-drag-hint" title="可拖拽排序，或点侧栏「排序」">⋮⋮</span>
         <span class="knowledge-tree-title">${escapeHtml(displayNode.title)}</span>
       </span>
       <span style="display:flex;align-items:center;gap:6px;flex-shrink:0"><span class="${countClass}">${count}</span></span></div>`;
@@ -61,7 +61,11 @@ function renderSidebarKnowledgeTreeV2(nodes, depth, renderBudget) {
 }
 function renderSidebar() {
   updateSidebar();
-  ensureKnowledgeState({ preserveTreeShape: true, repair: false, persist: false });
+  if (typeof ensureKnowledgeState === 'function') {
+    ensureKnowledgeState({ preserveTreeShape: true, repair: false, persist: false });
+  } else if (typeof ensureKnowledgeNotesHydratedIntoTree === 'function') {
+    ensureKnowledgeNotesHydratedIntoTree();
+  }
   const nextTreeStateKey = getKnowledgeTreeRenderStateKey();
   if (nextTreeStateKey !== knowledgeTreeRenderStateKey) {
     knowledgeTreeRenderStateKey = nextTreeStateKey;

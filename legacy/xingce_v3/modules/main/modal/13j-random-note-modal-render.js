@@ -120,8 +120,14 @@ function renderRandomNoteReview() {
       <button class="btn btn-secondary" type="button" onclick="randomNoteReviewShuffle()">换一条</button>
       <button class="btn btn-secondary" type="button" onclick="randomNoteReviewSkip()">跳过</button>
       <button class="btn btn-secondary" type="button" onclick="startRandomNoteHighValuePractice(5)">练高价值错题(5题)</button>
-      <button class="btn btn-secondary" type="button" onclick="startRandomNoteAllPractice(10)">练全部错题(10题)</button>
+      <button class="btn btn-secondary" type="button" onclick="startRandomNoteAllPractice()" ${errorCount > 0 ? '' : 'disabled'}>练全部错题(${errorCount}题)</button>
       <button class="btn btn-primary" type="button" onclick="openRandomNoteInWorkspace()">打开到知识树</button>
     </div>
   `;
+  requestAnimationFrame(function() {
+    const preview = body.querySelector('.note-preview-scroll');
+    if (preview && typeof renderMathInElement === 'function') {
+      renderMathInElement(preview);
+    }
+  });
 }

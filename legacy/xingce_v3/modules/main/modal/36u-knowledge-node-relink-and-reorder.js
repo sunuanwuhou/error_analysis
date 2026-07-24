@@ -42,6 +42,7 @@ function knmMoveKnowledgeNodeToSiblingPosition(nodeId, targetId, mode, deps) {
   d.saveKnowledgeState();
   d.expandKnowledgePath(target.id);
   d.setCurrentKnowledgeNode(movedNode.id, { switchTab: false });
+  if (typeof refreshKnowledgeTreeSortModalIfOpen === "function") refreshKnowledgeTreeSortModalIfOpen();
   d.showToast(mode === "before" ? "已插入到目标节点上方" : "已插入到目标节点下方", "success");
   return true;
 }

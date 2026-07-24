@@ -16,17 +16,32 @@ function syncKnowledgeNotesFromTree() {
     const legacy = typeof getLegacyKnowledgeNoteSnapshot === 'function'
       ? getLegacyKnowledgeNoteSnapshot(node.id)
       : null;
+    const previousEntry = previous[node.id];
+    const previousContent = previousEntry && typeof previousEntry.content === 'string'
+      ? previousEntry.content.trim()
+      : '';
     const nodeContent = String(node.contentMd || '').trim();
     const legacyContent = legacy && legacy.content ? String(legacy.content).trim() : '';
-    const content = nodeContent || legacyContent || '';
-    if (!nodeContent && legacyContent) {
-      node.contentMd = legacy.content;
-      if (legacy.updatedAt && !node.updatedAt) node.updatedAt = legacy.updatedAt;
+    const content = nodeContent || legacyContent || previousContent || '';
+    if (!nodeContent && content) {
+      node.contentMd = nodeContent || legacyContent || previousContent;
+      if (!node.updatedAt) {
+        node.updatedAt = String(
+          (legacy && legacy.updatedAt)
+          || (previousEntry && previousEntry.updatedAt)
+          || ''
+        );
+      }
     }
     next[node.id] = {
-      title: String(node.title || (legacy && legacy.title) || ''),
+      title: String(node.title || (legacy && legacy.title) || (previousEntry && previousEntry.title) || ''),
       content,
-      updatedAt: String(node.updatedAt || (legacy && legacy.updatedAt) || '')
+      updatedAt: String(
+        node.updatedAt
+        || (legacy && legacy.updatedAt)
+        || (previousEntry && previousEntry.updatedAt)
+        || ''
+      )
     };
   });
   Object.keys(previous).forEach((nodeId) => {

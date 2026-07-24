@@ -123,13 +123,19 @@ function liveNotePreview() {
 function saveNoteTypeContent() {
   const ta = document.getElementById('noteTypeTextarea');
   if (!ta) return;
-  ensureKnowledgeState();
+  ensureKnowledgeState({ preserveTreeShape: true, repair: false, persist: false });
   if (!selectedKnowledgeNodeId) return;
   const node = getKnowledgeNodeById(selectedKnowledgeNodeId);
   if (!node) return;
   node.contentMd = ta.value;
   node.updatedAt = new Date().toISOString();
-  saveKnowledgeState();
+  rememberSelectedKnowledgeNodeId(node.id);
+  saveKnowledgeState({ preserveTreeShape: true });
+  if (typeof persistKnowledgeStateNow === 'function') {
+    persistKnowledgeStateNow().catch((e) => {
+      console.warn('[saveNoteTypeContent] persist failed', e);
+    });
+  }
 }
 
 function setKnowledgeRelatedMode(mode) {

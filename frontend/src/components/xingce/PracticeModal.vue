@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import type { ErrorEntry } from '@/api/xingce'
 import { xingceApi } from '@/api/xingce'
 import { useXingceStore } from '@/stores/xingceStore'
+import ErrorQuestionImage from './ErrorQuestionImage.vue'
 
 const props = defineProps<{ entry: ErrorEntry }>()
 const emit = defineEmits<{ close: [] }>()
@@ -61,7 +62,10 @@ async function submit() {
         <button class="pm-close" @click="emit('close')">✕</button>
       </div>
 
-      <div class="pm-question">{{ entry.question }}</div>
+      <div class="pm-question">
+        <div v-if="String(entry.question || '').trim()">{{ entry.question }}</div>
+        <ErrorQuestionImage v-if="entry.imgData" :src="entry.imgData" variant="quiz" />
+      </div>
 
       <div class="pm-options">
         <button

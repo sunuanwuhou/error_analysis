@@ -12,6 +12,7 @@ function getDefaultCloudMeta() {
     lastLocalChangeAt: '',
     lastMetaCheckAt: '',
     lastIncrementalSyncAt: '',
+    lastFullBackupRestoreAt: '',
     nextCloudSaveAt: '',
     nextIncrementalSyncAt: ''
   };
@@ -19,6 +20,11 @@ function getDefaultCloudMeta() {
 
 function saveCloudMeta() {
   DB.set(KEY_CLOUD_META, JSON.stringify(cloudMeta || getDefaultCloudMeta()));
+}
+
+async function persistCloudMetaNow() {
+  if (typeof cancelPendingPersist === 'function') cancelPendingPersist(KEY_CLOUD_META);
+  await DB.set(KEY_CLOUD_META, JSON.stringify(cloudMeta || getDefaultCloudMeta()));
 }
 
 function getIsoAgeMs(isoText) {
@@ -99,6 +105,7 @@ function shouldCheckCloudMetaOnStartup() {
 }
 
 function shouldRunIncrementalSyncOnStartup() {
+  if (typeof shouldBlockSyncPullAfterFullRestore === 'function' && shouldBlockSyncPullAfterFullRestore()) return false;
   if (hasPendingIncrementalOps()) return shouldRunIncrementalSyncDue();
   return getIsoAgeMs(cloudMeta && cloudMeta.lastIncrementalSyncAt) >= STARTUP_INCREMENTAL_SYNC_TTL_MS;
 }
@@ -109,6 +116,7 @@ function shouldCheckCloudMetaInForeground() {
 }
 
 function shouldRunIncrementalSyncInForeground() {
+  if (typeof shouldBlockSyncPullAfterFullRestore === 'function' && shouldBlockSyncPullAfterFullRestore()) return false;
   if (hasPendingIncrementalOps()) return shouldRunIncrementalSyncDue();
   return getIsoAgeMs(cloudMeta && cloudMeta.lastIncrementalSyncAt) >= FOREGROUND_CLOUD_CHECK_TTL_MS;
 }
@@ -140,7 +148,7 @@ async function runBackgroundCloudBootstrap(strategy) {
       if (checkCloudSave) {
         if (incrementalOnlyAutoSave) {
           setNextCloudSaveAt('');
-          await syncWithServer();
+          await syncWithServer({ pushOnly: true });
         } else {
           await saveCloudBackup({ silent: true });
         }

@@ -38,7 +38,9 @@ function syncNotesWithErrors() {
     }
   });
   saveNotesByType();
-  ensureKnowledgeState({ persist: true });
+  if (typeof ensureKnowledgeState === 'function') {
+    ensureKnowledgeState({ persist: true, preserveTreeShape: true, repair: false, syncErrors: false });
+  }
 }
 
 // 新增：点击笔记标题筛选功能（同时切换到错题Tab）

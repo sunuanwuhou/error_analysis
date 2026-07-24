@@ -3,9 +3,9 @@ import { ref, watch, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter, useRoute } from 'vue-router'
 import { useShenlunStore } from '@/stores/shenlunStore'
+import IssueTagChip from '@/components/shenlun/IssueTagChip.vue'
 import {
-  flattenShenlunNodes,
-  SL_TREE,
+  sourceSelectNodes,
   shenlunNodeTitle,
   nodeIdToRouteQuery,
 } from '@/data/shenlunTree'
@@ -32,7 +32,7 @@ const finalSummaryModel = computed({
 
 const nodeTitle = computed(() => shenlunNodeTitle(store.selectedNodeId))
 
-const flatNodes = flattenShenlunNodes(SL_TREE)
+const flatNodes = sourceSelectNodes()
 
 const canNewRound = computed(() => {
   const rows = store.attemptSummaries
@@ -212,6 +212,14 @@ function goResultReview() {
                 new Date(row.updated_at).toLocaleString('zh-CN', { hour12: false })
               }}</span>
               <span v-if="row.id === store.attempt?.id" class="wb-round-current">当前编辑</span>
+              <span v-if="row.issue_tags?.length" class="wb-round-tags">
+                <IssueTagChip
+                  v-for="tag in row.issue_tags.slice(0, 2)"
+                  :key="tag"
+                  :tag="tag"
+                  size="sm"
+                />
+              </span>
             </div>
             <div class="wb-round-actions">
               <button
@@ -485,8 +493,11 @@ function goResultReview() {
 <style scoped>
 .wb-page {
   max-width: 860px;
+  height: 100%;
   margin: 0 auto;
   padding: 32px 20px 80px;
+  box-sizing: border-box;
+  overflow-y: auto;
   font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", sans-serif;
   color: #1a1a2e;
 }
@@ -695,6 +706,12 @@ function goResultReview() {
   font-weight: 600;
 }
 
+.wb-round-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
 .wb-round-actions {
   display: flex;
   align-items: center;
@@ -838,7 +855,7 @@ function goResultReview() {
 .wb-segment {
   border: 1px solid #e5e7eb;
   border-radius: 10px;
-  overflow: hidden;
+  overflow: clip;
 }
 .wb-segment-header {
   background: #f9fafb;
@@ -861,7 +878,6 @@ function goResultReview() {
 }
 .wb-segment-body > .wb-material-block {
   min-width: 0;
-  min-height: 0;
 }
 .wb-extraction-stack {
   min-width: 0;
@@ -982,6 +998,8 @@ function goResultReview() {
   padding: 14px 16px;
   border-right: 1px solid #e5e7eb;
   background: #fff;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .wb-material-text {
   margin: 0;

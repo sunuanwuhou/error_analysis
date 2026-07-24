@@ -423,6 +423,250 @@
   padding-left: 1.4em;
 }
 
+.xc-vue-legacy .note-math-inline {
+  display: inline-block;
+  padding: 0 2px;
+}
+
+.xc-vue-legacy .note-math-block {
+  margin: 10px 0;
+  padding: 10px 12px;
+  border: 1px solid #f0e2cf;
+  border-radius: 12px;
+  background: #fffdf8;
+  overflow-x: auto;
+}
+
+.xc-vue-legacy .note-math-block mjx-container,
+.xc-vue-legacy .note-math-inline mjx-container {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.xc-vue-legacy .knowledge-note-preview-host,
+.xc-vue-legacy .knowledge-inline-preview {
+  min-height: 0;
+}
+
+.xc-vue-legacy .note-preview-layout {
+  display: grid;
+  grid-template-columns: minmax(200px, 240px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: stretch;
+  min-height: 0;
+}
+
+.xc-vue-legacy .note-preview-layout-no-toc {
+  display: block;
+}
+
+.xc-vue-legacy .note-preview-toc .note-toc-floating {
+  position: relative;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  padding: 12px 14px;
+  border: 1px solid #f1e2ce;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #fffdf8 0%, #fffaf2 100%);
+  box-shadow: none;
+}
+
+.xc-vue-legacy .note-toc {
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+.xc-vue-legacy .note-toc-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #b45309;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.xc-vue-legacy .note-toc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: inherit;
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+}
+
+.xc-vue-legacy .note-toc-item {
+  padding: 6px 2px;
+  border-radius: 10px;
+  color: #7c5a2f;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.xc-vue-legacy .note-toc-item:hover,
+.xc-vue-legacy .note-toc-item.active {
+  background: #fff2df;
+  color: #c2410c;
+}
+
+.xc-vue-legacy .note-toc-item.active {
+  font-weight: 700;
+}
+
+.xc-vue-legacy .note-toc-item.lv2 { padding-left: 14px; }
+.xc-vue-legacy .note-toc-item.lv3 { padding-left: 24px; }
+.xc-vue-legacy .note-toc-item.lv4 { padding-left: 34px; }
+
+.xc-vue-legacy .note-preview-article {
+  min-width: 0;
+  max-width: none;
+}
+
+.xc-vue-legacy .note-preview-toc {
+  display: block !important;
+  grid-column: 1;
+  grid-row: 1;
+  align-self: stretch;
+  position: relative;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+  padding: 4px 0 12px;
+}
+
+.xc-vue-legacy .note-preview-article-scroll {
+  min-width: 0;
+  max-width: none;
+  grid-column: 2;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 6px;
+  scroll-padding-top: 14px;
+}
+
+.xc-vue-legacy #notesContent.knowledge-notes-active.knowledge-workspace-note-mode .knowledge-inline-preview,
+.xc-vue-legacy #notesContent.knowledge-notes-active.knowledge-workspace-note-mode .note-preview-layout,
+.xc-vue-legacy #notesContent.knowledge-notes-active.knowledge-workspace-note-mode .note-preview-layout-no-toc,
+.xc-vue-legacy #notesContent.knowledge-notes-active.knowledge-workspace-note-mode .note-preview-article-scroll {
+  display: block;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  overflow: visible;
+}
+
+@media (min-width: 981px) {
+  .xc-vue-legacy #notesContent.knowledge-notes-active.knowledge-workspace-note-mode {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    height: 100%;
+  }
+
+  .xc-vue-legacy #notesContent.knowledge-notes-active.knowledge-workspace-note-mode > * {
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+  }
+
+  .xc-vue-legacy #notesContent.knowledge-notes-active.knowledge-workspace-note-mode .knowledge-workspace-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .xc-vue-legacy #notesContent.knowledge-notes-active.knowledge-workspace-note-mode .knowledge-workspace-note-wrap {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .xc-vue-legacy #notesContent.knowledge-notes-active.knowledge-workspace-note-mode .note-preview-scroll,
+  .xc-vue-legacy #notesContent.knowledge-notes-active.knowledge-workspace-note-mode .note-preview-frame-scroll,
+  .xc-vue-legacy #notesContent.knowledge-notes-active.knowledge-workspace-note-mode .knowledge-directory-preview {
+    flex: 1;
+    display: block;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .xc-vue-legacy #notesContent.knowledge-notes-active.knowledge-workspace-note-mode .knowledge-inline-preview,
+  .xc-vue-legacy #notesContent.knowledge-notes-active.knowledge-workspace-note-mode .knowledge-note-preview-host {
+    display: flex;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .xc-vue-legacy #notesContent.knowledge-notes-active.knowledge-workspace-note-mode .note-preview-layout {
+    display: grid;
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
+    overflow: hidden;
+  }
+
+  .xc-vue-legacy #notesContent.knowledge-notes-active.knowledge-workspace-note-mode .note-preview-layout-no-toc {
+    display: block;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .xc-vue-legacy #notesContent.knowledge-notes-active.knowledge-workspace-note-mode .note-preview-article-scroll {
+    display: block;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    overflow: auto;
+  }
+}
+
+.xc-vue-legacy .note-md-heading {
+  cursor: pointer;
+}
+
+.xc-vue-legacy .note-md-anchor {
+  opacity: 0;
+  margin-right: 6px;
+  color: #cbd5e1;
+  text-decoration: none;
+}
+
+.xc-vue-legacy .note-md-heading:hover .note-md-anchor {
+  opacity: 1;
+}
+
+.xc-vue-legacy .note-img-missing {
+  margin: 0.5em 0;
+  padding: 8px 10px;
+  border: 1px dashed #fbbf24;
+  border-radius: 8px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 12px;
+  word-break: break-all;
+}
+
 /* Mobile shell (align v53) */
 @media (max-width: 768px) {
   .xc-vue-legacy .xc-ws-tabs {
@@ -629,5 +873,83 @@
 
   body.xc-mobile-sidebar-open {
     overflow: hidden;
+  }
+}
+
+/* Random note review modal — Teleport 到 body，需独立高度链 */
+.rnr-preview.xc-vue-legacy {
+  display: flex;
+  flex-direction: column;
+}
+
+.rnr-preview.xc-vue-legacy .knowledge-inline-preview,
+.rnr-preview.xc-vue-legacy .knowledge-note-preview-host {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  height: 100%;
+}
+
+.rnr-preview.xc-vue-legacy .note-preview-layout {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.rnr-preview.xc-vue-legacy .note-preview-layout-no-toc {
+  display: block;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.rnr-preview.xc-vue-legacy .note-preview-toc {
+  display: block !important;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+  padding: 4px 0 8px;
+}
+
+.rnr-preview.xc-vue-legacy .note-preview-toc .note-toc-floating {
+  height: 100%;
+  max-height: 100%;
+}
+
+.rnr-preview.xc-vue-legacy .note-toc-list {
+  overflow: auto;
+  max-height: calc(min(48vh, 520px) - 80px);
+}
+
+.rnr-preview.xc-vue-legacy .note-preview-article-scroll {
+  display: block;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  overflow: auto;
+}
+
+@media (max-width: 760px) {
+  .rnr-preview.xc-vue-legacy .note-preview-layout {
+    display: block;
+  }
+
+  .rnr-preview.xc-vue-legacy .note-preview-toc {
+    max-height: min(220px, 34vh);
+    margin-bottom: 10px;
+  }
+
+  .rnr-preview.xc-vue-legacy .note-toc-list {
+    max-height: min(180px, 28vh);
+  }
+
+  .rnr-preview.xc-vue-legacy .note-preview-article-scroll {
+    max-height: none;
   }
 }

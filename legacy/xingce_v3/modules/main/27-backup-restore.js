@@ -334,14 +334,14 @@ async function _applyCloudBackupStaged(data, updatedAt, opts) {
   withCloudAutoSaveSuppressed(() => withIncrementalSyncSuppressed(() => {
     knowledgeTree = data.knowledgeTree || null;
     knowledgeNotes = data.knowledgeNotes || {};
-    if (typeof hydrateKnowledgeContentFromStoredNotes === 'function') {
+    if (typeof ensureKnowledgeNotesHydratedIntoTree === 'function') {
+      ensureKnowledgeNotesHydratedIntoTree();
+    } else if (typeof hydrateKnowledgeContentFromStoredNotes === 'function') {
       hydrateKnowledgeContentFromStoredNotes();
     }
     if (typeof ensureKnowledgeState === 'function') {
       ensureKnowledgeState({ persist: false, repair: false, syncErrors: false, preserveTreeShape: true });
     }
-    DB.set(KEY_KNOWLEDGE_TREE, JSON.stringify(knowledgeTree));
-    DB.set(KEY_KNOWLEDGE_NOTES, JSON.stringify(knowledgeNotes));
   }));
   setCloudSyncState('saving', `正在同步知识点 ${summary.knowledgeNodes || collectKnowledgeNodes().length} 个`, syncAt);
   await delayCloudRestore(0);
@@ -377,6 +377,9 @@ async function _applyCloudBackupStaged(data, updatedAt, opts) {
   }
   if (typeof persistStartupSummaryNow === 'function') {
     await persistStartupSummaryNow(JSON.stringify(errors));
+  }
+  if (typeof persistFullWorkspaceNow === 'function') {
+    await persistFullWorkspaceNow();
   }
   fullDataLoaded = true;
   setErrorSyncSnapshot();

@@ -98,7 +98,7 @@ async function saveCloudBackup(opts) {
     updateCloudOriginStatuses(data.origins);
     rememberCloudDecision(data.updatedAt || '', 'saved');
     cloudConflictBlocked = false;
-    await syncWithServer();
+    await syncWithServer({ fromManualAction: true });
     setCloudSyncState('synced', '本地改动已写入云端', data.updatedAt || '');
     showCloudInfo('Cloud backup saved', opts);
   } catch (e) {

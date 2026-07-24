@@ -6,9 +6,10 @@ import { FIXED_TYPES } from '@/lib/xingceDefaults'
 
 const props = defineProps<{
   initialNoteNodeId?: string
+  editId?: string
 }>()
 
-const emit = defineEmits<{ close: []; added: [] }>()
+const emit = defineEmits<{ close: []; added: []; saved: [] }>()
 const store = useXingceStore()
 
 const STATUS_OPTIONS = [
@@ -55,9 +56,57 @@ const subSubtypeSuggestions = computed(() =>
 )
 
 watch(() => form.type, () => {
+  if (props.editId) return
   form.subtype = ''
   form.subSubtype = ''
 })
+
+function resetForm() {
+  form.type = '言语理解与表达'
+  form.subtype = ''
+  form.subSubtype = ''
+  form.question = ''
+  form.options = ''
+  form.answer = ''
+  form.myAnswer = ''
+  form.rootReason = ''
+  form.analysis = ''
+  form.nextAction = ''
+  form.status = 'focus'
+  form.actualDurationSec = ''
+  form.targetDurationSec = ''
+  form.noteNodeId = props.initialNoteNodeId || ''
+}
+
+function loadEditEntry(id: string | undefined) {
+  if (!id) {
+    resetForm()
+    return
+  }
+  const e = store.errors.find(x => x.id === id)
+  if (!e) return
+  form.type = e.type || '其他'
+  form.subtype = e.subtype || ''
+  form.subSubtype = e.subSubtype || ''
+  form.question = e.question || ''
+  form.options = e.options || ''
+  form.answer = e.answer || ''
+  form.myAnswer = e.myAnswer || ''
+  form.rootReason = e.rootReason || e.errorReason || ''
+  form.analysis = e.analysis || ''
+  form.nextAction = e.nextAction || e.tip || ''
+  form.status = e.status || 'focus'
+  form.actualDurationSec = e.actualDurationSec ?? ''
+  form.targetDurationSec = e.targetDurationSec ?? ''
+  form.noteNodeId = e.noteNodeId || ''
+}
+
+watch(() => props.editId, loadEditEntry, { immediate: true })
+watch(() => props.initialNoteNodeId, (v) => {
+  if (!props.editId) form.noteNodeId = v || ''
+})
+
+const isEditing = computed(() => !!props.editId)
 
 function onQuestionInput() {
   const hit = store.autoDetectType(form.question)
@@ -84,7 +133,7 @@ function submit() {
   submitting.value = true
 
   try {
-    store.addError({
+    const payload = {
       type: form.type.trim(),
       subtype: form.subtype.trim(),
       subSubtype: form.subSubtype.trim() || undefined,
@@ -99,9 +148,14 @@ function submit() {
       actualDurationSec: form.actualDurationSec ? Number(form.actualDurationSec) : undefined,
       targetDurationSec: form.targetDurationSec ? Number(form.targetDurationSec) : undefined,
       noteNodeId: form.noteNodeId.trim() || undefined,
-      workflowStage: 'captured',
-    })
-    emit('added')
+    }
+    if (props.editId) {
+      store.updateError(props.editId, payload)
+      emit('saved')
+    } else {
+      store.addError({ ...payload, workflowStage: 'captured' })
+      emit('added')
+    }
     emit('close')
   } catch (e) {
     errMsg.value = String(e)
@@ -116,7 +170,7 @@ function submit() {
     <div class="am-backdrop" @click.self="emit('close')">
       <div class="am-modal">
         <div class="am-header">
-          <span class="am-title">添加错题</span>
+          <span class="am-title">{{ isEditing ? '编辑错题' : '添加错题' }}</span>
           <button class="am-close" @click="emit('close')">×</button>
         </div>
 
@@ -226,7 +280,7 @@ function submit() {
         <div class="am-footer">
           <button class="am-cancel" @click="emit('close')">取消</button>
           <button class="am-submit" :disabled="submitting" @click="submit">
-            {{ submitting ? '保存中…' : '添加错题' }}
+            {{ submitting ? '保存中…' : (isEditing ? '保存修改' : '添加错题') }}
           </button>
         </div>
       </div>

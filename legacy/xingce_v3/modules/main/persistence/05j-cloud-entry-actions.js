@@ -15,7 +15,27 @@ async function refreshCloudSession() {
     return;
   }
   if (isManualCloudSyncOnly()) {
-    setCloudSyncState('idle', '已登录，当前为手动同步模式（仅点击 Cloud Save 才会增量同步）', '');
+    if (incrementalSyncTimer) {
+      clearTimeout(incrementalSyncTimer);
+      incrementalSyncTimer = null;
+    }
+    if (cloudSaveTimer) {
+      clearTimeout(cloudSaveTimer);
+      cloudSaveTimer = null;
+    }
+    if (backgroundCloudBootstrapTimer) {
+      clearTimeout(backgroundCloudBootstrapTimer);
+      backgroundCloudBootstrapTimer = null;
+    }
+    setNextIncrementalSyncAt('');
+    setNextCloudSaveAt('');
+    const hasPending = typeof getPendingOps === 'function' && getPendingOps().length > 0;
+    if (hasPending || pendingCloudSave) {
+      pendingCloudSave = true;
+      setCloudSyncState('dirty', '本地有未上传改动；需要时请点 Cloud Save', '');
+    } else {
+      setCloudSyncState('idle', '已登录，手动同步模式：需要时请点 Cloud Load 或 Cloud Save', '');
+    }
     renderCloudUi();
     return;
   }
@@ -119,15 +139,16 @@ async function loadCloudIncrementalFromSidebar(opts) {
     }
     return;
   }
-  setCloudSyncState('saving', '正在从云端拉取增量更新', '');
+  setCloudSyncState('saving', '正在与云端同步（上传本地改动并拉取云端更新）', '');
   try {
     await syncWithServer({
-      pullOnly: true,
-      forceFullPull: Boolean(opts.forceFullPull),
-      resetCursor: Boolean(opts.resetCursor)
+      forcePull: true,
+      forceFullPull: opts.forceFullPull !== false,
+      resetCursor: opts.resetCursor !== false,
+      fromManualAction: true,
     });
     if (cloudSyncState !== 'error') {
-      if (!opts.silent) showCloudInfo('Incremental cloud pull completed', opts);
+      if (!opts.silent) showCloudInfo('Incremental cloud sync completed', opts);
     }
   } catch (e) {
     setCloudSyncState('error', e.message || '云端增量同步失败，请稍后重试', '');

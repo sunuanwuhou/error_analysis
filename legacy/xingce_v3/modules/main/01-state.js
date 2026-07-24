@@ -93,6 +93,7 @@ let knowledgeNodeModalState = { mode: '', nodeId: null, parentId: null, targetId
 let knowledgeRelatedMode = 'direct';
 const UI_KEY_ERRORS_TOP_COLLAPSED = 'xc_ui_errors_top_collapsed';
 const UI_KEY_KNOWLEDGE_TREE_FOCUS = 'xc_ui_knowledge_tree_focus';
+const UI_KEY_LAST_KNOWLEDGE_NODE = 'xc_ui_last_knowledge_node_id';
 let errorsTopCollapsed = false;
 let knowledgeTreeFocusMode = false;
 let knowledgeTreeSearchQuery = '';

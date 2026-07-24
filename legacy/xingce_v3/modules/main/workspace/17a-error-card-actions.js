@@ -178,6 +178,19 @@ function copyErrorMarkdown(id) {
   copyTextWithOptionalImage(text, errorItem && errorItem.imgData, handleSuccess, handleFailure);
 }
 
+function getQuestionStemText(errorItem) {
+  const item = errorItem && typeof errorItem === 'object' ? errorItem : {};
+  const question = String(item.question || '').trim();
+  const options = String(item.options || '')
+    .split(/\n|\|/)
+    .map(part => String(part || '').trim())
+    .filter(Boolean);
+  const sections = [];
+  if (question) sections.push(question);
+  if (options.length) sections.push(options.join('\n'));
+  return sections.join('\n\n') || '(无题干)';
+}
+
 function getQuestionAndOptionsText(errorItem) {
   const item = errorItem && typeof errorItem === 'object' ? errorItem : {};
   const answer = String(item.answer || '').trim();
@@ -190,6 +203,22 @@ function getQuestionAndOptionsText(errorItem) {
   if (analysis) sections.push('', '【解析】', analysis);
   if (scoreTip) sections.push('', '【提分】', scoreTip);
   return sections.join('\n');
+}
+
+function copyQuestionStem(id) {
+  const errorItem = findErrorById(id);
+  if (!errorItem) {
+    showToast('未找到题目', 'warning');
+    return;
+  }
+  const text = getQuestionStemText(errorItem);
+  const handleSuccess = () => showToast('题目已复制到剪贴板', 'success');
+  const handleFailure = () => {
+    const ok = fallbackCopyText(text);
+    if (ok) handleSuccess();
+    else showToast('复制失败，请稍后重试', 'error');
+  };
+  copyTextWithOptionalImage(text, errorItem && errorItem.imgData, handleSuccess, handleFailure);
 }
 
 function copyQuestionAndOptions(id) {
@@ -210,5 +239,6 @@ function copyQuestionAndOptions(id) {
 
 if (typeof window !== 'undefined') {
   window.copyErrorMarkdown = copyErrorMarkdown;
+  window.copyQuestionStem = copyQuestionStem;
   window.copyQuestionAndOptions = copyQuestionAndOptions;
 }

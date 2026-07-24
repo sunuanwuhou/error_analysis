@@ -30,6 +30,44 @@ function delayCloudRestore(ms) {
   return new Promise(resolve => setTimeout(resolve, ms || 0));
 }
 
+const FULL_RESTORE_PULL_GUARD_MS = 7 * 24 * 60 * 60 * 1000;
+const KEY_FULL_BACKUP_RESTORE_AT = 'xc_last_full_backup_restore_at';
+
+function getLastFullBackupRestoreAt() {
+  try {
+    const fromStorage = String(localStorage.getItem(KEY_FULL_BACKUP_RESTORE_AT) || '').trim();
+    const fromMeta = cloudMeta && cloudMeta.lastFullBackupRestoreAt
+      ? String(cloudMeta.lastFullBackupRestoreAt).trim()
+      : '';
+    if (!fromStorage) return fromMeta;
+    if (!fromMeta) return fromStorage;
+    return Date.parse(fromStorage) >= Date.parse(fromMeta) ? fromStorage : fromMeta;
+  } catch (e) {
+    return '';
+  }
+}
+
+function shouldBlockSyncPullAfterFullRestore() {
+  const restoredAt = getLastFullBackupRestoreAt();
+  if (!restoredAt) return false;
+  return getIsoAgeMs(restoredAt) < FULL_RESTORE_PULL_GUARD_MS;
+}
+
+async function markFullBackupRestoreCompleted() {
+  const now = new Date().toISOString();
+  try { localStorage.setItem(KEY_FULL_BACKUP_RESTORE_AT, now); } catch (e) {}
+  if (!cloudMeta || typeof cloudMeta !== 'object') cloudMeta = getDefaultCloudMeta();
+  cloudMeta.lastFullBackupRestoreAt = now;
+  if (typeof markIncrementalSyncChecked === 'function') {
+    markIncrementalSyncChecked(now);
+  }
+  if (typeof persistCloudMetaNow === 'function') {
+    await persistCloudMetaNow();
+  } else {
+    saveCloudMeta();
+  }
+}
+
 function getBackupSummary(meta) {
   const summary = meta && typeof meta.summary === 'object' ? meta.summary : {};
   return {
@@ -66,13 +104,18 @@ async function clearWorkspaceStorageForRemoteRestore() {
     KEY_DIR_TREE, KEY_KNOWLEDGE_TREE, KEY_KNOWLEDGE_NOTES
   ];
   await Promise.all(keys.map(key => DB.remove(key)));
-  ['lastSyncCursorAt', 'lastSyncCursorEntityType', 'lastSyncCursorId'].forEach(key => {
+  // Also clear lastSyncTime so next syncWithServer does a fresh full-snapshot pull
+  // instead of incremental from an old cursor that predates the restore.
+  // Also clear pendingOps so stale pre-restore ops are not pushed to server on
+  // next startup, which would corrupt state_entities and then be pulled back via
+  // the incremental sync, overwriting the restored local data.
+  ['lastSyncCursorAt', 'lastSyncCursorEntityType', 'lastSyncCursorId', 'lastSyncTime', 'pendingOps'].forEach(key => {
     try { localStorage.removeItem(key); } catch (e) {}
   });
 }
 
 function clearLocalSyncMarkers() {
-  ['lastSyncCursorAt', 'lastSyncCursorEntityType', 'lastSyncCursorId'].forEach(key => {
+  ['lastSyncCursorAt', 'lastSyncCursorEntityType', 'lastSyncCursorId', 'lastSyncTime', 'pendingOps'].forEach(key => {
     try { localStorage.removeItem(key); } catch (e) {}
   });
   setErrorSyncSnapshot(new Map());
